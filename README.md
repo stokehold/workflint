@@ -21,7 +21,7 @@ These channels are planned for the first release (`docs/adr/0014-distribution-an
 brew install stokehold/tap/workflint
 npm install --save-dev workflint
 pip install workflint
-cargo binstall workflint
+cargo binstall workflint   # from 1.0, when the crates are published
 docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/stokehold/workflint
 ```
 

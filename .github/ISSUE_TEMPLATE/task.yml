@@ -1,0 +1,50 @@
+name: Task
+description: A roadmap task, sized for one pull request.
+title: "M<milestone>.<n>: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tasks come from `docs/roadmap.md` (ADR 0020). Add the milestone, labels, and "blocked by" dependencies after creating the issue.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What exists when this task is done, and why. One to three sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: ADRs to follow, research sections, parity checklist rows, and reference code or fixtures.
+      value: |
+        - ADRs:
+        - Research:
+        - Parity checklist rows:
+        - Reference code and fixtures:
+    validations:
+      required: true
+  - type: textarea
+    id: build
+    attributes:
+      label: What to build
+      description: Crates and files to create or change, key types or commands, and constraints from the ADRs.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable statements. Keep the last item.
+      value: |
+        - [ ]
+        - [ ] The checks in AGENTS.md "Done" pass.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: Work that belongs to other tasks, with their IDs.

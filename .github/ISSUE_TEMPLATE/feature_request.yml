@@ -1,0 +1,32 @@
+name: Feature request
+description: A new check, option, output format, or integration.
+labels: [feature]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What goes wrong today, or what you cannot do. Include a workflow example if it applies.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What workflint should do.
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Rule category, for new checks
+      description: See ADR 0008. Checks that find real mistakes are `correctness`. Checks that enforce a preference go into an opt-in category.
+      options:
+        - Not a new check
+        - correctness (finds a real mistake)
+        - pedantic
+        - style
+        - security-strict
+        - policy
+    validations:
+      required: true
