@@ -1,0 +1,2 @@
+# Parser test inputs must reach the parser byte for byte on every OS.
+/crates/workflint-yaml/tests/yaml-test-suite/** -text

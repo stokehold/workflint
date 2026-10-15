@@ -12,12 +12,21 @@ actionlint
   The vendored test data in tests/conformance/actionlint/ keeps its original
   LICENSE file.
 
-libyaml-safer (planned, vendored in crates/workflint-yaml)
+libyaml-safer 0.3.0
   https://github.com/simonask/libyaml-safer
   MIT license
   A Rust port of libyaml (Copyright (c) 2006-2016 Kirill Simonov,
-  Copyright (c) 2017-2020 Ingy döt Net), also MIT-licensed. The vendored copy
-  keeps its original LICENSE file.
+  Copyright (c) 2017-2020 Ingy döt Net), also MIT-licensed. A modified copy
+  of commit 7fe984df4b2c9003cb319002f0e2669c753eea09 is vendored in
+  crates/workflint-yaml/src/libyaml/, with its original LICENSE-MIT file.
+  ORIGIN.md in that directory lists the changes.
+
+YAML test suite
+  https://github.com/yaml/yaml-test-suite
+  Copyright (c) 2016-2020 Ingy döt Net
+  MIT license
+  Test cases from the data-2020-02-11 tag are vendored in
+  crates/workflint-yaml/tests/yaml-test-suite/, with the suite's LICENSE file.
 
 unslop skill
   https://github.com/cursor/plugins/tree/main/pstack/skills/unslop
