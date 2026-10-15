@@ -62,6 +62,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.104"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
+
+[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -309,4 +315,12 @@ name = "workflint-yaml"
 version = "0.0.1"
 dependencies = [
  "datatest-stable",
+]
+
+[[package]]
+name = "xtask"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clap",
 ]
