@@ -1,0 +1,62 @@
+name: Bug report
+description: workflint reports something wrong, misses a problem, or crashes.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: workflint version
+      description: The first line of `workflint -version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you installed workflint
+      options:
+        - GitHub release or install script
+        - Homebrew
+        - npm
+        - PyPI
+        - cargo
+        - Docker
+        - GitHub Action
+        - pre-commit
+        - Built from source
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Workflow or action file
+      description: The smallest YAML that shows the problem.
+      render: yaml
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      placeholder: workflint .github/workflows/ci.yml
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual output
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected output
+      description: What you expected instead, and why. Link GitHub documentation if it applies.
+    validations:
+      required: true
+  - type: textarea
+    id: actionlint
+    attributes:
+      label: actionlint output
+      description: If you have actionlint, its output for the same file helps us tell regressions from upstream behaviour.
+      render: text

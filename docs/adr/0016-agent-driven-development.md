@@ -1,6 +1,6 @@
 # ADR 0016: Agent-driven development process
 
-- Status: accepted
+- Status: accepted. The "Work items" section and the roadmap-ticking part of "Definition of done" are superseded by ADR 0020.
 - Date: 2026-10-15
 
 ## Context

@@ -28,4 +28,5 @@ Use these words with these meanings in code, docs, and pull requests.
 | ignore comment | A `# workflint: ignore[...]` YAML comment that suppresses diagnostics (ADR 0009). |
 | project root | The directory that contains `.github/workflows` and a version control marker (ADR 0010). |
 | external tool | shellcheck, ruff, or pyflakes, run as a subprocess (ADR 0012). |
-| milestone | A roadmap stage, M0 to M9, or P for after 1.0. |
+| milestone | A roadmap stage, M0 to M9, or P for after 1.0. Each one is also a GitHub milestone. |
+| task | One unit of roadmap work, sized for one pull request, tracked as a GitHub issue (ADR 0020). |

@@ -18,8 +18,10 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0012](0012-external-tools.md) | External tools | accepted |
 | [0013](0013-concurrency-and-determinism.md) | Concurrency and determinism | accepted |
 | [0014](0014-distribution-and-releases.md) | Distribution and release pipeline | accepted |
-| [0015](0015-github-action.md) | Official GitHub Action | accepted |
-| [0016](0016-agent-driven-development.md) | Agent-driven development process | accepted |
+| [0015](0015-github-action.md) | Official GitHub Action | accepted, release timing amended by 0021 |
+| [0016](0016-agent-driven-development.md) | Agent-driven development process | accepted, partly superseded by 0020 |
 | [0017](0017-licensing-and-attribution.md) | Licensing and attribution | accepted |
 | [0018](0018-toolchain-and-code-standards.md) | Rust toolchain and code standards | accepted |
 | [0019](0019-performance-targets.md) | Performance targets and tracking | accepted |
+| [0020](0020-task-tracking-in-github-issues.md) | Task tracking in GitHub issues | accepted |
+| [0021](0021-supply-chain-and-ci-security.md) | Supply chain and CI security | accepted |
