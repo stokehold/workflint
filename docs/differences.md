@@ -283,6 +283,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M4.
 - Status: planned.
 
+<a id="tag-before-flow-comma"></a>
+### A tag followed by a comma in a flow collection
+
+- Upstream: go-yaml allows `,`, `[`, and `]` in every tag. In `[!!str, x]` the tag is `!!str,`, and the sequence has one item, `x`.
+- workflint: the tag ends at the comma, as in libyaml and the YAML test suite (case WZ62). `[!!str, x]` has two items: an empty string tagged `!!str`, and `x`.
+- Why: a comma separates entries in a flow collection. go-yaml keeps a rule that libyaml dropped.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned. No fixture covers it.
+
 <a id="yaml-core-schema"></a>
 ### Plain scalars follow the YAML 1.2 core schema
 
