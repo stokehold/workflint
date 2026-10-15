@@ -1,0 +1,30 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+repository = "https://github.com/stokehold/workflint"
+homepage = "https://github.com/stokehold/workflint"
+authors = ["Mads Schiellerup <mads.schiellerup@amedia.no>"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+dbg_macro = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+strip = true

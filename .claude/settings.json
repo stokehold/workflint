@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'workflint: load the unslop skill (.claude/skills/unslop) before writing or editing any prose: docs, ADRs, comments, commit messages, PR text.'"
+          }
+        ]
+      }
+    ]
+  }
+}

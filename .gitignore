@@ -1,0 +1,8 @@
+# Local checkouts of upstream and related projects (see docs/research/README.md)
+/.reference/
+
+# Cargo build output
+/target/
+
+# Personal Claude Code settings
+/.claude/settings.local.json
