@@ -311,6 +311,10 @@ name = "workflint"
 version = "0.0.1"
 
 [[package]]
+name = "workflint-diagnostics"
+version = "0.0.1"
+
+[[package]]
 name = "workflint-yaml"
 version = "0.0.1"
 dependencies = [
