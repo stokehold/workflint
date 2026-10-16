@@ -16,8 +16,10 @@ Tasks are GitHub issues in `stokehold/workflint` (ADR 0020). `docs/roadmap.md` i
 1. Pick an open issue in the current milestone with no open blockers and no linked pull request. One issue per pull request.
 2. Claim it: push a branch and open a draft pull request with `Closes #N` in the description before writing code.
 3. Write the failing test first: the conformance fixture for parity work, or a unit, snapshot, or rule-doc example for new behaviour.
-4. Implement until it passes, and meet every acceptance criterion in the issue.
-5. Run the checks under "Done", tick the matching rows in `docs/parity-checklist.md`, and mark the pull request ready for review.
+4. Implement until it passes, and meet every acceptance criterion in the issue. When the issue leaves a choice open, pick an option, note it under "Decisions to review" in the pull request, and keep going. Stop and ask only when you cannot continue without an answer.
+5. Run the checks under "Done", tick the matching rows in `docs/parity-checklist.md`, push, and fill in the pull request description from the template.
+6. If "Decisions to review" lists any decisions, ask the maintainer about them after pushing, with your question tool (`AskUserQuestion` in Claude Code). Ask one question per decision, put your recommended option first, and add "(Recommended)" to its label. Apply the answers, push again, and record each outcome in the section.
+7. Mark the pull request ready for review.
 
 The maintainer reviews and merges. Leave merging and auto-merge to the maintainer.
 
@@ -28,7 +30,7 @@ A task is done when all of these hold:
 - `cargo fmt --all --check`, `cargo clippy --workspace --all-targets` with zero warnings, and the workspace tests pass.
 - The conformance suite passes. Every new difference from the reference has an entry in `docs/differences.md` and in `tests/conformance/allowed-differences.toml`.
 - Docs touched by the change are updated in the same pull request.
-- The pull request title follows Conventional Commits (it becomes the squash commit), and the description says how you verified the change.
+- The pull request title follows Conventional Commits (it becomes the squash commit). The description opens with a summary of what the pull request implements and why, and says how you verified the change.
 
 ## Code conventions
 
