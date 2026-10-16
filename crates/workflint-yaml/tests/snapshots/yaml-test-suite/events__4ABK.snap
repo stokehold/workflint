@@ -8,4 +8,6 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 1:11@13..1:21@23 Scalar { anchor: None, tag: None, value: "separate", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
 2:0@25..2:14@39 Scalar { anchor: None, tag: None, value: "http://foo.com", plain_implicit: true, quoted_implicit: false, style: Plain }
 2:14@39..2:14@39 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
-error: Scanner error: line 4 column 14: found unexpected ':' while scanning a plain scalar (line 4 column 1)
+3:0@41..3:14@55 Scalar { anchor: None, tag: None, value: "omitted value:", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:14@55..3:14@55 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Parser error: line 5 column 1: did not find expected node content while parsing a flow node (line 5 column 1)

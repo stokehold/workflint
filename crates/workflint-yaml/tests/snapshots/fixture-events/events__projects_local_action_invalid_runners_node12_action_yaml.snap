@@ -1,0 +1,23 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_action_invalid_runners/node12/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:26@26 Scalar { anchor: None, tag: None, value: "Node.js v12 runner", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@27..1:6@33 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@35..1:41@68 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@69..2:11@80 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@82..2:45@114 Scalar { anchor: None, tag: None, value: "Runner node version is too old", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@116..4:4@120 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@124..5:2@124 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@124..5:7@129 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:9@131..5:17@139 Scalar { anchor: None, tag: None, value: "node12", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:2@142..6:6@146 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@148..6:18@158 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:18@158..6:18@158 MappingEnd
+7:0@159..7:0@159 MappingEnd
+7:0@159..7:0@159 DocumentEnd { implicit: true }
+7:0@159..7:0@159 StreamEnd

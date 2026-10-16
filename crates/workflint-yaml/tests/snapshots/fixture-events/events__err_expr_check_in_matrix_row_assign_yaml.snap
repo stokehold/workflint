@@ -1,0 +1,63 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/expr_check_in_matrix_row_assign.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:7@23 Scalar { anchor: None, tag: None, value: "error", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@29..4:4@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@29..4:11@36 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@38..4:26@51 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@56..5:12@64 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@72..6:6@72 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@72..6:12@78 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@88..7:8@88 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@88..7:12@92 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@104..8:10@104 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:12@106..8:40@134 Scalar { anchor: None, tag: None, value: "${{ github.retention_days }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@139..9:4@139 SequenceEnd
+9:4@139..9:4@139 MappingEnd
+9:4@139..9:4@139 MappingEnd
+9:4@139..9:9@144 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@152..10:46@192 Comment OwnLine "# ERROR: `matrix.test` is a number value"
+11:6@199..11:6@199 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@201..11:8@201 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@201..11:11@204 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@206..11:40@233 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.test.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:2@236..12:2@236 MappingEnd
+12:2@236..12:2@236 SequenceEnd
+12:2@236..12:2@236 MappingEnd
+12:2@236..12:10@244 Scalar { anchor: None, tag: None, value: "no-error", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@250..13:4@250 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:4@250..13:11@257 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@259..13:26@272 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@277..14:12@285 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@293..15:78@365 Comment OwnLine "# Type of matrix.test falls back to any since number and bool are merged"
+16:6@372..16:6@372 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:6@372..16:12@378 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@388..17:8@388 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@388..17:12@392 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:10@404..18:10@404 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+18:12@406..18:22@416 Scalar { anchor: None, tag: None, value: "${{ 123 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:12@429..19:23@440 Scalar { anchor: None, tag: None, value: "${{ true }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:4@445..20:4@445 SequenceEnd
+20:4@445..20:4@445 MappingEnd
+20:4@445..20:4@445 MappingEnd
+20:4@445..20:9@450 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:6@458..21:35@487 Comment OwnLine "# OK: matrix.test is any type"
+22:6@494..22:6@494 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@496..22:8@496 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@496..22:11@499 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:13@501..22:40@528 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.test.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:0@529..23:0@529 MappingEnd
+23:0@529..23:0@529 SequenceEnd
+23:0@529..23:0@529 MappingEnd
+23:0@529..23:0@529 MappingEnd
+23:0@529..23:0@529 MappingEnd
+23:0@529..23:0@529 DocumentEnd { implicit: true }
+23:0@529..23:0@529 StreamEnd

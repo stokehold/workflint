@@ -1,0 +1,81 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/workflow_call_definitions.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:10@31 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..3:6@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@39..3:12@45 Scalar { anchor: None, tag: None, value: "scheme", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@55..4:8@55 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@55..4:19@66 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:21@68..4:34@81 Scalar { anchor: None, tag: None, value: "Scheme of URL", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@90..5:28@110 Comment OwnLine "# OK: Type is string"
+6:8@119..6:15@126 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:17@128..6:22@133 Scalar { anchor: None, tag: None, value: "https", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@142..7:12@146 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:14@148..7:20@154 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@161..8:6@161 MappingEnd
+8:6@161..8:10@165 Scalar { anchor: None, tag: None, value: "host", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@175..9:8@175 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@175..9:15@182 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:17@184..9:28@195 Scalar { anchor: None, tag: None, value: "example.com", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@204..10:12@208 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@210..10:20@216 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@223..11:6@223 MappingEnd
+11:6@223..11:10@227 Scalar { anchor: None, tag: None, value: "port", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@237..12:8@237 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@237..12:19@248 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:21@250..12:32@261 Scalar { anchor: None, tag: None, value: "Port of URL", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@270..13:59@321 Comment OwnLine "# ERROR: Type is number but default value is string"
+14:8@330..14:15@337 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:17@339..14:24@346 Scalar { anchor: None, tag: None, value: ":1234", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+15:8@355..15:12@359 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:14@361..15:20@367 Scalar { anchor: None, tag: None, value: "number", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@374..16:6@374 MappingEnd
+16:6@374..16:11@379 Scalar { anchor: None, tag: None, value: "query", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@389..17:8@389 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@389..17:19@400 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:21@402..17:33@414 Scalar { anchor: None, tag: None, value: "Query of URL", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@423..18:60@475 Comment OwnLine "# ERROR: Type must be one of number, string, boolean"
+19:8@484..19:12@488 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:14@490..19:20@496 Scalar { anchor: None, tag: None, value: "object", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@503..20:6@503 MappingEnd
+20:6@503..20:10@507 Scalar { anchor: None, tag: None, value: "path", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@517..21:8@517 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@517..21:19@528 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:21@530..21:32@541 Scalar { anchor: None, tag: None, value: "Path of URL", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:8@550..22:16@558 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:18@560..22:22@564 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:8@573..23:73@638 Comment OwnLine "# ERROR: Default value is never used since this input is required"
+24:8@647..24:15@654 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:17@656..24:19@658 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+25:8@667..25:12@671 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:14@673..25:20@679 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:0@680..26:0@680 MappingEnd
+26:0@680..26:0@680 MappingEnd
+26:0@680..26:0@680 MappingEnd
+26:0@680..26:0@680 MappingEnd
+26:0@680..26:4@684 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:2@688..27:2@688 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:2@688..27:4@690 Scalar { anchor: None, tag: None, value: "do", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:4@696..28:4@696 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+28:4@696..28:11@703 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:13@705..28:26@718 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:4@723..29:9@728 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:6@736..30:6@736 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+30:8@738..30:8@738 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+30:8@738..30:11@741 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:13@743..30:98@828 Scalar { anchor: None, tag: None, value: "echo \"${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:0@829..31:0@829 MappingEnd
+31:0@829..31:0@829 SequenceEnd
+31:0@829..31:0@829 MappingEnd
+31:0@829..31:0@829 MappingEnd
+31:0@829..31:0@829 MappingEnd
+31:0@829..31:0@829 DocumentEnd { implicit: true }
+31:0@829..31:0@829 StreamEnd

@@ -1,0 +1,85 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/valid_comparisons.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:12@63 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@71..6:6@71 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@71..6:12@77 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@87..7:8@87 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@87..7:9@88 Scalar { anchor: None, tag: None, value: "o", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@100..8:10@100 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:12@102..8:13@103 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+8:14@104..8:15@105 MappingEnd
+8:15@105..8:15@105 SequenceEnd
+9:8@114..9:9@115 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@127..10:10@127 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:12@129..10:13@130 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+10:13@130..10:17@134 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:17@134..10:18@135 SequenceEnd
+10:18@135..10:18@135 SequenceEnd
+10:18@135..10:18@135 MappingEnd
+10:18@135..10:18@135 MappingEnd
+11:4@140..11:9@145 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@153..12:48@195 Comment OwnLine "# string is converted to number implicitly"
+13:6@202..13:6@202 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@204..13:8@204 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@204..13:11@207 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@209..13:37@233 Scalar { anchor: None, tag: None, value: "echo '${{ '42' == 42 }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@240..14:6@240 MappingEnd
+14:6@240..14:46@280 Comment OwnLine "# bool is converted to number implicitly"
+15:8@289..15:8@289 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@289..15:11@292 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@294..15:36@317 Scalar { anchor: None, tag: None, value: "echo '${{ true == 1 }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@324..16:6@324 MappingEnd
+16:6@324..16:46@364 Comment OwnLine "# null is converted to number implicitly"
+17:8@373..17:8@373 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@373..17:11@376 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@378..17:36@401 Scalar { anchor: None, tag: None, value: "echo '${{ null == 0 }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@408..18:6@408 MappingEnd
+18:6@408..18:81@483 Comment OwnLine "# string and bool implicit conversions are allowed though it is problematic"
+19:8@492..19:8@492 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@492..19:11@495 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@497..19:38@522 Scalar { anchor: None, tag: None, value: "echo '${{ '1' == true }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@529..20:6@529 MappingEnd
+20:6@529..20:81@604 Comment OwnLine "# string and null implicit conversions are allowed though it is problematic"
+21:8@613..21:8@613 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@613..21:11@616 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@618..21:38@643 Scalar { anchor: None, tag: None, value: "echo '${{ '0' == null }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@650..22:6@650 MappingEnd
+22:6@650..22:46@690 Comment OwnLine "# comparing null to any value is allowed"
+23:8@699..23:8@699 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@699..23:11@702 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@704..23:43@734 Scalar { anchor: None, tag: None, value: "echo '${{ null == matrix.o }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:6@741..24:6@741 MappingEnd
+24:6@741..24:45@780 Comment OwnLine "# comparing object to object is allowed"
+25:8@789..25:8@789 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:8@789..25:11@792 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:13@794..25:47@828 Scalar { anchor: None, tag: None, value: "echo '${{ matrix.o == matrix.o }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:6@835..26:6@835 MappingEnd
+26:6@835..26:45@874 Comment OwnLine "# comparing object to object is allowed"
+27:8@883..27:8@883 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:8@883..27:11@886 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:13@888..27:47@922 Scalar { anchor: None, tag: None, value: "echo '${{ matrix.a == matrix.a }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:6@929..28:6@929 MappingEnd
+28:6@929..28:53@976 Comment OwnLine "# string is converted to number implicitly on <"
+29:8@985..29:8@985 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:8@985..29:11@988 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:13@990..29:36@1013 Scalar { anchor: None, tag: None, value: "echo '${{ '41' < 42 }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:0@1014..30:0@1014 MappingEnd
+30:0@1014..30:0@1014 SequenceEnd
+30:0@1014..30:0@1014 MappingEnd
+30:0@1014..30:0@1014 MappingEnd
+30:0@1014..30:0@1014 MappingEnd
+30:0@1014..30:0@1014 DocumentEnd { implicit: true }
+30:0@1014..30:0@1014 StreamEnd

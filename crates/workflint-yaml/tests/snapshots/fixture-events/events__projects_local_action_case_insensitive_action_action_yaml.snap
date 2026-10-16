@@ -1,0 +1,44 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_action_case_insensitive/action/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:17@17 Scalar { anchor: None, tag: None, value: "My action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@18..1:6@24 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@26..1:41@59 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@60..2:11@71 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@73..2:24@84 Scalar { anchor: None, tag: None, value: "my action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@86..4:6@92 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@96..5:2@96 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@96..5:6@100 Scalar { anchor: None, tag: None, value: "NAME", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@106..6:4@106 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@106..6:15@117 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:17@119..6:26@128 Scalar { anchor: None, tag: None, value: "your name", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@131..7:2@131 MappingEnd
+7:2@131..7:9@138 Scalar { anchor: None, tag: None, value: "MESSAGE", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@144..8:4@144 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@144..8:15@155 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:17@157..8:39@179 Scalar { anchor: None, tag: None, value: "message to this action", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:0@181..10:0@181 MappingEnd
+10:0@181..10:0@181 MappingEnd
+10:0@181..10:7@188 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@192..11:2@192 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:2@192..11:9@199 Scalar { anchor: None, tag: None, value: "USER_ID", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@205..12:4@205 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@205..12:15@216 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:17@218..12:24@225 Scalar { anchor: None, tag: None, value: "user ID", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@227..14:0@227 MappingEnd
+14:0@227..14:0@227 MappingEnd
+14:0@227..14:4@231 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:2@235..15:2@235 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:2@235..15:7@240 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:9@242..15:17@250 Scalar { anchor: None, tag: None, value: "node20", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+16:2@253..16:6@257 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:8@259..16:18@269 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+16:18@269..16:18@269 MappingEnd
+17:0@270..17:0@270 MappingEnd
+17:0@270..17:0@270 DocumentEnd { implicit: true }
+17:0@270..17:0@270 StreamEnd

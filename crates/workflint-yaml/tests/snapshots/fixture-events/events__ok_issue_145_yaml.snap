@@ -1,0 +1,62 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-145.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:10@31 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..3:6@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@39..3:14@47 Scalar { anchor: None, tag: None, value: "services", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@57..4:8@57 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@57..4:16@65 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:18@67..4:22@71 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@80..5:12@84 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:14@86..5:20@92 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@101..6:19@112 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:21@114..6:46@139 Scalar { anchor: None, tag: None, value: "contents of services.json", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@141..8:0@141 MappingEnd
+8:0@141..8:0@141 MappingEnd
+8:0@141..8:0@141 MappingEnd
+8:0@141..8:0@141 MappingEnd
+8:0@141..8:4@145 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@149..9:2@149 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:2@149..9:17@164 Scalar { anchor: None, tag: None, value: "build-lint-test", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@170..10:4@170 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:4@170..10:11@177 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@179..10:26@192 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@197..11:12@205 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@213..12:6@213 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:6@213..12:12@219 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@229..13:8@229 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@229..13:15@236 Scalar { anchor: None, tag: None, value: "service", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:17@238..13:49@270 Scalar { anchor: None, tag: None, value: "${{ fromJSON(inputs.services) }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@279..14:15@286 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:10@298..15:66@354 Comment OwnLine "# `service` is loaded from JSON. Check should be skipped"
+16:10@365..16:10@365 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+16:12@367..16:12@367 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:12@367..16:19@374 Scalar { anchor: None, tag: None, value: "service", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:14@390..17:14@390 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:14@390..17:25@401 Scalar { anchor: None, tag: None, value: "npm_project", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:27@403..17:30@406 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@411..18:4@411 MappingEnd
+18:4@411..18:4@411 MappingEnd
+18:4@411..18:4@411 SequenceEnd
+18:4@411..18:4@411 MappingEnd
+18:4@411..18:4@411 MappingEnd
+18:4@411..18:9@416 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@424..19:6@424 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@426..19:8@426 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@426..19:11@429 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@431..19:19@437 Scalar { anchor: None, tag: None, value: "echo 1", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:0@438..20:0@438 MappingEnd
+20:0@438..20:0@438 SequenceEnd
+20:0@438..20:0@438 MappingEnd
+20:0@438..20:0@438 MappingEnd
+20:0@438..20:0@438 MappingEnd
+20:0@438..20:0@438 DocumentEnd { implicit: true }
+20:0@438..20:0@438 StreamEnd

@@ -1,0 +1,43 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/invalid_action_format.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:11@34 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@36..3:26@49 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@54..4:9@59 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@67..5:29@90 Comment OwnLine "# ERROR: ref is missing"
+6:6@97..6:6@97 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@99..6:8@99 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@99..6:12@103 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@105..6:30@121 Scalar { anchor: None, tag: None, value: "actions/checkout", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@128..7:6@128 MappingEnd
+7:6@128..7:36@158 Comment OwnLine "# ERROR: owner name is missing"
+8:8@167..8:8@167 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@167..8:12@171 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@173..8:25@184 Scalar { anchor: None, tag: None, value: "checkout@v2", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@191..9:6@191 MappingEnd
+9:6@191..9:27@212 Comment OwnLine "# ERROR: tag is empty"
+10:8@221..10:8@221 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@221..10:12@225 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@227..10:31@244 Scalar { anchor: None, tag: None, value: "docker://image:", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:31@244..10:31@244 MappingEnd
+11:6@251..11:48@293 Comment OwnLine "# ERROR: local action must start with './'"
+12:8@302..12:8@302 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@302..12:12@306 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:14@308..12:45@339 Scalar { anchor: None, tag: None, value: ".github/my-actions/do-something", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@340..13:0@340 MappingEnd
+13:0@340..13:0@340 SequenceEnd
+13:0@340..13:0@340 MappingEnd
+13:0@340..13:0@340 MappingEnd
+13:0@340..13:0@340 MappingEnd
+13:0@340..13:0@340 DocumentEnd { implicit: true }
+13:0@340..13:0@340 StreamEnd

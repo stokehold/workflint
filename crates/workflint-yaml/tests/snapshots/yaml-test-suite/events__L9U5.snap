@@ -9,7 +9,7 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 1:2@25..1:2@25 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
 1:2@25..1:19@42 Scalar { anchor: None, tag: None, value: "implicit flow key", plain_implicit: true, quoted_implicit: false, style: Plain }
 1:22@45..1:27@50 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
-1:27@50..1:28@51 MappingEnd
+1:27@50..1:27@50 MappingEnd
 2:1@53..2:2@54 SequenceEnd
 3:0@55..3:0@55 MappingEnd
 3:0@55..3:0@55 DocumentEnd { implicit: true }

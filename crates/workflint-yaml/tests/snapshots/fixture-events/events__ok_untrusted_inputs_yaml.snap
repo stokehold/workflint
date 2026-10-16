@@ -1,0 +1,51 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/untrusted_inputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:10@10 Scalar { anchor: None, tag: None, value: "Test", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@11..1:2@13 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@15..1:8@19 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@21..3:4@25 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@29..4:2@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@29..4:6@33 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@39..5:4@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@39..5:11@46 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@48..5:26@61 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@66..6:9@71 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@79..7:41@114 Comment OwnLine "# Direct access to untrusted inputs"
+8:6@121..8:6@121 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@123..8:8@123 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@123..8:11@126 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@128..10:0@190 Scalar { anchor: None, tag: None, value: "echo \"ISSUE: $ISSUE, COMMITS: $COMMIT, REF: $REF\"\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+10:8@198..10:11@201 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:10@213..11:10@213 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:10@213..11:15@218 Scalar { anchor: None, tag: None, value: "ISSUE", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:17@220..11:47@250 Scalar { anchor: None, tag: None, value: "${{ github.event.issue.body }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@261..12:17@268 Scalar { anchor: None, tag: None, value: "COMMITS", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:19@270..12:64@315 Scalar { anchor: None, tag: None, value: "${{ toJSON(github.event.commits.*.message) }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:10@326..13:13@329 Scalar { anchor: None, tag: None, value: "REF", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:15@331..13:37@353 Scalar { anchor: None, tag: None, value: "${{ github.head_ref }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@360..14:6@360 MappingEnd
+14:6@360..14:6@360 MappingEnd
+14:6@360..14:61@415 Comment OwnLine "# Indirect access to untrusted inputs via object filter"
+15:8@424..15:8@424 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@424..15:11@427 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@429..17:0@481 Scalar { anchor: None, tag: None, value: "echo \"BODIES: $BODIES, EMAILS: $EMAILS\"\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+17:8@489..17:11@492 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:10@504..18:10@504 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:10@504..18:16@510 Scalar { anchor: None, tag: None, value: "BODIES", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:18@512..18:52@546 Scalar { anchor: None, tag: None, value: "${{ toJSON(github.event.*.body) }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:10@557..19:16@563 Scalar { anchor: None, tag: None, value: "EMAILS", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:18@565..19:55@602 Scalar { anchor: None, tag: None, value: "${{ toJSON(github.event.*.*.email) }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:0@603..20:0@603 MappingEnd
+20:0@603..20:0@603 MappingEnd
+20:0@603..20:0@603 SequenceEnd
+20:0@603..20:0@603 MappingEnd
+20:0@603..20:0@603 MappingEnd
+20:0@603..20:0@603 MappingEnd
+20:0@603..20:0@603 DocumentEnd { implicit: true }
+20:0@603..20:0@603 StreamEnd

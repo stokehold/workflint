@@ -1,0 +1,57 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/id_naming_convention.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:40@56 Comment OwnLine "# ERROR: '.' cannot be contained in ID"
+4:2@59..4:2@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@59..4:12@69 Scalar { anchor: None, tag: None, value: "foo-v1.2.3", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@75..5:4@75 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@75..5:11@82 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@84..5:26@97 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@102..6:9@107 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@115..7:6@115 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@117..7:8@117 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@117..7:11@120 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@122..7:39@148 Scalar { anchor: None, tag: None, value: "echo 'job ID with version'", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@157..8:41@190 Comment OwnLine "# ERROR: ID cannot contain spaces"
+9:8@199..9:10@201 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:12@203..9:25@216 Scalar { anchor: None, tag: None, value: "echo for test", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@219..10:2@219 MappingEnd
+10:2@219..10:2@219 SequenceEnd
+10:2@219..10:2@219 MappingEnd
+10:2@219..10:35@252 Comment OwnLine "# ERROR: ID cannot start with '-'"
+11:2@255..11:15@268 Scalar { anchor: None, tag: None, value: "-hello-world-", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@274..12:4@274 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@274..12:11@281 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@283..12:26@296 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@301..13:9@306 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@314..14:6@314 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@316..14:8@316 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@316..14:11@319 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@321..14:24@332 Scalar { anchor: None, tag: None, value: "echo 'oops'", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:2@335..15:2@335 MappingEnd
+15:2@335..15:2@335 SequenceEnd
+15:2@335..15:2@335 MappingEnd
+15:2@335..15:39@372 Comment OwnLine "# ERROR: ID cannot start with numbers"
+16:2@375..16:9@382 Scalar { anchor: None, tag: None, value: "2d-game", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@388..17:4@388 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:4@388..17:11@395 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@397..17:26@410 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@415..18:9@420 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@428..19:6@428 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@430..19:8@430 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@430..19:11@433 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@435..19:24@446 Scalar { anchor: None, tag: None, value: "echo 'oops'", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:0@447..20:0@447 MappingEnd
+20:0@447..20:0@447 SequenceEnd
+20:0@447..20:0@447 MappingEnd
+20:0@447..20:0@447 MappingEnd
+20:0@447..20:0@447 MappingEnd
+20:0@447..20:0@447 DocumentEnd { implicit: true }
+20:0@447..20:0@447 StreamEnd

@@ -1,6 +1,6 @@
 # workflint-yaml
 
-The YAML layer of [workflint](https://github.com/stokehold/workflint). It parses the first YAML document of a file into a span tree: an arena of nodes with byte spans, tags, styles, anchors, resolved aliases, and attached comments (ADR 0005). Each scalar can build a source map that turns a byte offset in its decoded value into a byte offset in the file. The tree is built from the event parser of a vendored fork of [libyaml-safer](https://github.com/simonask/libyaml-safer) 0.3.0, which the crate also exposes.
+The YAML layer of [workflint](https://github.com/stokehold/workflint). It parses the first YAML document of a file into a span tree: an arena of nodes with byte spans, tags, styles, anchors, resolved aliases, and attached comments (ADR 0005). Each scalar can build a source map that turns a byte offset in its decoded value into a byte offset in the file. The tree is built from the event parser of a vendored fork of [libyaml-safer](https://github.com/simonask/libyaml-safer) 0.3.0, which the crate also exposes. The fork accepts and rejects the same input as go-yaml v4.0.0-rc.3, the YAML library of actionlint, with go-yaml's errors and positions, except where go-yaml rejects valid YAML (ADR 0022). `decode` turns file bytes into text as go-yaml does, from UTF-8 or UTF-16.
 
 This is an internal crate of workflint. Its API has no stability promise and may change in any release.
 

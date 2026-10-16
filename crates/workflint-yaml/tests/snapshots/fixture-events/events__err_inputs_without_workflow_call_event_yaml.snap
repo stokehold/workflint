@@ -1,0 +1,27 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/inputs_without_workflow_call_event.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:25@49 Scalar { anchor: None, tag: None, value: "ubuntu-24.04", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@54..5:9@59 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@67..6:6@67 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@69..6:8@69 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@69..6:11@72 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@74..6:42@103 Scalar { anchor: None, tag: None, value: "echo ${{ inputs.some_input }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@104..7:0@104 MappingEnd
+7:0@104..7:0@104 SequenceEnd
+7:0@104..7:0@104 MappingEnd
+7:0@104..7:0@104 MappingEnd
+7:0@104..7:0@104 MappingEnd
+7:0@104..7:0@104 DocumentEnd { implicit: true }
+7:0@104..7:0@104 StreamEnd

@@ -1,0 +1,63 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/filters_ignore_for_specific_events.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:13@17 Scalar { anchor: None, tag: None, value: "merge_group", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@23..2:4@23 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@23..2:19@38 Scalar { anchor: None, tag: None, value: "branches-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:21@40..2:24@43 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@46..3:2@46 MappingEnd
+3:2@46..3:6@50 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@56..4:4@56 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@56..4:19@71 Scalar { anchor: None, tag: None, value: "branches-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:21@73..4:25@77 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@82..5:15@93 Scalar { anchor: None, tag: None, value: "tags-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:17@95..5:25@103 Scalar { anchor: None, tag: None, value: "deploy/*", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@108..6:16@120 Scalar { anchor: None, tag: None, value: "paths-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:18@122..6:29@133 Scalar { anchor: None, tag: None, value: "path/to/foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@136..7:2@136 MappingEnd
+7:2@136..7:14@148 Scalar { anchor: None, tag: None, value: "pull_request", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@154..8:4@154 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@154..8:19@169 Scalar { anchor: None, tag: None, value: "branches-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:21@171..8:25@175 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@180..9:16@192 Scalar { anchor: None, tag: None, value: "paths-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:18@194..9:29@205 Scalar { anchor: None, tag: None, value: "path/to/foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@208..10:2@208 MappingEnd
+10:2@208..10:21@227 Scalar { anchor: None, tag: None, value: "pull_request_target", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@233..11:4@233 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:4@233..11:19@248 Scalar { anchor: None, tag: None, value: "branches-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:21@250..11:25@254 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@259..12:16@271 Scalar { anchor: None, tag: None, value: "paths-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:18@273..12:29@284 Scalar { anchor: None, tag: None, value: "path/to/foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:2@287..13:2@287 MappingEnd
+13:2@287..13:14@299 Scalar { anchor: None, tag: None, value: "workflow_run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@305..14:4@305 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:4@305..14:13@314 Scalar { anchor: None, tag: None, value: "workflows", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:15@316..14:23@324 Scalar { anchor: None, tag: None, value: "foo.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@329..15:19@344 Scalar { anchor: None, tag: None, value: "branches-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:21@346..15:25@350 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:0@352..17:0@352 MappingEnd
+17:0@352..17:0@352 MappingEnd
+17:0@352..17:4@356 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:2@360..18:2@360 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:2@360..18:6@364 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@370..19:4@370 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:4@370..19:11@377 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@379..19:26@392 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:4@397..20:9@402 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:6@410..21:6@410 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@412..21:8@412 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@412..21:11@415 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@417..21:21@425 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:0@426..22:0@426 MappingEnd
+22:0@426..22:0@426 SequenceEnd
+22:0@426..22:0@426 MappingEnd
+22:0@426..22:0@426 MappingEnd
+22:0@426..22:0@426 MappingEnd
+22:0@426..22:0@426 DocumentEnd { implicit: true }
+22:0@426..22:0@426 StreamEnd

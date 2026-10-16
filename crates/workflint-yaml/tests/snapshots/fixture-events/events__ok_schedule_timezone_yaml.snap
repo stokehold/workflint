@@ -1,0 +1,50 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/schedule_timezone.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@7..1:2@7 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@7..1:10@15 Scalar { anchor: None, tag: None, value: "schedule", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@22..2:19@37 Comment OwnLine "# With timezone"
+3:4@43..3:4@43 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@45..3:6@45 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@45..3:10@49 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:12@51..3:26@65 Scalar { anchor: None, tag: None, value: "30 5 * * 1-5", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:6@73..4:14@81 Scalar { anchor: None, tag: None, value: "timezone", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:16@83..4:34@101 Scalar { anchor: None, tag: None, value: "America/New_York", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+4:34@101..4:34@101 MappingEnd
+5:4@107..5:27@130 Comment OwnLine "# With another timezone"
+6:6@138..6:6@138 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@138..6:10@142 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:12@144..6:23@155 Scalar { anchor: None, tag: None, value: "0 6 * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:6@163..7:14@171 Scalar { anchor: None, tag: None, value: "timezone", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:16@173..7:31@188 Scalar { anchor: None, tag: None, value: "Europe/London", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+7:31@188..7:31@188 MappingEnd
+8:4@194..8:36@226 Comment OwnLine "# Without timezone (still valid)"
+9:6@234..9:6@234 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:6@234..9:10@238 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:12@240..9:25@253 Scalar { anchor: None, tag: None, value: "*/5 * * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+9:25@253..9:25@253 MappingEnd
+9:25@253..9:25@253 SequenceEnd
+9:25@253..9:25@253 MappingEnd
+11:0@257..11:4@261 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:2@266..12:2@266 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:2@266..12:6@270 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@277..13:4@277 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:4@277..13:11@284 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@286..13:26@299 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@305..14:9@310 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@319..15:6@319 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@321..15:8@321 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@321..15:11@324 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@326..15:23@336 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:0@338..16:0@338 MappingEnd
+16:0@338..16:0@338 SequenceEnd
+16:0@338..16:0@338 MappingEnd
+16:0@338..16:0@338 MappingEnd
+16:0@338..16:0@338 MappingEnd
+16:0@338..16:0@338 DocumentEnd { implicit: true }
+16:0@338..16:0@338 StreamEnd

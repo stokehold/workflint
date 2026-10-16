@@ -1,0 +1,57 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/skip_inputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:24@24 Scalar { anchor: None, tag: None, value: "Log latest release", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@25..1:2@27 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@31..2:2@31 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@31..2:6@35 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@41..3:4@41 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@41..3:12@49 Scalar { anchor: None, tag: None, value: "branches", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@57..4:6@57 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@59..4:14@65 Scalar { anchor: None, tag: None, value: "master", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@67..6:0@67 SequenceEnd
+6:0@67..6:0@67 MappingEnd
+6:0@67..6:0@67 MappingEnd
+6:0@67..6:4@71 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@75..7:2@75 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@75..7:18@91 Scalar { anchor: None, tag: None, value: "logLatestRelease", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@97..8:4@97 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@97..8:11@104 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@106..8:26@119 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@124..9:9@129 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@137..10:6@137 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@139..10:8@139 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@139..10:12@143 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@145..10:41@172 Scalar { anchor: None, tag: None, value: "octokit/request-action@v2.x", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@181..11:10@183 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:12@185..11:30@203 Scalar { anchor: None, tag: None, value: "get_latest_release", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@212..12:12@216 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:10@228..13:10@228 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:10@228..13:15@233 Scalar { anchor: None, tag: None, value: "route", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:17@235..13:58@276 Scalar { anchor: None, tag: None, value: "GET /repos/{owner}/{repo}/releases/latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:10@287..14:15@292 Scalar { anchor: None, tag: None, value: "owner", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:17@294..14:24@301 Scalar { anchor: None, tag: None, value: "octokit", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:10@312..15:14@316 Scalar { anchor: None, tag: None, value: "repo", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:16@318..15:30@332 Scalar { anchor: None, tag: None, value: "request-action", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:8@341..16:8@341 MappingEnd
+16:8@341..16:11@344 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:10@356..17:10@356 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:10@356..17:22@368 Scalar { anchor: None, tag: None, value: "GITHUB_TOKEN", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:24@370..17:51@397 Scalar { anchor: None, tag: None, value: "${{ secrets.GITHUB_TOKEN }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@404..18:6@404 MappingEnd
+18:6@404..18:6@404 MappingEnd
+18:8@406..18:8@406 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@406..18:11@409 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@411..18:80@478 Scalar { anchor: None, tag: None, value: "echo latest release: ${{ steps.get_latest_release.outputs.data }}", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+18:80@478..18:80@478 MappingEnd
+18:80@478..18:80@478 SequenceEnd
+18:80@478..18:80@478 MappingEnd
+18:80@478..18:80@478 MappingEnd
+19:0@479..19:0@479 MappingEnd
+19:0@479..19:0@479 DocumentEnd { implicit: true }
+19:0@479..19:0@479 StreamEnd

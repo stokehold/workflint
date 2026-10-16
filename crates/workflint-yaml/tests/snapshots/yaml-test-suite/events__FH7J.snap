@@ -10,11 +10,11 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 2:11@21..2:12@22 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
 3:2@25..3:3@26 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
 3:5@28..3:10@33 Scalar { anchor: None, tag: Some("tag:yaml.org,2002:str"), value: "", plain_implicit: false, quoted_implicit: false, style: Plain }
-4:0@34..4:0@34 MappingEnd
+3:10@33..3:10@33 MappingEnd
 4:2@36..4:2@36 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
 4:2@36..4:7@41 Scalar { anchor: None, tag: Some("tag:yaml.org,2002:str"), value: "", plain_implicit: false, quoted_implicit: false, style: Plain }
 4:10@44..4:16@50 Scalar { anchor: None, tag: Some("tag:yaml.org,2002:null"), value: "", plain_implicit: false, quoted_implicit: false, style: Plain }
-5:0@51..5:0@51 MappingEnd
+4:16@50..4:16@50 MappingEnd
 5:0@51..5:0@51 SequenceEnd
 5:0@51..5:0@51 DocumentEnd { implicit: true }
 5:0@51..5:0@51 StreamEnd

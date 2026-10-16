@@ -1,0 +1,98 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/expr_in_default_input.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:10@31 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..3:6@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@39..3:12@45 Scalar { anchor: None, tag: None, value: "input1", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@55..4:8@55 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@55..4:12@59 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:14@61..4:20@67 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@76..5:49@117 Comment OwnLine "# ERROR: inputs.input2 is not defined yet"
+6:8@126..6:15@133 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:17@135..6:37@155 Scalar { anchor: None, tag: None, value: "${{ inputs.input2 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@162..7:6@162 MappingEnd
+7:6@162..7:12@168 Scalar { anchor: None, tag: None, value: "input2", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@178..8:8@178 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@178..8:12@182 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@184..8:20@190 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@199..9:39@230 Comment OwnLine "# OK: inputs.input1 was defined"
+10:8@239..10:15@246 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:17@248..10:37@268 Scalar { anchor: None, tag: None, value: "${{ inputs.input1 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@275..11:6@275 MappingEnd
+11:6@275..11:12@281 Scalar { anchor: None, tag: None, value: "input3", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@291..12:8@291 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@291..12:12@295 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:14@297..12:21@304 Scalar { anchor: None, tag: None, value: "boolean", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@313..13:36@341 Comment OwnLine "# ERROR: Cannot refer myself"
+14:8@350..14:15@357 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:17@359..14:37@379 Scalar { anchor: None, tag: None, value: "${{ inputs.input3 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@386..15:6@386 MappingEnd
+15:6@386..15:12@392 Scalar { anchor: None, tag: None, value: "input4", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:8@402..16:8@402 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@402..16:12@406 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:14@408..16:21@415 Scalar { anchor: None, tag: None, value: "boolean", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@424..17:41@457 Comment OwnLine "# ERROR: Assign string to boolean"
+18:8@466..18:15@473 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:17@475..18:37@495 Scalar { anchor: None, tag: None, value: "${{ inputs.input1 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@502..19:6@502 MappingEnd
+19:6@502..19:12@508 Scalar { anchor: None, tag: None, value: "input5", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:8@518..20:8@518 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@518..20:12@522 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:14@524..20:20@530 Scalar { anchor: None, tag: None, value: "number", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@539..21:40@571 Comment OwnLine "# ERROR: Assign string to number"
+22:8@580..22:15@587 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:17@589..22:37@609 Scalar { anchor: None, tag: None, value: "${{ inputs.input1 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:6@616..23:6@616 MappingEnd
+23:6@616..23:12@622 Scalar { anchor: None, tag: None, value: "input6", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:8@632..24:8@632 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@632..24:12@636 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:14@638..24:21@645 Scalar { anchor: None, tag: None, value: "boolean", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:8@654..25:12@658 Comment OwnLine "# OK"
+26:8@667..26:15@674 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:17@676..26:37@696 Scalar { anchor: None, tag: None, value: "${{ inputs.input4 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:6@703..27:6@703 MappingEnd
+27:6@703..27:12@709 Scalar { anchor: None, tag: None, value: "input7", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:8@719..28:8@719 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+28:8@719..28:12@723 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:14@725..28:20@731 Scalar { anchor: None, tag: None, value: "number", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:8@740..29:12@744 Comment OwnLine "# OK"
+30:8@753..30:15@760 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:17@762..30:37@782 Scalar { anchor: None, tag: None, value: "${{ inputs.input5 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:0@784..32:0@784 MappingEnd
+32:0@784..32:0@784 MappingEnd
+32:0@784..32:0@784 MappingEnd
+32:0@784..32:0@784 MappingEnd
+32:0@784..32:4@788 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:2@792..33:2@792 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+33:2@792..33:6@796 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:4@802..34:4@802 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:4@802..34:11@809 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:13@811..34:26@824 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:4@829..35:9@834 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+36:6@842..36:6@842 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+36:8@844..36:8@844 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+36:8@844..36:11@847 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+36:13@849..36:40@876 Scalar { anchor: None, tag: None, value: "echo '${{ inputs.input1 }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:6@883..37:6@883 MappingEnd
+37:8@885..37:8@885 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+37:8@885..37:11@888 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:13@890..37:40@917 Scalar { anchor: None, tag: None, value: "echo '${{ inputs.input2 }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:6@924..38:6@924 MappingEnd
+38:8@926..38:8@926 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+38:8@926..38:11@929 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:13@931..38:40@958 Scalar { anchor: None, tag: None, value: "echo '${{ inputs.input3 }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:0@959..39:0@959 MappingEnd
+39:0@959..39:0@959 SequenceEnd
+39:0@959..39:0@959 MappingEnd
+39:0@959..39:0@959 MappingEnd
+39:0@959..39:0@959 MappingEnd
+39:0@959..39:0@959 DocumentEnd { implicit: true }
+39:0@959..39:0@959 StreamEnd

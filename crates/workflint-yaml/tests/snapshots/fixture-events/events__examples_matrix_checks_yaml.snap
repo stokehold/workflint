@@ -1,0 +1,60 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/matrix_checks.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@43..4:12@49 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@59..5:8@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@59..5:12@63 Scalar { anchor: None, tag: None, value: "node", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:14@65..5:15@66 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+5:15@66..5:17@68 Scalar { anchor: None, tag: None, value: "10", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:19@70..5:21@72 Scalar { anchor: None, tag: None, value: "12", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:23@74..5:25@76 Scalar { anchor: None, tag: None, value: "14", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:27@78..5:29@80 Scalar { anchor: None, tag: None, value: "14", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:29@80..5:30@81 SequenceEnd
+6:8@90..6:10@92 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:12@94..6:13@95 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+6:13@95..6:26@108 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:28@110..6:40@122 Scalar { anchor: None, tag: None, value: "macos-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:40@122..6:41@123 SequenceEnd
+7:8@132..7:15@139 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@151..8:10@151 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:12@153..8:12@153 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:12@153..8:16@157 Scalar { anchor: None, tag: None, value: "node", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:18@159..8:20@161 Scalar { anchor: None, tag: None, value: "13", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:12@174..9:14@176 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:16@178..9:29@191 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@202..10:10@202 MappingEnd
+10:12@204..10:12@204 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:12@204..10:16@208 Scalar { anchor: None, tag: None, value: "node", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:18@210..10:20@212 Scalar { anchor: None, tag: None, value: "10", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:12@225..11:20@233 Scalar { anchor: None, tag: None, value: "platform", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:22@235..11:35@248 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@253..12:4@253 MappingEnd
+12:4@253..12:4@253 SequenceEnd
+12:4@253..12:4@253 MappingEnd
+12:4@253..12:4@253 MappingEnd
+12:4@253..12:11@260 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@262..12:29@278 Scalar { anchor: None, tag: None, value: "${{ matrix.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@283..13:9@288 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@296..14:6@296 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@298..14:8@298 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@298..14:11@301 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@303..14:21@311 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@312..15:0@312 MappingEnd
+15:0@312..15:0@312 SequenceEnd
+15:0@312..15:0@312 MappingEnd
+15:0@312..15:0@312 MappingEnd
+15:0@312..15:0@312 MappingEnd
+15:0@312..15:0@312 DocumentEnd { implicit: true }
+15:0@312..15:0@312 StreamEnd

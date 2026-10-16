@@ -1,0 +1,53 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/yaml_anchors.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:12@36 Scalar { anchor: None, tag: None, value: "services", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@44..5:6@44 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@44..5:11@49 Scalar { anchor: None, tag: None, value: "nginx", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@59..6:8@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@59..6:13@64 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:15@66..6:27@78 Scalar { anchor: None, tag: None, value: "nginx:latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@87..7:19@98 Scalar { anchor: None, tag: None, value: "credentials", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:21@100..9:10@188 MappingStart { anchor: Some("credentials"), tag: None, implicit: true, style: Block }
+8:10@123..8:64@177 Comment OwnLine "# ERROR: Credentials are embedded directly in workflow"
+9:10@188..9:18@196 Scalar { anchor: None, tag: None, value: "username", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:20@198..9:32@210 Scalar { anchor: None, tag: None, value: "my-user-name", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@221..10:18@229 Scalar { anchor: None, tag: None, value: "password", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:20@231..10:28@239 Scalar { anchor: None, tag: None, value: "P@ssw0rd", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:10@250..11:41@281 Comment OwnLine "# ERROR: Unexpected key 'email'"
+12:10@292..12:15@297 Scalar { anchor: None, tag: None, value: "email", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:17@299..12:31@313 Scalar { anchor: None, tag: None, value: "me@example.com", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@320..13:6@320 MappingEnd
+13:6@320..13:6@320 MappingEnd
+13:6@320..13:11@325 Scalar { anchor: None, tag: None, value: "redis", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@335..14:8@335 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@335..14:13@340 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:15@342..14:27@354 Scalar { anchor: None, tag: None, value: "redis:latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:8@363..15:19@374 Scalar { anchor: None, tag: None, value: "credentials", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:21@376..15:33@388 Alias { anchor: "credentials" }
+15:33@388..15:33@388 MappingEnd
+15:33@388..15:33@388 MappingEnd
+16:4@393..16:11@400 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@402..16:26@415 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@420..17:9@425 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@433..18:6@433 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@435..18:8@435 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@435..18:11@438 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@440..18:30@457 Scalar { anchor: None, tag: None, value: "./do_something.sh", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:0@458..19:0@458 MappingEnd
+19:0@458..19:0@458 SequenceEnd
+19:0@458..19:0@458 MappingEnd
+19:0@458..19:0@458 MappingEnd
+19:0@458..19:0@458 MappingEnd
+19:0@458..19:0@458 DocumentEnd { implicit: true }
+19:0@458..19:0@458 StreamEnd

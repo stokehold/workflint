@@ -1,0 +1,68 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/untrusted_input.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:10@10 Scalar { anchor: None, tag: None, value: "Test", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@11..1:2@13 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@15..1:16@27 Scalar { anchor: None, tag: None, value: "pull_request", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@29..3:4@33 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@37..4:2@37 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@37..4:6@41 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@47..5:4@47 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@47..5:11@54 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@56..5:26@69 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@74..6:9@79 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@87..7:6@87 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@89..7:8@89 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@89..7:12@93 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:14@95..7:38@119 Scalar { anchor: None, tag: None, value: "Print pull request title", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@128..8:81@201 Comment OwnLine "# ERROR: Using the potentially untrusted input can cause script injection"
+9:8@210..9:11@213 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@215..9:58@260 Scalar { anchor: None, tag: None, value: "echo '${{ github.event.pull_request.title }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@267..10:6@267 MappingEnd
+10:8@269..10:8@269 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@269..10:12@273 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@275..10:30@291 Scalar { anchor: None, tag: None, value: "actions/stale@v9", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@300..11:12@304 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@316..12:10@316 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:10@316..12:20@326 Scalar { anchor: None, tag: None, value: "repo-token", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:22@328..12:42@348 Scalar { anchor: None, tag: None, value: "${{ secrets.TOKEN }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:10@359..13:69@418 Comment OwnLine "# This is OK because action input is not evaluated by shell"
+14:10@429..14:26@445 Scalar { anchor: None, tag: None, value: "stale-pr-message", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:28@447..14:77@496 Scalar { anchor: None, tag: None, value: "${{ github.event.pull_request.title }} was closed", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@503..15:6@503 MappingEnd
+15:6@503..15:6@503 MappingEnd
+15:8@505..15:8@505 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@505..15:12@509 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:14@511..15:38@535 Scalar { anchor: None, tag: None, value: "actions/github-script@v7", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:8@544..16:12@548 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:10@560..17:83@633 Comment OwnLine "# ERROR: Using the potentially untrusted input can cause script injection"
+18:10@644..18:10@644 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:10@644..18:16@650 Scalar { anchor: None, tag: None, value: "script", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:18@652..18:76@710 Scalar { anchor: None, tag: None, value: "console.log('${{ github.event.head_commit.author.name }}')", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@717..19:6@717 MappingEnd
+19:6@717..19:6@717 MappingEnd
+19:8@719..19:8@719 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@719..19:12@723 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:14@725..19:26@737 Scalar { anchor: None, tag: None, value: "Get comments", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:8@746..20:113@851 Comment OwnLine "# ERROR: Accessing untrusted inputs via `.*` object filter; bodies of comment, review, and review_comment"
+21:8@860..21:11@863 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@865..21:54@906 Scalar { anchor: None, tag: None, value: "echo '${{ toJSON(github.event.*.body) }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@913..22:6@913 MappingEnd
+22:8@915..22:8@915 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@915..22:12@919 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:14@921..22:45@952 Scalar { anchor: None, tag: None, value: "Do something with checking skip", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:8@961..23:102@1055 Comment OwnLine "# OK: This placeholder uses an untrusted input, but the input cannot be injected to the script"
+24:8@1064..24:11@1067 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:13@1069..24:118@1174 Scalar { anchor: None, tag: None, value: "if [ \"${{ contains(github.event.pull_request.author.title, '[SKIP]') }}\" = \"true\" ]; then echo \"skip\"; fi", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:0@1175..25:0@1175 MappingEnd
+25:0@1175..25:0@1175 SequenceEnd
+25:0@1175..25:0@1175 MappingEnd
+25:0@1175..25:0@1175 MappingEnd
+25:0@1175..25:0@1175 MappingEnd
+25:0@1175..25:0@1175 DocumentEnd { implicit: true }
+25:0@1175..25:0@1175 StreamEnd

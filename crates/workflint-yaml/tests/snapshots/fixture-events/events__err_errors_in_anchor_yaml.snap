@@ -1,0 +1,66 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/errors_in_anchor.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:7@11 Scalar { anchor: None, tag: None, value: "label", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@17..2:8@21 Comment OwnLine "# OK"
+3:4@26..3:4@26 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@26..3:9@31 Scalar { anchor: None, tag: None, value: "types", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:11@33..3:21@43 SequenceStart { anchor: Some("created"), tag: None, implicit: true, style: Flow }
+3:21@43..3:28@50 Scalar { anchor: None, tag: None, value: "created", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:28@50..3:29@51 SequenceEnd
+3:29@51..3:29@51 MappingEnd
+4:2@54..4:11@63 Scalar { anchor: None, tag: None, value: "check_run", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@69..5:8@73 Comment OwnLine "# OK"
+6:4@78..6:4@78 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@78..6:9@83 Scalar { anchor: None, tag: None, value: "types", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:11@85..6:19@93 Alias { anchor: "created" }
+6:19@93..6:19@93 MappingEnd
+7:2@96..7:14@108 Scalar { anchor: None, tag: None, value: "pull_request", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@114..8:56@166 Comment OwnLine "# ERROR: 'created' is not a valid type in this event"
+9:4@171..9:4@171 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@171..9:9@176 Scalar { anchor: None, tag: None, value: "types", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:11@178..9:19@186 Alias { anchor: "created" }
+9:19@186..9:19@186 MappingEnd
+9:19@186..9:19@186 MappingEnd
+11:0@188..11:4@192 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:2@196..12:2@196 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:2@196..12:6@200 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@206..13:4@206 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:4@206..13:11@213 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@215..13:26@228 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@233..14:9@238 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@246..15:42@282 Comment OwnLine "# Valid anchor inside invalid anchor"
+16:6@289..16:6@289 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@291..18:8@368 MappingStart { anchor: Some("invalid_step"), tag: None, implicit: true, style: Block }
+17:8@313..17:54@359 Comment OwnLine "# ERROR: 'run' and 'with' within the same step"
+18:8@368..18:11@371 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@373..18:17@377 Scalar { anchor: None, tag: None, value: "echo", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@386..19:12@390 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:14@392..20:10@416 MappingStart { anchor: Some("valid_inputs"), tag: None, implicit: true, style: Block }
+20:10@416..20:16@422 Scalar { anchor: None, tag: None, value: "neovim", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:18@424..20:22@428 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:6@435..21:6@435 MappingEnd
+21:6@435..21:6@435 MappingEnd
+21:6@435..21:13@442 Comment OwnLine "# ERROR"
+22:8@451..22:21@464 Alias { anchor: "invalid_step" }
+23:6@471..23:13@478 Comment OwnLine "# ERROR"
+24:8@487..24:21@500 Alias { anchor: "invalid_step" }
+25:6@507..25:10@511 Comment OwnLine "# OK"
+26:8@520..26:8@520 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:8@520..26:12@524 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:14@526..26:39@551 Scalar { anchor: None, tag: None, value: "rhysd/action-setup-vim@v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:8@560..27:12@564 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:14@566..27:27@579 Scalar { anchor: Some("valid_inputs"), tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:27@579..27:27@579 MappingEnd
+27:27@579..27:27@579 SequenceEnd
+27:27@579..27:27@579 MappingEnd
+27:27@579..27:27@579 MappingEnd
+28:0@580..28:0@580 MappingEnd
+28:0@580..28:0@580 DocumentEnd { implicit: true }
+28:0@580..28:0@580 StreamEnd

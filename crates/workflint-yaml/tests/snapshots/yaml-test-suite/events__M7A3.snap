@@ -5,4 +5,4 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 0:0@0..1:8@13 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
 0:0@0..1:8@13 Scalar { anchor: None, tag: None, value: "Bare document", plain_implicit: true, quoted_implicit: false, style: Plain }
 2:0@14..2:3@17 DocumentEnd { implicit: false }
-error: Parser error: line 6 column 1: did not find expected <document start>
+error: Scanner error: line 7 column 2: could not find expected directive name while scanning a directive (line 7 column 1)

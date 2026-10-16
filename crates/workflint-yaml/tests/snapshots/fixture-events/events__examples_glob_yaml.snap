@@ -1,0 +1,49 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/glob.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:6@10 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@16..2:4@16 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@16..2:12@24 Scalar { anchor: None, tag: None, value: "branches", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@32..3:102@128 Comment OwnLine "# ^ is not available for branch name. This kind of mistake is usually caused by misunderstanding"
+4:6@135..4:49@178 Comment OwnLine "# that regular expression is available here"
+5:6@185..5:6@185 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@187..5:15@194 Scalar { anchor: None, tag: None, value: "^foo-", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:15@194..5:15@194 SequenceEnd
+6:4@199..6:8@203 Scalar { anchor: None, tag: None, value: "tags", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@211..7:59@264 Comment OwnLine "# Invalid syntax. + cannot follow special character *"
+8:6@271..8:6@271 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@273..8:13@278 Scalar { anchor: None, tag: None, value: "v*+", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+9:6@285..9:35@314 Comment OwnLine "# Invalid character range 9-1"
+10:8@323..10:16@331 Scalar { anchor: None, tag: None, value: "v[9-1]", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:16@331..10:16@331 SequenceEnd
+11:4@336..11:9@341 Scalar { anchor: None, tag: None, value: "paths", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@349..12:57@400 Comment OwnLine "# GitHub Action's path filter doesn't recognize '.'"
+13:6@407..13:6@407 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@409..13:21@422 Scalar { anchor: None, tag: None, value: "./foo/bar.txt", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@424..15:0@424 SequenceEnd
+15:0@424..15:0@424 MappingEnd
+15:0@424..15:0@424 MappingEnd
+15:0@424..15:4@428 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:2@432..16:2@432 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:2@432..16:6@436 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@442..17:4@442 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:4@442..17:11@449 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@451..17:26@464 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@469..18:9@474 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@482..19:6@482 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@484..19:8@484 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@484..19:11@487 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@489..19:21@497 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:0@498..20:0@498 MappingEnd
+20:0@498..20:0@498 SequenceEnd
+20:0@498..20:0@498 MappingEnd
+20:0@498..20:0@498 MappingEnd
+20:0@498..20:0@498 MappingEnd
+20:0@498..20:0@498 DocumentEnd { implicit: true }
+20:0@498..20:0@498 StreamEnd

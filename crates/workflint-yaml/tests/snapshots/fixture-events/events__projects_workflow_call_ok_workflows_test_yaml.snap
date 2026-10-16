@@ -1,0 +1,92 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/workflow_call_ok/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:9@25 Scalar { anchor: None, tag: None, value: "caller1", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@31..4:4@31 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@31..4:8@35 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@37..4:48@75 Scalar { anchor: None, tag: None, value: "./workflows/reusable_all_required.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@80..5:8@84 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@92..6:6@92 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@92..6:9@95 Scalar { anchor: None, tag: None, value: "str", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:11@97..6:13@99 Scalar { anchor: None, tag: None, value: "hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@106..7:9@109 Scalar { anchor: None, tag: None, value: "num", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:11@111..7:13@113 Scalar { anchor: None, tag: None, value: "13", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@120..8:10@124 Scalar { anchor: None, tag: None, value: "bool", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:12@126..8:16@130 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@135..9:4@135 MappingEnd
+9:4@135..9:11@142 Scalar { anchor: None, tag: None, value: "secrets", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@150..10:6@150 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:6@150..10:9@153 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:11@155..10:14@158 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@161..11:2@161 MappingEnd
+11:2@161..11:2@161 MappingEnd
+11:2@161..11:9@168 Scalar { anchor: None, tag: None, value: "caller2", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@174..12:4@174 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@174..12:8@178 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@180..12:48@218 Scalar { anchor: None, tag: None, value: "./workflows/reusable_all_optional.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@223..13:8@227 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@235..14:6@235 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:6@235..14:9@238 Scalar { anchor: None, tag: None, value: "str", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:11@240..14:13@242 Scalar { anchor: None, tag: None, value: "hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@249..15:9@252 Scalar { anchor: None, tag: None, value: "num", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:11@254..15:13@256 Scalar { anchor: None, tag: None, value: "13", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@263..16:10@267 Scalar { anchor: None, tag: None, value: "bool", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:12@269..16:16@273 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@278..17:4@278 MappingEnd
+17:4@278..17:11@285 Scalar { anchor: None, tag: None, value: "secrets", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@293..18:6@293 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:6@293..18:9@296 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:11@298..18:14@301 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:2@304..19:2@304 MappingEnd
+19:2@304..19:2@304 MappingEnd
+19:2@304..19:9@311 Scalar { anchor: None, tag: None, value: "caller3", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:4@317..20:4@317 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:4@317..20:8@321 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:10@323..20:48@361 Scalar { anchor: None, tag: None, value: "./workflows/reusable_all_optional.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:2@364..21:2@364 MappingEnd
+21:2@364..21:9@371 Scalar { anchor: None, tag: None, value: "caller4", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:4@377..22:4@377 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:4@377..22:8@381 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:10@383..22:33@406 Scalar { anchor: None, tag: None, value: "./workflows/empty1.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:2@409..23:2@409 MappingEnd
+23:2@409..23:9@416 Scalar { anchor: None, tag: None, value: "caller5", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:4@422..24:4@422 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:4@422..24:8@426 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:10@428..24:33@451 Scalar { anchor: None, tag: None, value: "./workflows/empty2.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:2@454..25:2@454 MappingEnd
+25:2@454..25:9@461 Scalar { anchor: None, tag: None, value: "caller6", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:4@467..26:4@467 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:4@467..26:8@471 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:10@473..26:33@496 Scalar { anchor: None, tag: None, value: "./workflows/empty3.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:2@499..27:2@499 MappingEnd
+27:2@499..27:26@523 Scalar { anchor: None, tag: None, value: "pass-through-placeholder", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:4@529..28:4@529 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+28:4@529..28:8@533 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:10@535..28:48@573 Scalar { anchor: None, tag: None, value: "./workflows/reusable_all_required.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:4@578..29:8@582 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:6@590..30:6@590 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+30:6@590..30:9@593 Scalar { anchor: None, tag: None, value: "str", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:11@595..30:22@606 Scalar { anchor: None, tag: None, value: "${{ 'hi' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:6@613..31:9@616 Scalar { anchor: None, tag: None, value: "num", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:11@618..31:20@627 Scalar { anchor: None, tag: None, value: "${{ 13 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:6@634..32:10@638 Scalar { anchor: None, tag: None, value: "bool", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:12@640..32:23@651 Scalar { anchor: None, tag: None, value: "${{ true }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:4@656..33:4@656 MappingEnd
+33:4@656..33:11@663 Scalar { anchor: None, tag: None, value: "secrets", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:6@671..34:6@671 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:6@671..34:9@674 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:11@676..34:23@688 Scalar { anchor: None, tag: None, value: "${{ 'bar' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:0@689..35:0@689 MappingEnd
+35:0@689..35:0@689 MappingEnd
+35:0@689..35:0@689 MappingEnd
+35:0@689..35:0@689 MappingEnd
+35:0@689..35:0@689 DocumentEnd { implicit: true }
+35:0@689..35:0@689 StreamEnd

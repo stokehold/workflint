@@ -1,0 +1,524 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: bench/many_scripts.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:8@8 Scalar { anchor: None, tag: None, value: "CI", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:2@11 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@13..1:5@14 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+1:5@14..1:9@18 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:11@20..1:23@32 Scalar { anchor: None, tag: None, value: "pull_request", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:23@32..1:24@33 SequenceEnd
+3:0@35..3:36@71 Comment OwnLine "# 100 'run:' scripts in one workflow"
+5:0@73..5:4@77 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@81..6:2@81 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@81..6:12@91 Scalar { anchor: None, tag: None, value: "unit-tests", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@97..7:4@97 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:4@97..7:8@101 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:10@103..7:20@113 Scalar { anchor: None, tag: None, value: "Unit tests", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@118..8:12@126 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@134..9:6@134 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:6@134..9:12@140 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@150..10:8@150 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@150..10:10@152 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:12@154..10:13@155 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+10:13@155..10:26@168 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:28@170..10:40@182 Scalar { anchor: None, tag: None, value: "macos-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:42@184..10:56@198 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:56@198..10:57@199 SequenceEnd
+10:57@199..10:57@199 MappingEnd
+10:57@199..10:57@199 MappingEnd
+11:4@204..11:11@211 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@213..11:29@229 Scalar { anchor: None, tag: None, value: "${{ matrix.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@234..12:9@239 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@247..13:6@247 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@249..13:8@249 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@249..13:12@253 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:14@255..13:43@284 Scalar { anchor: None, tag: None, value: "Install dependencies on macOS", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@293..14:11@296 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@298..14:69@354 Scalar { anchor: None, tag: None, value: "brew install shellcheck python3 && pip3 install pyflakes", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:8@363..15:10@365 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:12@367..15:46@401 Scalar { anchor: None, tag: None, value: "${{ matrix.os == 'macos-latest' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@408..16:6@408 MappingEnd
+16:8@410..16:8@410 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@410..16:11@413 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@415..16:15@417 Scalar { anchor: None, tag: None, value: "ls", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@424..17:6@424 MappingEnd
+17:8@426..17:8@426 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@426..17:12@430 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:14@432..17:43@461 Scalar { anchor: None, tag: None, value: "Install dependencies on Linux", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@470..18:11@473 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@475..18:64@526 Scalar { anchor: None, tag: None, value: "sudo apt install shellcheck && pip install pyflakes", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@535..19:10@537 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:12@539..19:47@574 Scalar { anchor: None, tag: None, value: "${{ matrix.os == 'ubuntu-latest' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@581..20:6@581 MappingEnd
+20:8@583..20:8@583 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@583..20:12@587 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:14@589..20:45@620 Scalar { anchor: None, tag: None, value: "Install dependencies on Windows", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@629..21:11@632 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@634..21:61@682 Scalar { anchor: None, tag: None, value: "choco install shellcheck && pip install pyflakes", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:8@691..22:10@693 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:12@695..22:48@731 Scalar { anchor: None, tag: None, value: "${{ matrix.os == 'windows-latest' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:6@738..23:6@738 MappingEnd
+23:8@740..23:8@740 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@740..23:11@743 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@745..23:33@765 Scalar { anchor: None, tag: None, value: "shellcheck --version", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:6@772..24:6@772 MappingEnd
+24:8@774..24:8@774 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@774..24:11@777 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:13@779..24:31@797 Scalar { anchor: None, tag: None, value: "pyflakes --version", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:6@804..25:6@804 MappingEnd
+25:8@806..25:8@806 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:8@806..25:12@810 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:14@812..25:33@831 Scalar { anchor: None, tag: None, value: "actions/checkout@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:6@838..26:6@838 MappingEnd
+26:8@840..26:8@840 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:8@840..26:11@843 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:13@845..26:26@858 Scalar { anchor: None, tag: None, value: "git --version", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:6@865..27:6@865 MappingEnd
+27:8@867..27:8@867 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:8@867..27:12@871 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:14@873..27:33@892 Scalar { anchor: None, tag: None, value: "actions/setup-go@v5", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:8@901..28:12@905 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:10@917..29:10@917 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:10@917..29:20@927 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:22@929..29:28@935 Scalar { anchor: None, tag: None, value: "1.16", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+29:28@935..29:28@935 MappingEnd
+29:28@935..29:28@935 MappingEnd
+30:8@944..30:8@944 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+30:8@944..30:11@947 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:13@949..30:38@974 Scalar { anchor: None, tag: None, value: "go build ./cmd/actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:8@983..31:11@986 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:10@998..32:10@998 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:10@998..32:21@1009 Scalar { anchor: None, tag: None, value: "CGO_ENABLED", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:23@1011..32:24@1012 Scalar { anchor: None, tag: None, value: "0", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:6@1019..33:6@1019 MappingEnd
+33:6@1019..33:6@1019 MappingEnd
+33:8@1021..33:8@1021 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+33:8@1021..33:11@1024 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:13@1026..33:74@1087 Scalar { anchor: None, tag: None, value: "go test -v -race -coverprofile coverage.txt -covermode=atomic", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:6@1094..34:6@1094 MappingEnd
+34:8@1096..34:8@1096 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:8@1096..34:11@1099 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:13@1101..34:47@1135 Scalar { anchor: None, tag: None, value: "go tool cover -func ./coverage.txt", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:6@1142..35:6@1142 MappingEnd
+35:6@1142..35:21@1160 Comment OwnLine "# Dog fooding 🐶"
+36:8@1169..36:8@1169 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+36:8@1169..36:11@1172 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+36:13@1174..36:32@1193 Scalar { anchor: None, tag: None, value: "./actionlint -color", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:6@1200..37:6@1200 MappingEnd
+37:8@1202..37:8@1202 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+37:8@1202..37:11@1205 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:13@1207..37:25@1219 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:6@1226..38:6@1226 MappingEnd
+38:8@1228..38:8@1228 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+38:8@1228..38:11@1231 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:13@1233..38:25@1245 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:6@1252..39:6@1252 MappingEnd
+39:8@1254..39:8@1254 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+39:8@1254..39:11@1257 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:13@1259..39:25@1271 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+40:6@1278..40:6@1278 MappingEnd
+40:8@1280..40:8@1280 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+40:8@1280..40:11@1283 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+40:13@1285..40:25@1297 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+41:6@1304..41:6@1304 MappingEnd
+41:8@1306..41:8@1306 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+41:8@1306..41:11@1309 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+41:13@1311..41:25@1323 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+42:6@1330..42:6@1330 MappingEnd
+42:8@1332..42:8@1332 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+42:8@1332..42:11@1335 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+42:13@1337..42:25@1349 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:6@1356..43:6@1356 MappingEnd
+43:8@1358..43:8@1358 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+43:8@1358..43:11@1361 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:13@1363..43:25@1375 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:6@1382..44:6@1382 MappingEnd
+44:8@1384..44:8@1384 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+44:8@1384..44:11@1387 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:13@1389..44:25@1401 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:6@1408..45:6@1408 MappingEnd
+45:8@1410..45:8@1410 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+45:8@1410..45:11@1413 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:13@1415..45:25@1427 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+46:6@1434..46:6@1434 MappingEnd
+46:8@1436..46:8@1436 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+46:8@1436..46:11@1439 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+46:13@1441..46:25@1453 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:6@1460..47:6@1460 MappingEnd
+47:8@1462..47:8@1462 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+47:8@1462..47:11@1465 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:13@1467..47:25@1479 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+48:6@1486..48:6@1486 MappingEnd
+48:8@1488..48:8@1488 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+48:8@1488..48:11@1491 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+48:13@1493..48:25@1505 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+49:6@1512..49:6@1512 MappingEnd
+49:8@1514..49:8@1514 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+49:8@1514..49:11@1517 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+49:13@1519..49:25@1531 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+50:6@1538..50:6@1538 MappingEnd
+50:8@1540..50:8@1540 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+50:8@1540..50:11@1543 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+50:13@1545..50:25@1557 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+51:6@1564..51:6@1564 MappingEnd
+51:8@1566..51:8@1566 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+51:8@1566..51:11@1569 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+51:13@1571..51:25@1583 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+52:6@1590..52:6@1590 MappingEnd
+52:8@1592..52:8@1592 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+52:8@1592..52:11@1595 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+52:13@1597..52:25@1609 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:6@1616..53:6@1616 MappingEnd
+53:8@1618..53:8@1618 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+53:8@1618..53:12@1622 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:14@1624..53:39@1649 Scalar { anchor: None, tag: None, value: "codecov/codecov-action@v5", plain_implicit: true, quoted_implicit: false, style: Plain }
+54:2@1652..54:2@1652 MappingEnd
+54:2@1652..54:2@1652 SequenceEnd
+54:2@1652..54:2@1652 MappingEnd
+54:2@1652..54:6@1656 Scalar { anchor: None, tag: None, value: "lint", plain_implicit: true, quoted_implicit: false, style: Plain }
+55:4@1662..55:4@1662 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+55:4@1662..55:8@1666 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+55:10@1668..55:14@1672 Scalar { anchor: None, tag: None, value: "Lint", plain_implicit: true, quoted_implicit: false, style: Plain }
+56:4@1677..56:11@1684 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+56:13@1686..56:26@1699 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+57:4@1704..57:9@1709 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+58:6@1717..58:6@1717 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+58:8@1719..58:8@1719 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+58:8@1719..58:12@1723 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+58:14@1725..58:33@1744 Scalar { anchor: None, tag: None, value: "actions/checkout@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+59:6@1751..59:6@1751 MappingEnd
+59:8@1753..59:8@1753 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+59:8@1753..59:11@1756 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+59:13@1758..59:26@1771 Scalar { anchor: None, tag: None, value: "git --version", plain_implicit: true, quoted_implicit: false, style: Plain }
+60:6@1778..60:6@1778 MappingEnd
+60:8@1780..60:8@1780 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+60:8@1780..60:12@1784 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+60:14@1786..60:33@1805 Scalar { anchor: None, tag: None, value: "actions/setup-go@v5", plain_implicit: true, quoted_implicit: false, style: Plain }
+61:8@1814..61:12@1818 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+62:10@1830..62:10@1830 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+62:10@1830..62:20@1840 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+62:22@1842..62:28@1848 Scalar { anchor: None, tag: None, value: "1.16", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+62:28@1848..62:28@1848 MappingEnd
+62:28@1848..62:28@1848 MappingEnd
+63:8@1857..63:8@1857 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+63:8@1857..63:11@1860 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+63:13@1862..63:23@1872 Scalar { anchor: None, tag: None, value: "go version", plain_implicit: true, quoted_implicit: false, style: Plain }
+64:6@1879..64:6@1879 MappingEnd
+64:8@1881..64:8@1881 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+64:8@1881..64:12@1885 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+64:14@1887..64:33@1906 Scalar { anchor: None, tag: None, value: "Install staticcheck", plain_implicit: true, quoted_implicit: false, style: Plain }
+65:8@1915..65:11@1918 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+65:13@1920..68:0@2037 Scalar { anchor: None, tag: None, value: "go get honnef.co/go/tools/cmd/staticcheck@latest\necho \"$(go env GOPATH)/bin\" >> \"$GITHUB_PATH\"\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+68:6@2043..68:6@2043 MappingEnd
+68:8@2045..68:8@2045 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+68:8@2045..68:11@2048 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+68:13@2050..68:22@2059 Scalar { anchor: None, tag: None, value: "make lint", plain_implicit: true, quoted_implicit: false, style: Plain }
+69:6@2066..69:6@2066 MappingEnd
+69:8@2068..69:8@2068 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+69:8@2068..69:12@2072 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+69:14@2074..69:35@2095 Scalar { anchor: None, tag: None, value: "actions/setup-node@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+70:8@2104..70:12@2108 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+71:10@2120..71:10@2120 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+71:10@2120..71:22@2132 Scalar { anchor: None, tag: None, value: "node-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+71:24@2134..71:31@2141 Scalar { anchor: None, tag: None, value: "lts/*", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+71:31@2141..71:31@2141 MappingEnd
+71:31@2141..71:31@2141 MappingEnd
+72:8@2150..72:8@2150 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+72:8@2150..72:11@2153 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+72:13@2155..72:77@2219 Scalar { anchor: None, tag: None, value: "cd ./playground && make main.wasm && npm install && npm run lint", plain_implicit: true, quoted_implicit: false, style: Plain }
+73:6@2226..73:6@2226 MappingEnd
+73:8@2228..73:8@2228 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+73:8@2228..73:11@2231 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+73:13@2233..73:58@2278 Scalar { anchor: None, tag: None, value: "shellcheck ./scripts/download-actionlint.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+74:6@2285..74:6@2285 MappingEnd
+74:8@2287..74:8@2287 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+74:8@2287..74:11@2290 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+74:13@2292..74:54@2333 Scalar { anchor: None, tag: None, value: "shellcheck ./playground/post-install.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+75:6@2340..75:6@2340 MappingEnd
+75:8@2342..75:8@2342 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+75:8@2342..75:11@2345 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+75:13@2347..75:48@2382 Scalar { anchor: None, tag: None, value: "shellcheck ./playground/deploy.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+76:2@2385..76:2@2385 MappingEnd
+76:2@2385..76:2@2385 SequenceEnd
+76:2@2385..76:2@2385 MappingEnd
+76:2@2385..76:20@2403 Scalar { anchor: None, tag: None, value: "actionlint-daisuki", plain_implicit: true, quoted_implicit: false, style: Plain }
+77:4@2409..77:4@2409 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+77:4@2409..77:11@2416 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+77:13@2418..77:26@2431 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+78:4@2436..78:9@2441 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+79:6@2449..79:6@2449 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+79:8@2451..79:8@2451 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+79:8@2451..79:12@2455 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+79:14@2457..79:33@2476 Scalar { anchor: None, tag: None, value: "Download actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+80:8@2485..80:11@2488 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+80:13@2490..80:114@2591 Scalar { anchor: None, tag: None, value: "bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)", plain_implicit: true, quoted_implicit: false, style: Plain }
+81:8@2600..81:13@2605 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+81:15@2607..81:19@2611 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+82:6@2618..82:6@2618 MappingEnd
+82:8@2620..82:8@2620 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+82:8@2620..82:11@2623 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+82:13@2625..82:25@2637 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+83:6@2644..83:6@2644 MappingEnd
+83:8@2646..83:8@2646 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+83:8@2646..83:11@2649 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+83:13@2651..83:25@2663 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+84:6@2670..84:6@2670 MappingEnd
+84:8@2672..84:8@2672 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+84:8@2672..84:11@2675 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+84:13@2677..84:25@2689 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+85:6@2696..85:6@2696 MappingEnd
+85:8@2698..85:8@2698 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+85:8@2698..85:11@2701 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+85:13@2703..85:25@2715 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+86:6@2722..86:6@2722 MappingEnd
+86:8@2724..86:8@2724 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+86:8@2724..86:11@2727 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+86:13@2729..86:25@2741 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+87:6@2748..87:6@2748 MappingEnd
+87:8@2750..87:8@2750 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+87:8@2750..87:11@2753 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+87:13@2755..87:25@2767 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+88:6@2774..88:6@2774 MappingEnd
+88:8@2776..88:8@2776 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+88:8@2776..88:11@2779 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+88:13@2781..88:25@2793 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+89:6@2800..89:6@2800 MappingEnd
+89:8@2802..89:8@2802 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+89:8@2802..89:11@2805 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+89:13@2807..89:25@2819 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+90:6@2826..90:6@2826 MappingEnd
+90:8@2828..90:8@2828 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+90:8@2828..90:11@2831 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+90:13@2833..90:25@2845 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+91:6@2852..91:6@2852 MappingEnd
+91:8@2854..91:8@2854 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+91:8@2854..91:11@2857 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+91:13@2859..91:25@2871 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+92:6@2878..92:6@2878 MappingEnd
+92:8@2880..92:8@2880 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+92:8@2880..92:11@2883 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+92:13@2885..92:25@2897 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+93:6@2904..93:6@2904 MappingEnd
+93:8@2906..93:8@2906 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+93:8@2906..93:11@2909 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+93:13@2911..93:25@2923 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+94:6@2930..94:6@2930 MappingEnd
+94:8@2932..94:8@2932 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+94:8@2932..94:11@2935 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+94:13@2937..94:25@2949 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+95:6@2956..95:6@2956 MappingEnd
+95:8@2958..95:8@2958 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+95:8@2958..95:11@2961 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+95:13@2963..95:25@2975 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+96:6@2982..96:6@2982 MappingEnd
+96:8@2984..96:8@2984 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+96:8@2984..96:11@2987 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+96:13@2989..96:25@3001 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+97:6@3008..97:6@3008 MappingEnd
+97:8@3010..97:8@3010 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+97:8@3010..97:11@3013 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+97:13@3015..97:25@3027 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+98:6@3034..98:6@3034 MappingEnd
+98:8@3036..98:8@3036 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+98:8@3036..98:11@3039 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+98:13@3041..98:25@3053 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+99:6@3060..99:6@3060 MappingEnd
+99:8@3062..99:8@3062 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+99:8@3062..99:11@3065 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+99:13@3067..99:25@3079 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+100:6@3086..100:6@3086 MappingEnd
+100:8@3088..100:8@3088 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+100:8@3088..100:11@3091 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+100:13@3093..100:25@3105 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+101:6@3112..101:6@3112 MappingEnd
+101:8@3114..101:8@3114 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+101:8@3114..101:11@3117 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+101:13@3119..101:25@3131 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+102:6@3138..102:6@3138 MappingEnd
+102:8@3140..102:8@3140 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+102:8@3140..102:11@3143 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+102:13@3145..102:25@3157 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+103:6@3164..103:6@3164 MappingEnd
+103:8@3166..103:8@3166 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+103:8@3166..103:11@3169 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+103:13@3171..103:25@3183 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+104:6@3190..104:6@3190 MappingEnd
+104:8@3192..104:8@3192 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+104:8@3192..104:11@3195 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+104:13@3197..104:25@3209 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+105:6@3216..105:6@3216 MappingEnd
+105:8@3218..105:8@3218 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+105:8@3218..105:11@3221 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+105:13@3223..105:25@3235 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+106:6@3242..106:6@3242 MappingEnd
+106:8@3244..106:8@3244 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+106:8@3244..106:11@3247 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+106:13@3249..106:25@3261 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+107:6@3268..107:6@3268 MappingEnd
+107:8@3270..107:8@3270 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+107:8@3270..107:11@3273 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+107:13@3275..107:25@3287 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+108:6@3294..108:6@3294 MappingEnd
+108:8@3296..108:8@3296 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+108:8@3296..108:11@3299 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+108:13@3301..108:25@3313 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+109:6@3320..109:6@3320 MappingEnd
+109:8@3322..109:8@3322 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+109:8@3322..109:11@3325 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+109:13@3327..109:25@3339 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+110:6@3346..110:6@3346 MappingEnd
+110:8@3348..110:8@3348 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+110:8@3348..110:11@3351 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+110:13@3353..110:25@3365 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+111:6@3372..111:6@3372 MappingEnd
+111:8@3374..111:8@3374 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+111:8@3374..111:11@3377 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+111:13@3379..111:25@3391 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+112:6@3398..112:6@3398 MappingEnd
+112:8@3400..112:8@3400 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+112:8@3400..112:11@3403 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+112:13@3405..112:25@3417 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+113:6@3424..113:6@3424 MappingEnd
+113:8@3426..113:8@3426 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+113:8@3426..113:11@3429 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+113:13@3431..113:25@3443 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+114:6@3450..114:6@3450 MappingEnd
+114:8@3452..114:8@3452 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+114:8@3452..114:11@3455 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+114:13@3457..114:25@3469 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+115:6@3476..115:6@3476 MappingEnd
+115:8@3478..115:8@3478 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+115:8@3478..115:11@3481 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+115:13@3483..115:25@3495 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+116:6@3502..116:6@3502 MappingEnd
+116:8@3504..116:8@3504 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+116:8@3504..116:11@3507 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+116:13@3509..116:25@3521 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+117:6@3528..117:6@3528 MappingEnd
+117:8@3530..117:8@3530 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+117:8@3530..117:11@3533 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+117:13@3535..117:25@3547 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+118:6@3554..118:6@3554 MappingEnd
+118:8@3556..118:8@3556 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+118:8@3556..118:11@3559 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+118:13@3561..118:25@3573 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+119:6@3580..119:6@3580 MappingEnd
+119:8@3582..119:8@3582 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+119:8@3582..119:11@3585 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+119:13@3587..119:25@3599 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+120:6@3606..120:6@3606 MappingEnd
+120:8@3608..120:8@3608 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+120:8@3608..120:11@3611 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+120:13@3613..120:25@3625 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+121:6@3632..121:6@3632 MappingEnd
+121:8@3634..121:8@3634 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+121:8@3634..121:11@3637 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+121:13@3639..121:25@3651 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+122:6@3658..122:6@3658 MappingEnd
+122:8@3660..122:8@3660 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+122:8@3660..122:11@3663 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+122:13@3665..122:25@3677 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+123:6@3684..123:6@3684 MappingEnd
+123:8@3686..123:8@3686 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+123:8@3686..123:11@3689 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+123:13@3691..123:25@3703 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+124:6@3710..124:6@3710 MappingEnd
+124:8@3712..124:8@3712 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+124:8@3712..124:11@3715 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+124:13@3717..124:25@3729 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+125:6@3736..125:6@3736 MappingEnd
+125:8@3738..125:8@3738 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+125:8@3738..125:11@3741 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+125:13@3743..125:25@3755 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+126:6@3762..126:6@3762 MappingEnd
+126:8@3764..126:8@3764 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+126:8@3764..126:11@3767 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+126:13@3769..126:25@3781 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+127:6@3788..127:6@3788 MappingEnd
+127:8@3790..127:8@3790 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+127:8@3790..127:11@3793 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+127:13@3795..127:25@3807 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+128:6@3814..128:6@3814 MappingEnd
+128:8@3816..128:8@3816 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+128:8@3816..128:11@3819 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+128:13@3821..128:25@3833 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+129:6@3840..129:6@3840 MappingEnd
+129:8@3842..129:8@3842 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+129:8@3842..129:11@3845 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+129:13@3847..129:25@3859 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+130:6@3866..130:6@3866 MappingEnd
+130:8@3868..130:8@3868 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+130:8@3868..130:11@3871 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+130:13@3873..130:25@3885 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+131:6@3892..131:6@3892 MappingEnd
+131:8@3894..131:8@3894 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+131:8@3894..131:11@3897 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+131:13@3899..131:25@3911 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+132:6@3918..132:6@3918 MappingEnd
+132:8@3920..132:8@3920 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+132:8@3920..132:11@3923 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+132:13@3925..132:25@3937 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+133:6@3944..133:6@3944 MappingEnd
+133:8@3946..133:8@3946 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+133:8@3946..133:11@3949 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+133:13@3951..133:25@3963 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+134:6@3970..134:6@3970 MappingEnd
+134:8@3972..134:8@3972 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+134:8@3972..134:11@3975 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+134:13@3977..134:25@3989 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+135:6@3996..135:6@3996 MappingEnd
+135:8@3998..135:8@3998 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+135:8@3998..135:11@4001 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+135:13@4003..135:25@4015 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+136:6@4022..136:6@4022 MappingEnd
+136:8@4024..136:8@4024 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+136:8@4024..136:11@4027 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+136:13@4029..136:25@4041 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+137:6@4048..137:6@4048 MappingEnd
+137:8@4050..137:8@4050 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+137:8@4050..137:11@4053 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+137:13@4055..137:25@4067 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+138:6@4074..138:6@4074 MappingEnd
+138:8@4076..138:8@4076 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+138:8@4076..138:11@4079 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+138:13@4081..138:25@4093 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+139:6@4100..139:6@4100 MappingEnd
+139:8@4102..139:8@4102 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+139:8@4102..139:11@4105 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+139:13@4107..139:25@4119 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+140:6@4126..140:6@4126 MappingEnd
+140:8@4128..140:8@4128 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+140:8@4128..140:11@4131 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+140:13@4133..140:25@4145 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+141:6@4152..141:6@4152 MappingEnd
+141:8@4154..141:8@4154 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+141:8@4154..141:11@4157 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+141:13@4159..141:25@4171 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+142:6@4178..142:6@4178 MappingEnd
+142:8@4180..142:8@4180 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+142:8@4180..142:11@4183 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+142:13@4185..142:25@4197 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+143:6@4204..143:6@4204 MappingEnd
+143:8@4206..143:8@4206 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+143:8@4206..143:11@4209 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+143:13@4211..143:25@4223 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+144:6@4230..144:6@4230 MappingEnd
+144:8@4232..144:8@4232 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+144:8@4232..144:11@4235 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+144:13@4237..144:25@4249 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+145:6@4256..145:6@4256 MappingEnd
+145:8@4258..145:8@4258 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+145:8@4258..145:11@4261 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+145:13@4263..145:25@4275 Scalar { anchor: None, tag: None, value: "./actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+146:0@4276..146:0@4276 MappingEnd
+146:0@4276..146:0@4276 SequenceEnd
+146:0@4276..146:0@4276 MappingEnd
+146:0@4276..146:0@4276 MappingEnd
+146:0@4276..146:0@4276 MappingEnd
+146:0@4276..146:0@4276 DocumentEnd { implicit: true }
+146:0@4276..146:0@4276 StreamEnd

@@ -83,12 +83,6 @@ macro_rules! IS_Z {
     };
 }
 
-macro_rules! IS_BOM {
-    ($buffer:expr) => {
-        CHECK!($buffer, '\u{feff}')
-    };
-}
-
 macro_rules! IS_SPACE_AT {
     ($string:expr, $offset:expr) => {
         CHECK_AT!($string, ' ', $offset)

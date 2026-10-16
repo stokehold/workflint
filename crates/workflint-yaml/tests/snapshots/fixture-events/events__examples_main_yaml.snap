@@ -1,0 +1,78 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/main.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:6@10 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@16..2:4@16 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@16..2:10@22 Scalar { anchor: None, tag: None, value: "branch", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:12@24..2:16@28 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@33..3:8@37 Scalar { anchor: None, tag: None, value: "tags", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@45..4:6@45 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@47..4:14@53 Scalar { anchor: None, tag: None, value: "v\\d+", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:14@53..4:14@53 SequenceEnd
+4:14@53..4:14@53 MappingEnd
+4:14@53..4:14@53 MappingEnd
+5:0@54..5:4@58 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@62..6:2@62 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@62..6:6@66 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@72..7:4@72 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:4@72..7:12@80 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@88..8:6@88 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:6@88..8:12@94 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@104..9:8@104 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@104..9:10@106 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:12@108..9:13@109 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+9:13@109..9:25@121 Scalar { anchor: None, tag: None, value: "macos-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:27@123..9:39@135 Scalar { anchor: None, tag: None, value: "linux-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:39@135..9:40@136 SequenceEnd
+9:40@136..9:40@136 MappingEnd
+9:40@136..9:40@136 MappingEnd
+10:4@141..10:11@148 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@150..10:29@166 Scalar { anchor: None, tag: None, value: "${{ matrix.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@171..11:9@176 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@184..12:6@184 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@186..12:8@186 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@186..12:11@189 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@191..12:77@255 Scalar { anchor: None, tag: None, value: "echo \"Checking commit '${{ github.event.head_commit.message }}'\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@262..13:6@262 MappingEnd
+13:8@264..13:8@264 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@264..13:12@268 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:14@270..13:33@289 Scalar { anchor: None, tag: None, value: "actions/checkout@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@296..14:6@296 MappingEnd
+14:8@298..14:8@298 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@298..14:12@302 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:14@304..14:35@325 Scalar { anchor: None, tag: None, value: "actions/setup-node@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:8@334..15:12@338 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:10@350..16:10@350 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:10@350..16:22@362 Scalar { anchor: None, tag: None, value: "node_version", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:24@364..16:28@368 Scalar { anchor: None, tag: None, value: "18.x", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@375..17:6@375 MappingEnd
+17:6@375..17:6@375 MappingEnd
+17:8@377..17:8@377 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@377..17:12@381 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:14@383..17:30@399 Scalar { anchor: None, tag: None, value: "actions/cache@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@408..18:12@412 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:10@424..19:10@424 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:10@424..19:14@428 Scalar { anchor: None, tag: None, value: "path", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:16@430..19:22@436 Scalar { anchor: None, tag: None, value: "~/.npm", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:10@447..20:13@450 Scalar { anchor: None, tag: None, value: "key", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:15@452..20:83@520 Scalar { anchor: None, tag: None, value: "${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@529..21:8@529 MappingEnd
+21:8@529..21:10@531 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:12@533..21:62@583 Scalar { anchor: None, tag: None, value: "${{ github.repository.permissions.admin == true }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@590..22:6@590 MappingEnd
+22:8@592..22:8@592 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@592..22:11@595 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:13@597..22:36@620 Scalar { anchor: None, tag: None, value: "npm install && npm test", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:0@621..23:0@621 MappingEnd
+23:0@621..23:0@621 SequenceEnd
+23:0@621..23:0@621 MappingEnd
+23:0@621..23:0@621 MappingEnd
+23:0@621..23:0@621 MappingEnd
+23:0@621..23:0@621 DocumentEnd { implicit: true }
+23:0@621..23:0@621 StreamEnd

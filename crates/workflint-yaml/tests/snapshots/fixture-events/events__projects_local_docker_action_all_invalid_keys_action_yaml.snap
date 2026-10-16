@@ -1,0 +1,40 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_docker_action/all_invalid_keys/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:21@21 Scalar { anchor: None, tag: None, value: "Docker action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@22..1:6@28 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@30..1:41@63 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@64..2:11@75 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@77..2:38@102 Scalar { anchor: None, tag: None, value: "Incorrect Docker action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@104..4:4@108 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@112..5:2@112 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@112..5:7@117 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:9@119..5:17@127 Scalar { anchor: None, tag: None, value: "docker", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:2@130..6:7@135 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:9@137..6:39@167 Scalar { anchor: None, tag: None, value: "docker://debian:stretch-slim", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:2@170..7:6@174 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@176..7:16@184 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@187..8:5@190 Scalar { anchor: None, tag: None, value: "pre", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:7@192..8:13@198 Scalar { anchor: None, tag: None, value: "pre.js", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@201..9:8@207 Scalar { anchor: None, tag: None, value: "pre-if", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@209..9:14@213 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@216..10:6@220 Scalar { anchor: None, tag: None, value: "post", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@222..10:15@229 Scalar { anchor: None, tag: None, value: "post.js", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@232..11:9@239 Scalar { anchor: None, tag: None, value: "post-if", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:11@241..11:15@245 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:2@248..12:7@253 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@259..13:4@259 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:6@261..13:6@261 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:6@261..13:9@264 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:11@266..13:21@276 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@277..14:0@277 MappingEnd
+14:0@277..14:0@277 SequenceEnd
+14:0@277..14:0@277 MappingEnd
+14:0@277..14:0@277 MappingEnd
+14:0@277..14:0@277 DocumentEnd { implicit: true }
+14:0@277..14:0@277 StreamEnd

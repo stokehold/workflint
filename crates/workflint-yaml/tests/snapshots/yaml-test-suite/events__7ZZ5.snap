@@ -10,14 +10,14 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 2:4@26..2:4@26 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
 2:6@28..2:7@29 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
 2:7@29..2:8@30 SequenceEnd
-3:0@31..3:0@31 SequenceEnd
-3:0@31..3:0@31 SequenceEnd
+2:8@30..2:8@30 SequenceEnd
+2:8@30..2:8@30 SequenceEnd
 3:2@33..3:2@33 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
 3:4@35..3:4@35 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
 3:6@37..3:7@38 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
 3:7@38..3:8@39 MappingEnd
-4:0@40..4:0@40 SequenceEnd
-4:0@40..4:0@40 SequenceEnd
+3:8@39..3:8@39 SequenceEnd
+3:8@39..3:8@39 SequenceEnd
 4:0@40..4:0@40 SequenceEnd
 4:0@40..4:4@44 Scalar { anchor: None, tag: None, value: "key1", plain_implicit: true, quoted_implicit: false, style: Plain }
 4:6@46..4:7@47 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }

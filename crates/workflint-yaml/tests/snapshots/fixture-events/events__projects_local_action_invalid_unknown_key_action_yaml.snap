@@ -1,0 +1,31 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_action_invalid/unknown_key/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:17@17 Scalar { anchor: None, tag: None, value: "My action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@18..1:6@24 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@26..1:41@59 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@60..2:11@71 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@73..2:17@77 Scalar { anchor: None, tag: None, value: "Test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@79..4:6@85 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@89..5:2@89 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@89..5:8@95 Scalar { anchor: None, tag: None, value: "input1", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@101..6:4@101 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@101..6:7@104 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:9@106..6:12@109 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@111..8:0@111 MappingEnd
+8:0@111..8:0@111 MappingEnd
+8:0@111..8:4@115 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@119..9:2@119 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:2@119..9:7@124 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:9@126..9:17@134 Scalar { anchor: None, tag: None, value: "node20", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:2@137..10:6@141 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@143..10:18@153 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:18@153..10:18@153 MappingEnd
+11:0@154..11:0@154 MappingEnd
+11:0@154..11:0@154 DocumentEnd { implicit: true }
+11:0@154..11:0@154 StreamEnd

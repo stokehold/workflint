@@ -1,0 +1,49 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/special_function_availability.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:72@72 Comment OwnLine "# Check https://docs.github.com/en/actions/learn-github-actions/contexts"
+2:0@74..2:0@74 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+2:0@74..2:0@74 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:0@74..2:2@76 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@78..2:8@82 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@84..4:4@88 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@92..5:2@92 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@92..5:6@96 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@102..6:4@102 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@102..6:12@110 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@118..7:6@118 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:6@118..7:12@124 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@134..8:53@179 Comment OwnLine "# All special functions are banned by default"
+9:8@188..9:8@188 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@188..9:14@194 Scalar { anchor: None, tag: None, value: "errors", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@206..10:10@206 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:12@208..10:27@223 Scalar { anchor: None, tag: None, value: "${{ always() }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:12@236..11:30@254 Scalar { anchor: None, tag: None, value: "${{ cancelled() }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:12@267..12:28@283 Scalar { anchor: None, tag: None, value: "${{ success() }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:12@296..13:28@312 Scalar { anchor: None, tag: None, value: "${{ failure() }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:12@325..14:35@348 Scalar { anchor: None, tag: None, value: "${{ hashFiles('...') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:10@359..15:28@377 Comment OwnLine "# case insensitive"
+16:12@390..16:35@413 Scalar { anchor: None, tag: None, value: "${{ hashfiles('...') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@418..17:4@418 SequenceEnd
+17:4@418..17:4@418 MappingEnd
+17:4@418..17:4@418 MappingEnd
+17:4@418..17:11@425 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@427..17:26@440 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@445..18:47@488 Comment OwnLine "# jobs.<job_id>.if does not allow hashFiles"
+19:4@493..19:6@495 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@497..19:31@520 Scalar { anchor: None, tag: None, value: "${{ hashFiles('...') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:4@525..20:9@530 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:6@538..21:53@585 Comment OwnLine "# jobs.<job_id>.steps.run only allows hashFiles"
+22:6@592..22:6@592 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@594..22:8@594 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@594..22:11@597 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:13@599..22:45@631 Scalar { anchor: None, tag: None, value: "echo 'success? ${{ success() }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:0@632..23:0@632 MappingEnd
+23:0@632..23:0@632 SequenceEnd
+23:0@632..23:0@632 MappingEnd
+23:0@632..23:0@632 MappingEnd
+23:0@632..23:0@632 MappingEnd
+23:0@632..23:0@632 DocumentEnd { implicit: true }
+23:0@632..23:0@632 StreamEnd

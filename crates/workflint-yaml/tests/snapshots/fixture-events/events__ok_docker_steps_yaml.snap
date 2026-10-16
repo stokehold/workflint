@@ -1,0 +1,100 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/docker_steps.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:6@68 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:12@74 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@76..6:38@100 Scalar { anchor: None, tag: None, value: "docker://ubuntu:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:8@109..7:12@113 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@125..8:10@125 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:10@125..8:20@135 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:22@137..8:31@146 Scalar { anchor: None, tag: None, value: "/bin/bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@157..9:14@161 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:16@163..9:40@187 Scalar { anchor: None, tag: None, value: "-c \"echo $INPUT_FOOOO\"", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:10@198..10:15@203 Scalar { anchor: None, tag: None, value: "foooo", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:17@205..10:30@218 Scalar { anchor: None, tag: None, value: "Hello, world!", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@225..11:6@225 MappingEnd
+11:6@225..11:6@225 MappingEnd
+11:8@227..11:8@227 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@227..11:12@231 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:14@233..11:38@257 Scalar { anchor: None, tag: None, value: "docker://ubuntu:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+12:8@266..12:12@270 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:10@282..13:10@282 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:10@282..13:14@286 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:16@288..13:40@312 Scalar { anchor: None, tag: None, value: "-c \"echo $INPUT_FOOOO\"", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+14:10@323..14:15@328 Scalar { anchor: None, tag: None, value: "foooo", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:17@330..14:30@343 Scalar { anchor: None, tag: None, value: "Hello, world!", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@350..15:6@350 MappingEnd
+15:6@350..15:6@350 MappingEnd
+15:8@352..15:8@352 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@352..15:12@356 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:14@358..15:38@382 Scalar { anchor: None, tag: None, value: "docker://ubuntu:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+16:8@391..16:12@395 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:10@407..17:10@407 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:10@407..17:20@417 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:22@419..17:31@428 Scalar { anchor: None, tag: None, value: "/bin/bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:10@439..18:15@444 Scalar { anchor: None, tag: None, value: "foooo", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:17@446..18:30@459 Scalar { anchor: None, tag: None, value: "Hello, world!", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@466..19:6@466 MappingEnd
+19:6@466..19:6@466 MappingEnd
+19:8@468..19:8@468 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@468..19:12@472 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:14@474..19:38@498 Scalar { anchor: None, tag: None, value: "docker://ubuntu:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+20:8@507..20:12@511 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:10@523..21:10@523 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:10@523..21:15@528 Scalar { anchor: None, tag: None, value: "foooo", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:17@530..21:30@543 Scalar { anchor: None, tag: None, value: "Hello, world!", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@550..22:6@550 MappingEnd
+22:6@550..22:6@550 MappingEnd
+22:8@552..22:8@552 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@552..22:12@556 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:14@558..22:38@582 Scalar { anchor: None, tag: None, value: "docker://ubuntu:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+23:8@591..23:12@595 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:10@607..24:10@607 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:10@607..24:20@617 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:22@619..24:31@628 Scalar { anchor: None, tag: None, value: "/bin/bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:10@639..25:14@643 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:16@645..25:40@669 Scalar { anchor: None, tag: None, value: "-c \"echo $INPUT_FOOOO\"", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+25:40@669..25:40@669 MappingEnd
+25:40@669..25:40@669 MappingEnd
+26:8@678..26:8@678 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:8@678..26:12@682 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:14@684..26:38@708 Scalar { anchor: None, tag: None, value: "docker://ubuntu:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+27:8@717..27:12@721 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:10@733..28:10@733 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+28:10@733..28:14@737 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:16@739..28:40@763 Scalar { anchor: None, tag: None, value: "-c \"echo $INPUT_FOOOO\"", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+28:40@763..28:40@763 MappingEnd
+28:40@763..28:40@763 MappingEnd
+29:8@772..29:8@772 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:8@772..29:12@776 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:14@778..29:38@802 Scalar { anchor: None, tag: None, value: "docker://ubuntu:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+30:8@811..30:12@815 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:10@827..31:10@827 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+31:10@827..31:20@837 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:22@839..31:31@848 Scalar { anchor: None, tag: None, value: "/bin/bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:6@855..32:6@855 MappingEnd
+32:6@855..32:6@855 MappingEnd
+32:8@857..32:8@857 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@857..32:12@861 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:14@863..32:38@887 Scalar { anchor: None, tag: None, value: "docker://ubuntu:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+32:38@887..32:38@887 MappingEnd
+32:38@887..32:38@887 SequenceEnd
+32:38@887..32:38@887 MappingEnd
+32:38@887..32:38@887 MappingEnd
+33:0@888..33:0@888 MappingEnd
+33:0@888..33:0@888 DocumentEnd { implicit: true }
+33:0@888..33:0@888 StreamEnd

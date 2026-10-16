@@ -1,0 +1,59 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/if_cond_edge_cases_trailing_leading_chars.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:12@28 Scalar { anchor: None, tag: None, value: "edge-cases", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@34..4:4@34 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@34..4:11@41 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@43..4:26@56 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@61..5:9@66 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@74..6:6@74 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@76..6:8@76 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@76..6:11@79 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@81..6:30@98 Scalar { anchor: None, tag: None, value: "echo This is true", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@107..7:10@109 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:12@111..9:0@136 Scalar { anchor: None, tag: None, value: "${{ false }}\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+9:6@142..9:6@142 MappingEnd
+9:8@144..9:8@144 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@144..9:11@147 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@149..9:30@166 Scalar { anchor: None, tag: None, value: "echo This is true", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@175..10:10@177 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:12@179..10:27@194 Scalar { anchor: None, tag: None, value: "${{ false }} ", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:27@194..10:27@194 MappingEnd
+11:8@203..11:8@203 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@203..11:11@206 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@208..11:30@225 Scalar { anchor: None, tag: None, value: "echo This is true", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@234..12:10@236 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:12@238..12:27@253 Scalar { anchor: None, tag: None, value: " ${{ false }}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+12:27@253..12:27@253 MappingEnd
+13:8@262..13:8@262 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@262..13:11@265 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@267..13:30@284 Scalar { anchor: None, tag: None, value: "echo This is true", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@293..14:10@295 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:12@297..14:40@325 Scalar { anchor: None, tag: None, value: "${{ false }} && ${{ false }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@332..15:6@332 MappingEnd
+15:8@334..15:8@334 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@334..15:11@337 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@339..15:30@356 Scalar { anchor: None, tag: None, value: "echo This is true", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:8@365..16:10@367 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:12@369..16:44@401 Scalar { anchor: None, tag: None, value: "${{ 'false' }} && ${{ 'false' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@408..17:6@408 MappingEnd
+17:8@410..17:8@410 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@410..17:11@413 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@415..17:30@432 Scalar { anchor: None, tag: None, value: "echo This is true", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@441..18:10@443 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:12@445..18:26@459 Scalar { anchor: None, tag: None, value: "!${{ true }}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+18:26@459..18:26@459 MappingEnd
+18:26@459..18:26@459 SequenceEnd
+18:26@459..18:26@459 MappingEnd
+18:26@459..18:26@459 MappingEnd
+19:0@460..19:0@460 MappingEnd
+19:0@460..19:0@460 DocumentEnd { implicit: true }
+19:0@460..19:0@460 StreamEnd

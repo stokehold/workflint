@@ -264,8 +264,10 @@ fn comment_events_come_before_the_first_event_that_starts_after_them() {
             "Scalar b",
             "Scalar 1",
             "Comment Trailing",
-            "Comment OwnLine",
+            // go-yaml ends the inner mapping after `# d`, and the outer one at
+            // `# e`, the foot comment at its indentation.
             "MappingEnd",
+            "Comment OwnLine",
             "MappingEnd",
             "DocumentEnd",
             "StreamEnd",

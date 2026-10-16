@@ -4,4 +4,6 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 0:0@0..0:0@0 StreamStart { encoding: Utf8 }
 0:0@0..0:1@1 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
 0:0@0..0:1@1 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
-error: Scanner error: line 2 column 9: found unexpected ':' while scanning a plain scalar (line 2 column 5)
+1:4@6..1:9@11 Scalar { anchor: None, tag: None, value: "foo :", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:9@11..1:9@11 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Parser error: line 3 column 3: did not find expected node content while parsing a flow node (line 3 column 3)

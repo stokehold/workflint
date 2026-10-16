@@ -1,0 +1,46 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/workflow_call_with_strategy.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:44@44 Scalar { anchor: None, tag: None, value: "Reusable workflow with matrix strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@46..2:115@161 Comment OwnLine "# This was enabled by https://github.blog/changelog/2022-08-22-github-actions-improvements-to-reusable-workflows-2/"
+3:0@162..3:1@163 Comment OwnLine "#"
+4:0@164..4:13@177 Comment OwnLine "# Issue: #197"
+5:0@178..5:124@302 Comment OwnLine "# Doc: https://docs.github.com/en/actions/using-workflows/reusing-workflows#example-matrix-strategy-with-a-reusable-workflow"
+7:0@304..7:2@306 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@310..8:2@310 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@310..8:6@314 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:7@315..8:7@315 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:7@315..8:7@315 MappingEnd
+10:0@317..10:4@321 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@325..11:2@325 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:2@325..11:32@355 Scalar { anchor: None, tag: None, value: "ReusableMatrixJobForDeployment", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@361..12:4@361 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@361..12:12@369 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@377..13:6@377 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:6@377..13:12@383 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@393..14:8@393 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@393..14:14@399 Scalar { anchor: None, tag: None, value: "target", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:16@401..14:17@402 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+14:17@402..14:20@405 Scalar { anchor: None, tag: None, value: "dev", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:22@407..14:27@412 Scalar { anchor: None, tag: None, value: "stage", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:29@414..14:33@418 Scalar { anchor: None, tag: None, value: "prod", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:33@418..14:34@419 SequenceEnd
+14:34@419..14:34@419 MappingEnd
+14:34@419..14:34@419 MappingEnd
+15:4@424..15:8@428 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:10@430..15:65@485 Scalar { anchor: None, tag: None, value: "octocat/octo-repo/.github/workflows/deployment.yml@main", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:4@490..16:8@494 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@502..17:6@502 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:6@502..17:12@508 Scalar { anchor: None, tag: None, value: "target", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:14@510..17:34@530 Scalar { anchor: None, tag: None, value: "${{ matrix.target }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:0@531..18:0@531 MappingEnd
+18:0@531..18:0@531 MappingEnd
+18:0@531..18:0@531 MappingEnd
+18:0@531..18:0@531 MappingEnd
+18:0@531..18:0@531 DocumentEnd { implicit: true }
+18:0@531..18:0@531 StreamEnd

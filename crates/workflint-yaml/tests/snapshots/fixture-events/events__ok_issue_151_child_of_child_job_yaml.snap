@@ -1,0 +1,76 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-151-child-of-child-job.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:10@10 Scalar { anchor: None, tag: None, value: "Test", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@12..2:2@14 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@16..2:8@20 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@22..4:4@26 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@30..5:2@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@30..5:7@35 Scalar { anchor: None, tag: None, value: "first", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@41..6:4@41 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@41..6:11@48 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@50..6:26@63 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@68..7:11@75 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@83..8:6@83 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:6@83..8:11@88 Scalar { anchor: None, tag: None, value: "first", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@90..8:33@110 Scalar { anchor: None, tag: None, value: "output from parent", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+8:33@110..8:33@110 MappingEnd
+9:4@115..9:9@120 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@128..10:6@128 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@130..10:8@130 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@130..10:11@133 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@135..10:25@147 Scalar { anchor: None, tag: None, value: "echo 'first'", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:2@151..12:2@151 MappingEnd
+12:2@151..12:2@151 SequenceEnd
+12:2@151..12:2@151 MappingEnd
+12:2@151..12:8@157 Scalar { anchor: None, tag: None, value: "second", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@163..13:4@163 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:4@163..13:9@168 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:11@170..13:12@171 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+13:12@171..13:17@176 Scalar { anchor: None, tag: None, value: "first", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:17@176..13:18@177 SequenceEnd
+14:4@182..14:11@189 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@191..14:26@204 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@209..15:11@216 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@224..16:6@224 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:6@224..16:12@230 Scalar { anchor: None, tag: None, value: "second", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:14@232..16:34@252 Scalar { anchor: None, tag: None, value: "output from second", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+16:34@252..16:34@252 MappingEnd
+17:4@257..17:9@262 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@270..18:6@270 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@272..18:8@272 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@272..18:11@275 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@277..18:26@290 Scalar { anchor: None, tag: None, value: "echo 'second'", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:2@294..20:2@294 MappingEnd
+20:2@294..20:2@294 SequenceEnd
+20:2@294..20:2@294 MappingEnd
+20:2@294..20:7@299 Scalar { anchor: None, tag: None, value: "third", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:4@305..21:4@305 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:4@305..21:9@310 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:11@312..21:12@313 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+21:12@313..21:17@318 Scalar { anchor: None, tag: None, value: "first", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:19@320..21:25@326 Scalar { anchor: None, tag: None, value: "second", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:25@326..21:26@327 SequenceEnd
+22:4@332..22:11@339 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:13@341..22:26@354 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:4@359..23:9@364 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:6@372..24:6@372 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@374..24:8@374 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@374..24:11@377 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:13@379..24:55@421 Scalar { anchor: None, tag: None, value: "echo '${{ toJSON(needs.second.outputs) }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:6@428..25:6@428 MappingEnd
+25:8@430..25:8@430 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:8@430..25:11@433 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:13@435..25:54@476 Scalar { anchor: None, tag: None, value: "echo '${{ toJSON(needs.first.outputs) }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:0@477..26:0@477 MappingEnd
+26:0@477..26:0@477 SequenceEnd
+26:0@477..26:0@477 MappingEnd
+26:0@477..26:0@477 MappingEnd
+26:0@477..26:0@477 MappingEnd
+26:0@477..26:0@477 DocumentEnd { implicit: true }
+26:0@477..26:0@477 StreamEnd

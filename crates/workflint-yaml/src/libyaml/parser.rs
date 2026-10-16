@@ -1,20 +1,22 @@
 use super::scanner::Scanner;
 use super::token::TokenData;
 use super::{
-    Error, Event, EventData, MappingStyle, Mark, NodeMarks, Result, ScalarStyle, SequenceStyle,
-    TagDirective, VersionDirective,
+    Error, ErrorKind, Event, EventData, MappingStyle, Mark, NodeMarks, Result, ScalarStyle,
+    SequenceStyle, TagDirective, VersionDirective,
 };
 
 /// A YAML event parser over a string.
 ///
-/// Iterating yields the events of the whole stream. After an error, the
-/// iterator may yield more errors, so callers should stop at the first one.
+/// Iterating yields the events of the whole stream. The first error is the
+/// last item.
 #[non_exhaustive]
 pub struct Parser<'input> {
     pub(crate) scanner: Scanner<'input>,
     pub(crate) inner: ParserInner,
     /// An event held back while the comments before it are returned.
     pub(crate) pending_event: Option<Event>,
+    /// Whether `next` returned an error, after which it returns `None`.
+    pub(crate) failed: bool,
 }
 
 /// The non-generic parts of `Parser`.
@@ -97,12 +99,15 @@ impl Iterator for Parser<'_> {
     type Item = Result<Event>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.pending_event.is_none()
-            && (self.scanner.stream_end_produced || self.inner.state == ParserState::End)
+        if self.failed
+            || self.pending_event.is_none()
+                && (self.scanner.stream_end_produced || self.inner.state == ParserState::End)
         {
             None
         } else {
-            Some(self.parse())
+            let result = self.parse();
+            self.failed = result.is_err();
+            Some(result)
         }
     }
 }
@@ -121,6 +126,7 @@ impl<'input> Parser<'input> {
                 tag_directives: Vec::with_capacity(16),
             },
             pending_event: None,
+            failed: false,
         }
     }
 
@@ -205,7 +211,7 @@ impl<'input> Parser<'input> {
             ParserState::FlowMappingValue => self.parse_flow_mapping_value(false),
             ParserState::FlowMappingEmptyValue => self.parse_flow_mapping_value(true),
             // `parse` returns before reaching this state.
-            ParserState::End => Err(Error::internal(self.scanner.mark)),
+            ParserState::End => Err(Error::internal(ErrorKind::Parser, self.scanner.mark)),
         }
     }
 
@@ -636,10 +642,11 @@ impl<'input> Parser<'input> {
                 self.parse_node(true, false)
             }
         } else {
+            // go-yaml ends the event where it starts.
             let event = Event {
                 data: EventData::SequenceEnd,
                 start_mark: token.start_mark,
-                end_mark: token.end_mark,
+                end_mark: token.start_mark,
                 node_marks: NodeMarks::default(),
             };
             self.inner.state = self.inner.pop_state(self.scanner.mark)?;
@@ -792,10 +799,14 @@ impl<'input> Parser<'input> {
     }
 
     fn parse_flow_sequence_entry_mapping_value(&mut self) -> Result<Event> {
-        let mut token = self.scanner.peek()?;
+        let token = self.scanner.peek()?;
+        // An empty value starts at the `:`, as in go-yaml, whose
+        // `parseFlowSequenceEntryMappingValue` shadows `token` and so keeps
+        // the `:` token. libyaml starts it at the token after the `:`.
+        let mark = token.start_mark;
         if let TokenData::Value = token.data {
             self.scanner.skip_token();
-            token = self.scanner.peek()?;
+            let token = self.scanner.peek()?;
             if !matches!(
                 token.data,
                 TokenData::FlowEntry | TokenData::FlowSequenceEnd
@@ -806,20 +817,19 @@ impl<'input> Parser<'input> {
                 return self.parse_node(false, false);
             }
         }
-        let mark = token.start_mark;
         self.inner.state = ParserState::FlowSequenceEntryMappingEnd;
         Self::process_empty_scalar(mark)
     }
 
     fn parse_flow_sequence_entry_mapping_end(&mut self) -> Result<Event> {
         let token = self.scanner.peek()?;
+        // go-yaml ends the event where it starts.
         let start_mark = token.start_mark;
-        let end_mark = token.end_mark;
         self.inner.state = ParserState::FlowSequenceEntry;
         Ok(Event {
             data: EventData::MappingEnd,
             start_mark,
-            end_mark,
+            end_mark: start_mark,
             node_marks: NodeMarks::default(),
         })
     }
@@ -954,6 +964,8 @@ impl<'input> Parser<'input> {
                         mark,
                     ));
                 } else if *major != 1 || *minor != 1 && *minor != 2 {
+                    // go-yaml accepts only 1.1
+                    // (docs/differences.md#yaml-1-2-directive).
                     return Err(Error::parser(
                         "",
                         Mark::default(),
@@ -1032,6 +1044,8 @@ impl ParserInner {
     /// Pops the state to return to. Every state that pops was entered after
     /// a push, so the stack is not empty for any input.
     fn pop_state(&mut self, mark: Mark) -> Result<ParserState> {
-        self.states.pop().ok_or_else(|| Error::internal(mark))
+        self.states
+            .pop()
+            .ok_or_else(|| Error::internal(ErrorKind::Parser, mark))
     }
 }

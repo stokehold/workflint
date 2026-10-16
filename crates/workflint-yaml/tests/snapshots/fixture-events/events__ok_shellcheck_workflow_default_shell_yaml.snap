@@ -1,0 +1,49 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/shellcheck_workflow_default_shell.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:8@17 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@21..2:2@21 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@21..2:5@24 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@30..3:4@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@30..3:9@35 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:11@37..3:15@41 Scalar { anchor: None, tag: None, value: "pwsh", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@42..4:0@42 MappingEnd
+4:0@42..4:0@42 MappingEnd
+4:0@42..4:4@46 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@50..5:2@50 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@50..5:7@55 Scalar { anchor: None, tag: None, value: "test1", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@61..6:4@61 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@61..6:11@68 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@70..6:26@83 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@88..7:9@93 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@101..8:55@150 Comment OwnLine "# This script should not be checked by shellcheck"
+9:6@157..9:6@157 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@159..9:8@159 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@159..9:11@162 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@164..9:29@180 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@183..10:2@183 MappingEnd
+10:2@183..10:2@183 SequenceEnd
+10:2@183..10:2@183 MappingEnd
+10:2@183..10:7@188 Scalar { anchor: None, tag: None, value: "test2", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@194..11:4@194 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:4@194..11:11@201 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@203..11:26@216 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@221..12:9@226 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@234..13:55@283 Comment OwnLine "# This script should not be checked by shellcheck"
+14:6@290..14:6@290 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@292..14:8@292 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@292..14:11@295 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@297..14:29@313 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@314..15:0@314 MappingEnd
+15:0@314..15:0@314 SequenceEnd
+15:0@314..15:0@314 MappingEnd
+15:0@314..15:0@314 MappingEnd
+15:0@314..15:0@314 MappingEnd
+15:0@314..15:0@314 DocumentEnd { implicit: true }
+15:0@314..15:0@314 StreamEnd

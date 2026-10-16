@@ -1,0 +1,29 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/run_name_check_expr.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:8@17 Scalar { anchor: None, tag: None, value: "run-name", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:10@19..1:31@40 Scalar { anchor: None, tag: None, value: "Deploy to ${{ hoge }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@42..3:4@46 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@50..4:2@50 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@50..4:6@54 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@60..5:4@60 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@60..5:11@67 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@69..5:26@82 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@87..6:9@92 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@100..7:6@100 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@102..7:8@102 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@102..7:11@105 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@107..7:23@117 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@118..8:0@118 MappingEnd
+8:0@118..8:0@118 SequenceEnd
+8:0@118..8:0@118 MappingEnd
+8:0@118..8:0@118 MappingEnd
+8:0@118..8:0@118 MappingEnd
+8:0@118..8:0@118 DocumentEnd { implicit: true }
+8:0@118..8:0@118 StreamEnd

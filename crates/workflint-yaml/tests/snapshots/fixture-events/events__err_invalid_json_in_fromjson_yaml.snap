@@ -1,0 +1,102 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/invalid_json_in_fromjson.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:5@21 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@27..4:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@27..4:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@43..5:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@43..5:12@49 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@59..6:8@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@59..6:15@66 Scalar { anchor: None, tag: None, value: "include", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:10@78..7:10@78 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:12@80..7:12@80 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:12@80..7:18@86 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:20@88..7:46@114 Scalar { anchor: None, tag: None, value: "${{ fromJSON('\"hello\"') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@125..8:10@125 MappingEnd
+8:12@127..8:12@127 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:12@127..8:16@131 Scalar { anchor: None, tag: None, value: "null", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:18@133..8:41@156 Scalar { anchor: None, tag: None, value: "${{ fromJSON('null') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@167..9:10@167 MappingEnd
+9:12@169..9:12@169 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@169..9:17@174 Scalar { anchor: None, tag: None, value: "array", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:19@176..9:50@207 Scalar { anchor: None, tag: None, value: "${{ fromJSON('[\"foo\", 1.2]') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@218..10:10@218 MappingEnd
+10:12@220..10:12@220 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:12@220..10:18@226 Scalar { anchor: None, tag: None, value: "object", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:20@228..10:68@276 Scalar { anchor: None, tag: None, value: "${{ fromJSON('{\"bool\":true,\"array\":[false]}') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:10@287..11:10@287 MappingEnd
+11:12@289..11:12@289 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:12@289..11:21@298 Scalar { anchor: None, tag: None, value: "invalid-1", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:23@300..11:46@323 Scalar { anchor: None, tag: None, value: "${{ fromJSON('\"foo') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@334..12:10@334 MappingEnd
+12:12@336..12:12@336 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:12@336..12:21@345 Scalar { anchor: None, tag: None, value: "invalid-2", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:23@347..12:48@372 Scalar { anchor: None, tag: None, value: "${{ fromJSON('[\"foo\"') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:10@383..13:10@383 MappingEnd
+13:12@385..13:12@385 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:12@385..13:21@394 Scalar { anchor: None, tag: None, value: "invalid-3", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:23@396..13:42@415 Scalar { anchor: None, tag: None, value: "${{ fromJSON('') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@420..14:4@420 MappingEnd
+14:4@420..14:4@420 SequenceEnd
+14:4@420..14:4@420 MappingEnd
+14:4@420..14:4@420 MappingEnd
+14:4@420..14:11@427 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@429..14:26@442 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@447..15:9@452 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@460..16:10@464 Comment OwnLine "# OK"
+17:6@471..17:6@471 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@473..17:8@473 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@473..17:11@476 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@478..17:38@503 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.string }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@510..18:6@510 MappingEnd
+18:8@512..18:8@512 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@512..18:11@515 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@517..18:40@544 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.array[0] }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@551..19:6@551 MappingEnd
+19:8@553..19:8@553 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@553..19:11@556 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@558..19:43@588 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.object.bool }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@595..20:6@595 MappingEnd
+20:8@597..20:8@597 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@597..20:11@600 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:13@602..20:62@651 Scalar { anchor: None, tag: None, value: "echo ${{ contains(matrix.array, matrix.string) }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:6@658..21:6@658 MappingEnd
+21:8@660..21:8@660 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@660..21:11@663 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@665..21:41@693 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.invalid-1 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@700..22:6@700 MappingEnd
+22:6@700..22:13@707 Comment OwnLine "# ERROR"
+23:8@716..23:8@716 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@716..23:11@719 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@721..23:36@744 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.null }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:6@751..24:6@751 MappingEnd
+24:8@753..24:8@753 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@753..24:11@756 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:13@758..24:37@782 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.array }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:6@789..25:6@789 MappingEnd
+25:8@791..25:8@791 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:8@791..25:11@794 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:13@796..25:38@821 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.object }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:6@828..26:6@828 MappingEnd
+26:8@830..26:8@830 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:8@830..26:11@833 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:13@835..26:44@866 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.object.array }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:6@873..27:6@873 MappingEnd
+27:8@875..27:8@875 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:8@875..27:11@878 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:13@880..27:63@930 Scalar { anchor: None, tag: None, value: "echo ${{ contains(matrix.object, matrix.string) }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:0@931..28:0@931 MappingEnd
+28:0@931..28:0@931 SequenceEnd
+28:0@931..28:0@931 MappingEnd
+28:0@931..28:0@931 MappingEnd
+28:0@931..28:0@931 MappingEnd
+28:0@931..28:0@931 DocumentEnd { implicit: true }
+28:0@931..28:0@931 StreamEnd

@@ -1,0 +1,83 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/env_context_banned.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:12@12 Comment OwnLine "# issue #158"
+1:0@13..1:0@13 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+1:0@13..1:0@13 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@13..1:2@15 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@17..1:8@21 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@23..3:3@26 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@30..4:49@77 Comment OwnLine "# 'env:' at toplevel cannot refer 'env' context"
+5:2@80..5:2@80 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@80..5:8@86 Scalar { anchor: None, tag: None, value: "ERROR1", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:10@88..5:25@103 Scalar { anchor: None, tag: None, value: "${{ env.PATH }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@105..7:0@105 MappingEnd
+7:0@105..7:4@109 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@113..8:2@113 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@113..8:8@119 Scalar { anchor: None, tag: None, value: "my_job", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@125..9:4@125 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@125..9:11@132 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@134..9:26@147 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@152..10:7@155 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@163..11:6@163 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:6@163..11:9@166 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:11@168..11:14@171 Scalar { anchor: None, tag: None, value: "aaa", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@178..12:54@226 Comment OwnLine "# 'env:' at job level cannot refer 'env' context"
+13:6@233..13:12@239 Scalar { anchor: None, tag: None, value: "ERROR2", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:14@241..13:29@256 Scalar { anchor: None, tag: None, value: "${{ env.PATH }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@261..14:4@261 MappingEnd
+14:4@261..14:9@266 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@274..15:52@320 Comment OwnLine "# 'env:' at step level can refer 'env' context"
+16:6@327..16:6@327 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@329..16:8@329 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@329..16:11@332 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@334..16:24@345 Scalar { anchor: None, tag: None, value: "echo \"$BAR\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@354..17:11@357 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:10@369..18:10@369 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:10@369..18:13@372 Scalar { anchor: None, tag: None, value: "BAR", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:15@374..18:29@388 Scalar { anchor: None, tag: None, value: "${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@395..19:6@395 MappingEnd
+19:6@395..19:6@395 MappingEnd
+19:6@395..19:31@420 Comment OwnLine "# This still should be OK"
+20:8@429..20:8@429 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@429..20:12@433 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:14@435..20:33@454 Scalar { anchor: None, tag: None, value: "test/my-action@main", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@463..21:11@466 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:10@478..22:10@478 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:10@478..22:12@480 Scalar { anchor: None, tag: None, value: "OS", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:14@482..22:30@498 Scalar { anchor: None, tag: None, value: "${{ runner.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:10@509..23:14@513 Scalar { anchor: None, tag: None, value: "NAME", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:16@515..23:34@533 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:2@536..24:2@536 MappingEnd
+24:2@536..24:2@536 MappingEnd
+24:2@536..24:2@536 SequenceEnd
+24:2@536..24:2@536 MappingEnd
+24:2@536..24:15@549 Scalar { anchor: None, tag: None, value: "container-job", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:4@555..25:4@555 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:4@555..25:11@562 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:13@564..25:26@577 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:4@582..26:13@591 Scalar { anchor: None, tag: None, value: "container", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:6@599..27:6@599 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:6@599..27:11@604 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:13@606..27:23@616 Scalar { anchor: None, tag: None, value: "node:14.16", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:6@623..28:54@671 Comment OwnLine "# 'env:' at 'container:' can refer 'env' context"
+29:6@678..29:9@681 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:8@691..30:8@691 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+30:8@691..30:14@697 Scalar { anchor: None, tag: None, value: "MYPATH", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:16@699..30:31@714 Scalar { anchor: None, tag: None, value: "${{ env.PATH }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:4@719..31:4@719 MappingEnd
+31:4@719..31:4@719 MappingEnd
+31:4@719..31:9@724 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:6@732..32:6@732 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@734..32:8@734 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@734..32:11@737 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:13@739..32:23@749 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:0@750..33:0@750 MappingEnd
+33:0@750..33:0@750 SequenceEnd
+33:0@750..33:0@750 MappingEnd
+33:0@750..33:0@750 MappingEnd
+33:0@750..33:0@750 MappingEnd
+33:0@750..33:0@750 DocumentEnd { implicit: true }
+33:0@750..33:0@750 StreamEnd

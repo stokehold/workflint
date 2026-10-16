@@ -1,0 +1,51 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-384_narrow-logical-op.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:18@34 Scalar { anchor: None, tag: None, value: "and_op_narrowing", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@40..4:4@40 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@40..4:11@47 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@49..4:26@62 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@67..5:52@115 Comment OwnLine "# `timeout-minutes` only allow number type value"
+6:4@120..6:19@135 Scalar { anchor: None, tag: None, value: "timeout-minutes", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:21@137..6:45@161 Scalar { anchor: None, tag: None, value: "${{ '...' && 60 || 20 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@166..7:9@171 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@179..8:6@179 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@181..8:8@181 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@181..8:11@184 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@186..8:23@196 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@205..9:56@253 Comment OwnLine "# `timeout-minutes` only allow number type value"
+10:8@262..10:23@277 Scalar { anchor: None, tag: None, value: "timeout-minutes", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:25@279..10:49@303 Scalar { anchor: None, tag: None, value: "${{ '...' && 60 || 20 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@306..11:2@306 MappingEnd
+11:2@306..11:2@306 SequenceEnd
+11:2@306..11:2@306 MappingEnd
+11:2@306..11:17@321 Scalar { anchor: None, tag: None, value: "or_op_narrowing", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@327..12:4@327 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@327..12:11@334 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@336..12:26@349 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@354..13:52@402 Comment OwnLine "# `timeout-minutes` only allow number type value"
+14:4@407..14:19@422 Scalar { anchor: None, tag: None, value: "timeout-minutes", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:21@424..14:47@450 Scalar { anchor: None, tag: None, value: "${{ ('...' || 60) && 20 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@455..15:9@460 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@468..16:6@468 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@470..16:8@470 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@470..16:11@473 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@475..16:23@485 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@494..17:56@542 Comment OwnLine "# `timeout-minutes` only allow number type value"
+18:8@551..18:23@566 Scalar { anchor: None, tag: None, value: "timeout-minutes", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:25@568..18:51@594 Scalar { anchor: None, tag: None, value: "${{ ('...' || 60) && 20 }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:0@595..19:0@595 MappingEnd
+19:0@595..19:0@595 SequenceEnd
+19:0@595..19:0@595 MappingEnd
+19:0@595..19:0@595 MappingEnd
+19:0@595..19:0@595 MappingEnd
+19:0@595..19:0@595 DocumentEnd { implicit: true }
+19:0@595..19:0@595 StreamEnd

@@ -1,0 +1,40 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-442-download-artifact-v3-workaround.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:6@68 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:12@74 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@76..6:49@111 Scalar { anchor: None, tag: None, value: "actions/download-artifact@v3-node20", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@120..7:12@124 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@136..8:10@136 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:10@136..8:14@140 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:16@142..8:27@153 Scalar { anchor: None, tag: None, value: "my-artifact", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@162..9:8@162 MappingEnd
+9:8@162..9:10@164 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:12@166..9:14@168 Scalar { anchor: None, tag: None, value: "dl", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@175..10:6@175 MappingEnd
+10:6@175..10:91@260 Comment OwnLine "# This output is missing in action.yml of actions/download-artifact@v3-node20 (#442)."
+11:6@267..11:113@374 Comment OwnLine "# We added the workaround to add the output in scripts/generate-popular-actions/ script to avoid the issue."
+12:8@383..12:8@383 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@383..12:11@386 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@388..12:55@430 Scalar { anchor: None, tag: None, value: "echo ${{ steps.dl.outputs.download-path }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@431..13:0@431 MappingEnd
+13:0@431..13:0@431 SequenceEnd
+13:0@431..13:0@431 MappingEnd
+13:0@431..13:0@431 MappingEnd
+13:0@431..13:0@431 MappingEnd
+13:0@431..13:0@431 DocumentEnd { implicit: true }
+13:0@431..13:0@431 StreamEnd

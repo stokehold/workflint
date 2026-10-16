@@ -1,0 +1,62 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: action_metadata/branding/action.yml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:17@17 Scalar { anchor: None, tag: None, value: "My action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@18..1:6@24 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@26..1:41@59 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@60..2:11@71 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@73..2:24@84 Scalar { anchor: None, tag: None, value: "my action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:0@85..3:8@93 Scalar { anchor: None, tag: None, value: "branding", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@97..4:2@97 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@97..4:6@101 Scalar { anchor: None, tag: None, value: "icon", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@103..4:12@107 Scalar { anchor: None, tag: None, value: "edit", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@110..5:7@115 Scalar { anchor: None, tag: None, value: "color", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:9@117..5:14@122 Scalar { anchor: None, tag: None, value: "white", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@124..7:0@124 MappingEnd
+7:0@124..7:6@130 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@134..8:2@134 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@134..8:6@138 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@144..9:4@144 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@144..9:15@155 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:17@157..9:26@166 Scalar { anchor: None, tag: None, value: "your name", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@171..10:11@178 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@180..10:22@189 Scalar { anchor: None, tag: None, value: "anonymous", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@192..11:2@192 MappingEnd
+11:2@192..11:9@199 Scalar { anchor: None, tag: None, value: "message", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@205..12:4@205 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@205..12:15@216 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:17@218..12:39@240 Scalar { anchor: None, tag: None, value: "message to this action", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@245..13:12@253 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:14@255..13:18@259 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:2@262..14:2@262 MappingEnd
+14:2@262..14:10@270 Scalar { anchor: None, tag: None, value: "addition", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@276..15:4@276 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:4@276..15:15@287 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:17@289..15:39@311 Scalar { anchor: None, tag: None, value: "additional information", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:4@316..16:12@324 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:14@326..16:19@331 Scalar { anchor: None, tag: None, value: "false", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:0@333..18:0@333 MappingEnd
+18:0@333..18:0@333 MappingEnd
+18:0@333..18:7@340 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:2@344..19:2@344 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:2@344..19:9@351 Scalar { anchor: None, tag: None, value: "user_id", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:4@357..20:4@357 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:4@357..20:15@368 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:17@370..20:24@377 Scalar { anchor: None, tag: None, value: "user ID", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:0@379..22:0@379 MappingEnd
+22:0@379..22:0@379 MappingEnd
+22:0@379..22:4@383 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:2@387..23:2@387 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:2@387..23:7@392 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:9@394..23:17@402 Scalar { anchor: None, tag: None, value: "node20", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+24:2@405..24:6@409 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:8@411..24:18@421 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+24:18@421..24:18@421 MappingEnd
+25:0@422..25:0@422 MappingEnd
+25:0@422..25:0@422 DocumentEnd { implicit: true }
+25:0@422..25:0@422 StreamEnd

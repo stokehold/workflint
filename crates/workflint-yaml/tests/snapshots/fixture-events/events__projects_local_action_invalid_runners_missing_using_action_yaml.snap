@@ -1,0 +1,18 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_action_invalid_runners/missing_using/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:16@16 Scalar { anchor: None, tag: None, value: "No using", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@17..1:6@23 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@25..1:41@58 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@59..2:11@70 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@72..2:34@93 Scalar { anchor: None, tag: None, value: "\"using\" is required", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@95..4:4@99 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:5@100..4:5@100 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@101..5:0@101 MappingEnd
+5:0@101..5:0@101 DocumentEnd { implicit: true }
+5:0@101..5:0@101 StreamEnd

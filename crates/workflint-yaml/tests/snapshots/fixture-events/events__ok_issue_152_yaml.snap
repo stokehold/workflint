@@ -1,0 +1,45 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-152.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:19@23 Scalar { anchor: None, tag: None, value: "workflow_dispatch", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@29..2:4@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@29..2:10@35 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@43..3:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@43..3:14@51 Scalar { anchor: None, tag: None, value: "my_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@61..4:8@61 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@61..4:12@65 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:14@67..4:20@73 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@82..5:16@90 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:18@92..5:22@96 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@98..7:0@98 MappingEnd
+7:0@98..7:0@98 MappingEnd
+7:0@98..7:0@98 MappingEnd
+7:0@98..7:0@98 MappingEnd
+7:0@98..7:4@102 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@106..8:2@106 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@106..8:8@112 Scalar { anchor: None, tag: None, value: "my_job", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@118..9:4@118 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@118..9:11@125 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@127..9:26@140 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@145..10:9@150 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@158..11:6@158 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@160..11:8@160 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@160..11:11@163 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@165..11:53@205 Scalar { anchor: None, tag: None, value: "echo ${{ github.event.inputs.my_input }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@212..12:6@212 MappingEnd
+12:8@214..12:8@214 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@214..12:11@217 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@219..12:40@246 Scalar { anchor: None, tag: None, value: "echo ${{ inputs.my_input }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@247..13:0@247 MappingEnd
+13:0@247..13:0@247 SequenceEnd
+13:0@247..13:0@247 MappingEnd
+13:0@247..13:0@247 MappingEnd
+13:0@247..13:0@247 MappingEnd
+13:0@247..13:0@247 DocumentEnd { implicit: true }
+13:0@247..13:0@247 StreamEnd

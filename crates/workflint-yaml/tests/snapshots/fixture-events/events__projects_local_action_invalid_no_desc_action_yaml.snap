@@ -1,0 +1,21 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_action_invalid/no_desc/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:17@17 Scalar { anchor: None, tag: None, value: "My action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@18..1:6@24 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@26..1:41@59 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:0@61..3:4@65 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@69..4:2@69 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@69..4:7@74 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:9@76..4:17@84 Scalar { anchor: None, tag: None, value: "node20", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:2@87..5:6@91 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@93..5:18@103 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:18@103..5:18@103 MappingEnd
+6:0@104..6:0@104 MappingEnd
+6:0@104..6:0@104 DocumentEnd { implicit: true }
+6:0@104..6:0@104 StreamEnd

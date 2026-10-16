@@ -1,0 +1,21 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: reusable_workflow_metadata/broken_inputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:10@31 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..3:6@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@39..3:14@47 Scalar { anchor: None, tag: None, value: "validate", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:16@49..3:44@77 Scalar { anchor: None, tag: None, value: "validate something when true", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@78..4:0@78 MappingEnd
+4:0@78..4:0@78 MappingEnd
+4:0@78..4:0@78 MappingEnd
+4:0@78..4:0@78 MappingEnd
+4:0@78..4:0@78 DocumentEnd { implicit: true }
+4:0@78..4:0@78 StreamEnd

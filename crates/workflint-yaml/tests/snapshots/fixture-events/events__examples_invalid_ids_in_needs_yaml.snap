@@ -1,0 +1,48 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/invalid_ids_in_needs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:5@20 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@26..3:4@26 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@26..3:9@31 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:11@33..3:12@34 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+3:12@34..3:15@37 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:17@39..3:20@42 Scalar { anchor: None, tag: None, value: "BAR", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:20@42..3:21@43 SequenceEnd
+4:4@48..4:11@55 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@57..4:26@70 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@75..5:9@80 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@88..6:6@88 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@90..6:8@90 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@90..6:11@93 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@95..6:22@104 Scalar { anchor: None, tag: None, value: "echo 'hi'", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@107..7:2@107 MappingEnd
+7:2@107..7:2@107 SequenceEnd
+7:2@107..7:2@107 MappingEnd
+7:2@107..7:5@110 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@116..8:4@116 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@116..8:9@121 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:11@123..8:12@124 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+8:12@124..8:19@131 Scalar { anchor: None, tag: None, value: "unknown", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:19@131..8:20@132 SequenceEnd
+9:4@137..9:11@144 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@146..9:26@159 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@164..10:9@169 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@177..11:6@177 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@179..11:8@179 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@179..11:11@182 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@184..11:22@193 Scalar { anchor: None, tag: None, value: "echo 'hi'", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@194..12:0@194 MappingEnd
+12:0@194..12:0@194 SequenceEnd
+12:0@194..12:0@194 MappingEnd
+12:0@194..12:0@194 MappingEnd
+12:0@194..12:0@194 MappingEnd
+12:0@194..12:0@194 DocumentEnd { implicit: true }
+12:0@194..12:0@194 StreamEnd

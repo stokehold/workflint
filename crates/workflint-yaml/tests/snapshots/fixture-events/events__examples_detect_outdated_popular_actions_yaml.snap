@@ -1,0 +1,28 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/detect_outdated_popular_actions.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:72@134 Comment OwnLine "# ERROR: actions/checkout@v3 is using the outdated runner 'node16'"
+7:6@141..7:6@141 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@143..7:8@143 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@143..7:12@147 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:14@149..7:33@168 Scalar { anchor: None, tag: None, value: "actions/checkout@v3", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@169..8:0@169 MappingEnd
+8:0@169..8:0@169 SequenceEnd
+8:0@169..8:0@169 MappingEnd
+8:0@169..8:0@169 MappingEnd
+8:0@169..8:0@169 MappingEnd
+8:0@169..8:0@169 DocumentEnd { implicit: true }
+8:0@169..8:0@169 StreamEnd

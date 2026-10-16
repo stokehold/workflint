@@ -1,0 +1,29 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/snapshot_image_name_only.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:7@23 Scalar { anchor: None, tag: None, value: "build", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@29..4:4@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@29..4:11@36 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@38..4:26@51 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@56..5:12@64 Scalar { anchor: None, tag: None, value: "snapshot", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:14@66..5:29@81 Scalar { anchor: None, tag: None, value: "my-custom-image", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@86..6:9@91 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@99..7:6@99 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@101..7:8@101 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@101..7:11@104 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@106..7:23@116 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@117..8:0@117 MappingEnd
+8:0@117..8:0@117 SequenceEnd
+8:0@117..8:0@117 MappingEnd
+8:0@117..8:0@117 MappingEnd
+8:0@117..8:0@117 MappingEnd
+8:0@117..8:0@117 DocumentEnd { implicit: true }
+8:0@117..8:0@117 StreamEnd

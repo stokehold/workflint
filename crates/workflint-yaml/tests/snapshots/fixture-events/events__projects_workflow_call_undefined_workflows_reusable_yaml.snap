@@ -1,0 +1,52 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/workflow_call_undefined/workflows/reusable.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:10@31 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..3:6@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@39..3:9@42 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@52..4:8@52 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@52..4:12@56 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:14@58..4:20@64 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@69..5:4@69 MappingEnd
+5:4@69..5:4@69 MappingEnd
+5:4@69..5:11@76 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@84..6:6@84 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@84..6:9@87 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@97..7:8@97 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@97..7:13@102 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:15@104..7:22@111 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:22@111..7:22@111 MappingEnd
+7:22@111..7:22@111 MappingEnd
+8:4@116..8:11@123 Scalar { anchor: None, tag: None, value: "secrets", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@131..9:6@131 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:6@131..9:10@135 Scalar { anchor: None, tag: None, value: "piyo", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:11@136..9:11@136 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:11@136..9:11@136 MappingEnd
+9:11@136..9:11@136 MappingEnd
+9:11@136..9:11@136 MappingEnd
+11:0@138..11:4@142 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:2@146..12:2@146 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:2@146..12:6@150 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@156..13:4@156 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:4@156..13:11@163 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@165..13:26@178 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@183..14:9@188 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@196..15:6@196 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@198..15:8@198 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@198..15:11@201 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@203..15:23@213 Scalar { anchor: None, tag: None, value: "echo 'bye'", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:0@214..16:0@214 MappingEnd
+16:0@214..16:0@214 SequenceEnd
+16:0@214..16:0@214 MappingEnd
+16:0@214..16:0@214 MappingEnd
+16:0@214..16:0@214 MappingEnd
+16:0@214..16:0@214 DocumentEnd { implicit: true }
+16:0@214..16:0@214 StreamEnd

@@ -1,0 +1,30 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/workflow_call_ok/workflows/empty1.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:16@20..1:16@20 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:16@20..1:16@20 MappingEnd
+3:0@22..3:4@26 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@30..4:2@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@30..4:6@34 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@40..5:4@40 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@40..5:11@47 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@49..5:26@62 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@67..6:9@72 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@80..7:6@80 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@82..7:8@82 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@82..7:11@85 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@87..7:23@97 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@98..8:0@98 MappingEnd
+8:0@98..8:0@98 SequenceEnd
+8:0@98..8:0@98 MappingEnd
+8:0@98..8:0@98 MappingEnd
+8:0@98..8:0@98 MappingEnd
+8:0@98..8:0@98 DocumentEnd { implicit: true }
+8:0@98..8:0@98 StreamEnd

@@ -1,0 +1,64 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/contextual_steps_outputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:11@34 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@36..3:26@49 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@54..4:11@61 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@69..5:104@167 Comment OwnLine "# Step outputs can be used in job outputs since this section is evaluated after all steps were run"
+6:6@174..6:6@174 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@174..6:9@177 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:11@179..6:48@216 Scalar { anchor: None, tag: None, value: "${{ steps.get_value.outputs.name }}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:48@216..6:48@216 MappingEnd
+7:4@221..7:9@226 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@234..8:37@265 Comment OwnLine "# Access undefined step outputs"
+9:6@272..9:6@272 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@274..9:8@274 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@274..9:11@277 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@279..9:55@321 Scalar { anchor: None, tag: None, value: "echo '${{ steps.get_value.outputs.name }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@328..10:6@328 MappingEnd
+10:6@328..10:28@350 Comment OwnLine "# Outputs are set here"
+11:8@359..11:8@359 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@359..11:11@362 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@364..11:49@400 Scalar { anchor: None, tag: None, value: "echo \"foo=value\" >> \"$GITHUB_OUTPUT\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@409..12:10@411 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:12@413..12:21@422 Scalar { anchor: None, tag: None, value: "get_value", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@429..13:6@429 MappingEnd
+13:6@429..13:10@433 Comment OwnLine "# OK"
+14:8@442..14:8@442 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@442..14:11@445 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@447..14:55@489 Scalar { anchor: None, tag: None, value: "echo '${{ steps.get_value.outputs.name }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@496..15:6@496 MappingEnd
+15:6@496..15:10@500 Comment OwnLine "# OK"
+16:8@509..16:8@509 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@509..16:11@512 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@514..16:53@554 Scalar { anchor: None, tag: None, value: "echo '${{ steps.get_value.conclusion }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:2@557..17:2@557 MappingEnd
+17:2@557..17:2@557 SequenceEnd
+17:2@557..17:2@557 MappingEnd
+17:2@557..17:7@562 Scalar { anchor: None, tag: None, value: "other", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@568..18:4@568 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:4@568..18:11@575 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@577..18:26@590 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@595..19:9@600 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@608..20:65@667 Comment OwnLine "# Access undefined step outputs. Step objects are job-local"
+21:6@674..21:6@674 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@676..21:8@676 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@676..21:11@679 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@681..21:55@723 Scalar { anchor: None, tag: None, value: "echo '${{ steps.get_value.outputs.name }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:0@724..22:0@724 MappingEnd
+22:0@724..22:0@724 SequenceEnd
+22:0@724..22:0@724 MappingEnd
+22:0@724..22:0@724 MappingEnd
+22:0@724..22:0@724 MappingEnd
+22:0@724..22:0@724 DocumentEnd { implicit: true }
+22:0@724..22:0@724 StreamEnd

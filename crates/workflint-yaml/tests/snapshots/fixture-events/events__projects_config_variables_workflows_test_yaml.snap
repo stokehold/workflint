@@ -1,0 +1,46 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/config_variables/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:24@86 Comment OwnLine "# These are listed"
+7:6@93..7:6@93 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@95..7:8@95 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@95..7:11@98 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@100..7:35@122 Scalar { anchor: None, tag: None, value: "echo '${{ vars.FOO }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@129..8:6@129 MappingEnd
+8:8@131..8:8@131 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@131..8:11@134 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@136..8:35@158 Scalar { anchor: None, tag: None, value: "echo '${{ vars.WOO }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@165..9:6@165 MappingEnd
+9:6@165..9:32@191 Comment OwnLine "# Name is case-insensitive"
+10:8@200..10:8@200 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@200..10:11@203 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@205..10:35@227 Scalar { anchor: None, tag: None, value: "echo '${{ vars.foo }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@234..11:6@234 MappingEnd
+11:8@236..11:8@236 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@236..11:11@239 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@241..11:35@263 Scalar { anchor: None, tag: None, value: "echo '${{ vars.Foo }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@270..12:6@270 MappingEnd
+12:6@270..12:28@292 Comment OwnLine "# ERROR: Undefined var"
+13:8@301..13:8@301 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@301..13:11@304 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@306..13:36@329 Scalar { anchor: None, tag: None, value: "echo '${{ vars.PIYO }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@330..14:0@330 MappingEnd
+14:0@330..14:0@330 SequenceEnd
+14:0@330..14:0@330 MappingEnd
+14:0@330..14:0@330 MappingEnd
+14:0@330..14:0@330 MappingEnd
+14:0@330..14:0@330 DocumentEnd { implicit: true }
+14:0@330..14:0@330 StreamEnd

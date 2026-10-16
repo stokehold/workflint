@@ -1,0 +1,47 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/missing_required_keys.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:10@31 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..3:25@58 Comment OwnLine "# 'type' is missing"
+4:6@65..4:6@65 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@65..4:9@68 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@69..4:10@69 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@69..4:10@69 MappingEnd
+5:4@74..5:11@81 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@89..6:26@109 Comment OwnLine "# 'value' is missing"
+7:6@116..7:6@116 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:6@116..7:9@119 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:10@120..7:10@120 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:10@120..7:10@120 MappingEnd
+7:10@120..7:10@120 MappingEnd
+7:10@120..7:10@120 MappingEnd
+9:0@122..9:8@130 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:9@131..9:9@131 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:0@133..11:11@144 Scalar { anchor: None, tag: None, value: "concurrency", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:2@148..12:2@148 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:2@148..12:20@166 Scalar { anchor: None, tag: None, value: "cancel-in-progress", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:22@168..12:26@172 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@174..14:0@174 MappingEnd
+14:0@174..14:4@178 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:2@182..15:37@217 Comment OwnLine "# 'runs-on' and 'steps' are missing"
+16:2@220..16:2@220 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:2@220..16:6@224 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@230..17:4@230 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:4@230..17:15@241 Scalar { anchor: None, tag: None, value: "environment", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@249..18:6@249 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:6@249..18:9@252 Scalar { anchor: None, tag: None, value: "url", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:11@254..18:30@273 Scalar { anchor: None, tag: None, value: "https://example.com", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:0@274..19:0@274 MappingEnd
+19:0@274..19:0@274 MappingEnd
+19:0@274..19:0@274 MappingEnd
+19:0@274..19:0@274 MappingEnd
+19:0@274..19:0@274 DocumentEnd { implicit: true }
+19:0@274..19:0@274 StreamEnd

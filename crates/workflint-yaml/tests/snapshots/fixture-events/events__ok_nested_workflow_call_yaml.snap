@@ -1,0 +1,20 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/nested_workflow_call.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:17@17 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@19..2:4@23 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@27..3:2@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@27..3:6@31 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@37..4:4@37 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@37..4:8@41 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@43..4:30@63 Scalar { anchor: None, tag: None, value: "owner/repo/x.yml@ref", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@64..5:0@64 MappingEnd
+5:0@64..5:0@64 MappingEnd
+5:0@64..5:0@64 MappingEnd
+5:0@64..5:0@64 DocumentEnd { implicit: true }
+5:0@64..5:0@64 StreamEnd

@@ -1,0 +1,40 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/.github/actions/my-invalid-action/action.yml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:46@46 Comment OwnLine "# .github/actions/my-invalid-action/action.yml"
+2:0@48..2:0@48 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+2:0@48..2:0@48 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:0@48..2:4@52 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:6@54..2:17@65 Scalar { anchor: None, tag: None, value: "My action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:0@66..3:6@72 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:8@74..3:13@79 Scalar { anchor: None, tag: None, value: "...", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@80..4:42@122 Comment OwnLine "# ERROR: 'description' section is required"
+6:0@124..6:8@132 Scalar { anchor: None, tag: None, value: "branding", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@136..7:28@162 Comment OwnLine "# ERROR: Invalid icon name"
+8:2@165..8:2@165 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@165..8:6@169 Scalar { anchor: None, tag: None, value: "icon", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@171..8:11@174 Scalar { anchor: None, tag: None, value: "dog", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@177..9:33@208 Comment OwnLine "# ERROR: Unsupported icon color"
+10:2@211..10:7@216 Scalar { anchor: None, tag: None, value: "color", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:9@218..10:19@228 Scalar { anchor: None, tag: None, value: "gray-white", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@230..12:0@230 MappingEnd
+12:0@230..12:4@234 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:2@238..13:45@281 Comment OwnLine "# ERROR: Node.js runtime version is too old"
+14:2@284..14:2@284 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:2@284..14:7@289 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:9@291..14:17@299 Scalar { anchor: None, tag: None, value: "node14", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+15:2@302..15:66@366 Comment OwnLine "# ERROR: The source file being run by this action does not exist"
+16:2@369..16:6@373 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:8@375..16:37@404 Scalar { anchor: None, tag: None, value: "this-file-does-not-exist.js", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+17:2@407..17:65@470 Comment OwnLine "# ERROR: 'env' configuration is only allowed for Docker actions"
+18:2@473..18:5@476 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@482..19:4@482 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:4@482..19:12@490 Scalar { anchor: None, tag: None, value: "SOME_VAR", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:14@492..19:24@502 Scalar { anchor: None, tag: None, value: "SOME_VALUE", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:0@503..20:0@503 MappingEnd
+20:0@503..20:0@503 MappingEnd
+20:0@503..20:0@503 MappingEnd
+20:0@503..20:0@503 DocumentEnd { implicit: true }
+20:0@503..20:0@503 StreamEnd

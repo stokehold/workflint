@@ -1,0 +1,42 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/local_action_inputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:11@34 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@36..3:26@49 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@54..4:9@59 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@67..5:40@101 Comment OwnLine "# missing required input \"message\""
+6:6@108..6:6@108 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@110..6:8@110 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@110..6:12@114 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@116..6:41@143 Scalar { anchor: None, tag: None, value: "./.github/actions/my-action", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@150..7:6@150 MappingEnd
+7:6@150..7:36@180 Comment OwnLine "# unexpected input \"additions\""
+8:8@189..8:8@189 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@189..8:12@193 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@195..8:41@222 Scalar { anchor: None, tag: None, value: "./.github/actions/my-action", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@231..9:12@235 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@247..10:10@247 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:10@247..10:14@251 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:16@253..10:21@258 Scalar { anchor: None, tag: None, value: "rhysd", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:10@269..11:17@276 Scalar { anchor: None, tag: None, value: "message", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:19@278..11:24@283 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@294..12:19@303 Scalar { anchor: None, tag: None, value: "additions", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:21@305..12:29@313 Scalar { anchor: None, tag: None, value: "foo, bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@314..13:0@314 MappingEnd
+13:0@314..13:0@314 MappingEnd
+13:0@314..13:0@314 SequenceEnd
+13:0@314..13:0@314 MappingEnd
+13:0@314..13:0@314 MappingEnd
+13:0@314..13:0@314 MappingEnd
+13:0@314..13:0@314 DocumentEnd { implicit: true }
+13:0@314..13:0@314 StreamEnd

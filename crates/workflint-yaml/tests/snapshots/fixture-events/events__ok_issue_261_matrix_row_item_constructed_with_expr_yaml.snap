@@ -1,0 +1,59 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-261_matrix_row_item_constructed_with_expr.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:19@23 Scalar { anchor: None, tag: None, value: "workflow_dispatch", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@29..2:4@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@29..2:10@35 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@43..3:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@43..3:23@60 Scalar { anchor: None, tag: None, value: "custom-build-type", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@70..4:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@70..4:12@74 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:14@76..4:20@82 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@84..6:0@84 MappingEnd
+6:0@84..6:0@84 MappingEnd
+6:0@84..6:0@84 MappingEnd
+6:0@84..6:0@84 MappingEnd
+6:0@84..6:4@88 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@92..7:2@92 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@92..7:14@104 Scalar { anchor: None, tag: None, value: "build_matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@110..8:4@110 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@110..8:12@118 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@126..9:6@126 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:6@126..9:12@132 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@142..10:8@142 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@142..10:18@152 Scalar { anchor: None, tag: None, value: "build-type", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:10@164..11:10@164 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:12@166..11:17@171 Scalar { anchor: None, tag: None, value: "debug", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:12@184..12:53@225 Scalar { anchor: None, tag: None, value: "${{ fromJson(inputs.custom-build-type) }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@234..13:8@234 SequenceEnd
+13:8@234..13:15@241 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:10@253..14:93@336 Comment OwnLine "# 'release' is not listed in the matrix row, but it should not be reported as array"
+15:10@347..15:99@436 Comment OwnLine "# since one of the element of the row array is dynamically constructed with ${{ }} (#261)"
+16:10@447..16:10@447 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+16:12@449..16:12@449 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:12@449..16:22@459 Scalar { anchor: None, tag: None, value: "build-type", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:24@461..16:31@468 Scalar { anchor: None, tag: None, value: "release", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@473..17:4@473 MappingEnd
+17:4@473..17:4@473 SequenceEnd
+17:4@473..17:4@473 MappingEnd
+17:4@473..17:4@473 MappingEnd
+17:4@473..17:11@480 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@482..17:26@495 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@500..18:9@505 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@513..19:6@513 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@515..19:8@515 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@515..19:11@518 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@520..19:42@549 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.build-type }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:0@550..20:0@550 MappingEnd
+20:0@550..20:0@550 SequenceEnd
+20:0@550..20:0@550 MappingEnd
+20:0@550..20:0@550 MappingEnd
+20:0@550..20:0@550 MappingEnd
+20:0@550..20:0@550 DocumentEnd { implicit: true }
+20:0@550..20:0@550 StreamEnd

@@ -1,0 +1,29 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/schedule_event_with_no_config_2.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:5@5 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+0:5@5..0:13@13 Scalar { anchor: None, tag: None, value: "schedule", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:13@13..0:14@14 SequenceEnd
+2:0@16..2:4@20 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@24..3:2@24 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@24..3:6@28 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@34..4:4@34 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@34..4:11@41 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@43..4:26@56 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@61..5:9@66 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@74..6:6@74 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@76..6:8@76 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@76..6:11@79 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@81..6:23@91 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@92..7:0@92 MappingEnd
+7:0@92..7:0@92 SequenceEnd
+7:0@92..7:0@92 MappingEnd
+7:0@92..7:0@92 MappingEnd
+7:0@92..7:0@92 MappingEnd
+7:0@92..7:0@92 DocumentEnd { implicit: true }
+7:0@92..7:0@92 StreamEnd

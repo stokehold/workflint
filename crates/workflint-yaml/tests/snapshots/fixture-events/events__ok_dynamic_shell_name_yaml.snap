@@ -1,0 +1,45 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/dynamic_shell_name.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:8@18 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@22..3:2@22 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@22..3:5@25 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@31..4:4@31 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@31..4:9@36 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:11@38..4:26@53 Scalar { anchor: None, tag: None, value: "${{ 'sh {0}' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@55..6:0@55 MappingEnd
+6:0@55..6:0@55 MappingEnd
+6:0@55..6:4@59 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@63..7:2@63 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@63..7:6@67 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@73..8:4@73 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@73..8:11@80 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@82..8:26@95 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@100..9:12@108 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@116..10:6@116 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:6@116..10:9@119 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@129..11:8@129 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@129..11:13@134 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:15@136..11:30@151 Scalar { anchor: None, tag: None, value: "${{ 'sh {0}' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@156..12:4@156 MappingEnd
+12:4@156..12:4@156 MappingEnd
+12:4@156..12:9@161 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@169..13:6@169 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@171..13:8@171 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@171..13:11@174 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@176..13:20@183 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@192..14:13@197 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:15@199..14:30@214 Scalar { anchor: None, tag: None, value: "${{ 'sh {0}' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@215..15:0@215 MappingEnd
+15:0@215..15:0@215 SequenceEnd
+15:0@215..15:0@215 MappingEnd
+15:0@215..15:0@215 MappingEnd
+15:0@215..15:0@215 MappingEnd
+15:0@215..15:0@215 DocumentEnd { implicit: true }
+15:0@215..15:0@215 StreamEnd

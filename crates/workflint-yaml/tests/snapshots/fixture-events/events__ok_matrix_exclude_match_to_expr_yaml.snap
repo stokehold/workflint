@@ -1,0 +1,112 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/matrix_exclude_match_to_expr.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:10@26 Scalar { anchor: None, tag: None, value: "nested-0", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@32..4:4@32 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@32..4:11@39 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@41..4:26@54 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@59..5:12@67 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@75..6:6@75 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@75..6:12@81 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@91..7:8@91 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@91..7:11@94 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@106..8:10@106 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:12@108..8:42@138 Scalar { anchor: None, tag: None, value: "${{ fromJSON('{\"bar\":\"x\"}') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@147..9:8@147 SequenceEnd
+9:8@147..9:15@154 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@166..10:10@166 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:12@168..10:12@168 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:12@168..10:15@171 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:17@173..10:20@176 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@181..11:4@181 MappingEnd
+11:4@181..11:4@181 SequenceEnd
+11:4@181..11:4@181 MappingEnd
+11:4@181..11:4@181 MappingEnd
+11:4@181..11:9@186 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@194..12:6@194 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@196..12:8@196 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@196..12:11@199 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@201..12:39@227 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.foo.bar }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:2@230..13:2@230 MappingEnd
+13:2@230..13:2@230 SequenceEnd
+13:2@230..13:2@230 MappingEnd
+13:2@230..13:17@245 Scalar { anchor: None, tag: None, value: "nested-object-1", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@251..14:4@251 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:4@251..14:11@258 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@260..14:26@273 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@278..15:12@286 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@294..16:6@294 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:6@294..16:12@300 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@310..17:8@310 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@310..17:11@313 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:10@325..18:10@325 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+18:12@327..18:12@327 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:12@327..18:15@330 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:17@332..18:39@354 Scalar { anchor: None, tag: None, value: "${{ fromJSON('\"x\"') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@363..19:8@363 MappingEnd
+19:8@363..19:8@363 SequenceEnd
+19:8@363..19:15@370 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:10@382..20:10@382 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+20:12@384..20:12@384 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:12@384..20:15@387 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:14@403..21:14@403 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:14@403..21:17@406 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:19@408..21:22@411 Scalar { anchor: None, tag: None, value: "...", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:4@416..22:4@416 MappingEnd
+22:4@416..22:4@416 MappingEnd
+22:4@416..22:4@416 SequenceEnd
+22:4@416..22:4@416 MappingEnd
+22:4@416..22:4@416 MappingEnd
+22:4@416..22:9@421 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:6@429..23:6@429 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@431..23:8@431 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@431..23:11@434 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@436..23:39@462 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.foo.bar }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:2@465..24:2@465 MappingEnd
+24:2@465..24:2@465 SequenceEnd
+24:2@465..24:2@465 MappingEnd
+24:2@465..24:16@479 Scalar { anchor: None, tag: None, value: "nested-array-1", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:4@485..25:4@485 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:4@485..25:11@492 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:13@494..25:26@507 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:4@512..26:12@520 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:6@528..27:6@528 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:6@528..27:12@534 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:8@544..28:8@544 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+28:8@544..28:11@547 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:10@559..29:10@559 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+29:12@561..29:13@562 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+29:13@562..29:39@588 Scalar { anchor: None, tag: None, value: "${{ fromJSON('\"x\"') }}", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+29:39@588..29:40@589 SequenceEnd
+29:40@589..29:40@589 SequenceEnd
+30:8@598..30:15@605 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:10@617..31:10@617 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+31:12@619..31:12@619 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+31:12@619..31:15@622 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:17@624..31:18@625 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+31:18@625..31:23@630 Scalar { anchor: None, tag: None, value: "...", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+31:23@630..31:24@631 SequenceEnd
+31:24@631..31:24@631 MappingEnd
+31:24@631..31:24@631 SequenceEnd
+31:24@631..31:24@631 MappingEnd
+31:24@631..31:24@631 MappingEnd
+32:4@636..32:9@641 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:6@649..33:6@649 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+33:8@651..33:8@651 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+33:8@651..33:11@654 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:13@656..33:38@681 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.foo[0] }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:0@682..34:0@682 MappingEnd
+34:0@682..34:0@682 SequenceEnd
+34:0@682..34:0@682 MappingEnd
+34:0@682..34:0@682 MappingEnd
+34:0@682..34:0@682 MappingEnd
+34:0@682..34:0@682 DocumentEnd { implicit: true }
+34:0@682..34:0@682 StreamEnd

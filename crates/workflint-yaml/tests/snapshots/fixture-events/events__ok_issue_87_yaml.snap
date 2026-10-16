@@ -1,0 +1,58 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-87.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:20@20 Scalar { anchor: None, tag: None, value: "Lint Code Base", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@22..2:2@24 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@28..3:2@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@28..3:6@32 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:7@33..3:7@33 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@36..4:15@49 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:16@50..4:16@50 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:16@50..4:16@50 MappingEnd
+6:0@52..6:4@56 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@60..7:2@60 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@60..7:7@65 Scalar { anchor: None, tag: None, value: "build", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@71..8:4@71 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@71..8:8@75 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@77..8:24@91 Scalar { anchor: None, tag: None, value: "Lint Code Base", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@96..9:11@103 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@105..9:26@118 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@124..11:9@129 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@137..12:6@137 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@139..12:8@139 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@139..12:12@143 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:14@145..12:27@158 Scalar { anchor: None, tag: None, value: "Checkout Code", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@167..13:12@171 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:14@173..13:33@192 Scalar { anchor: None, tag: None, value: "actions/checkout@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@201..14:12@205 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:10@217..15:10@217 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:10@217..15:21@228 Scalar { anchor: None, tag: None, value: "fetch-depth", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:23@230..15:24@231 Scalar { anchor: None, tag: None, value: "0", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@239..17:6@239 MappingEnd
+17:6@239..17:6@239 MappingEnd
+17:8@241..17:8@241 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@241..17:12@245 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:14@247..17:28@261 Scalar { anchor: None, tag: None, value: "Lint Code Base", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@270..18:12@274 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:14@276..18:36@298 Scalar { anchor: None, tag: None, value: "github/super-linter@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@307..19:11@310 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:10@322..20:10@322 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:10@322..20:31@343 Scalar { anchor: None, tag: None, value: "VALIDATE_ALL_CODEBASE", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:33@345..20:38@350 Scalar { anchor: None, tag: None, value: "false", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:10@361..21:24@375 Scalar { anchor: None, tag: None, value: "DEFAULT_BRANCH", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:26@377..21:32@383 Scalar { anchor: None, tag: None, value: "master", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:10@394..22:22@406 Scalar { anchor: None, tag: None, value: "GITHUB_TOKEN", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:24@408..22:51@435 Scalar { anchor: None, tag: None, value: "${{ secrets.GITHUB_TOKEN }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:0@436..23:0@436 MappingEnd
+23:0@436..23:0@436 MappingEnd
+23:0@436..23:0@436 SequenceEnd
+23:0@436..23:0@436 MappingEnd
+23:0@436..23:0@436 MappingEnd
+23:0@436..23:0@436 MappingEnd
+23:0@436..23:0@436 DocumentEnd { implicit: true }
+23:0@436..23:0@436 StreamEnd

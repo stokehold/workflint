@@ -1,0 +1,91 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/docker_specific_inputs/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:10@72 Comment OwnLine "# OK"
+7:6@79..7:6@79 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@81..7:8@81 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@81..7:12@85 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:14@87..7:26@99 Scalar { anchor: None, tag: None, value: "./action_all", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@108..8:12@112 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@124..9:10@124 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:10@124..9:20@134 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:22@136..9:25@139 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@150..10:14@154 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:16@156..10:19@159 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@166..11:6@166 MappingEnd
+11:6@166..11:6@166 MappingEnd
+11:6@166..11:34@194 Comment OwnLine "# Unknown input 'entrypoint'"
+12:8@203..12:8@203 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@203..12:12@207 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:14@209..12:27@222 Scalar { anchor: None, tag: None, value: "./action_args", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@231..13:12@235 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:10@247..14:10@247 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:10@247..14:20@257 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:22@259..14:25@262 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:10@273..15:14@277 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:16@279..15:19@282 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@289..16:6@289 MappingEnd
+16:6@289..16:6@289 MappingEnd
+16:6@289..16:28@311 Comment OwnLine "# Unknown input 'args'"
+17:8@320..17:8@320 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@320..17:12@324 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:14@326..17:33@345 Scalar { anchor: None, tag: None, value: "./action_entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@354..18:12@358 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:10@370..19:10@370 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:10@370..19:20@380 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:22@382..19:25@385 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:10@396..20:14@400 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:16@402..20:19@405 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:6@412..21:6@412 MappingEnd
+21:6@412..21:6@412 MappingEnd
+21:6@412..21:46@452 Comment OwnLine "# Unknown inputs 'entrypoint' and 'args'"
+22:8@461..22:8@461 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@461..22:12@465 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:14@467..22:27@480 Scalar { anchor: None, tag: None, value: "./action_none", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:8@489..23:12@493 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:10@505..24:10@505 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:10@505..24:20@515 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:22@517..24:25@520 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:10@531..25:14@535 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:16@537..25:19@540 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:6@547..26:6@547 MappingEnd
+26:6@547..26:6@547 MappingEnd
+26:6@547..26:46@587 Comment OwnLine "# Missing inputs 'entrypoint' and 'args'"
+27:8@596..27:8@596 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:8@596..27:12@600 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:14@602..27:26@614 Scalar { anchor: None, tag: None, value: "./action_all", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:6@621..28:6@621 MappingEnd
+28:6@621..28:28@643 Comment OwnLine "# Missing input 'args'"
+29:8@652..29:8@652 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:8@652..29:12@656 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:14@658..29:27@671 Scalar { anchor: None, tag: None, value: "./action_args", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:6@678..30:6@678 MappingEnd
+30:6@678..30:34@706 Comment OwnLine "# Missing input 'entrypoint'"
+31:8@715..31:8@715 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+31:8@715..31:12@719 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:14@721..31:33@740 Scalar { anchor: None, tag: None, value: "./action_entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:6@747..32:6@747 MappingEnd
+32:6@747..32:10@751 Comment OwnLine "# OK"
+33:8@760..33:8@760 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+33:8@760..33:12@764 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:14@766..33:27@779 Scalar { anchor: None, tag: None, value: "./action_none", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:0@780..34:0@780 MappingEnd
+34:0@780..34:0@780 SequenceEnd
+34:0@780..34:0@780 MappingEnd
+34:0@780..34:0@780 MappingEnd
+34:0@780..34:0@780 MappingEnd
+34:0@780..34:0@780 DocumentEnd { implicit: true }
+34:0@780..34:0@780 StreamEnd

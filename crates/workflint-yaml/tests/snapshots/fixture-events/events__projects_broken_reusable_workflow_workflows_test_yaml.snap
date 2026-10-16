@@ -1,0 +1,45 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/broken_reusable_workflow/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:9@25 Scalar { anchor: None, tag: None, value: "caller1", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@31..4:4@31 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@31..4:8@35 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@37..4:32@59 Scalar { anchor: None, tag: None, value: "./reusable/broken.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@62..5:2@62 MappingEnd
+5:2@62..5:9@69 Scalar { anchor: None, tag: None, value: "caller2", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@75..6:4@75 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@75..6:8@79 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:10@81..6:33@104 Scalar { anchor: None, tag: None, value: "./reusable/no_hook.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@107..7:2@107 MappingEnd
+7:2@107..7:9@114 Scalar { anchor: None, tag: None, value: "caller3", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@120..8:4@120 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@120..8:8@124 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@126..8:31@147 Scalar { anchor: None, tag: None, value: "./reusable/no_on.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@150..9:2@150 MappingEnd
+9:2@150..9:9@157 Scalar { anchor: None, tag: None, value: "caller4", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@163..10:4@163 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:4@163..10:8@167 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@169..10:38@197 Scalar { anchor: None, tag: None, value: "./reusable/broken_input.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@202..11:8@206 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@214..12:6@214 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:6@214..12:17@225 Scalar { anchor: None, tag: None, value: "empty_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:18@226..12:18@226 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:18@226..12:18@226 MappingEnd
+12:18@226..12:18@226 MappingEnd
+13:2@229..13:9@236 Scalar { anchor: None, tag: None, value: "caller5", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@242..14:4@242 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:4@242..14:8@246 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:10@248..14:40@278 Scalar { anchor: None, tag: None, value: "./reusable/broken_secrets.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@279..15:0@279 MappingEnd
+15:0@279..15:0@279 MappingEnd
+15:0@279..15:0@279 MappingEnd
+15:0@279..15:0@279 DocumentEnd { implicit: true }
+15:0@279..15:0@279 StreamEnd

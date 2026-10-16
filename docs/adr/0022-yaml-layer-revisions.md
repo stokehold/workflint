@@ -36,7 +36,7 @@ Parity with go-yaml:
 
 Comments:
 
-- The scanner records a comment at each place where libyaml's scanner skips one, and the parser reports it as a comment event. The code is libyaml's, not a port of go-yaml's comment handling.
+- The scanner reads comments where go-yaml's scanner reads them, with the code of go-yaml's `scanComments` and `scanLineComment`, so the same input passes and block ends get go-yaml's positions. It records each comment, and the parser reports it as a comment event. The comment events are workflint's own, not go-yaml's head, line, and foot comments.
 - The tree attaches comments to nodes by its own rules (ADR 0009), not by go-yaml's head, line, and foot comments.
 
 Errors:

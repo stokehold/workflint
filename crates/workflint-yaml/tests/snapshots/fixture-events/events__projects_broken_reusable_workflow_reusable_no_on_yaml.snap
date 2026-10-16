@@ -1,0 +1,25 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/broken_reusable_workflow/reusable/no_on.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@8..1:2@8 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@8..1:6@12 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@18..2:4@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@18..2:11@25 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@27..2:26@40 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@45..3:9@50 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@58..4:6@58 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@60..4:8@60 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@60..4:11@63 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@65..4:21@73 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@74..5:0@74 MappingEnd
+5:0@74..5:0@74 SequenceEnd
+5:0@74..5:0@74 MappingEnd
+5:0@74..5:0@74 MappingEnd
+5:0@74..5:0@74 MappingEnd
+5:0@74..5:0@74 DocumentEnd { implicit: true }
+5:0@74..5:0@74 StreamEnd

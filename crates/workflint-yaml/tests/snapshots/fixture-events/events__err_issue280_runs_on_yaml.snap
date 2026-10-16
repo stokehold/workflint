@@ -1,0 +1,214 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/issue280_runs_on.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:10@10 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@11..1:2@13 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@15..1:8@19 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@21..3:4@25 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@29..4:2@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@29..4:7@34 Scalar { anchor: None, tag: None, value: "test1", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@40..5:18@54 Comment OwnLine "# ERROR: Empty"
+6:4@59..6:4@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@59..6:11@66 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:12@67..6:12@67 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@72..7:9@77 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@85..8:6@85 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@87..8:8@87 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@87..8:11@90 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@92..8:25@104 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@107..9:2@107 MappingEnd
+9:2@107..9:2@107 SequenceEnd
+9:2@107..9:2@107 MappingEnd
+9:2@107..9:7@112 Scalar { anchor: None, tag: None, value: "test2", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@118..10:25@139 Comment OwnLine "# ERROR: Empty labels"
+11:4@144..11:4@144 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:4@144..11:11@151 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@153..11:14@154 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+11:14@154..11:15@155 SequenceEnd
+12:4@160..12:9@165 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@173..13:6@173 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@175..13:8@175 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@175..13:11@178 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@180..13:25@192 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:2@195..14:2@195 MappingEnd
+14:2@195..14:2@195 SequenceEnd
+14:2@195..14:2@195 MappingEnd
+14:2@195..14:7@200 Scalar { anchor: None, tag: None, value: "test3", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@206..15:25@227 Comment OwnLine "# ERROR: Empty string"
+16:4@232..16:4@232 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:4@232..16:11@239 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@241..16:15@243 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+17:4@248..17:9@253 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@261..18:6@261 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@263..18:8@263 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@263..18:11@266 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@268..18:25@280 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:2@283..19:2@283 MappingEnd
+19:2@283..19:2@283 SequenceEnd
+19:2@283..19:2@283 MappingEnd
+19:2@283..19:7@288 Scalar { anchor: None, tag: None, value: "test4", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:4@294..20:34@324 Comment OwnLine "# ERROR: Empty string in array"
+21:4@329..21:4@329 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:4@329..21:11@336 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@338..21:14@339 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+21:14@339..21:19@344 Scalar { anchor: None, tag: None, value: "x64", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+21:21@346..21:23@348 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+21:23@348..21:24@349 SequenceEnd
+22:4@354..22:9@359 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:6@367..23:6@367 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@369..23:8@369 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@369..23:11@372 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@374..23:25@386 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:2@389..24:2@389 MappingEnd
+24:2@389..24:2@389 SequenceEnd
+24:2@389..24:2@389 MappingEnd
+24:2@389..24:7@394 Scalar { anchor: None, tag: None, value: "test5", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:4@400..25:4@400 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:4@400..25:11@407 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:6@415..26:31@440 Comment OwnLine "# ERROR: Unknown property"
+27:6@447..27:6@447 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:6@447..27:12@453 Scalar { anchor: None, tag: None, value: "groups", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:14@455..27:15@456 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+27:15@456..27:18@459 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:20@461..27:23@464 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:23@464..27:24@465 SequenceEnd
+27:24@465..27:24@465 MappingEnd
+28:4@470..28:9@475 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:6@483..29:6@483 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+29:8@485..29:8@485 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:8@485..29:11@488 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:13@490..29:25@502 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:2@505..30:2@505 MappingEnd
+30:2@505..30:2@505 SequenceEnd
+30:2@505..30:2@505 MappingEnd
+30:2@505..30:7@510 Scalar { anchor: None, tag: None, value: "test6", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:4@516..31:4@516 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+31:4@516..31:11@523 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:6@531..32:26@551 Comment OwnLine "# ERROR: Empty group"
+33:6@558..33:6@558 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+33:6@558..33:11@563 Scalar { anchor: None, tag: None, value: "group", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:12@564..33:12@564 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:12@564..33:12@564 MappingEnd
+34:4@569..34:9@574 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:6@582..35:6@582 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+35:8@584..35:8@584 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+35:8@584..35:11@587 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:13@589..35:25@601 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+36:2@604..36:2@604 MappingEnd
+36:2@604..36:2@604 SequenceEnd
+36:2@604..36:2@604 MappingEnd
+36:2@604..36:7@609 Scalar { anchor: None, tag: None, value: "test7", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:4@615..37:4@615 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+37:4@615..37:11@622 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:6@630..38:36@660 Comment OwnLine "# ERROR: Empty string in group"
+39:6@667..39:6@667 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+39:6@667..39:11@672 Scalar { anchor: None, tag: None, value: "group", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:13@674..39:15@676 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+39:15@676..39:15@676 MappingEnd
+40:4@681..40:9@686 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+41:6@694..41:6@694 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+41:8@696..41:8@696 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+41:8@696..41:11@699 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+41:13@701..41:25@713 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+42:2@716..42:2@716 MappingEnd
+42:2@716..42:2@716 SequenceEnd
+42:2@716..42:2@716 MappingEnd
+42:2@716..42:7@721 Scalar { anchor: None, tag: None, value: "test8", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:4@727..43:4@727 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+43:4@727..43:11@734 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:6@742..44:35@771 Comment OwnLine "# ERROR: Group must be string"
+45:6@778..45:6@778 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+45:6@778..45:11@783 Scalar { anchor: None, tag: None, value: "group", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:13@785..45:14@786 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+45:14@786..45:19@791 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:21@793..45:26@798 Scalar { anchor: None, tag: None, value: "world", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:26@798..45:27@799 SequenceEnd
+45:27@799..45:27@799 MappingEnd
+46:4@804..46:9@809 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:6@817..47:6@817 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+47:8@819..47:8@819 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+47:8@819..47:11@822 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:13@824..47:25@836 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+48:2@839..48:2@839 MappingEnd
+48:2@839..48:2@839 SequenceEnd
+48:2@839..48:2@839 MappingEnd
+48:2@839..48:7@844 Scalar { anchor: None, tag: None, value: "test9", plain_implicit: true, quoted_implicit: false, style: Plain }
+49:4@850..49:4@850 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+49:4@850..49:11@857 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+50:6@865..50:27@886 Comment OwnLine "# ERROR: Empty labels"
+51:6@893..51:6@893 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+51:6@893..51:12@899 Scalar { anchor: None, tag: None, value: "labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+51:14@901..51:15@902 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+51:15@902..51:16@903 SequenceEnd
+51:16@903..51:16@903 MappingEnd
+52:4@908..52:9@913 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:6@921..53:6@921 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+53:8@923..53:8@923 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+53:8@923..53:11@926 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:13@928..53:25@940 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+54:2@943..54:2@943 MappingEnd
+54:2@943..54:2@943 SequenceEnd
+54:2@943..54:2@943 MappingEnd
+54:2@943..54:8@949 Scalar { anchor: None, tag: None, value: "test10", plain_implicit: true, quoted_implicit: false, style: Plain }
+55:4@955..55:4@955 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+55:4@955..55:11@962 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+56:6@970..56:26@990 Comment OwnLine "# ERROR: Empty label"
+57:6@997..57:6@997 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+57:6@997..57:12@1003 Scalar { anchor: None, tag: None, value: "labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+57:14@1005..57:16@1007 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+57:16@1007..57:16@1007 MappingEnd
+58:4@1012..58:9@1017 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+59:6@1025..59:6@1025 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+59:8@1027..59:8@1027 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+59:8@1027..59:11@1030 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+59:13@1032..59:25@1044 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+60:2@1047..60:2@1047 MappingEnd
+60:2@1047..60:2@1047 SequenceEnd
+60:2@1047..60:2@1047 MappingEnd
+60:2@1047..60:8@1053 Scalar { anchor: None, tag: None, value: "test11", plain_implicit: true, quoted_implicit: false, style: Plain }
+61:4@1059..61:4@1059 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+61:4@1059..61:11@1066 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+62:6@1074..62:35@1103 Comment OwnLine "# ERROR: Empty label in array"
+63:6@1110..63:6@1110 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+63:6@1110..63:12@1116 Scalar { anchor: None, tag: None, value: "labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+63:14@1118..63:15@1119 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+63:15@1119..63:18@1122 Scalar { anchor: None, tag: None, value: "x64", plain_implicit: true, quoted_implicit: false, style: Plain }
+63:20@1124..63:22@1126 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+63:22@1126..63:23@1127 SequenceEnd
+63:23@1127..63:23@1127 MappingEnd
+64:4@1132..64:9@1137 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+65:6@1145..65:6@1145 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+65:8@1147..65:8@1147 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+65:8@1147..65:11@1150 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+65:13@1152..65:25@1164 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+66:2@1167..66:2@1167 MappingEnd
+66:2@1167..66:2@1167 SequenceEnd
+66:2@1167..66:2@1167 MappingEnd
+66:2@1167..66:8@1173 Scalar { anchor: None, tag: None, value: "test12", plain_implicit: true, quoted_implicit: false, style: Plain }
+67:4@1179..67:4@1179 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+67:4@1179..67:11@1186 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+68:6@1194..68:47@1235 Comment OwnLine "# ERROR: Labels must be string or mapping"
+69:6@1242..69:6@1242 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+69:6@1242..69:12@1248 Scalar { anchor: None, tag: None, value: "labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+70:8@1258..70:8@1258 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+70:8@1258..70:13@1263 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+70:15@1265..70:20@1270 Scalar { anchor: None, tag: None, value: "world", plain_implicit: true, quoted_implicit: false, style: Plain }
+71:4@1275..71:4@1275 MappingEnd
+71:4@1275..71:4@1275 MappingEnd
+71:4@1275..71:9@1280 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+72:6@1288..72:6@1288 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+72:8@1290..72:8@1290 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+72:8@1290..72:11@1293 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+72:13@1295..72:25@1307 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+73:0@1308..73:0@1308 MappingEnd
+73:0@1308..73:0@1308 SequenceEnd
+73:0@1308..73:0@1308 MappingEnd
+73:0@1308..73:0@1308 MappingEnd
+73:0@1308..73:0@1308 MappingEnd
+73:0@1308..73:0@1308 DocumentEnd { implicit: true }
+73:0@1308..73:0@1308 StreamEnd

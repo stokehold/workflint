@@ -1,0 +1,58 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/variables.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:19@23 Scalar { anchor: None, tag: None, value: "workflow_dispatch", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:20@24..1:20@24 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:20@24..1:20@24 MappingEnd
+2:0@25..2:3@28 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@32..3:78@108 Comment OwnLine "# Setting an environment variable with the value of a configuration variable"
+4:2@111..4:2@111 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@111..4:9@118 Scalar { anchor: None, tag: None, value: "env_var", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:11@120..4:38@147 Scalar { anchor: None, tag: None, value: "${{ vars.ENV_CONTEXT_VAR }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@149..6:0@149 MappingEnd
+6:0@149..6:4@153 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@157..7:2@157 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@157..7:19@174 Scalar { anchor: None, tag: None, value: "display-variables", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@180..8:4@180 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@180..8:8@184 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@186..8:30@206 Scalar { anchor: None, tag: None, value: "${{ vars.JOB_NAME }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@211..9:82@289 Comment OwnLine "# You can use configuration variables with the `vars` context for dynamic jobs"
+10:4@294..10:6@296 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@298..10:43@333 Scalar { anchor: None, tag: None, value: "${{ vars.USE_VARIABLES == 'true' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@338..11:11@345 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@347..11:31@365 Scalar { anchor: None, tag: None, value: "${{ vars.RUNNER }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@370..12:15@381 Scalar { anchor: None, tag: None, value: "environment", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:17@383..12:46@412 Scalar { anchor: None, tag: None, value: "${{ vars.ENVIRONMENT_STAGE }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@417..13:9@422 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@430..14:6@430 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@432..14:8@432 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@432..14:12@436 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:14@438..14:27@451 Scalar { anchor: None, tag: None, value: "Use variables", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:8@460..15:11@463 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@465..21:0@728 Scalar { anchor: None, tag: None, value: "echo \"repository variable : ${{ vars.REPOSITORY_VAR }}\"\necho \"organization variable : ${{ vars.ORGANIZATION_VAR }}\"\necho \"overridden variable : ${{ vars.OVERRIDE_VAR }}\"\necho \"variable from shell environment : $env_var\"\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+21:6@734..21:6@734 MappingEnd
+21:8@736..21:8@736 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@736..21:12@740 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:14@742..21:42@770 Scalar { anchor: None, tag: None, value: "${{ vars.HELLO_WORLD_STEP }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:8@779..22:10@781 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:12@783..22:53@824 Scalar { anchor: None, tag: None, value: "${{ vars.HELLO_WORLD_ENABLED == 'true' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:8@833..23:12@837 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:14@839..23:56@881 Scalar { anchor: None, tag: None, value: "actions/hello-world-javascript-action@main", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:8@890..24:12@894 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:10@906..25:10@906 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:10@906..25:22@918 Scalar { anchor: None, tag: None, value: "who-to-greet", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:24@920..25:46@942 Scalar { anchor: None, tag: None, value: "${{ vars.GREET_NAME }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:0@943..26:0@943 MappingEnd
+26:0@943..26:0@943 MappingEnd
+26:0@943..26:0@943 SequenceEnd
+26:0@943..26:0@943 MappingEnd
+26:0@943..26:0@943 MappingEnd
+26:0@943..26:0@943 MappingEnd
+26:0@943..26:0@943 DocumentEnd { implicit: true }
+26:0@943..26:0@943 StreamEnd

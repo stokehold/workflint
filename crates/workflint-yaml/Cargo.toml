@@ -30,6 +30,10 @@ harness = false
 name = "fuzz_regressions"
 harness = false
 
+[[test]]
+name = "fixture_events"
+harness = false
+
 [[bench]]
 name = "parse"
 harness = false

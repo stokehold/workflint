@@ -1,0 +1,21 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/user_defined_runner_label/actionlint.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:18@18 Scalar { anchor: None, tag: None, value: "self-hosted-runner", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@22..1:2@22 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@22..1:8@28 Scalar { anchor: None, tag: None, value: "labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:10@30..1:11@31 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+1:11@31..1:19@39 Scalar { anchor: None, tag: None, value: "label1", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:21@41..1:29@49 Scalar { anchor: None, tag: None, value: "label2", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:31@51..1:45@65 Scalar { anchor: None, tag: None, value: "glob-*-label", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:45@65..1:46@66 SequenceEnd
+1:46@66..1:46@66 MappingEnd
+2:0@67..2:16@83 Scalar { anchor: None, tag: None, value: "config-variables", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:18@85..2:22@89 Scalar { anchor: None, tag: None, value: "null", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@90..3:0@90 MappingEnd
+3:0@90..3:0@90 DocumentEnd { implicit: true }
+3:0@90..3:0@90 StreamEnd

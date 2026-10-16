@@ -29,7 +29,7 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 10:2@84..10:2@84 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
 10:4@86..12:0@94 Scalar { anchor: None, tag: None, value: "a\n", plain_implicit: false, quoted_implicit: true, style: Folded }
 12:3@97..12:3@97 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
-13:0@98..13:0@98 MappingEnd
+12:3@97..12:3@97 MappingEnd
 13:0@98..13:8@106 Scalar { anchor: None, tag: None, value: "complex5", plain_implicit: true, quoted_implicit: false, style: Plain }
 14:2@110..14:2@110 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
 14:4@112..14:4@112 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }

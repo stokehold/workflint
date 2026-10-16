@@ -1,0 +1,36 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/issue558_read_write_none_are_not_always_valid_permissions.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:10@26 Scalar { anchor: None, tag: None, value: "test_job", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@32..4:4@32 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@32..4:11@39 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@41..4:26@54 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@59..5:15@70 Scalar { anchor: None, tag: None, value: "permissions", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@78..6:6@78 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@78..6:14@86 Scalar { anchor: None, tag: None, value: "contents", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:16@88..6:20@92 Scalar { anchor: None, tag: None, value: "read", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@99..7:14@107 Scalar { anchor: None, tag: None, value: "id-token", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:16@109..7:20@113 Scalar { anchor: None, tag: None, value: "read", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@120..8:12@126 Scalar { anchor: None, tag: None, value: "models", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@128..8:19@133 Scalar { anchor: None, tag: None, value: "write", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@138..9:4@138 MappingEnd
+9:4@138..9:9@143 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@151..10:6@151 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@153..10:8@153 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@153..10:12@157 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@159..10:33@178 Scalar { anchor: None, tag: None, value: "actions/checkout@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:0@179..11:0@179 MappingEnd
+11:0@179..11:0@179 SequenceEnd
+11:0@179..11:0@179 MappingEnd
+11:0@179..11:0@179 MappingEnd
+11:0@179..11:0@179 MappingEnd
+11:0@179..11:0@179 DocumentEnd { implicit: true }
+11:0@179..11:0@179 StreamEnd

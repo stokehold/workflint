@@ -1,0 +1,96 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/workflow_dispatch_input_types.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:19@23 Scalar { anchor: None, tag: None, value: "workflow_dispatch", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@29..2:4@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@29..2:10@35 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@43..3:26@63 Comment OwnLine "# Unknown input type"
+4:6@70..4:6@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@70..4:8@72 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@82..5:8@82 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@82..5:12@86 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:14@88..5:18@92 Scalar { anchor: None, tag: None, value: "text", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@99..6:6@99 MappingEnd
+6:6@99..6:49@142 Comment OwnLine "# ERROR: No options for 'choice' input type"
+7:6@149..7:10@153 Scalar { anchor: None, tag: None, value: "kind", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@163..8:8@163 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@163..8:12@167 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@169..8:20@175 Scalar { anchor: None, tag: None, value: "choice", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@182..9:6@182 MappingEnd
+9:6@182..9:10@186 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@196..10:8@196 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@196..10:12@200 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@202..10:20@208 Scalar { anchor: None, tag: None, value: "choice", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@217..11:15@224 Scalar { anchor: None, tag: None, value: "options", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@236..12:10@236 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+12:12@238..12:16@242 Scalar { anchor: None, tag: None, value: "Tama", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:12@255..13:16@259 Scalar { anchor: None, tag: None, value: "Mike", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@268..14:8@268 SequenceEnd
+14:8@268..14:48@308 Comment OwnLine "# ERROR: Default value is not in options"
+15:8@317..15:15@324 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:17@326..15:22@331 Scalar { anchor: None, tag: None, value: "Chobi", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@338..16:6@338 MappingEnd
+16:6@338..16:13@345 Scalar { anchor: None, tag: None, value: "message", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@355..17:8@355 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@355..17:12@359 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:14@361..17:20@367 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@374..18:6@374 MappingEnd
+18:6@374..18:13@381 Scalar { anchor: None, tag: None, value: "verbose", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@391..19:8@391 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@391..19:12@395 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:14@397..19:21@404 Scalar { anchor: None, tag: None, value: "boolean", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:8@413..20:56@461 Comment OwnLine "# ERROR: Boolean value must be 'true' or 'false'"
+21:8@470..21:15@477 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:17@479..21:20@482 Scalar { anchor: None, tag: None, value: "yes", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@489..22:6@489 MappingEnd
+22:6@489..22:9@492 Scalar { anchor: None, tag: None, value: "age", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:8@502..23:8@502 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@502..23:12@506 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:14@508..23:20@514 Scalar { anchor: None, tag: None, value: "number", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:8@523..24:62@577 Comment OwnLine "# ERROR: Number value must be parsed as a float number"
+25:8@586..25:15@593 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:17@595..25:21@599 Scalar { anchor: None, tag: None, value: "teen", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:0@601..27:0@601 MappingEnd
+27:0@601..27:0@601 MappingEnd
+27:0@601..27:0@601 MappingEnd
+27:0@601..27:0@601 MappingEnd
+27:0@601..27:4@605 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:2@609..28:2@609 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+28:2@609..28:6@613 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:4@619..29:4@619 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:4@619..29:11@626 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:13@628..29:26@641 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:4@646..30:9@651 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:6@659..31:30@683 Comment OwnLine "# ERROR: Undefined input"
+32:6@690..32:6@690 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@692..32:8@692 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@692..32:11@695 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:13@697..32:41@725 Scalar { anchor: None, tag: None, value: "echo \"${{ inputs.massage }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:6@732..33:6@732 MappingEnd
+33:6@732..33:57@783 Comment OwnLine "# ERROR: Bool value is not available for object key"
+34:8@792..34:8@792 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:8@792..34:11@795 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:13@797..34:46@830 Scalar { anchor: None, tag: None, value: "echo \"${{ env[inputs.verbose] }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:6@837..35:6@837 MappingEnd
+35:6@837..35:59@890 Comment OwnLine "# ERROR: Number value is not available for object key"
+36:8@899..36:8@899 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+36:8@899..36:11@902 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+36:13@904..36:42@933 Scalar { anchor: None, tag: None, value: "echo \"${{ env[inputs.age] }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:6@940..37:6@940 MappingEnd
+37:6@940..37:56@990 Comment OwnLine "# ERROR: `github.event.inputs` is also not defined"
+38:8@999..38:8@999 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+38:8@999..38:11@1002 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:13@1004..38:54@1045 Scalar { anchor: None, tag: None, value: "echo \"${{ github.event.inputs.massage }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:0@1046..39:0@1046 MappingEnd
+39:0@1046..39:0@1046 SequenceEnd
+39:0@1046..39:0@1046 MappingEnd
+39:0@1046..39:0@1046 MappingEnd
+39:0@1046..39:0@1046 MappingEnd
+39:0@1046..39:0@1046 DocumentEnd { implicit: true }
+39:0@1046..39:0@1046 StreamEnd

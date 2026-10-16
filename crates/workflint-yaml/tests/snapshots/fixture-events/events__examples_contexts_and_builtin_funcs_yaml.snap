@@ -1,0 +1,57 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/contexts_and_builtin_funcs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:11@34 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@36..3:26@49 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@54..4:9@59 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@67..5:32@93 Comment OwnLine "# Access undefined context"
+6:6@100..6:6@100 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@102..6:8@102 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@102..6:11@105 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@107..6:42@136 Scalar { anchor: None, tag: None, value: "echo '${{ unknown_context }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@143..7:6@143 MappingEnd
+7:6@143..7:44@181 Comment OwnLine "# Access undefined property of context"
+8:8@190..8:8@190 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@190..8:11@193 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@195..8:40@222 Scalar { anchor: None, tag: None, value: "echo '${{ github.events }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@229..9:6@229 MappingEnd
+9:6@229..9:60@283 Comment OwnLine "# Calling undefined function (start's'With is correct)"
+10:8@292..10:8@292 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@292..10:11@295 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@297..10:59@343 Scalar { anchor: None, tag: None, value: "echo \"${{ startWith('hello, world', 'lo,') }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@350..11:6@350 MappingEnd
+11:6@350..11:33@377 Comment OwnLine "# Wrong number of arguments"
+12:8@386..12:8@386 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@386..12:11@389 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@391..12:53@431 Scalar { anchor: None, tag: None, value: "echo \"${{ startsWith('hello, world') }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@438..13:6@438 MappingEnd
+13:6@438..13:31@463 Comment OwnLine "# Wrong type of parameter"
+14:8@472..14:8@472 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@472..14:11@475 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@477..14:67@531 Scalar { anchor: None, tag: None, value: "echo \"${{ startsWith('hello, world', github.event) }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@538..15:6@538 MappingEnd
+15:6@538..15:99@631 Comment OwnLine "# Function overloads can be handled properly. contains() has string version and array version"
+16:8@640..16:8@640 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@640..16:11@643 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@645..16:58@690 Scalar { anchor: None, tag: None, value: "echo \"${{ contains('hello, world', 'lo,') }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@697..17:6@697 MappingEnd
+17:8@699..17:8@699 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@699..17:11@702 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@704..17:78@769 Scalar { anchor: None, tag: None, value: "echo \"${{ contains(github.event.labels.*.name, 'enhancement') }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:0@770..18:0@770 MappingEnd
+18:0@770..18:0@770 SequenceEnd
+18:0@770..18:0@770 MappingEnd
+18:0@770..18:0@770 MappingEnd
+18:0@770..18:0@770 MappingEnd
+18:0@770..18:0@770 DocumentEnd { implicit: true }
+18:0@770..18:0@770 StreamEnd

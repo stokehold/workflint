@@ -1,0 +1,44 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/shellcheck_job_default_shell.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:8@17 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@21..2:2@21 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@21..2:5@24 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@30..3:4@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@30..3:9@35 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:11@37..3:15@41 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@42..4:0@42 MappingEnd
+4:0@42..4:0@42 MappingEnd
+4:0@42..4:4@46 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@50..5:2@50 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@50..5:6@54 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@60..6:4@60 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@60..6:12@68 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@76..7:6@76 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:6@76..7:9@79 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@89..8:8@89 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@89..8:13@94 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:15@96..8:19@100 Scalar { anchor: None, tag: None, value: "pwsh", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@105..9:4@105 MappingEnd
+9:4@105..9:4@105 MappingEnd
+9:4@105..9:11@112 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@114..9:26@127 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@132..10:9@137 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@145..11:55@194 Comment OwnLine "# This script should not be checked by shellcheck"
+12:6@201..12:6@201 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@203..12:8@203 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@203..12:11@206 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@208..12:29@224 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@225..13:0@225 MappingEnd
+13:0@225..13:0@225 SequenceEnd
+13:0@225..13:0@225 MappingEnd
+13:0@225..13:0@225 MappingEnd
+13:0@225..13:0@225 MappingEnd
+13:0@225..13:0@225 DocumentEnd { implicit: true }
+13:0@225..13:0@225 StreamEnd

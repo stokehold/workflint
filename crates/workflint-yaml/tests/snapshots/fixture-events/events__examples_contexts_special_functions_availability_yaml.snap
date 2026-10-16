@@ -1,0 +1,61 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/contexts_special_functions_availability.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:3@13 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@17..3:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@17..3:6@21 Scalar { anchor: None, tag: None, value: "NAME", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:8@23..3:13@28 Scalar { anchor: None, tag: None, value: "rhysd", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@30..5:0@30 MappingEnd
+5:0@30..5:4@34 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@38..6:2@38 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@38..6:6@42 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@48..7:4@48 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:4@48..7:12@56 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@64..8:6@64 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:6@64..8:12@70 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@80..9:8@80 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@80..9:17@89 Scalar { anchor: None, tag: None, value: "directory", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@101..10:50@141 Comment OwnLine "# OK: 'github' context is available here"
+11:10@152..11:10@152 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:12@154..11:34@176 Scalar { anchor: None, tag: None, value: "${{ github.workflow }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@187..12:57@234 Comment OwnLine "# ERROR: 'runner' context is not available here"
+13:12@247..13:30@265 Scalar { anchor: None, tag: None, value: "${{ runner.temp }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@270..14:4@270 SequenceEnd
+14:4@270..14:4@270 MappingEnd
+14:4@270..14:4@270 MappingEnd
+14:4@270..14:11@277 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@279..14:26@292 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@297..15:7@300 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@308..16:50@352 Comment OwnLine "# ERROR: 'env' context is not available here"
+17:6@359..17:6@359 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:6@359..17:10@363 Scalar { anchor: None, tag: None, value: "NAME", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:12@365..17:27@380 Scalar { anchor: None, tag: None, value: "${{ env.NAME }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@385..18:4@385 MappingEnd
+18:4@385..18:9@390 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@398..19:6@398 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@400..19:8@400 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@400..19:11@403 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:10@415..20:47@452 Comment OwnLine "# OK: 'env' context is available here"
+21:10@463..21:10@463 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:10@463..21:14@467 Scalar { anchor: None, tag: None, value: "NAME", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:16@469..21:31@484 Scalar { anchor: None, tag: None, value: "${{ env.NAME }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:8@493..22:8@493 MappingEnd
+22:8@493..22:59@544 Comment OwnLine "# ERROR: 'success()' function is not available here"
+23:8@553..23:11@556 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@558..23:45@590 Scalar { anchor: None, tag: None, value: "echo 'Success? ${{ success() }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:8@599..24:52@643 Comment OwnLine "# OK: 'success()' function is available here"
+25:8@652..25:10@654 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:12@656..25:21@665 Scalar { anchor: None, tag: None, value: "success()", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:0@666..26:0@666 MappingEnd
+26:0@666..26:0@666 SequenceEnd
+26:0@666..26:0@666 MappingEnd
+26:0@666..26:0@666 MappingEnd
+26:0@666..26:0@666 MappingEnd
+26:0@666..26:0@666 DocumentEnd { implicit: true }
+26:0@666..26:0@666 StreamEnd

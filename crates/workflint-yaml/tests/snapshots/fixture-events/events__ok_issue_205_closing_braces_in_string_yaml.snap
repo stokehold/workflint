@@ -1,0 +1,32 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-205-closing-braces-in-string.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:12@63 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@71..6:6@71 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@71..6:12@77 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@79..6:43@108 Scalar { anchor: None, tag: None, value: "${{ fromJSON('{\"foo\":{}}') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@114..8:4@114 MappingEnd
+8:4@114..8:9@119 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@127..9:6@127 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@129..9:8@129 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@129..9:11@132 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@134..9:25@146 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:0@147..10:0@147 MappingEnd
+10:0@147..10:0@147 SequenceEnd
+10:0@147..10:0@147 MappingEnd
+10:0@147..10:0@147 MappingEnd
+10:0@147..10:0@147 MappingEnd
+10:0@147..10:0@147 DocumentEnd { implicit: true }
+10:0@147..10:0@147 StreamEnd

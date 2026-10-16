@@ -1,0 +1,49 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/reusable_workflow_outputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:11@32 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@40..3:6@40 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@40..3:19@53 Scalar { anchor: None, tag: None, value: "image-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@63..4:8@63 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@63..4:19@74 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:21@76..4:43@98 Scalar { anchor: None, tag: None, value: "Docker image version", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+5:8@107..5:64@163 Comment OwnLine "# ERROR: 'imagetag' does not exist (typo of 'image_tag')"
+6:8@172..6:13@177 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:15@179..6:61@225 Scalar { anchor: None, tag: None, value: "${{ jobs.gen-image-version.outputs.imagetag }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@226..7:0@226 MappingEnd
+7:0@226..7:0@226 MappingEnd
+7:0@226..7:0@226 MappingEnd
+7:0@226..7:0@226 MappingEnd
+7:0@226..7:4@230 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@234..8:2@234 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@234..8:19@251 Scalar { anchor: None, tag: None, value: "gen-image-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@257..9:4@257 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@257..9:11@264 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@266..9:26@279 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@284..10:11@291 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@299..11:6@299 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:6@299..11:15@308 Scalar { anchor: None, tag: None, value: "image_tag", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:17@310..11:51@344 Scalar { anchor: None, tag: None, value: "${{ steps.get_tag.outputs.tag }}", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+11:51@344..11:51@344 MappingEnd
+12:4@349..12:9@354 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@362..13:6@362 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@364..13:8@364 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@364..13:11@367 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@369..13:34@390 Scalar { anchor: None, tag: None, value: "./output_image_tag.sh", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@399..14:10@401 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:12@403..14:19@410 Scalar { anchor: None, tag: None, value: "get_tag", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@411..15:0@411 MappingEnd
+15:0@411..15:0@411 SequenceEnd
+15:0@411..15:0@411 MappingEnd
+15:0@411..15:0@411 MappingEnd
+15:0@411..15:0@411 MappingEnd
+15:0@411..15:0@411 DocumentEnd { implicit: true }
+15:0@411..15:0@411 StreamEnd

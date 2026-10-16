@@ -10,7 +10,7 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 3:2@47..3:2@47 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
 3:4@49..3:7@52 Scalar { anchor: None, tag: None, value: "one", plain_implicit: true, quoted_implicit: false, style: Plain }
 4:4@76..4:7@79 Scalar { anchor: None, tag: None, value: "two", plain_implicit: true, quoted_implicit: false, style: Plain }
-5:0@94..5:0@94 SequenceEnd
+4:21@93..4:21@93 SequenceEnd
 5:0@94..5:0@94 MappingEnd
 5:0@94..5:0@94 DocumentEnd { implicit: true }
 5:0@94..5:0@94 StreamEnd
