@@ -86,8 +86,7 @@ static ACTION_STEP_KEYS: [KeySpec<ActionBody<'static>>; 8] = [
     common("timeout-minutes"),
     KeySpec {
         name: "uses",
-        // TODO(#72): parse the typed `uses` value.
-        parse: |p, b, e| b.action.uses = p.parse_string(e.key.string, e.value, false),
+        parse: |p, b, e| b.action.uses = p.parse_step_uses(e),
     },
     KeySpec {
         name: "with",

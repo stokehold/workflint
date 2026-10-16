@@ -2,7 +2,7 @@
 
 use workflint_diagnostics::Span;
 
-use crate::{Env, Field, Keyed, Str, Value};
+use crate::{Env, Field, Keyed, StepUses, Str, Value};
 
 /// One step of `steps`.
 #[derive(Debug, Clone, PartialEq)]
@@ -48,9 +48,10 @@ pub struct ExecRun<'a> {
 /// A step that runs an action.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ExecAction<'a> {
-    /// `uses`.
-    // TODO(#72): replace with the typed `uses` value.
-    pub uses: Field<'a, Str<'a>>,
+    /// `uses`. An empty value or one that is not a scalar is invalid. The
+    /// reference reads both as an empty string and classifies it as an
+    /// action whose ref is missing.
+    pub uses: Field<'a, StepUses<'a>>,
     /// `with`, keyed by input name. An input's value is `None` when it is
     /// not a scalar, which the parser reports. The reference's `Input.Name`
     /// is the entry's key.

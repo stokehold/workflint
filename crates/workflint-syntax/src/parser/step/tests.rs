@@ -3,7 +3,10 @@
 use workflint_diagnostics::{FileId, SourceFile, Span};
 
 use crate::testing::render;
-use crate::{Exec, ExecAction, ExecRun, Field, Keyed, Step, Str, parse};
+use crate::{
+    Exec, ExecAction, ExecRun, Field, InvalidAction, Keyed, Step, StepUses, StepUsesKind, Str,
+    parse,
+};
 
 /// The workflow that each test's steps are appended to. The first step is
 /// on line 6, and its first key is at column 9.
@@ -56,6 +59,10 @@ fn pos(file: &SourceFile, span: Span) -> String {
 
 fn string(field: &Field<'_, Str<'_>>) -> Option<String> {
     field.value().map(|s| s.value().to_owned())
+}
+
+fn uses(field: &Field<'_, StepUses<'_>>) -> Option<String> {
+    field.value().map(|uses| uses.value().to_owned())
 }
 
 fn keyed_strings(keyed: &Keyed<'_, Option<Str<'_>>>) -> Vec<String> {
@@ -112,10 +119,7 @@ fn an_action_step_has_uses_and_with_with_case_insensitive_keys() {
 ";
     parsed_steps(steps, |_, steps| {
         let checkout = action(&steps[0]);
-        assert_eq!(
-            string(&checkout.uses).as_deref(),
-            Some("actions/checkout@v6")
-        );
+        assert_eq!(uses(&checkout.uses).as_deref(), Some("actions/checkout@v6"));
         let inputs = checkout.inputs.value().unwrap();
         // `entrypoint` and `args` are inputs of an action that is not a
         // Docker image.
@@ -149,6 +153,54 @@ fn a_docker_action_step_moves_entrypoint_and_args_out_of_with() {
         assert_eq!(bare.inputs, Field::Absent);
         assert_eq!(bare.entrypoint, Field::Absent);
     });
+}
+
+#[test]
+fn an_action_step_classifies_its_uses_value() {
+    let steps = "      - uses: 'docker://ubuntu:latest'
+      - uses: actions/checkout
+      - uses: ./.github/actions/build
+";
+    parsed_steps(steps, |file, steps| {
+        let Some(StepUsesKind::Docker { image, tag }) =
+            action(&steps[0]).uses.value().map(|uses| uses.kind)
+        else {
+            panic!("not a Docker action");
+        };
+        assert_eq!(image.value, "ubuntu");
+        assert_eq!(pos(file, image.span), "6:25");
+        assert_eq!(tag.map(|tag| pos(file, tag.span)).as_deref(), Some("6:32"));
+        assert_eq!(
+            action(&steps[1]).uses.value().map(|uses| uses.kind),
+            Some(StepUsesKind::Invalid(InvalidAction::MissingRef))
+        );
+        assert!(matches!(
+            action(&steps[2]).uses.value().map(|uses| uses.kind),
+            Some(StepUsesKind::Local { path }) if path.value == "./.github/actions/build"
+        ));
+    });
+}
+
+#[test]
+fn an_empty_step_uses_value_is_invalid() {
+    let text = format!("{PREFIX}      - uses: ''\n");
+    let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+    let document = workflint_yaml::parse(&file).document.unwrap();
+    let parsed = parse(&file, &document);
+    assert_eq!(
+        render(&file, parsed.diagnostics),
+        ["6:15: string should not be empty [empty-string]"]
+    );
+    let job = &parsed
+        .workflow
+        .jobs
+        .value()
+        .unwrap()
+        .get("test")
+        .unwrap()
+        .value;
+    let steps = job.steps.value().unwrap();
+    assert!(matches!(action(&steps[0]).uses, Field::Invalid { .. }));
 }
 
 #[test]
@@ -298,7 +350,7 @@ fn steps_keep_source_order_and_steps_without_run_or_uses() {
     assert_eq!(string(&run(&steps[0]).run).as_deref(), Some("a"));
     assert_eq!(steps[1].exec, None);
     assert_eq!(pos(&file, steps[1].span), "7:9");
-    assert_eq!(string(&action(&steps[2]).uses).as_deref(), Some("b/c@v1"));
+    assert_eq!(uses(&action(&steps[2]).uses).as_deref(), Some("b/c@v1"));
 }
 
 #[test]

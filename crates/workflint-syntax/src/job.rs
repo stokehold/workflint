@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use crate::{Concurrency, Defaults, Env, Field, Keyed, Matrix, Permissions, Step, Str, Value};
+use crate::{
+    Concurrency, Defaults, Env, Field, JobUses, Keyed, Matrix, Permissions, Step, Str, Value,
+};
 
 /// One job of `jobs`.
 ///
@@ -143,9 +145,9 @@ pub type Services<'a> = Keyed<'a, Container<'a>>;
 /// The call of a reusable workflow in a job.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct WorkflowCall<'a> {
-    /// `uses`.
-    // TODO(#72): replace with the typed `uses` value.
-    pub uses: Field<'a, Str<'a>>,
+    /// `uses`. An empty value or one that is not a scalar is invalid, and
+    /// the reference does not classify it either.
+    pub uses: Field<'a, JobUses<'a>>,
     /// `with`, keyed by input name. An input's value is `None` when it is
     /// not a scalar, which the parser reports. The reference's
     /// `WorkflowCallInput.Name` is the entry's key.

@@ -152,9 +152,8 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     },
     KeySpec {
         name: "uses",
-        // TODO(#72): parse the typed `uses` value.
         parse: |p, b, e| {
-            b.call.uses = p.parse_string(e.key.string, e.value, false);
+            b.call.uses = p.parse_job_uses(e);
             b.call_only.push(e.key);
         },
     },

@@ -22,6 +22,7 @@ mod mapping;
 mod shared;
 mod step;
 mod strategy;
+mod uses;
 mod workflow;
 
 use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
