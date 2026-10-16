@@ -441,6 +441,8 @@ mod tests {
         assert!(project.expected.unwrap().ends_with("projects/issue173.out"));
     }
 
+    // Windows may report a file in place of a directory as not found.
+    #[cfg(unix)]
     #[test]
     fn discovery_fails_on_a_suite_directory_it_cannot_read() {
         let root = tempfile::tempdir().unwrap();

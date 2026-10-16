@@ -20,7 +20,7 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result, bail};
 use xtask::conformance::allow_list::AllowList;
 use xtask::conformance::binary;
-use xtask::conformance::fixture::{self, Origin, Tools};
+use xtask::conformance::fixture::{self, Fixture, Origin, Tools};
 
 use crate::bench;
 use crate::reference::{self, CORPUS_FILES, Layout, corpus};
@@ -82,11 +82,7 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
         },
         &paths,
     )?;
-    let (skipped, fixtures): (Vec<_>, Vec<_>) = selection
-        .fixtures
-        .into_iter()
-        .partition(|fixture| VARYING.contains(&fixture.id.as_str()));
-    let skipped: Vec<String> = skipped.into_iter().map(|fixture| fixture.id).collect();
+    let (fixtures, skipped) = without_varying(selection.fixtures);
 
     reference::report_checkout(layout)?;
     reference::report_binary(layout)?;
@@ -165,6 +161,18 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
         );
     }
     Ok(())
+}
+
+/// The fixtures that are not in [`VARYING`], and the IDs of those that are.
+/// Every run skips the varying fixtures, with or without `--self-check`.
+fn without_varying(fixtures: Vec<Fixture>) -> (Vec<Fixture>, Vec<String>) {
+    let (varying, kept): (Vec<_>, Vec<_>) = fixtures
+        .into_iter()
+        .partition(|fixture| VARYING.contains(&fixture.id.as_str()));
+    (
+        kept,
+        varying.into_iter().map(|fixture| fixture.id).collect(),
+    )
 }
 
 fn read_allow_list(layout: &Layout) -> Result<AllowList> {
@@ -393,6 +401,15 @@ mod tests {
         assert!(description(true, 1, 0).ends_with("on 1 fixture."));
         assert!(description(true, 0, 1).contains("against itself"));
         assert!(description(false, 0, 0).ends_with("on no input."));
+    }
+
+    #[test]
+    fn the_varying_fixtures_are_skipped_and_named() {
+        let all = fixture::discover(Origin::Actionlint).unwrap();
+        let (kept, skipped) = without_varying(all.clone());
+        assert_eq!(skipped, VARYING);
+        assert_eq!(kept.len(), all.len() - VARYING.len());
+        assert!(!kept.iter().any(|f| VARYING.contains(&f.id.as_str())));
     }
 
     #[test]
