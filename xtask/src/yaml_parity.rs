@@ -15,7 +15,7 @@ mod goyaml;
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 
@@ -99,7 +99,7 @@ fn default_inputs(layout: &Layout) -> Result<(Vec<PathBuf>, PathBuf)> {
         fs::create_dir_all(parent)
             .with_context(|| format!("cannot create {}", parent.display()))?;
     }
-    let (_, count) = corpus::ensure(&archive, &corpus)?;
+    let count = unpack_corpus(&archive, &corpus)?;
     if count != CORPUS_FILES {
         bail!(
             "{} holds {count} files, but {CORPUS_FILES} were expected",
@@ -119,6 +119,23 @@ fn default_inputs(layout: &Layout) -> Result<(Vec<PathBuf>, PathBuf)> {
         );
     }
     Ok((inputs, corpus))
+}
+
+/// Unpacks `archive` into `target` and returns the number of files.
+///
+/// `target` holds only a copy of the archive, so a copy that does not match
+/// the archive is removed and unpacked again. A CI build cache can restore
+/// the directory without its files.
+fn unpack_corpus(archive: &Path, target: &Path) -> Result<usize> {
+    if let Ok((_, count)) = corpus::ensure(archive, target) {
+        return Ok(count);
+    }
+    if target.exists() {
+        fs::remove_dir_all(target)
+            .with_context(|| format!("cannot remove {}", target.display()))?;
+    }
+    let (_, count) = corpus::ensure(archive, target)?;
+    Ok(count)
 }
 
 /// The corpus files on which libyaml-safer 0.3.0 panicked in
@@ -152,8 +169,42 @@ fn check_panicked_in_research(corpus: &BTreeMap<String, compare::Verdict>) -> Re
 
 #[cfg(test)]
 mod tests {
+    use std::io::Write as _;
+
     use super::*;
     use compare::Verdict;
+
+    fn write_archive(path: &Path, files: &[(&str, &str)]) {
+        let mut writer = zip::ZipWriter::new(fs::File::create(path).unwrap());
+        for (name, contents) in files {
+            writer
+                .start_file(*name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(contents.as_bytes()).unwrap();
+        }
+        writer.finish().unwrap();
+    }
+
+    #[test]
+    fn a_stale_corpus_in_target_is_unpacked_again() {
+        let dir = tempfile::tempdir().unwrap();
+        let archive = dir.path().join("dataset.zip");
+        write_archive(
+            &archive,
+            &[("a.yml", "on: push\n"), ("b.yml", "on: pull_request\n")],
+        );
+        let target = dir.path().join("realworld");
+        // A build cache can restore the directory without its files.
+        fs::create_dir(&target).unwrap();
+        fs::write(target.join("stale.yml"), "x").unwrap();
+
+        assert_eq!(unpack_corpus(&archive, &target).unwrap(), 2);
+        assert_eq!(
+            fs::read_to_string(target.join("b.yml")).unwrap(),
+            "on: pull_request\n"
+        );
+        assert!(!target.join("stale.yml").exists());
+    }
 
     fn all_identical() -> BTreeMap<String, Verdict> {
         PANICKED_IN_RESEARCH
