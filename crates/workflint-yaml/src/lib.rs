@@ -5,7 +5,8 @@
 //! into a [`Document`]: an arena of nodes with byte spans, tags, styles,
 //! anchors, decoded scalar values, resolved aliases, and attached comments.
 //! YAML syntax errors, unknown anchors, recursive aliases, and unused anchors
-//! become diagnostics of the rules in [`rules`].
+//! become diagnostics of the rules in [`rules`]. [`Node::source_map`] maps
+//! offsets in a decoded scalar value back to the source.
 //!
 //! ```
 //! use workflint_diagnostics::{FileId, SourceFile};
@@ -33,6 +34,7 @@ mod dump;
 mod libyaml;
 mod resolve;
 pub mod rules;
+mod source_map;
 
 pub use build::{Parsed, parse};
 pub use document::{
@@ -40,6 +42,7 @@ pub use document::{
     KeyComparison, Mapping, Node, NodeId, NodeKind, Scalar, ScalarStyle, Sequence, Tag,
 };
 pub use libyaml::CommentKind;
+pub use source_map::SourceMap;
 
 /// The event parser of the vendored libyaml-safer fork, which also reports
 /// comments as [`EventData::Comment`](event::EventData::Comment) events.

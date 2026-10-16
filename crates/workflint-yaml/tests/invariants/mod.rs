@@ -11,7 +11,7 @@ use std::borrow::Cow;
 
 use workflint_diagnostics::{FileId, SourceFile, Span, sort_and_dedup};
 use workflint_yaml::event::{EventParser, Mark};
-use workflint_yaml::{NodeId, NodeKind, parse};
+use workflint_yaml::{Node, NodeId, NodeKind, parse};
 
 /// Turns fuzzer bytes into the text the checks parse. Invalid UTF-8 becomes
 /// U+FFFD, so every input reaches the parser.
@@ -58,7 +58,9 @@ fn check_marks(text: &str, start: Mark, end: Mark, what: &str) {
 /// node, anchor, comment, and diagnostic lies inside `text` on character
 /// boundaries and converts to a line and column, and its end does not come
 /// before its start. Each node's content starts inside its span. Every node
-/// ID in the tree refers to a node.
+/// ID in the tree refers to a node. Every scalar has an exact source map that
+/// maps each decoded character, in order, to a character boundary inside the
+/// scalar's span.
 pub(crate) fn check_tree(text: &str) {
     let file = SourceFile::new(FileId::new(0), "fuzz.yaml", text).unwrap();
     let mut parsed = parse(&file);
@@ -103,7 +105,7 @@ pub(crate) fn check_tree(text: &str) {
             check_span(&file, anchor.span, &format!("anchor of {what}"));
         }
         match &node.kind {
-            NodeKind::Scalar(_) => {}
+            NodeKind::Scalar(scalar) => check_source_map(&file, node, &scalar.value, &what),
             NodeKind::Sequence(sequence) => {
                 for &item in document.items(sequence) {
                     check_id(item, &format!("an item of {what}"));
@@ -129,6 +131,33 @@ pub(crate) fn check_tree(text: &str) {
         }
     }
     let _ = document.dump(&file);
+}
+
+/// Checks the source map of the scalar `node` with the decoded `value`.
+fn check_source_map(file: &SourceFile, node: &Node, value: &str, what: &str) {
+    let map = node.source_map(file).unwrap();
+    assert!(map.is_exact(), "{what}: the source map is not exact");
+    let mut previous = node.span.start;
+    for (offset, _) in value.char_indices() {
+        let mapped = map.source_offset(offset);
+        assert!(
+            previous <= mapped
+                && mapped < node.span.end
+                && file
+                    .text()
+                    .is_char_boundary(usize::try_from(mapped).unwrap()),
+            "{what}: decoded offset {offset} maps to {mapped}, outside {}..{} or before {previous}",
+            node.span.start,
+            node.span.end
+        );
+        previous = mapped;
+    }
+    let end = map.source_offset(value.len());
+    assert!(
+        previous <= end && end <= node.span.end,
+        "{what}: the end of the value maps to {end}, outside {previous}..{}",
+        node.span.end
+    );
 }
 
 /// Checks that `span` is in `file`, does not end before it starts, lies

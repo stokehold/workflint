@@ -211,6 +211,10 @@ pub struct Scalar {
     /// for a plain scalar. Quoted and block scalars without a tag are
     /// `!!str`.
     pub tag: Tag,
+    /// The column of the innermost enclosing block collection, or -1 at the
+    /// top level. This is the scanner's indentation when it reads a block
+    /// scalar, which the content indentation depends on.
+    pub(crate) parent_indent: i64,
 }
 
 /// The data of a sequence node.
