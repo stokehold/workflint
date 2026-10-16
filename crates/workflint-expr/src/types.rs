@@ -1,7 +1,7 @@
 //! The types of expression values.
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `expr_type.go`, except for
-//! `typeOfJSONValue`, which arrives with `fromJSON` typing in M3.9. A type is an immutable
+//! `typeOfJSONValue`, which is in `json.rs`. A type is an immutable
 //! value. Objects and arrays share their parts through `Arc`, so cloning a type is cheap, and
 //! nothing changes a type that other expressions use (`docs/differences.md#object-filter-mutation`).
 
@@ -11,6 +11,8 @@ use std::fmt;
 use std::sync::Arc;
 
 use workflint_data::{Rest as RestDesc, TypeDesc};
+
+use crate::ast::simple_lower;
 
 /// The type of an expression value.
 ///
@@ -260,6 +262,20 @@ impl ObjectTy {
     #[must_use]
     pub fn prop(&self, name: &str) -> Option<&Ty> {
         self.props.get(name)
+    }
+
+    /// Returns the type of the known property `name`, which is in lower case, as an
+    /// expression reads it. The exact name wins. Otherwise the first name in byte order that
+    /// lowercases to `name` matches, because the keys of a `fromJSON()` literal keep their
+    /// case (`docs/differences.md#fromjson-key-case`).
+    #[must_use]
+    pub fn prop_ignore_case(&self, name: &str) -> Option<&Ty> {
+        self.props.get(name).or_else(|| {
+            self.props
+                .iter()
+                .find(|(prop, _)| prop.chars().map(simple_lower).eq(name.chars()))
+                .map(|(_, ty)| ty)
+        })
     }
 
     /// The properties the object allows besides the known ones.

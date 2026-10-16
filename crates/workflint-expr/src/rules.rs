@@ -173,3 +173,12 @@ pub static FUNCTION_NOT_ALLOWED: RuleMeta = RuleMeta {
     default_severity: Severity::Error,
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/function-not-allowed.md",
 };
+
+/// The string literal passed to `fromJSON()` is not valid JSON, such as `fromJSON('[1,')`.
+pub static INVALID_JSON_LITERAL: RuleMeta = RuleMeta {
+    id: "invalid-json-literal",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-json-literal.md",
+};

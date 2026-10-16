@@ -4,9 +4,9 @@
 //! The modules `semantics_check_ok`, `semantics_check_error`, `compare_operands_check`,
 //! `update_inputs_multiple_times`, `update_dispatch_inputs`, and `is_constant` port the
 //! reference's tests of the same names, without the cases that check where contexts and special
-//! functions are allowed, which the module `availability` ports. The cases that type a
-//! `fromJSON()` literal move to M3.9. The reference's error tests check that each
-//! message contains a fragment. These tests compare whole messages, the rule, and the byte
+//! functions are allowed, which the module `availability` ports. The tests of `fromJSON()`
+//! literals beyond the reference's are in `from_json.rs`. The reference's error tests check that
+//! each message contains a fragment. These tests compare whole messages, the rule, and the byte
 //! offset where the reference reports each error.
 //!
 //! The reference's tests that call a test function, such as `test().foo.*.bar`, are ported in
@@ -18,7 +18,7 @@ use workflint_data::global_context;
 use workflint_diagnostics::RuleMeta;
 use workflint_expr::rules::{
     CASE_ARGUMENT_COUNT, INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS,
-    INVALID_OBJECT_FILTER, INVALID_PROPERTY_ACCESS, MISSING_FORMAT_ARGUMENT,
+    INVALID_JSON_LITERAL, INVALID_OBJECT_FILTER, INVALID_PROPERTY_ACCESS, MISSING_FORMAT_ARGUMENT,
     UNDEFINED_CONFIG_VARIABLE, UNDEFINED_FUNCTION, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
     UNUSED_FORMAT_ARGUMENT, WRONG_ARGUMENT_COUNT, WRONG_ARGUMENT_TYPE,
 };
@@ -393,13 +393,6 @@ mod semantics_check_ok {
         assert_eq!(ty_in(&env, "jobs.some_job"), Ty::empty_loose());
     }
 
-    /// The reference's "available context" and "available contexts" cases, without the
-    /// availability, which M3.6 checks.
-    #[test]
-    fn strategy_property() {
-        assert_eq!(ty("strategy.fail-fast"), Ty::Bool);
-    }
-
     #[test]
     fn configuration_variable() {
         assert_eq!(ty("vars.SOME_VARIABLE"), Ty::String);
@@ -523,24 +516,6 @@ mod semantics_check_ok {
         assert_eq!(ty("format('{0} {} {x} {', 1)"), Ty::String);
     }
 
-    /// Without the special function availability of the reference's case (M3.6).
-    #[test]
-    fn special_function() {
-        assert_eq!(ty("success()"), Ty::Bool);
-    }
-
-    /// Without the special function availability of the reference's case (M3.6).
-    #[test]
-    fn non_special_function() {
-        assert_eq!(ty("contains('hello, world', 'o, w')"), Ty::Bool);
-    }
-
-    /// Without the special function availability of the reference's case (M3.6).
-    #[test]
-    fn case_insensitive_special_function_name() {
-        assert_eq!(ty("hashFiles('aaa.txt')"), Ty::String);
-    }
-
     #[test]
     fn escaped_braces_in_format_string() {
         assert_eq!(ty("format('hello {{1}} {0}', 42)"), Ty::String);
@@ -592,6 +567,18 @@ mod semantics_check_ok {
         assert_eq!(
             ty("case(false, 'a', false, 'b', false, 'c', true, 'd', 'default')"),
             Ty::Any
+        );
+    }
+
+    #[test]
+    fn fromjson_with_json_constant_value() {
+        assert_eq!(
+            ty(r#"fromJSON('{"foo":true,"bar":["foo", 12.3],"piyo":null}')"#),
+            Ty::strict([
+                ("foo", Ty::Bool),
+                ("bar", Ty::array(Ty::String)),
+                ("piyo", Ty::Null),
+            ])
         );
     }
 }
@@ -1354,6 +1341,18 @@ mod semantics_check_error {
                     "case() requires an odd number of arguments (pred/value pairs + default) but got 6"
                 ),
             ]
+        );
+    }
+
+    #[test]
+    fn broken_json_value_at_fromjson_argument() {
+        assert_eq!(
+            errors(r#"fromJSON('{"foo": true')"#),
+            [error(
+                &INVALID_JSON_LITERAL,
+                9,
+                "broken JSON string is passed to fromJSON() at offset 12: unexpected end of JSON input"
+            )]
         );
     }
 }
@@ -2231,8 +2230,14 @@ mod availability {
 
     #[test]
     fn non_special_function() {
-        let env = env_allowing(ALL_CONTEXTS, &[]);
+        let env = env_allowing(ALL_CONTEXTS, &["always"]);
         assert_eq!(ty_in(&env, "contains('hello, world', 'o, w')"), Ty::Bool);
+    }
+
+    #[test]
+    fn case_insensitive_special_function_name_is_allowed() {
+        let env = env_allowing(ALL_CONTEXTS, &["hashfiles"]);
+        assert_eq!(ty_in(&env, "hashFiles('aaa.txt')"), Ty::String);
     }
 
     // `TestExprSemanticsCheckError`.
