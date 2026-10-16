@@ -1,0 +1,19 @@
+[package]
+name = "workflint-diagnostics"
+description = "Diagnostic types for workflint. Internal crate with no stability promise."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+
+[dependencies]
+thiserror = "2.0.21"
+# Pinned to Unicode 15.0.0, the version Go uses. See `quote::is_print`.
+unicode-general-category = "=0.6.0"
+
+[lints]
+workspace = true

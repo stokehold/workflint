@@ -38,10 +38,10 @@ ADR 0006 has the full dependency table and the boundary rules. Only `workflint-l
 
 | Type | Crate | Role |
 |---|---|---|
-| `SourceFile` | diagnostics | Path, bytes, and a line index for byte offset to line and column conversion. |
+| `SourceFile` | diagnostics | Path, text, and a line index for byte offset to line and column conversion. |
 | `Span` | diagnostics | File ID and byte range. Every position in workflint is a `Span`. |
 | `Diagnostic` | diagnostics | Rule, severity, message, primary span, labels, optional fix (ADR 0007). |
-| `RuleId` and `RuleMeta` | diagnostics | Static rule metadata: ID, kind, category, default severity, docs URL. |
+| `RuleMeta` | diagnostics | Static rule metadata: kebab-case ID, kind, category, default severity, docs URL. |
 | `yaml::Document` and `yaml::Node` | yaml | Arena-allocated span tree with tags, scalar styles, anchors, comments, and scalar source maps. |
 | `Workflow`, `Job`, `Step`, `ActionMetadata` | syntax | Typed AST. Every field keeps its `Span`. Values that may be expressions are `Value<T>` (a literal `T` or an expression). |
 | `Expr`, `Ty` | expr | Expression AST and types. `Ty` is an immutable enum shared through `Arc`. |
