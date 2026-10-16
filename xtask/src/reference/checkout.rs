@@ -72,6 +72,35 @@ fn create(dir: &Path, url: &str, commit: &str) -> Result<()> {
     result
 }
 
+/// The regular files that git tracks in `dir` under `pathspecs`, relative to
+/// `dir` and with `/` separators, in git's order. Untracked and ignored files
+/// are left out. A tracked symbolic link or submodule is an error, because a
+/// copy of the checkout could not reproduce it.
+pub(crate) fn tracked_files(dir: &Path, pathspecs: &[&str]) -> Result<Vec<String>> {
+    let mut args = vec!["ls-files", "--stage", "-z", "--"];
+    args.extend(pathspecs);
+    let listing = git_untrimmed(dir, &args)?;
+    let mut files = Vec::new();
+    // Each entry is `mode object stage\tpath`.
+    for entry in listing.split('\0').filter(|entry| !entry.is_empty()) {
+        let Some((columns, path)) = entry.split_once('\t') else {
+            bail!(
+                "unexpected `git ls-files` entry in {}: {entry}",
+                dir.display()
+            );
+        };
+        let mode = columns.split(' ').next().unwrap_or_default();
+        if mode != "100644" && mode != "100755" {
+            bail!(
+                "{path} in {} has git mode {mode}, but only regular files can be copied",
+                dir.display()
+            );
+        }
+        files.push(path.to_owned());
+    }
+    Ok(files)
+}
+
 /// The tracked files that differ from `HEAD` or the index.
 fn changed_tracked_files(dir: &Path) -> Result<Vec<String>> {
     let status = git_untrimmed(
@@ -313,6 +342,62 @@ mod tests {
         assert!(ensure(&dir, &upstream.url, unknown).is_err());
 
         assert!(!dir.exists());
+    }
+
+    /// A repository with a hidden directory, an untracked file, and a file
+    /// that its own `.gitignore` ignores.
+    fn repository_with_untracked_and_ignored_files() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        git(repo, &["init", "--quiet"]);
+        for (path, contents) in [
+            ("LICENSE.txt", "MIT\n"),
+            ("README.md", "readme\n"),
+            ("testdata/ok/a.yaml", "on: push\n"),
+            ("testdata/err/.github/workflows/b.yml", "on: push\n"),
+            ("testdata/realworld/.gitignore", "/*.yml\n"),
+        ] {
+            let path = repo.join(path);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, contents).unwrap();
+        }
+        git(repo, &["add", "."]);
+        git(repo, &["commit", "--quiet", "-m", "files"]);
+        fs::write(repo.join("testdata/ok/untracked.yaml"), "on: push\n").unwrap();
+        fs::write(repo.join("testdata/realworld/ignored.yml"), "on: push\n").unwrap();
+        dir
+    }
+
+    #[test]
+    fn tracked_files_lists_only_tracked_files_under_the_pathspecs() {
+        let repo = repository_with_untracked_and_ignored_files();
+
+        let files = tracked_files(repo.path(), &["testdata", "LICENSE.txt"]).unwrap();
+
+        assert_eq!(
+            files,
+            [
+                "LICENSE.txt",
+                "testdata/err/.github/workflows/b.yml",
+                "testdata/ok/a.yaml",
+                "testdata/realworld/.gitignore",
+            ]
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn tracked_symbolic_link_is_an_error_that_names_it() {
+        let repo = repository_with_untracked_and_ignored_files();
+        std::os::unix::fs::symlink("a.yaml", repo.path().join("testdata/ok/link.yaml")).unwrap();
+        git(repo.path(), &["add", "testdata/ok/link.yaml"]);
+
+        let error = tracked_files(repo.path(), &["testdata"]).unwrap_err();
+
+        assert!(
+            format!("{error:#}").contains("testdata/ok/link.yaml"),
+            "{error:#}"
+        );
     }
 
     #[test]
