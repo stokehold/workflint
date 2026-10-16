@@ -373,11 +373,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Escaped characters in branch and tag globs
 
 - Upstream: for `\[`, `\?` and `\*` in a branch or tag filter, the error reports the character after the escaped one (`glob.go:100`). `\[x` reports `'x'`, and `\[` at the end reports the end-of-input rune.
-- workflint: the error reports the escaped character, for example `'['`.
+- workflint: the error reports the escaped character, for example `'['`. The column is the same as upstream.
 - Why: the message names the wrong character.
 - Upstream issue: none.
-- Milestone: M4.
+- Milestone: M2.
 - Status: planned.
+- Fixtures: none. The `workflint-syntax` test `an_escaped_special_character_in_a_ref_glob_reports_that_character` covers it.
 
 <a id="branding-color-message"></a>
 ### Branding color message names `branding.color`
