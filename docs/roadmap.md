@@ -10,7 +10,7 @@ M0 ─ M1 ─┬─ M2 ─┬─ M4 ─ M5 ═ 0.1.0 ─ M7 ─ M8 ─ M9 ═ 1.
 M6 (release pipeline) runs in parallel from M1 and is required for 0.1.0
 ```
 
-Issues exist for M1, M6, and M5.11. Issues for each later milestone are created when the milestone before it is nearly done, so that they reflect what the earlier work taught. Until then, the task lists below are the plan. Dependencies between tasks are recorded on the issues as "blocked by" links.
+Issues exist for M1, M2, M3, M6, and M5.11. Issues for each later milestone are created when the milestone before it is nearly done, so that they reflect what the earlier work taught. Until then, the task lists below are the plan. Dependencies between tasks are recorded on the issues as "blocked by" links.
 
 ## M0: planning and skeleton
 
@@ -50,32 +50,38 @@ Goal: the types and test infrastructure every later milestone builds on. Start w
 
 ## M2: workflow syntax
 
-Goal: every `syntax-check` diagnostic of the reference, on a typed AST. Start with M2.0, which every task that ticks a fixture needs.
+Goal: every `syntax-check` diagnostic of the reference, on a typed AST. Start with M2.0, which every task that ticks a fixture needs, and M2.1. M2.8 also needs M3.2.
 
-- M2.0 A minimal `workflint` binary, so that M2 to M4 can tick fixtures. It accepts the conformance runner's command line, `workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <config> <files>...` (`tests/conformance/README.md`), and lints the given files. It prints one line per diagnostic on standard output, `path:line:col: message [rule-id]`, with the one-line renderer. Exit codes are actionlint's: 0 for no problems, 1 for problems found, 2 for an invalid option, and 3 for a fatal error. M5.6 replaces it with the full CLI.
-- M2.1 `workflint-syntax`: AST types for workflows with spans on every field and `Value<T>` for expression-capable values.
-- M2.2 Parser framework: mapping walker with case-insensitive keys, unknown key, duplicate key, wrong kind, and empty value handling, matching the reference's messages.
-- M2.3 Parse `on:` with every event type, filters, `workflow_dispatch` and `workflow_call` inputs, outputs, and secrets.
-- M2.4 Parse workflow-level keys: `name`, `run-name`, `env`, `defaults`, `concurrency`, `permissions`.
-- M2.5 Parse jobs: `runs-on`, `needs`, `if`, `strategy` and `matrix`, `container`, `services`, `outputs`, `environment`, `timeout-minutes`, `continue-on-error`, reusable workflow calls.
-- M2.6 Parse steps: `run`, `uses`, `with`, `env`, `shell`, `working-directory`, and the remaining step keys.
-- M2.7 Typed `Uses` enum: local `./`, Docker, repository action, reusable workflow. M7 adds `$/`.
-- M2.8 Find and parse every `${{ }}` in strings into expression ASTs (needs M3.2).
-- M2.9 Port the glob validator for branch, tag, and path filters.
-- M2.10 Pass all `syntax-check` conformance fixtures; tick the checklist.
+- M2.0 Add a minimal workflint binary for the conformance suite [#65](https://github.com/stokehold/workflint/issues/65)
+- M2.1 Add the workflow AST types to workflint-syntax [#66](https://github.com/stokehold/workflint/issues/66)
+- M2.2 Add the parser framework and the workflow root to workflint-syntax [#67](https://github.com/stokehold/workflint/issues/67)
+- M2.3 Parse the on section and its events [#68](https://github.com/stokehold/workflint/issues/68)
+- M2.4 Parse env, defaults, concurrency, permissions, and environment [#69](https://github.com/stokehold/workflint/issues/69)
+- M2.5 Parse jobs and reusable workflow call jobs [#70](https://github.com/stokehold/workflint/issues/70)
+- M2.6 Parse steps [#71](https://github.com/stokehold/workflint/issues/71)
+- M2.7 Type the uses values of steps and jobs [#72](https://github.com/stokehold/workflint/issues/72)
+- M2.8 Parse the expressions in workflow strings [#73](https://github.com/stokehold/workflint/issues/73)
+- M2.9 Port the glob validator [#74](https://github.com/stokehold/workflint/issues/74)
+- M2.10 Match the reference's syntax-check output on the fixtures and the corpus [#75](https://github.com/stokehold/workflint/issues/75)
+- M2.11 Parse strategy and matrix [#76](https://github.com/stokehold/workflint/issues/76)
+- M2.12 Parse container and services [#77](https://github.com/stokehold/workflint/issues/77)
+- M2.13 Compare selected kinds in cargo xtask oracle [#78](https://github.com/stokehold/workflint/issues/78)
+- M2.14 Decode local action and reusable workflow metadata [#79](https://github.com/stokehold/workflint/issues/79)
 
 ## M3: expressions
 
-Goal: the expression language with the reference's type checking, without its bugs.
+Goal: the expression language with the reference's type checking, without its bugs. Start with M3.0 and M3.1, which can run in parallel.
 
-- M3.1 Lexer with byte offsets and code-point columns; JSON number grammar (exponent sign, large integers).
-- M3.2 Pratt parser with GitHub's operator precedence. Confirm the precedence table against the expression parser in `actions/languageservices` first, and record the result in `docs/differences.md#comparison-precedence`.
-- M3.3 Type system: `Ty` enum, object and array types, assignability, merging, `*` filters without shared mutation.
-- M3.4 Built-in functions with overloads and format string checks.
-- M3.5 Context types: `github`, `env`, `vars`, `job`, `jobs`, `steps`, `runner`, `secrets`, `strategy`, `matrix`, `needs`, `inputs`, with case-insensitive property lookup.
-- M3.6 Context availability per workflow key, ported from the reference's table.
-- M3.7 Untrusted input detection for script sinks.
-- M3.8 Fuzz targets for the lexer and parser.
+- M3.0 Create workflint-data with the global context types [#81](https://github.com/stokehold/workflint/issues/81)
+- M3.1 Add the expression lexer to workflint-expr [#82](https://github.com/stokehold/workflint/issues/82)
+- M3.2 Add the expression parser with GitHub's operator precedence [#83](https://github.com/stokehold/workflint/issues/83)
+- M3.3 Add the expression type system [#84](https://github.com/stokehold/workflint/issues/84)
+- M3.4 Check calls to built-in functions [#85](https://github.com/stokehold/workflint/issues/85)
+- M3.5 Type-check expressions against context types [#86](https://github.com/stokehold/workflint/issues/86)
+- M3.6 Check context and special function availability [#87](https://github.com/stokehold/workflint/issues/87)
+- M3.7 Detect untrusted input in script expressions [#88](https://github.com/stokehold/workflint/issues/88)
+- M3.8 Fuzz and benchmark the expression engine [#89](https://github.com/stokehold/workflint/issues/89)
+- M3.9 Type fromJSON literals and report Go's JSON errors [#90](https://github.com/stokehold/workflint/issues/90)
 
 ## M4: rules and data
 
