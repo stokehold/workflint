@@ -1,0 +1,19 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "on:\njobs:\n  test:\n    permissions:\n    steps:\n      -\n      - run:\n"
+---
+root #0 mapping block !!map 1:1@0..7:13@66
+  key #1 scalar plain !!str 1:1@0..1:3@2 "on"
+  value #2 scalar plain !!null 1:4@3..1:4@3 ""
+  key #3 scalar plain !!str 2:1@4..2:5@8 "jobs"
+  value #4 mapping block !!map 3:3@12..7:13@66
+    key #5 scalar plain !!str 3:3@12..3:7@16 "test"
+    value #6 mapping block !!map 4:5@22..7:13@66
+      key #7 scalar plain !!str 4:5@22..4:16@33 "permissions"
+      value #8 scalar plain !!null 4:17@34..4:17@34 ""
+      key #9 scalar plain !!str 5:5@39..5:10@44 "steps"
+      value #10 sequence block !!seq 6:7@52..7:13@66
+        item #11 scalar plain !!null 6:8@53..6:8@53 ""
+        item #12 mapping block !!map 7:9@62..7:13@66
+          key #13 scalar plain !!str 7:9@62..7:12@65 "run"
+          value #14 scalar plain !!null 7:13@66..7:13@66 ""

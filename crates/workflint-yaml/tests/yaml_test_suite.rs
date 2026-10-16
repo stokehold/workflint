@@ -19,7 +19,7 @@ use std::fmt::Write as _;
 use std::fs;
 
 use datatest_stable::Utf8Path;
-use workflint_yaml::{EventData, EventParser, ScalarStyle};
+use workflint_yaml::event::{EventData, EventParser, ScalarStyle};
 
 const PARSER_IGNORELIST: &str = include_str!("libyaml-parser");
 const PARSER_ERROR_IGNORELIST: &str = include_str!("libyaml-parser-error");
@@ -32,7 +32,7 @@ fn is_listed(ignorelist: &str, id: &str) -> bool {
 
 /// Renders events in the yaml-test-suite `test.event` format, stopping at
 /// the first error.
-fn render_events(input: &str) -> Result<String, workflint_yaml::Error> {
+fn render_events(input: &str) -> Result<String, workflint_yaml::event::Error> {
     let mut out = String::new();
     for event in EventParser::new(input) {
         let event = event?;

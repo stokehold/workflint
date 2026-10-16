@@ -2,7 +2,7 @@
 
 use std::fmt::Write as _;
 
-use workflint_yaml::{CommentKind, Event, EventData, EventParser, Mark};
+use workflint_yaml::event::{CommentKind, Event, EventData, EventParser, Mark};
 
 /// Renders a mark as `line:column@index`, with 0-based line and column.
 fn mark(mark: Mark) -> String {

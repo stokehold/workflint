@@ -1,6 +1,6 @@
 # workflint-yaml
 
-The YAML layer of [workflint](https://github.com/stokehold/workflint). It contains a vendored fork of [libyaml-safer](https://github.com/simonask/libyaml-safer) 0.3.0 and exposes its event parser (ADR 0005).
+The YAML layer of [workflint](https://github.com/stokehold/workflint). It parses the first YAML document of a file into a span tree: an arena of nodes with byte spans, tags, styles, anchors, resolved aliases, and attached comments (ADR 0005). The tree is built from the event parser of a vendored fork of [libyaml-safer](https://github.com/simonask/libyaml-safer) 0.3.0, which the crate also exposes.
 
 This is an internal crate of workflint. Its API has no stability promise and may change in any release.
 

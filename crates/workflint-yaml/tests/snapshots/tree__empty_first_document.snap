@@ -1,0 +1,5 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "---\n...\n---\non: push\n"
+---
+root #0 scalar plain !!null 2:1@4..2:1@4 ""

@@ -1,0 +1,40 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "plain: a b\nmulti_line_plain: a\n  b\nsingle: 'it''s'\ndouble: \"a\\tb\\u00e9\"\nliteral_clip: |\n  x\n  y\n\nliteral_strip: |-\n  x\n\nliteral_keep: |+\n  x\n\nliteral_indent: |2\n   x\nliteral_indent_strip: |2-\n   x\nliteral_strip_indent: |-2\n   x\nfolded_clip: >\n  x\n  y\nfolded_strip: >-\n  x\nfolded_keep: >+\n  x\nfolded_with_comment: > # header comment\n  x\nanchored_literal: &lit |\n  x\nlast: |\n  end"
+---
+root #0 mapping block !!map 1:1@0..34:6@378
+  key #1 scalar plain !!str 1:1@0..1:6@5 "plain"
+  value #2 scalar plain !!str 1:8@7..1:11@10 "a b"
+  key #3 scalar plain !!str 2:1@11..2:17@27 "multi_line_plain"
+  value #4 scalar plain !!str 2:19@29..3:4@34 "a b"
+  key #5 scalar plain !!str 4:1@35..4:7@41 "single"
+  value #6 scalar single-quoted !!str 4:9@43..4:16@50 "it's"
+  key #7 scalar plain !!str 5:1@51..5:7@57 "double"
+  value #8 scalar double-quoted !!str 5:9@59..5:21@71 "a\tbé"
+  key #9 scalar plain !!str 6:1@72..6:13@84 "literal_clip"
+  value #10 scalar literal(clip) !!str 6:15@86..10:1@97 content 7:1@88 "x\ny\n"
+  key #11 scalar plain !!str 10:1@97..10:14@110 "literal_strip"
+  value #12 scalar literal(strip) !!str 10:16@112..13:1@120 content 11:1@115 "x"
+  key #13 scalar plain !!str 13:1@120..13:13@132 "literal_keep"
+  value #14 scalar literal(keep) !!str 13:15@134..16:1@142 content 14:1@137 "x\n\n"
+  key #15 scalar plain !!str 16:1@142..16:15@156 "literal_indent"
+  value #16 scalar literal(clip,indent=2) !!str 16:17@158..18:1@166 content 17:1@161 " x\n"
+  key #17 scalar plain !!str 18:1@166..18:21@186 "literal_indent_strip"
+  value #18 scalar literal(strip,indent=2) !!str 18:23@188..20:1@197 content 19:1@192 " x"
+  key #19 scalar plain !!str 20:1@197..20:21@217 "literal_strip_indent"
+  value #20 scalar literal(strip,indent=2) !!str 20:23@219..22:1@228 content 21:1@223 " x"
+  key #21 scalar plain !!str 22:1@228..22:12@239 "folded_clip"
+  value #22 scalar folded(clip) !!str 22:14@241..25:1@251 content 23:1@243 "x y\n"
+  key #23 scalar plain !!str 25:1@251..25:13@263 "folded_strip"
+  value #24 scalar folded(strip) !!str 25:15@265..27:1@272 content 26:1@268 "x"
+  key #25 scalar plain !!str 27:1@272..27:12@283 "folded_keep"
+  value #26 scalar folded(keep) !!str 27:14@285..29:1@292 content 28:1@288 "x\n"
+  key #27 scalar plain !!str 29:1@292..29:20@311 "folded_with_comment"
+  value #28 scalar folded(clip) !!str 29:22@313..31:1@336 content 30:1@332 "x\n"
+  key #29 scalar plain !!str 31:1@336..31:17@352 "anchored_literal"
+  value #30 scalar literal(clip) !!str 31:19@354..33:1@365 content 32:1@361 &lit 31:19@354..31:23@358 "x\n"
+  key #31 scalar plain !!str 33:1@365..33:5@369 "last"
+  value #32 scalar literal(clip) !!str 33:7@371..34:6@378 content 34:1@373 "end"
+comments:
+  29:24@315..29:40@331 trailing "# header comment" -> #28
+31:19: anchor "lit" is defined but not used [unused-anchor]

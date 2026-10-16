@@ -1,0 +1,22 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "base: &b {x: 1}\nderived:\n  <<: *b\n  y: 2\nquoted:\n  \"<<\": *b\n"
+---
+root #0 mapping block !!map 1:1@0..6:11@59
+  key #1 scalar plain !!str 1:1@0..1:5@4 "base"
+  value #2 mapping flow !!map 1:7@6..1:16@15 content 1:10@9 &b 1:7@6..1:9@8
+    key #3 scalar plain !!str 1:11@10..1:12@11 "x"
+    value #4 scalar plain !!int 1:14@13..1:15@14 "1"
+  key #5 scalar plain !!str 2:1@16..2:8@23 "derived"
+  value #6 mapping block !!map 3:3@27..4:7@40
+    key #7 scalar plain !!str 3:3@27..3:5@29 "<<"
+    value #2 (printed above)
+    key #9 scalar plain !!str 4:3@36..4:4@37 "y"
+    value #10 scalar plain !!int 4:6@39..4:7@40 "2"
+  key #11 scalar plain !!str 5:1@41..5:7@47 "quoted"
+  value #12 mapping block !!map 6:3@51..6:11@59
+    key #13 scalar double-quoted !!str 6:3@51..6:7@55 "<<"
+    value #2 (printed above)
+aliases:
+  #8 *b 3:7@31..3:9@33 -> #2
+  #14 *b 6:9@57..6:11@59 -> #2

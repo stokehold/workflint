@@ -1,0 +1,32 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "str: !!str 1\nint: !!int text\ncustom: !custom v\nverbatim: !<tag:yaml.org,2002:float> 1\nnon_specific: ! 12\nmap: !!map {}\nseq: !!seq []\nanchor_then_tag: &a !!str x\ntag_then_anchor: !!str &b y\nempty: !!null\nuse: [*a, *b]\n"
+---
+root #0 mapping block !!map 1:1@0..11:14@216
+  key #1 scalar plain !!str 1:1@0..1:4@3 "str"
+  value #2 scalar plain !!str 1:6@5..1:13@12 content 1:12@11 "1"
+  key #3 scalar plain !!str 2:1@13..2:4@16 "int"
+  value #4 scalar plain !!int 2:6@18..2:16@28 content 2:12@24 "text"
+  key #5 scalar plain !!str 3:1@29..3:7@35 "custom"
+  value #6 scalar plain !custom 3:9@37..3:18@46 content 3:17@45 "v"
+  key #7 scalar plain !!str 4:1@47..4:9@55 "verbatim"
+  value #8 scalar plain !!float 4:11@57..4:39@85 content 4:38@84 "1"
+  key #9 scalar plain !!str 5:1@86..5:13@98 "non_specific"
+  value #10 scalar plain !!int 5:15@100..5:19@104 content 5:17@102 "12"
+  key #11 scalar plain !!str 6:1@105..6:4@108 "map"
+  value #12 mapping flow !!map 6:6@110..6:14@118 content 6:12@116
+  key #13 scalar plain !!str 7:1@119..7:4@122 "seq"
+  value #14 sequence flow !!seq 7:6@124..7:14@132 content 7:12@130
+  key #15 scalar plain !!str 8:1@133..8:16@148 "anchor_then_tag"
+  value #16 scalar plain !!str 8:18@150..8:28@160 content 8:27@159 &a 8:18@150..8:20@152 "x"
+  key #17 scalar plain !!str 9:1@161..9:16@176 "tag_then_anchor"
+  value #18 scalar plain !!str 9:18@178..9:28@188 content 9:27@187 &b 9:24@184..9:26@186 "y"
+  key #19 scalar plain !!str 10:1@189..10:6@194 "empty"
+  value #20 scalar plain !!null 10:8@196..10:14@202 content 10:14@202 ""
+  key #21 scalar plain !!str 11:1@203..11:4@206 "use"
+  value #22 sequence flow !!seq 11:6@208..11:14@216
+    item #16 (printed above)
+    item #18 (printed above)
+aliases:
+  #23 *a 11:7@209..11:9@211 -> #16
+  #24 *b 11:11@213..11:13@215 -> #18
