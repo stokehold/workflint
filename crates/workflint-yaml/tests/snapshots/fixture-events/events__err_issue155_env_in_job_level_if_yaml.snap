@@ -1,0 +1,59 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/issue155_env_in_job_level_if.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:65@75 Comment OwnLine "# Issue #155: `env` should not be available in `jobs.<job_id>.if`"
+3:0@76..3:87@163 Comment OwnLine "# https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability"
+5:0@165..5:4@169 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@173..6:2@173 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@173..6:7@178 Scalar { anchor: None, tag: None, value: "test1", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@184..7:4@184 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:4@184..7:11@191 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@193..7:26@206 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@211..8:6@213 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@215..8:31@238 Scalar { anchor: None, tag: None, value: "${{ env.FOO == 'aaa' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@243..9:9@248 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@256..10:6@256 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@258..10:8@258 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@258..10:11@261 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@263..10:25@275 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@278..11:2@278 MappingEnd
+11:2@278..11:2@278 SequenceEnd
+11:2@278..11:2@278 MappingEnd
+11:2@278..11:7@283 Scalar { anchor: None, tag: None, value: "test2", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@289..12:4@289 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@289..12:11@296 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@298..12:26@311 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@316..13:6@318 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@320..13:24@336 Scalar { anchor: None, tag: None, value: "env.FOO == 'aaa'", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@341..14:9@346 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@354..15:6@354 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@356..15:8@356 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@356..15:11@359 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@361..15:25@373 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:2@376..16:2@376 MappingEnd
+16:2@376..16:2@376 SequenceEnd
+16:2@376..16:2@376 MappingEnd
+16:2@376..16:7@381 Scalar { anchor: None, tag: None, value: "test3", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@387..17:4@387 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:4@387..17:8@391 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:10@393..17:34@417 Scalar { anchor: None, tag: None, value: "org/repo/workflow.yml@v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@422..18:6@424 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@426..18:31@449 Scalar { anchor: None, tag: None, value: "${{ env.FOO == 'aaa' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:2@452..19:2@452 MappingEnd
+19:2@452..19:7@457 Scalar { anchor: None, tag: None, value: "test4", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:4@463..20:4@463 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:4@463..20:8@467 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:10@469..20:34@493 Scalar { anchor: None, tag: None, value: "org/repo/workflow.yml@v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:4@498..21:6@500 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@502..21:24@518 Scalar { anchor: None, tag: None, value: "env.FOO == 'aaa'", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:0@519..22:0@519 MappingEnd
+22:0@519..22:0@519 MappingEnd
+22:0@519..22:0@519 MappingEnd
+22:0@519..22:0@519 DocumentEnd { implicit: true }
+22:0@519..22:0@519 StreamEnd

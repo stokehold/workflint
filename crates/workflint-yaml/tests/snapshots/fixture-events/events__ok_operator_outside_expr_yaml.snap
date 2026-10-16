@@ -1,0 +1,48 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/operator_outside_expr.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@43..4:12@49 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@59..5:8@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@59..5:11@62 Scalar { anchor: None, tag: None, value: "ver", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@64..5:14@65 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+5:14@65..5:15@66 Scalar { anchor: None, tag: None, value: "0", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:17@68..5:18@69 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:18@69..5:19@70 SequenceEnd
+5:19@70..5:19@70 MappingEnd
+5:19@70..5:19@70 MappingEnd
+6:4@75..6:11@82 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@84..6:26@97 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@102..7:9@107 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@115..8:6@115 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@117..8:8@117 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@117..8:11@120 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@122..8:27@136 Scalar { anchor: None, tag: None, value: "echo 'my repo'", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@145..9:72@209 Comment OwnLine "# This was not ok until https://github.com/github/docs/pull/8786"
+10:8@218..10:10@220 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:12@222..10:48@258 Scalar { anchor: None, tag: None, value: "contains(github.repository, 'rhysd')", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@265..11:6@265 MappingEnd
+11:8@267..11:8@267 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@267..11:11@270 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@272..11:27@286 Scalar { anchor: None, tag: None, value: "echo 'my repo'", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@295..12:72@359 Comment OwnLine "# This was not ok until https://github.com/github/docs/pull/8786"
+13:8@368..13:10@370 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:12@372..13:87@447 Scalar { anchor: None, tag: None, value: "github.repository != 'rhysd/foo' && matrix.ver > 0 || !(github.token == '')", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@448..14:0@448 MappingEnd
+14:0@448..14:0@448 SequenceEnd
+14:0@448..14:0@448 MappingEnd
+14:0@448..14:0@448 MappingEnd
+14:0@448..14:0@448 MappingEnd
+14:0@448..14:0@448 DocumentEnd { implicit: true }
+14:0@448..14:0@448 StreamEnd

@@ -1,0 +1,35 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/issue207_work_dir_with_uses.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:5@21 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@27..4:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@27..4:11@34 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@36..4:26@49 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@54..5:9@59 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@67..6:6@67 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@69..6:8@69 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@69..6:12@73 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@75..6:33@94 Scalar { anchor: None, tag: None, value: "actions/checkout@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@103..7:25@120 Scalar { anchor: None, tag: None, value: "working-directory", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:27@122..7:32@127 Scalar { anchor: None, tag: None, value: "./foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@134..8:6@134 MappingEnd
+8:8@136..8:8@136 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@136..8:11@139 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@141..8:26@154 Scalar { anchor: None, tag: None, value: "echo \"$(pwd)\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@163..9:25@180 Scalar { anchor: None, tag: None, value: "working-directory", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:27@182..9:32@187 Scalar { anchor: None, tag: None, value: "./foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:0@188..10:0@188 MappingEnd
+10:0@188..10:0@188 SequenceEnd
+10:0@188..10:0@188 MappingEnd
+10:0@188..10:0@188 MappingEnd
+10:0@188..10:0@188 MappingEnd
+10:0@188..10:0@188 DocumentEnd { implicit: true }
+10:0@188..10:0@188 StreamEnd

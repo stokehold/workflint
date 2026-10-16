@@ -1,0 +1,27 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_javascript_action/missing_files/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:25@25 Scalar { anchor: None, tag: None, value: "JavaScript action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@26..1:6@32 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@34..1:41@67 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@68..2:11@79 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@81..2:40@108 Scalar { anchor: None, tag: None, value: "Correct JavaScript action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@110..4:4@114 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@118..5:2@118 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@118..5:7@123 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:9@125..5:15@131 Scalar { anchor: None, tag: None, value: "node20", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@134..6:6@138 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@140..6:16@148 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@151..7:5@154 Scalar { anchor: None, tag: None, value: "pre", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:7@156..7:13@162 Scalar { anchor: None, tag: None, value: "pre.js", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@165..8:6@169 Scalar { anchor: None, tag: None, value: "post", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@171..8:14@177 Scalar { anchor: None, tag: None, value: "pre.js", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:0@178..9:0@178 MappingEnd
+9:0@178..9:0@178 MappingEnd
+9:0@178..9:0@178 DocumentEnd { implicit: true }
+9:0@178..9:0@178 StreamEnd

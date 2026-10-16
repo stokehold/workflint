@@ -1,0 +1,60 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/workflow_call_input_type_check/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:9@25 Scalar { anchor: None, tag: None, value: "caller1", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@31..4:4@31 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@31..4:8@35 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@37..4:35@62 Scalar { anchor: None, tag: None, value: "./workflows/reusable.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@67..5:8@71 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@79..6:50@123 Comment OwnLine "# Note: any value can be converted into bool"
+7:6@130..7:6@130 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:6@130..7:15@139 Scalar { anchor: None, tag: None, value: "str_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:17@141..7:21@145 Scalar { anchor: None, tag: None, value: "null", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@152..8:15@161 Scalar { anchor: None, tag: None, value: "num_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:17@163..8:22@168 Scalar { anchor: None, tag: None, value: "false", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@175..9:16@185 Scalar { anchor: None, tag: None, value: "bool_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:18@187..9:24@193 Scalar { anchor: None, tag: None, value: "foo!", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:6@200..10:18@212 Scalar { anchor: None, tag: None, value: "broken_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:20@214..10:24@218 Scalar { anchor: None, tag: None, value: "null", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@221..11:2@221 MappingEnd
+11:2@221..11:2@221 MappingEnd
+11:2@221..11:9@228 Scalar { anchor: None, tag: None, value: "caller2", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@234..12:4@234 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@234..12:8@238 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@240..12:35@265 Scalar { anchor: None, tag: None, value: "./workflows/reusable.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@270..13:8@274 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@282..14:6@282 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:6@282..14:15@291 Scalar { anchor: None, tag: None, value: "str_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:17@293..14:28@304 Scalar { anchor: None, tag: None, value: "${{ true }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@311..15:15@320 Scalar { anchor: None, tag: None, value: "num_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:17@322..15:29@334 Scalar { anchor: None, tag: None, value: "${{ 'foo' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@341..16:18@353 Scalar { anchor: None, tag: None, value: "broken_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:20@355..16:22@357 Scalar { anchor: None, tag: None, value: "42", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:2@360..17:2@360 MappingEnd
+17:2@360..17:2@360 MappingEnd
+17:2@360..17:9@367 Scalar { anchor: None, tag: None, value: "caller3", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@373..18:4@373 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:4@373..18:8@377 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:10@379..18:35@404 Scalar { anchor: None, tag: None, value: "./workflows/reusable.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@409..19:8@413 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@421..20:6@421 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:6@421..20:15@430 Scalar { anchor: None, tag: None, value: "str_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:16@431..20:16@431 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:6@438..21:15@447 Scalar { anchor: None, tag: None, value: "num_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:16@448..21:16@448 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@455..22:18@467 Scalar { anchor: None, tag: None, value: "broken_input", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:20@469..22:27@476 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+22:27@476..22:27@476 MappingEnd
+22:27@476..22:27@476 MappingEnd
+22:27@476..22:27@476 MappingEnd
+23:0@477..23:0@477 MappingEnd
+23:0@477..23:0@477 DocumentEnd { implicit: true }
+23:0@477..23:0@477 StreamEnd

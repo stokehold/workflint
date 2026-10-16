@@ -1,0 +1,23 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_docker_action/ok_docker_docker.io/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:21@21 Scalar { anchor: None, tag: None, value: "Docker action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@22..1:6@28 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@30..1:41@63 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@64..2:11@75 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@77..2:36@100 Scalar { anchor: None, tag: None, value: "Correct Docker action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@102..4:4@106 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@110..5:2@110 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@110..5:7@115 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:9@117..5:17@125 Scalar { anchor: None, tag: None, value: "docker", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:2@128..6:7@133 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:9@135..6:44@170 Scalar { anchor: None, tag: None, value: "docker.io/rhysd/actionlint:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:44@170..6:44@170 MappingEnd
+7:0@171..7:0@171 MappingEnd
+7:0@171..7:0@171 DocumentEnd { implicit: true }
+7:0@171..7:0@171 StreamEnd

@@ -1,0 +1,43 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/shell_name_case_insensitive.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:10@10 Scalar { anchor: None, tag: None, value: "Test", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@11..1:2@13 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@15..1:8@19 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@21..3:4@25 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@29..4:2@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@29..4:6@33 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@39..5:4@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@39..5:11@46 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@48..5:27@62 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@67..6:9@72 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@80..7:6@80 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@82..7:8@82 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@82..7:11@85 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@87..7:20@94 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@103..8:13@108 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:15@110..8:25@120 Scalar { anchor: None, tag: None, value: "powershell", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@127..9:6@127 MappingEnd
+9:8@129..9:8@129 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@129..9:11@132 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@134..9:20@141 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@150..10:13@155 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:15@157..10:25@167 Scalar { anchor: None, tag: None, value: "PowerShell", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@174..11:6@174 MappingEnd
+11:8@176..11:8@176 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@176..11:11@179 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@181..11:20@188 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@197..12:13@202 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:15@204..12:25@214 Scalar { anchor: None, tag: None, value: "POWERSHELL", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@215..13:0@215 MappingEnd
+13:0@215..13:0@215 SequenceEnd
+13:0@215..13:0@215 MappingEnd
+13:0@215..13:0@215 MappingEnd
+13:0@215..13:0@215 MappingEnd
+13:0@215..13:0@215 DocumentEnd { implicit: true }
+13:0@215..13:0@215 StreamEnd

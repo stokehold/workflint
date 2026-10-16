@@ -1,0 +1,18 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/broken_local_action/action/multiple_unmarshal_errors/action.yml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:10@10 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@11..1:11@22 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:13@24..1:18@29 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@31..3:6@37 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:8@39..3:22@53 Scalar { anchor: None, tag: None, value: "invalid inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@54..4:7@61 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:9@63..4:24@78 Scalar { anchor: None, tag: None, value: "invalid outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@79..5:0@79 MappingEnd
+5:0@79..5:0@79 DocumentEnd { implicit: true }
+5:0@79..5:0@79 StreamEnd

@@ -1,0 +1,81 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/workflow_call_outputs_syntax.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:11@32 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@40..3:6@40 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@40..3:25@59 Scalar { anchor: None, tag: None, value: "missing-description", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@69..4:8@69 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@69..4:13@74 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:15@76..4:41@102 Scalar { anchor: None, tag: None, value: "${{ jobs.test.outputs.x }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@109..5:6@109 MappingEnd
+5:6@109..5:19@122 Scalar { anchor: None, tag: None, value: "missing-value", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@132..6:8@132 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@132..6:19@143 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:21@145..6:34@158 Scalar { anchor: None, tag: None, value: "description", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+6:34@158..6:34@158 MappingEnd
+7:6@165..7:17@176 Scalar { anchor: None, tag: None, value: "missing-all", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:18@177..7:18@177 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@184..8:21@199 Scalar { anchor: None, tag: None, value: "unknown-section", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@209..9:8@209 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@209..9:19@220 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:21@222..9:34@235 Scalar { anchor: None, tag: None, value: "description", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+10:8@244..10:13@249 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:15@251..10:41@277 Scalar { anchor: None, tag: None, value: "${{ jobs.test.outputs.x }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@286..11:23@301 Scalar { anchor: None, tag: None, value: "unknown-section", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:24@302..11:24@302 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:24@302..11:24@302 MappingEnd
+12:6@309..12:19@322 Scalar { anchor: None, tag: None, value: "duplicate-key", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@332..13:8@332 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@332..13:19@343 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:21@345..13:34@358 Scalar { anchor: None, tag: None, value: "description", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+14:8@367..14:13@372 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:15@374..14:41@400 Scalar { anchor: None, tag: None, value: "${{ jobs.test.outputs.x }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@407..15:6@407 MappingEnd
+15:6@407..15:19@420 Scalar { anchor: None, tag: None, value: "duplicate-key", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:8@430..16:8@430 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@430..16:19@441 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:21@443..16:34@456 Scalar { anchor: None, tag: None, value: "description", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+17:8@465..17:13@470 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:15@472..17:38@495 Scalar { anchor: None, tag: None, value: "${{ jobs.test.output }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@502..18:6@502 MappingEnd
+18:6@502..18:17@513 Scalar { anchor: None, tag: None, value: "empty-value", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@523..19:8@523 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@523..19:19@534 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:21@536..19:34@549 Scalar { anchor: None, tag: None, value: "description", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+20:8@558..20:13@563 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:14@564..20:14@564 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:14@564..20:14@564 MappingEnd
+20:14@564..20:14@564 MappingEnd
+20:14@564..20:14@564 MappingEnd
+20:14@564..20:14@564 MappingEnd
+21:0@565..21:4@569 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:2@573..22:2@573 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:2@573..22:6@577 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:4@583..23:4@583 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:4@583..23:11@590 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@592..23:26@605 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:4@610..24:11@617 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:6@625..25:6@625 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:6@625..25:7@626 Scalar { anchor: None, tag: None, value: "x", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:9@628..25:11@630 Scalar { anchor: None, tag: None, value: "hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:4@635..26:4@635 MappingEnd
+26:4@635..26:9@640 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:6@648..27:6@648 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+27:8@650..27:8@650 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:8@650..27:11@653 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:13@655..27:17@659 Scalar { anchor: None, tag: None, value: "echo", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:0@660..28:0@660 MappingEnd
+28:0@660..28:0@660 SequenceEnd
+28:0@660..28:0@660 MappingEnd
+28:0@660..28:0@660 MappingEnd
+28:0@660..28:0@660 MappingEnd
+28:0@660..28:0@660 DocumentEnd { implicit: true }
+28:0@660..28:0@660 StreamEnd

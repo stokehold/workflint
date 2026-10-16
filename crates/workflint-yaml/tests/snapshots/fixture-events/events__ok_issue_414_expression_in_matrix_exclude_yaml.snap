@@ -1,0 +1,47 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-414_expression_in_matrix_exclude.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:5@5 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+0:5@5..0:9@9 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:9@9..0:10@10 SequenceEnd
+2:0@12..2:4@16 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@20..3:2@20 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@20..3:6@24 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@30..4:4@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@30..4:11@37 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@39..4:26@52 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@57..5:12@65 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@73..6:6@73 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@73..6:12@79 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@89..7:8@89 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@89..7:11@92 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@94..7:14@95 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+7:14@95..7:17@98 Scalar { anchor: None, tag: None, value: "a", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:19@100..7:22@103 Scalar { anchor: None, tag: None, value: "b", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:22@103..7:23@104 SequenceEnd
+8:8@113..8:15@120 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@132..9:10@132 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@134..9:12@134 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@134..9:15@137 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:17@139..9:41@163 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@168..10:4@168 MappingEnd
+10:4@168..10:4@168 SequenceEnd
+10:4@168..10:4@168 MappingEnd
+10:4@168..10:4@168 MappingEnd
+10:4@168..10:9@173 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@181..11:6@181 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@183..11:8@183 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@183..11:11@186 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@188..11:35@210 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@211..12:0@211 MappingEnd
+12:0@211..12:0@211 SequenceEnd
+12:0@211..12:0@211 MappingEnd
+12:0@211..12:0@211 MappingEnd
+12:0@211..12:0@211 MappingEnd
+12:0@211..12:0@211 DocumentEnd { implicit: true }
+12:0@211..12:0@211 StreamEnd

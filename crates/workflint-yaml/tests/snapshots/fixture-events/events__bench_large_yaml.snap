@@ -1,0 +1,763 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: bench/large.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:24@24 Comment OwnLine "# TODO: Use larger input"
+2:0@26..2:0@26 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+2:0@26..2:0@26 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:0@26..2:4@30 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:6@32..2:20@46 Scalar { anchor: None, tag: None, value: "Large workflow", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@47..3:2@49 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@53..4:2@53 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@53..4:6@57 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@63..5:4@63 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@63..5:9@68 Scalar { anchor: None, tag: None, value: "paths", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@76..6:6@76 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@78..6:40@110 Scalar { anchor: None, tag: None, value: "scripts/download-actionlint.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@119..7:45@156 Scalar { anchor: None, tag: None, value: "scripts/test-download-actionlint.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@161..8:4@161 SequenceEnd
+8:4@161..8:12@169 Scalar { anchor: None, tag: None, value: "branches", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@177..9:6@177 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@179..9:12@183 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@188..10:4@188 SequenceEnd
+10:4@188..10:15@199 Scalar { anchor: None, tag: None, value: "tags-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@207..11:6@207 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@209..11:11@212 Scalar { anchor: None, tag: None, value: "*", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+11:11@212..11:11@212 SequenceEnd
+11:11@212..11:11@212 MappingEnd
+12:2@215..12:14@227 Scalar { anchor: None, tag: None, value: "pull_request", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@233..13:4@233 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:4@233..13:9@238 Scalar { anchor: None, tag: None, value: "paths", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@246..14:6@246 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@248..14:40@280 Scalar { anchor: None, tag: None, value: "scripts/download-actionlint.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:8@289..15:45@326 Scalar { anchor: None, tag: None, value: "scripts/test-download-actionlint.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:2@329..16:2@329 SequenceEnd
+16:2@329..16:2@329 MappingEnd
+16:2@329..16:10@337 Scalar { anchor: None, tag: None, value: "schedule", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@343..17:32@371 Comment OwnLine "# Every Saturday 6:41 in JST"
+18:4@376..18:4@376 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+18:6@378..18:6@378 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:6@378..18:10@382 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:12@384..18:25@397 Scalar { anchor: None, tag: None, value: "41 21 * * 5", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+18:25@397..18:25@397 MappingEnd
+18:25@397..18:25@397 SequenceEnd
+19:2@400..19:19@417 Scalar { anchor: None, tag: None, value: "workflow_dispatch", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:20@418..19:20@418 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:20@418..19:20@418 MappingEnd
+21:0@420..21:11@431 Scalar { anchor: None, tag: None, value: "permissions", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:2@435..22:2@435 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:2@435..22:17@450 Scalar { anchor: None, tag: None, value: "security-events", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:19@452..22:24@457 Scalar { anchor: None, tag: None, value: "write", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:2@460..23:10@468 Scalar { anchor: None, tag: None, value: "contents", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:12@470..23:17@475 Scalar { anchor: None, tag: None, value: "write", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:0@477..25:0@477 MappingEnd
+25:0@477..25:4@481 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:2@485..26:2@485 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:2@485..26:12@495 Scalar { anchor: None, tag: None, value: "unit-tests", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:4@501..27:4@501 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:4@501..27:8@505 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:10@507..27:20@517 Scalar { anchor: None, tag: None, value: "Unit tests", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:4@522..28:12@530 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:6@538..29:6@538 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:6@538..29:12@544 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:8@554..30:8@554 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+30:8@554..30:10@556 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:12@558..30:13@559 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+30:13@559..30:26@572 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:28@574..30:44@590 Scalar { anchor: None, tag: None, value: "ubuntu-24.04-arm", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:46@592..30:58@604 Scalar { anchor: None, tag: None, value: "macos-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:60@606..30:74@620 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:76@622..30:90@636 Scalar { anchor: None, tag: None, value: "macos-15-intel", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:90@636..30:91@637 SequenceEnd
+31:8@646..31:10@648 Scalar { anchor: None, tag: None, value: "go", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:12@650..31:13@651 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+31:13@651..31:19@657 Scalar { anchor: None, tag: None, value: "1.24", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+31:21@659..31:27@665 Scalar { anchor: None, tag: None, value: "1.25", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+31:27@665..31:28@666 SequenceEnd
+31:28@666..31:28@666 MappingEnd
+31:28@666..31:28@666 MappingEnd
+32:4@671..32:11@678 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:13@680..32:29@696 Scalar { anchor: None, tag: None, value: "${{ matrix.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:4@701..33:9@706 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:6@714..34:6@714 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+34:8@716..34:8@716 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:8@716..34:12@720 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:14@722..34:43@751 Scalar { anchor: None, tag: None, value: "Install dependencies on macOS", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:8@760..35:11@763 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:13@765..43:0@1011 Scalar { anchor: None, tag: None, value: "set -x\nbrew install --quiet shellcheck python3 pipx\n# https://pipx.pypa.io/stable/installation/\npipx ensurepath\npipx install pyflakes\nshellcheck --version\npyflakes --version\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+43:8@1019..43:10@1021 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:12@1023..43:39@1050 Scalar { anchor: None, tag: None, value: "${{ runner.os == 'macOS' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:6@1057..44:6@1057 MappingEnd
+44:8@1059..44:8@1059 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+44:8@1059..44:12@1063 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:14@1065..44:43@1094 Scalar { anchor: None, tag: None, value: "Install dependencies on Linux", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:8@1103..45:11@1106 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:13@1108..51:0@1263 Scalar { anchor: None, tag: None, value: "set -x\nsudo apt-get install -y shellcheck\npip install pyflakes\nshellcheck --version\npyflakes --version\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+51:8@1271..51:10@1273 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+51:12@1275..51:39@1302 Scalar { anchor: None, tag: None, value: "${{ runner.os == 'Linux' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+52:6@1309..52:6@1309 MappingEnd
+52:8@1311..52:8@1311 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+52:8@1311..52:12@1315 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+52:14@1317..52:45@1348 Scalar { anchor: None, tag: None, value: "Install dependencies on Windows", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:8@1357..53:11@1360 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:13@1362..58:0@1583 Scalar { anchor: None, tag: None, value: "# `choco install shellcheck` is too slow on GitHub Actions. It takes more than 3 minutes to install one package\n# choco install shellcheck\npip install pyflakes\npyflakes --version\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+58:8@1591..58:10@1593 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+58:12@1595..58:41@1624 Scalar { anchor: None, tag: None, value: "${{ runner.os == 'Windows' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+59:6@1631..59:6@1631 MappingEnd
+59:8@1633..59:8@1633 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+59:8@1633..59:12@1637 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+59:14@1639..59:33@1658 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+60:6@1665..60:6@1665 MappingEnd
+60:8@1667..60:8@1667 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+60:8@1667..60:12@1671 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+60:14@1673..60:33@1692 Scalar { anchor: None, tag: None, value: "actions/setup-go@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+61:8@1701..61:12@1705 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+62:10@1717..62:10@1717 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+62:10@1717..62:20@1727 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+62:22@1729..62:38@1745 Scalar { anchor: None, tag: None, value: "${{ matrix.go }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+63:6@1752..63:6@1752 MappingEnd
+63:6@1752..63:6@1752 MappingEnd
+63:8@1754..63:8@1754 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+63:8@1754..63:11@1757 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+63:13@1759..63:80@1826 Scalar { anchor: None, tag: None, value: "go test -v -race -coverprofile coverage.txt -covermode=atomic ./...", plain_implicit: true, quoted_implicit: false, style: Plain }
+64:6@1833..64:6@1833 MappingEnd
+64:8@1835..64:8@1835 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+64:8@1835..64:11@1838 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+64:13@1840..64:47@1874 Scalar { anchor: None, tag: None, value: "go tool cover -func ./coverage.txt", plain_implicit: true, quoted_implicit: false, style: Plain }
+65:6@1881..65:6@1881 MappingEnd
+65:6@1881..65:31@1906 Comment OwnLine "# Check build without CGO"
+66:8@1915..66:8@1915 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+66:8@1915..66:11@1918 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+66:13@1920..66:38@1945 Scalar { anchor: None, tag: None, value: "go build ./cmd/actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+67:8@1954..67:11@1957 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+68:10@1969..68:36@1995 Comment OwnLine "# Note: -race requires cgo"
+69:10@2006..69:10@2006 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+69:10@2006..69:21@2017 Scalar { anchor: None, tag: None, value: "CGO_ENABLED", plain_implicit: true, quoted_implicit: false, style: Plain }
+69:23@2019..69:24@2020 Scalar { anchor: None, tag: None, value: "0", plain_implicit: true, quoted_implicit: false, style: Plain }
+70:6@2027..70:6@2027 MappingEnd
+70:6@2027..70:6@2027 MappingEnd
+70:6@2027..70:63@2084 Comment OwnLine "# Set -race for catching data races on dog fooding (#333)"
+71:8@2093..71:8@2093 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+71:8@2093..71:11@2096 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+71:13@2098..71:44@2129 Scalar { anchor: None, tag: None, value: "go build -race ./cmd/actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+72:6@2136..72:6@2136 MappingEnd
+72:8@2138..72:8@2138 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+72:8@2138..72:12@2142 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+72:14@2144..72:27@2160 Scalar { anchor: None, tag: None, value: "Dog fooding 🐶", plain_implicit: true, quoted_implicit: false, style: Plain }
+73:8@2169..73:11@2172 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+73:13@2174..76:0@2270 Scalar { anchor: None, tag: None, value: "echo \"::add-matcher::.github/actionlint-matcher.json\"\n./actionlint -color\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+76:6@2276..76:6@2276 MappingEnd
+76:8@2278..76:8@2278 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+76:8@2278..76:12@2282 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+76:14@2284..76:39@2309 Scalar { anchor: None, tag: None, value: "codecov/codecov-action@v5", plain_implicit: true, quoted_implicit: false, style: Plain }
+77:8@2318..77:12@2322 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+78:10@2334..78:10@2334 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+78:10@2334..78:18@2342 Scalar { anchor: None, tag: None, value: "env_vars", plain_implicit: true, quoted_implicit: false, style: Plain }
+78:20@2344..78:22@2346 Scalar { anchor: None, tag: None, value: "OS", plain_implicit: true, quoted_implicit: false, style: Plain }
+79:10@2357..79:15@2362 Scalar { anchor: None, tag: None, value: "token", plain_implicit: true, quoted_implicit: false, style: Plain }
+79:17@2364..79:45@2392 Scalar { anchor: None, tag: None, value: "${{ secrets.CODECOV_TOKEN }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+80:8@2401..80:8@2401 MappingEnd
+80:8@2401..80:11@2404 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+81:10@2416..81:10@2416 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+81:10@2416..81:12@2418 Scalar { anchor: None, tag: None, value: "OS", plain_implicit: true, quoted_implicit: false, style: Plain }
+81:14@2420..81:30@2436 Scalar { anchor: None, tag: None, value: "${{ matrix.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+82:2@2439..82:2@2439 MappingEnd
+82:2@2439..82:2@2439 MappingEnd
+82:2@2439..82:2@2439 SequenceEnd
+82:2@2439..82:2@2439 MappingEnd
+82:2@2439..82:6@2443 Scalar { anchor: None, tag: None, value: "wasm", plain_implicit: true, quoted_implicit: false, style: Plain }
+83:4@2449..83:4@2449 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+83:4@2449..83:8@2453 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+83:10@2455..83:14@2459 Scalar { anchor: None, tag: None, value: "Wasm", plain_implicit: true, quoted_implicit: false, style: Plain }
+84:4@2464..84:11@2471 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+84:13@2473..84:26@2486 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+85:4@2491..85:12@2499 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+86:6@2507..86:6@2507 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+86:6@2507..86:9@2510 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+87:8@2520..87:8@2520 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+87:8@2520..87:25@2537 Scalar { anchor: None, tag: None, value: "working-directory", plain_implicit: true, quoted_implicit: false, style: Plain }
+87:27@2539..87:39@2551 Scalar { anchor: None, tag: None, value: "./playground", plain_implicit: true, quoted_implicit: false, style: Plain }
+88:4@2556..88:4@2556 MappingEnd
+88:4@2556..88:4@2556 MappingEnd
+88:4@2556..88:9@2561 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+89:6@2569..89:6@2569 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+89:8@2571..89:8@2571 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+89:8@2571..89:12@2575 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+89:14@2577..89:33@2596 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+90:6@2603..90:6@2603 MappingEnd
+90:8@2605..90:8@2605 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+90:8@2605..90:12@2609 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+90:14@2611..90:33@2630 Scalar { anchor: None, tag: None, value: "actions/setup-go@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+91:8@2639..91:12@2643 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+92:10@2655..92:10@2655 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+92:10@2655..92:20@2665 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+92:22@2667..92:28@2673 Scalar { anchor: None, tag: None, value: "1.25", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+92:28@2673..92:28@2673 MappingEnd
+92:28@2673..92:28@2673 MappingEnd
+93:8@2682..93:8@2682 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+93:8@2682..93:12@2686 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+93:14@2688..93:35@2709 Scalar { anchor: None, tag: None, value: "actions/setup-node@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+94:8@2718..94:12@2722 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+95:10@2734..95:10@2734 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+95:10@2734..95:22@2746 Scalar { anchor: None, tag: None, value: "node-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+95:24@2748..95:31@2755 Scalar { anchor: None, tag: None, value: "lts/*", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+96:10@2766..96:15@2771 Scalar { anchor: None, tag: None, value: "cache", plain_implicit: true, quoted_implicit: false, style: Plain }
+96:17@2773..96:20@2776 Scalar { anchor: None, tag: None, value: "npm", plain_implicit: true, quoted_implicit: false, style: Plain }
+97:10@2787..97:31@2808 Scalar { anchor: None, tag: None, value: "cache-dependency-path", plain_implicit: true, quoted_implicit: false, style: Plain }
+97:33@2810..97:63@2840 Scalar { anchor: None, tag: None, value: "./playground/package-lock.json", plain_implicit: true, quoted_implicit: false, style: Plain }
+98:6@2847..98:6@2847 MappingEnd
+98:6@2847..98:6@2847 MappingEnd
+98:8@2849..98:8@2849 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+98:8@2849..98:12@2853 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+98:14@2855..98:30@2871 Scalar { anchor: None, tag: None, value: "Build playground", plain_implicit: true, quoted_implicit: false, style: Plain }
+99:8@2880..99:11@2883 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+99:13@2885..99:23@2895 Scalar { anchor: None, tag: None, value: "make build", plain_implicit: true, quoted_implicit: false, style: Plain }
+100:6@2902..100:6@2902 MappingEnd
+100:8@2904..100:8@2904 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+100:8@2904..100:12@2908 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+100:14@2910..100:29@2925 Scalar { anchor: None, tag: None, value: "Lint playground", plain_implicit: true, quoted_implicit: false, style: Plain }
+101:8@2934..101:11@2937 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+101:13@2939..101:25@2951 Scalar { anchor: None, tag: None, value: "npm run lint", plain_implicit: true, quoted_implicit: false, style: Plain }
+102:6@2958..102:6@2958 MappingEnd
+102:8@2960..102:8@2960 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+102:8@2960..102:12@2964 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+102:14@2966..102:32@2984 Scalar { anchor: None, tag: None, value: "Run tests for wasm", plain_implicit: true, quoted_implicit: false, style: Plain }
+103:8@2993..103:11@2996 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+103:13@2998..103:21@3006 Scalar { anchor: None, tag: None, value: "npm test", plain_implicit: true, quoted_implicit: false, style: Plain }
+104:2@3009..104:2@3009 MappingEnd
+104:2@3009..104:2@3009 SequenceEnd
+104:2@3009..104:2@3009 MappingEnd
+104:2@3009..104:6@3013 Scalar { anchor: None, tag: None, value: "lint", plain_implicit: true, quoted_implicit: false, style: Plain }
+105:4@3019..105:4@3019 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+105:4@3019..105:8@3023 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+105:10@3025..105:14@3029 Scalar { anchor: None, tag: None, value: "Lint", plain_implicit: true, quoted_implicit: false, style: Plain }
+106:4@3034..106:11@3041 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+106:13@3043..106:26@3056 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+107:4@3061..107:9@3066 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+108:6@3074..108:6@3074 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+108:8@3076..108:8@3076 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+108:8@3076..108:12@3080 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+108:14@3082..108:33@3101 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+109:6@3108..109:6@3108 MappingEnd
+109:8@3110..109:8@3110 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+109:8@3110..109:12@3114 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+109:14@3116..109:33@3135 Scalar { anchor: None, tag: None, value: "actions/setup-go@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+110:8@3144..110:12@3148 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+111:10@3160..111:10@3160 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+111:10@3160..111:20@3170 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+111:22@3172..111:28@3178 Scalar { anchor: None, tag: None, value: "1.25", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+111:28@3178..111:28@3178 MappingEnd
+111:28@3178..111:28@3178 MappingEnd
+112:8@3187..112:8@3187 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+112:8@3187..112:12@3191 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+112:14@3193..112:34@3213 Scalar { anchor: None, tag: None, value: "Install dependencies", plain_implicit: true, quoted_implicit: false, style: Plain }
+113:8@3222..113:11@3225 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+113:13@3227..118:0@3365 Scalar { anchor: None, tag: None, value: "sudo apt-get install -y shellcheck\npip install pyflakes\nshellcheck --version\npyflakes --version\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+118:6@3371..118:6@3371 MappingEnd
+118:8@3373..118:8@3373 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+118:8@3373..118:12@3377 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+118:14@3379..118:44@3409 Scalar { anchor: None, tag: None, value: "Check Go sources are formatted", plain_implicit: true, quoted_implicit: false, style: Plain }
+119:8@3418..119:11@3421 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+119:13@3423..125:0@3621 Scalar { anchor: None, tag: None, value: "diffs=\"$(gofmt -d ./*.go ./cmd/actionlint/*.go ./scripts/*/*.go ./playground/*.go)\"\nif [[ \"$diffs\" != \"\" ]]; then\n  echo \"$diffs\" >&2\n  exit 1\nfi\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+125:6@3627..125:6@3627 MappingEnd
+125:8@3629..125:8@3629 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+125:8@3629..125:12@3633 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+125:14@3635..125:49@3670 Scalar { anchor: None, tag: None, value: "Install staticcheck and govulncheck", plain_implicit: true, quoted_implicit: false, style: Plain }
+126:8@3679..126:11@3682 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+126:13@3684..130:0@3867 Scalar { anchor: None, tag: None, value: "go install honnef.co/go/tools/cmd/staticcheck@latest\ngo install golang.org/x/vuln/cmd/govulncheck@latest\necho \"$(go env GOPATH)/bin\" >> \"$GITHUB_PATH\"\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+130:6@3873..130:6@3873 MappingEnd
+130:8@3875..130:8@3875 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+130:8@3875..130:11@3878 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+130:13@3880..130:44@3911 Scalar { anchor: None, tag: None, value: "make lint SKIP_GO_GENERATE=true", plain_implicit: true, quoted_implicit: false, style: Plain }
+131:6@3918..131:6@3918 MappingEnd
+131:8@3920..131:8@3920 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+131:8@3920..131:12@3924 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+131:14@3926..131:31@3943 Scalar { anchor: None, tag: None, value: "Lint bash scripts", plain_implicit: true, quoted_implicit: false, style: Plain }
+132:8@3952..132:11@3955 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+132:13@3957..132:60@4004 Scalar { anchor: None, tag: None, value: "shellcheck ./scripts/*.bash ./playground/*.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+133:2@4007..133:2@4007 MappingEnd
+133:2@4007..133:2@4007 SequenceEnd
+133:2@4007..133:2@4007 MappingEnd
+133:2@4007..133:14@4019 Scalar { anchor: None, tag: None, value: "docker-check", plain_implicit: true, quoted_implicit: false, style: Plain }
+134:4@4025..134:4@4025 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+134:4@4025..134:8@4029 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+134:10@4031..134:20@4041 Scalar { anchor: None, tag: None, value: "Dockerfile", plain_implicit: true, quoted_implicit: false, style: Plain }
+135:4@4046..135:11@4053 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+135:13@4055..135:26@4068 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+136:4@4073..136:9@4078 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+137:6@4086..137:6@4086 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+137:8@4088..137:8@4088 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+137:8@4088..137:12@4092 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+137:14@4094..137:33@4113 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+138:6@4120..138:6@4120 MappingEnd
+138:8@4122..138:8@4122 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+138:8@4122..138:12@4126 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+138:14@4128..138:25@4139 Scalar { anchor: None, tag: None, value: "Build image", plain_implicit: true, quoted_implicit: false, style: Plain }
+139:8@4148..139:10@4150 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+139:12@4152..139:17@4157 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+140:8@4166..140:12@4170 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+140:14@4172..140:41@4199 Scalar { anchor: None, tag: None, value: "docker/build-push-action@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+141:8@4208..141:12@4212 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+142:10@4224..142:10@4224 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+142:10@4224..142:20@4234 Scalar { anchor: None, tag: None, value: "build-args", plain_implicit: true, quoted_implicit: false, style: Plain }
+142:22@4236..144:0@4266 Scalar { anchor: None, tag: None, value: "GOLANG_VER=1.25\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+144:10@4276..144:14@4280 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+144:16@4282..144:21@4287 Scalar { anchor: None, tag: None, value: "false", plain_implicit: true, quoted_implicit: false, style: Plain }
+145:6@4294..145:6@4294 MappingEnd
+145:6@4294..145:6@4294 MappingEnd
+145:8@4296..145:8@4296 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+145:8@4296..145:12@4300 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+145:14@4302..145:31@4319 Scalar { anchor: None, tag: None, value: "Test Docker image", plain_implicit: true, quoted_implicit: false, style: Plain }
+146:8@4328..146:11@4331 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+146:13@4333..149:62@4505 Scalar { anchor: None, tag: None, value: "docker container run --mount type=bind,source=\"$(pwd)\",target=/mnt/app --workdir /mnt/app -- ${{ steps.image.outputs.digest }} -color -verbose", plain_implicit: true, quoted_implicit: false, style: Plain }
+150:6@4512..150:6@4512 MappingEnd
+150:8@4514..150:8@4514 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+150:8@4514..150:12@4518 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+150:14@4520..150:43@4549 Scalar { anchor: None, tag: None, value: "Lint Dockerfile with hadolint", plain_implicit: true, quoted_implicit: false, style: Plain }
+151:8@4558..151:11@4561 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+151:13@4563..151:105@4655 Scalar { anchor: None, tag: None, value: "docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels - < Dockerfile", plain_implicit: true, quoted_implicit: false, style: Plain }
+152:2@4658..152:2@4658 MappingEnd
+152:2@4658..152:2@4658 SequenceEnd
+152:2@4658..152:2@4658 MappingEnd
+152:2@4658..152:12@4668 Scalar { anchor: None, tag: None, value: "analyze-go", plain_implicit: true, quoted_implicit: false, style: Plain }
+153:4@4674..153:4@4674 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+153:4@4674..153:8@4678 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+153:10@4680..153:20@4690 Scalar { anchor: None, tag: None, value: "Analyze Go", plain_implicit: true, quoted_implicit: false, style: Plain }
+154:4@4695..154:11@4702 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+154:13@4704..154:26@4717 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+155:4@4722..155:9@4727 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+156:6@4735..156:6@4735 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+156:8@4737..156:8@4737 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+156:8@4737..156:12@4741 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+156:14@4743..156:33@4762 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+157:6@4769..157:6@4769 MappingEnd
+157:8@4771..157:8@4771 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+157:8@4771..157:12@4775 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+157:14@4777..157:33@4796 Scalar { anchor: None, tag: None, value: "actions/setup-go@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+158:8@4805..158:12@4809 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+159:10@4821..159:10@4821 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+159:10@4821..159:20@4831 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+159:22@4833..159:28@4839 Scalar { anchor: None, tag: None, value: "1.25", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+159:28@4839..159:28@4839 MappingEnd
+159:28@4839..159:28@4839 MappingEnd
+160:8@4848..160:8@4848 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+160:8@4848..160:12@4852 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+160:14@4854..160:42@4882 Scalar { anchor: None, tag: None, value: "github/codeql-action/init@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+161:8@4891..161:12@4895 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+162:10@4907..162:10@4907 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+162:10@4907..162:21@4918 Scalar { anchor: None, tag: None, value: "config-file", plain_implicit: true, quoted_implicit: false, style: Plain }
+162:23@4920..162:58@4955 Scalar { anchor: None, tag: None, value: "./.github/codeql/codeql-config.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+163:10@4966..163:19@4975 Scalar { anchor: None, tag: None, value: "languages", plain_implicit: true, quoted_implicit: false, style: Plain }
+163:21@4977..163:23@4979 Scalar { anchor: None, tag: None, value: "go", plain_implicit: true, quoted_implicit: false, style: Plain }
+164:6@4986..164:6@4986 MappingEnd
+164:6@4986..164:6@4986 MappingEnd
+164:8@4988..164:8@4988 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+164:8@4988..164:12@4992 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+164:14@4994..164:30@5010 Scalar { anchor: None, tag: None, value: "Build Go sources", plain_implicit: true, quoted_implicit: false, style: Plain }
+165:8@5019..165:11@5022 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+165:13@5024..169:0@5163 Scalar { anchor: None, tag: None, value: "set -x\ngo build -v ./cmd/actionlint\nGOOS=js GOARCH=wasm go build -v -o ./playground/main.wasm ./playground\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+169:6@5169..169:6@5169 MappingEnd
+169:8@5171..169:8@5171 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+169:8@5171..169:12@5175 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+169:14@5177..169:45@5208 Scalar { anchor: None, tag: None, value: "github/codeql-action/analyze@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+170:8@5217..170:12@5221 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+171:10@5233..171:10@5233 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+171:10@5233..171:18@5241 Scalar { anchor: None, tag: None, value: "category", plain_implicit: true, quoted_implicit: false, style: Plain }
+171:20@5243..171:34@5257 Scalar { anchor: None, tag: None, value: "/language:go", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+171:34@5257..171:34@5257 MappingEnd
+171:34@5257..171:34@5257 MappingEnd
+171:34@5257..171:34@5257 SequenceEnd
+171:34@5257..171:34@5257 MappingEnd
+172:2@5260..172:12@5270 Scalar { anchor: None, tag: None, value: "analyze-ts", plain_implicit: true, quoted_implicit: false, style: Plain }
+173:4@5276..173:4@5276 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+173:4@5276..173:8@5280 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+173:10@5282..173:28@5300 Scalar { anchor: None, tag: None, value: "Analyze TypeScript", plain_implicit: true, quoted_implicit: false, style: Plain }
+174:4@5305..174:11@5312 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+174:13@5314..174:26@5327 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+175:4@5332..175:12@5340 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+176:6@5348..176:6@5348 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+176:6@5348..176:9@5351 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+177:8@5361..177:8@5361 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+177:8@5361..177:25@5378 Scalar { anchor: None, tag: None, value: "working-directory", plain_implicit: true, quoted_implicit: false, style: Plain }
+177:27@5380..177:39@5392 Scalar { anchor: None, tag: None, value: "./playground", plain_implicit: true, quoted_implicit: false, style: Plain }
+178:4@5397..178:4@5397 MappingEnd
+178:4@5397..178:4@5397 MappingEnd
+178:4@5397..178:9@5402 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+179:6@5410..179:6@5410 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+179:8@5412..179:8@5412 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+179:8@5412..179:12@5416 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+179:14@5418..179:33@5437 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+180:6@5444..180:6@5444 MappingEnd
+180:8@5446..180:8@5446 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+180:8@5446..180:12@5450 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+180:14@5452..180:35@5473 Scalar { anchor: None, tag: None, value: "actions/setup-node@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+181:8@5482..181:12@5486 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+182:10@5498..182:10@5498 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+182:10@5498..182:22@5510 Scalar { anchor: None, tag: None, value: "node-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+182:24@5512..182:31@5519 Scalar { anchor: None, tag: None, value: "lts/*", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+183:10@5530..183:15@5535 Scalar { anchor: None, tag: None, value: "cache", plain_implicit: true, quoted_implicit: false, style: Plain }
+183:17@5537..183:20@5540 Scalar { anchor: None, tag: None, value: "npm", plain_implicit: true, quoted_implicit: false, style: Plain }
+184:10@5551..184:31@5572 Scalar { anchor: None, tag: None, value: "cache-dependency-path", plain_implicit: true, quoted_implicit: false, style: Plain }
+184:33@5574..184:63@5604 Scalar { anchor: None, tag: None, value: "./playground/package-lock.json", plain_implicit: true, quoted_implicit: false, style: Plain }
+185:6@5611..185:6@5611 MappingEnd
+185:6@5611..185:6@5611 MappingEnd
+185:8@5613..185:8@5613 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+185:8@5613..185:12@5617 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+185:14@5619..185:42@5647 Scalar { anchor: None, tag: None, value: "github/codeql-action/init@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+186:8@5656..186:12@5660 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+187:10@5672..187:10@5672 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+187:10@5672..187:21@5683 Scalar { anchor: None, tag: None, value: "config-file", plain_implicit: true, quoted_implicit: false, style: Plain }
+187:23@5685..187:58@5720 Scalar { anchor: None, tag: None, value: "./.github/codeql/codeql-config.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+188:10@5731..188:19@5740 Scalar { anchor: None, tag: None, value: "languages", plain_implicit: true, quoted_implicit: false, style: Plain }
+188:21@5742..188:42@5763 Scalar { anchor: None, tag: None, value: "javascript-typescript", plain_implicit: true, quoted_implicit: false, style: Plain }
+189:10@5774..189:21@5785 Scalar { anchor: None, tag: None, value: "source-root", plain_implicit: true, quoted_implicit: false, style: Plain }
+189:23@5787..189:35@5799 Scalar { anchor: None, tag: None, value: "./playground", plain_implicit: true, quoted_implicit: false, style: Plain }
+190:6@5806..190:6@5806 MappingEnd
+190:6@5806..190:6@5806 MappingEnd
+190:8@5808..190:8@5808 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+190:8@5808..190:12@5812 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+190:14@5814..190:30@5830 Scalar { anchor: None, tag: None, value: "Build playground", plain_implicit: true, quoted_implicit: false, style: Plain }
+191:8@5839..191:11@5842 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+191:13@5844..191:23@5854 Scalar { anchor: None, tag: None, value: "make build", plain_implicit: true, quoted_implicit: false, style: Plain }
+192:6@5861..192:6@5861 MappingEnd
+192:8@5863..192:8@5863 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+192:8@5863..192:12@5867 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+192:14@5869..192:45@5900 Scalar { anchor: None, tag: None, value: "github/codeql-action/analyze@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+193:8@5909..193:12@5913 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+194:10@5925..194:10@5925 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+194:10@5925..194:18@5933 Scalar { anchor: None, tag: None, value: "category", plain_implicit: true, quoted_implicit: false, style: Plain }
+194:20@5935..194:53@5968 Scalar { anchor: None, tag: None, value: "/language:javascript-typescript", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+194:53@5968..194:53@5968 MappingEnd
+194:53@5968..194:53@5968 MappingEnd
+194:53@5968..194:53@5968 SequenceEnd
+194:53@5968..194:53@5968 MappingEnd
+195:2@5971..195:10@5979 Scalar { anchor: None, tag: None, value: "download", plain_implicit: true, quoted_implicit: false, style: Plain }
+196:4@5985..196:4@5985 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+196:4@5985..196:8@5989 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+196:10@5991..196:30@6011 Scalar { anchor: None, tag: None, value: "Test download script", plain_implicit: true, quoted_implicit: false, style: Plain }
+197:4@6016..197:12@6024 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+198:6@6032..198:6@6032 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+198:6@6032..198:12@6038 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+199:8@6048..199:8@6048 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+199:8@6048..199:10@6050 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+199:12@6052..199:13@6053 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+199:13@6053..199:26@6066 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+199:28@6068..199:40@6080 Scalar { anchor: None, tag: None, value: "macos-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+199:42@6082..199:56@6096 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+199:56@6096..199:57@6097 SequenceEnd
+199:57@6097..199:57@6097 MappingEnd
+199:57@6097..199:57@6097 MappingEnd
+200:4@6102..200:11@6109 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+200:13@6111..200:29@6127 Scalar { anchor: None, tag: None, value: "${{ matrix.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+201:4@6132..201:9@6137 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+202:6@6145..202:6@6145 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+202:8@6147..202:8@6147 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+202:8@6147..202:12@6151 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+202:14@6153..202:33@6172 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+203:6@6179..203:6@6179 MappingEnd
+203:8@6181..203:8@6181 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+203:8@6181..203:11@6184 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+203:13@6186..203:52@6225 Scalar { anchor: None, tag: None, value: "./scripts/test-download-actionlint.bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+204:8@6234..204:13@6239 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+204:15@6241..204:19@6245 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+205:2@6248..205:2@6248 MappingEnd
+205:2@6248..205:2@6248 SequenceEnd
+205:2@6248..205:2@6248 MappingEnd
+205:2@6248..205:13@6259 Scalar { anchor: None, tag: None, value: "go-generate", plain_implicit: true, quoted_implicit: false, style: Plain }
+206:4@6265..206:4@6265 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+206:4@6265..206:6@6267 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+206:8@6269..206:54@6315 Scalar { anchor: None, tag: None, value: "${{ github.repository == 'rhysd/actionlint' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+207:4@6320..207:11@6327 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+207:13@6329..207:26@6342 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+208:4@6347..208:15@6358 Scalar { anchor: None, tag: None, value: "permissions", plain_implicit: true, quoted_implicit: false, style: Plain }
+209:6@6366..209:6@6366 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+209:6@6366..209:14@6374 Scalar { anchor: None, tag: None, value: "contents", plain_implicit: true, quoted_implicit: false, style: Plain }
+209:16@6376..209:21@6381 Scalar { anchor: None, tag: None, value: "write", plain_implicit: true, quoted_implicit: false, style: Plain }
+210:6@6388..210:19@6401 Scalar { anchor: None, tag: None, value: "pull-requests", plain_implicit: true, quoted_implicit: false, style: Plain }
+210:21@6403..210:26@6408 Scalar { anchor: None, tag: None, value: "write", plain_implicit: true, quoted_implicit: false, style: Plain }
+211:4@6413..211:4@6413 MappingEnd
+211:4@6413..211:9@6418 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+212:6@6426..212:6@6426 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+212:8@6428..212:8@6428 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+212:8@6428..212:12@6432 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+212:14@6434..212:33@6453 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+213:6@6460..213:6@6460 MappingEnd
+213:8@6462..213:8@6462 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+213:8@6462..213:12@6466 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+213:14@6468..213:33@6487 Scalar { anchor: None, tag: None, value: "actions/setup-go@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+214:8@6496..214:12@6500 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+215:10@6512..215:10@6512 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+215:10@6512..215:20@6522 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+215:22@6524..215:28@6530 Scalar { anchor: None, tag: None, value: "1.25", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+215:28@6530..215:28@6530 MappingEnd
+215:28@6530..215:28@6530 MappingEnd
+216:8@6539..216:8@6539 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+216:8@6539..216:12@6543 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+216:14@6545..216:41@6572 Scalar { anchor: None, tag: None, value: "Check new release on GitHub", plain_implicit: true, quoted_implicit: false, style: Plain }
+217:8@6581..217:11@6584 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+217:13@6586..217:57@6630 Scalar { anchor: None, tag: None, value: "go run ./scripts/generate-popular-actions -d", plain_implicit: true, quoted_implicit: false, style: Plain }
+218:6@6637..218:6@6637 MappingEnd
+218:8@6639..218:8@6639 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+218:8@6639..218:11@6642 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+218:13@6644..218:24@6655 Scalar { anchor: None, tag: None, value: "go generate", plain_implicit: true, quoted_implicit: false, style: Plain }
+219:6@6662..219:6@6662 MappingEnd
+219:8@6664..219:8@6664 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+219:8@6664..219:11@6667 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+219:13@6669..226:0@6857 Scalar { anchor: None, tag: None, value: "if git diff-files --quiet; then\n  echo \"pr=false\" >> \"$GITHUB_OUTPUT\"\nelse\n  git diff\n  echo \"pr=true\" >> \"$GITHUB_OUTPUT\"\nfi\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+226:8@6865..226:10@6867 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+226:12@6869..226:16@6873 Scalar { anchor: None, tag: None, value: "diff", plain_implicit: true, quoted_implicit: false, style: Plain }
+227:6@6880..227:6@6880 MappingEnd
+227:8@6882..227:8@6882 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+227:8@6882..227:12@6886 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+227:14@6888..227:48@6922 Scalar { anchor: None, tag: None, value: "peter-evans/create-pull-request@v7", plain_implicit: true, quoted_implicit: false, style: Plain }
+228:8@6931..228:12@6935 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+229:10@6947..229:10@6947 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+229:10@6947..229:16@6953 Scalar { anchor: None, tag: None, value: "branch", plain_implicit: true, quoted_implicit: false, style: Plain }
+229:18@6955..229:43@6980 Scalar { anchor: None, tag: None, value: "ci/${{ github.run_id }}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+230:10@6991..230:24@7005 Scalar { anchor: None, tag: None, value: "commit-message", plain_implicit: true, quoted_implicit: false, style: Plain }
+230:26@7007..230:73@7054 Scalar { anchor: None, tag: None, value: "update generated files by `go generate` on CI", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+231:10@7065..231:19@7074 Scalar { anchor: None, tag: None, value: "committer", plain_implicit: true, quoted_implicit: false, style: Plain }
+231:21@7076..231:98@7153 Scalar { anchor: None, tag: None, value: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+232:10@7164..232:16@7170 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+232:18@7172..232:95@7249 Scalar { anchor: None, tag: None, value: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+233:10@7260..233:15@7265 Scalar { anchor: None, tag: None, value: "title", plain_implicit: true, quoted_implicit: false, style: Plain }
+233:17@7267..233:47@7297 Scalar { anchor: None, tag: None, value: "Update generated files by CI", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+234:10@7308..234:14@7312 Scalar { anchor: None, tag: None, value: "body", plain_implicit: true, quoted_implicit: false, style: Plain }
+234:16@7314..238:0@7660 Scalar { anchor: None, tag: None, value: "This PR updates some generated files to the latest by running `go generate`.\nThis PR was created by [this workflow run](https://github.com/rhysd/actionlint/actions/runs/${{ github.run_id }}) automatically.\nList of workflow runs is [here](https://github.com/rhysd/actionlint/actions/workflows/generate.yaml).\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+238:10@7670..238:19@7679 Scalar { anchor: None, tag: None, value: "assignees", plain_implicit: true, quoted_implicit: false, style: Plain }
+238:21@7681..238:26@7686 Scalar { anchor: None, tag: None, value: "rhysd", plain_implicit: true, quoted_implicit: false, style: Plain }
+239:8@7695..239:8@7695 MappingEnd
+239:8@7695..239:10@7697 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+239:12@7699..239:50@7737 Scalar { anchor: None, tag: None, value: "${{ steps.diff.outputs.pr == 'true' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+240:2@7740..240:2@7740 MappingEnd
+240:2@7740..240:2@7740 SequenceEnd
+240:2@7740..240:2@7740 MappingEnd
+240:2@7740..240:14@7752 Scalar { anchor: None, tag: None, value: "matcher-test", plain_implicit: true, quoted_implicit: false, style: Plain }
+241:4@7758..241:4@7758 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+241:4@7758..241:8@7762 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+241:10@7764..241:42@7796 Scalar { anchor: None, tag: None, value: "Test generate-actionlint-matcher", plain_implicit: true, quoted_implicit: false, style: Plain }
+242:4@7801..242:11@7808 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+242:13@7810..242:26@7823 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+243:4@7828..243:9@7833 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+244:6@7841..244:6@7841 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+244:8@7843..244:8@7843 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+244:8@7843..244:12@7847 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+244:14@7849..244:33@7868 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+245:6@7875..245:6@7875 MappingEnd
+245:8@7877..245:8@7877 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+245:8@7877..245:12@7881 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+245:14@7883..245:33@7902 Scalar { anchor: None, tag: None, value: "actions/setup-go@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+246:8@7911..246:12@7915 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+247:10@7927..247:10@7927 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+247:10@7927..247:20@7937 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+247:22@7939..247:28@7945 Scalar { anchor: None, tag: None, value: "1.25", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+247:28@7945..247:28@7945 MappingEnd
+247:28@7945..247:28@7945 MappingEnd
+248:8@7954..248:8@7954 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+248:8@7954..248:12@7958 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+248:14@7960..248:35@7981 Scalar { anchor: None, tag: None, value: "actions/setup-node@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+249:8@7990..249:12@7994 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+250:10@8006..250:10@8006 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+250:10@8006..250:22@8018 Scalar { anchor: None, tag: None, value: "node-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+250:24@8020..250:31@8027 Scalar { anchor: None, tag: None, value: "lts/*", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+251:10@8038..251:15@8043 Scalar { anchor: None, tag: None, value: "cache", plain_implicit: true, quoted_implicit: false, style: Plain }
+251:17@8045..251:20@8048 Scalar { anchor: None, tag: None, value: "npm", plain_implicit: true, quoted_implicit: false, style: Plain }
+252:10@8059..252:31@8080 Scalar { anchor: None, tag: None, value: "cache-dependency-path", plain_implicit: true, quoted_implicit: false, style: Plain }
+252:33@8082..252:63@8112 Scalar { anchor: None, tag: None, value: "./playground/package-lock.json", plain_implicit: true, quoted_implicit: false, style: Plain }
+253:6@8119..253:6@8119 MappingEnd
+253:6@8119..253:6@8119 MappingEnd
+253:8@8121..253:8@8121 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+253:8@8121..253:12@8125 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+253:14@8127..253:30@8143 Scalar { anchor: None, tag: None, value: "Update test data", plain_implicit: true, quoted_implicit: false, style: Plain }
+254:8@8152..254:11@8155 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+254:13@8157..254:84@8228 Scalar { anchor: None, tag: None, value: "make ./scripts/generate-actionlint-matcher/test/* SKIP_GO_GENERATE=true", plain_implicit: true, quoted_implicit: false, style: Plain }
+255:6@8235..255:6@8235 MappingEnd
+255:8@8237..255:8@8237 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+255:8@8237..255:12@8241 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+255:14@8243..255:42@8271 Scalar { anchor: None, tag: None, value: "Test actionlint-matcher.json", plain_implicit: true, quoted_implicit: false, style: Plain }
+256:8@8280..256:11@8283 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+256:13@8285..256:64@8336 Scalar { anchor: None, tag: None, value: "node ./scripts/generate-actionlint-matcher/test.mjs", plain_implicit: true, quoted_implicit: false, style: Plain }
+257:6@8343..257:6@8343 MappingEnd
+257:8@8345..257:8@8345 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+257:8@8345..257:12@8349 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+257:14@8351..257:66@8403 Scalar { anchor: None, tag: None, value: "Ensure .github/actionlint-matcher.json is up-to-date", plain_implicit: true, quoted_implicit: false, style: Plain }
+258:8@8412..258:11@8415 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+258:13@8417..268:0@8738 Scalar { anchor: None, tag: None, value: "make .github/actionlint-matcher.json\nif git diff --quiet; then\n  echo 'OK'\nelse\n  echo 'ERROR! .github/actionlint-matcher.json is outdated. Update it by \"make .github/actionlint-matcher.json\"' >&2\n  set -x\n  git diff\n  exit 1\nfi\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+268:2@8740..268:2@8740 MappingEnd
+268:2@8740..268:2@8740 SequenceEnd
+268:2@8740..268:2@8740 MappingEnd
+268:2@8740..268:10@8748 Scalar { anchor: None, tag: None, value: "binaries", plain_implicit: true, quoted_implicit: false, style: Plain }
+269:4@8754..269:4@8754 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+269:4@8754..269:11@8761 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+269:13@8763..269:26@8776 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+270:4@8781..270:9@8786 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+271:6@8794..271:6@8794 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+271:8@8796..271:8@8796 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+271:8@8796..271:12@8800 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+271:14@8802..271:33@8821 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+272:6@8828..272:6@8828 MappingEnd
+272:8@8830..272:8@8830 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+272:8@8830..272:12@8834 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+272:14@8836..272:32@8854 Scalar { anchor: None, tag: None, value: "ruby/setup-ruby@v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+273:8@8863..273:12@8867 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+274:10@8879..274:10@8879 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+274:10@8879..274:22@8891 Scalar { anchor: None, tag: None, value: "ruby-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+274:24@8893..274:29@8898 Scalar { anchor: None, tag: None, value: "3.3", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+274:29@8898..274:29@8898 MappingEnd
+274:29@8898..274:29@8898 MappingEnd
+275:8@8907..275:8@8907 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+275:8@8907..275:11@8910 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+275:13@8912..275:29@8928 Scalar { anchor: None, tag: None, value: "gem install ronn", plain_implicit: true, quoted_implicit: false, style: Plain }
+276:6@8935..276:6@8935 MappingEnd
+276:8@8937..276:8@8937 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+276:8@8937..276:11@8940 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+276:13@8942..276:41@8970 Scalar { anchor: None, tag: None, value: "ronn ./man/actionlint.1.ronn", plain_implicit: true, quoted_implicit: false, style: Plain }
+277:6@8977..277:6@8977 MappingEnd
+277:8@8979..277:8@8979 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+277:8@8979..277:12@8983 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+277:14@8985..277:33@9004 Scalar { anchor: None, tag: None, value: "actions/setup-go@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+278:8@9013..278:12@9017 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+279:10@9029..279:10@9029 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+279:10@9029..279:20@9039 Scalar { anchor: None, tag: None, value: "go-version", plain_implicit: true, quoted_implicit: false, style: Plain }
+279:22@9041..279:28@9047 Scalar { anchor: None, tag: None, value: "1.25", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+279:28@9047..279:28@9047 MappingEnd
+279:28@9047..279:28@9047 MappingEnd
+280:8@9056..280:8@9056 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+280:8@9056..280:12@9060 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+280:14@9062..280:45@9093 Scalar { anchor: None, tag: None, value: "goreleaser/goreleaser-action@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+281:8@9102..281:12@9106 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+282:10@9118..282:10@9118 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+282:10@9118..282:17@9125 Scalar { anchor: None, tag: None, value: "version", plain_implicit: true, quoted_implicit: false, style: Plain }
+282:19@9127..282:26@9134 Scalar { anchor: None, tag: None, value: "~> v2", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+283:10@9145..283:14@9149 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+283:16@9151..283:31@9166 Scalar { anchor: None, tag: None, value: "release --clean", plain_implicit: true, quoted_implicit: false, style: Plain }
+284:8@9175..284:8@9175 MappingEnd
+284:8@9175..284:11@9178 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+285:10@9190..285:10@9190 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+285:10@9190..285:22@9202 Scalar { anchor: None, tag: None, value: "GITHUB_TOKEN", plain_implicit: true, quoted_implicit: false, style: Plain }
+285:24@9204..285:51@9231 Scalar { anchor: None, tag: None, value: "${{ secrets.GITHUB_TOKEN }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+286:6@9238..286:6@9238 MappingEnd
+286:6@9238..286:6@9238 MappingEnd
+286:8@9240..286:8@9240 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+286:8@9240..286:12@9244 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+286:14@9246..286:41@9273 Scalar { anchor: None, tag: None, value: "Post-release download check", plain_implicit: true, quoted_implicit: false, style: Plain }
+287:8@9282..287:11@9285 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+287:13@9287..287:80@9354 Scalar { anchor: None, tag: None, value: "bash ./scripts/download-actionlint.bash \"${GITHUB_REF#refs/tags/v}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+288:6@9361..288:6@9361 MappingEnd
+288:8@9363..288:8@9363 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+288:8@9363..288:12@9367 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+288:14@9369..288:65@9420 Scalar { anchor: None, tag: None, value: "Clone nested repository to make version bump commit", plain_implicit: true, quoted_implicit: false, style: Plain }
+289:8@9429..289:12@9433 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+289:14@9435..289:33@9454 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+290:8@9463..290:12@9467 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+291:10@9479..291:10@9479 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+291:10@9479..291:14@9483 Scalar { anchor: None, tag: None, value: "path", plain_implicit: true, quoted_implicit: false, style: Plain }
+291:16@9485..291:47@9516 Scalar { anchor: None, tag: None, value: "./tmp-actionlint-for-update-ver", plain_implicit: true, quoted_implicit: false, style: Plain }
+292:10@9527..292:13@9530 Scalar { anchor: None, tag: None, value: "ref", plain_implicit: true, quoted_implicit: false, style: Plain }
+292:15@9532..292:19@9536 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+293:10@9547..293:21@9558 Scalar { anchor: None, tag: None, value: "fetch-depth", plain_implicit: true, quoted_implicit: false, style: Plain }
+293:23@9560..293:24@9561 Scalar { anchor: None, tag: None, value: "0", plain_implicit: true, quoted_implicit: false, style: Plain }
+294:6@9568..294:6@9568 MappingEnd
+294:6@9568..294:6@9568 MappingEnd
+294:8@9570..294:8@9570 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+294:8@9570..294:12@9574 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+294:14@9576..294:47@9609 Scalar { anchor: None, tag: None, value: "Update version in download script", plain_implicit: true, quoted_implicit: false, style: Plain }
+295:8@9618..295:11@9621 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+295:13@9623..305:0@10141 Scalar { anchor: None, tag: None, value: "set -x\nver=\"${GITHUB_REF#refs/tags/v}\"\ncd ./tmp-actionlint-for-update-ver\nsed -i -E \"s/version=\\\"[0-9]+\\\\.[0-9]+\\\\.[0-9]+\\\"/version=\\\"${ver}\\\"/\" ./scripts/download-actionlint.bash\ngit diff\ngit add ./scripts/download-actionlint.bash\ngit -c user.email='41898282+github-actions[bot]@users.noreply.github.com' -c user.name='github-actions[bot]' commit -m \"update version to $ver in download-actionlint.bash\"\ngit log -n 1\ngit push\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+305:2@10143..305:2@10143 MappingEnd
+305:2@10143..305:2@10143 SequenceEnd
+305:2@10143..305:2@10143 MappingEnd
+305:2@10143..305:8@10149 Scalar { anchor: None, tag: None, value: "winget", plain_implicit: true, quoted_implicit: false, style: Plain }
+306:4@10155..306:4@10155 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+306:4@10155..306:11@10162 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+306:13@10164..306:26@10177 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+307:4@10182..307:9@10187 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+307:11@10189..307:19@10197 Scalar { anchor: None, tag: None, value: "binaries", plain_implicit: true, quoted_implicit: false, style: Plain }
+308:4@10202..308:9@10207 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+309:6@10215..309:6@10215 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+309:8@10217..309:8@10217 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+309:8@10217..309:12@10221 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+309:14@10223..309:48@10257 Scalar { anchor: None, tag: None, value: "vedantmgoyal9/winget-releaser@main", plain_implicit: true, quoted_implicit: false, style: Plain }
+310:8@10266..310:12@10270 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+311:10@10282..311:10@10282 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+311:10@10282..311:20@10292 Scalar { anchor: None, tag: None, value: "identifier", plain_implicit: true, quoted_implicit: false, style: Plain }
+311:22@10294..311:38@10310 Scalar { anchor: None, tag: None, value: "rhysd.actionlint", plain_implicit: true, quoted_implicit: false, style: Plain }
+312:10@10321..312:26@10337 Scalar { anchor: None, tag: None, value: "installers-regex", plain_implicit: true, quoted_implicit: false, style: Plain }
+312:28@10339..312:48@10359 Scalar { anchor: None, tag: None, value: "_windows_\\w+\\.zip$", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+313:10@10370..313:27@10387 Scalar { anchor: None, tag: None, value: "release-notes-url", plain_implicit: true, quoted_implicit: false, style: Plain }
+313:29@10389..313:112@10472 Scalar { anchor: None, tag: None, value: "https://github.com/rhysd/actionlint/blob/main/CHANGELOG.md#${{ github.ref_name }}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+314:10@10483..314:15@10488 Scalar { anchor: None, tag: None, value: "token", plain_implicit: true, quoted_implicit: false, style: Plain }
+314:17@10490..314:44@10517 Scalar { anchor: None, tag: None, value: "${{ secrets.WINGET_TOKEN }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+315:2@10520..315:2@10520 MappingEnd
+315:2@10520..315:2@10520 MappingEnd
+315:2@10520..315:2@10520 SequenceEnd
+315:2@10520..315:2@10520 MappingEnd
+315:2@10520..315:8@10526 Scalar { anchor: None, tag: None, value: "docker", plain_implicit: true, quoted_implicit: false, style: Plain }
+316:4@10532..316:4@10532 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+316:4@10532..316:11@10539 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+316:13@10541..316:26@10554 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+317:4@10559..317:9@10564 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+318:6@10572..318:6@10572 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+318:8@10574..318:8@10574 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+318:8@10574..318:12@10578 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+318:14@10580..318:33@10599 Scalar { anchor: None, tag: None, value: "actions/checkout@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+319:6@10606..319:6@10606 MappingEnd
+319:8@10608..319:8@10608 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+319:8@10608..319:12@10612 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+319:14@10614..319:26@10626 Scalar { anchor: None, tag: None, value: "Get tag name", plain_implicit: true, quoted_implicit: false, style: Plain }
+320:8@10635..320:10@10637 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+320:12@10639..320:15@10642 Scalar { anchor: None, tag: None, value: "tag", plain_implicit: true, quoted_implicit: false, style: Plain }
+321:8@10651..321:11@10654 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+321:13@10656..323:0@10726 Scalar { anchor: None, tag: None, value: "echo \"name=${GITHUB_REF#refs/tags/v}\" >> \"$GITHUB_OUTPUT\"\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+323:6@10732..323:6@10732 MappingEnd
+323:8@10734..323:8@10734 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+323:8@10734..323:12@10738 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+323:14@10740..323:25@10751 Scalar { anchor: None, tag: None, value: "Set up QEMU", plain_implicit: true, quoted_implicit: false, style: Plain }
+324:8@10760..324:12@10764 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+324:14@10766..324:41@10793 Scalar { anchor: None, tag: None, value: "docker/setup-qemu-action@v3", plain_implicit: true, quoted_implicit: false, style: Plain }
+325:6@10800..325:6@10800 MappingEnd
+325:8@10802..325:8@10802 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+325:8@10802..325:12@10806 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+325:14@10808..325:34@10828 Scalar { anchor: None, tag: None, value: "Set up Docker Buildx", plain_implicit: true, quoted_implicit: false, style: Plain }
+326:8@10837..326:10@10839 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+326:12@10841..326:18@10847 Scalar { anchor: None, tag: None, value: "buildx", plain_implicit: true, quoted_implicit: false, style: Plain }
+327:8@10856..327:12@10860 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+327:14@10862..327:43@10891 Scalar { anchor: None, tag: None, value: "docker/setup-buildx-action@v3", plain_implicit: true, quoted_implicit: false, style: Plain }
+328:6@10898..328:6@10898 MappingEnd
+328:8@10900..328:8@10900 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+328:8@10900..328:12@10904 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+328:14@10906..328:32@10924 Scalar { anchor: None, tag: None, value: "Login to DockerHub", plain_implicit: true, quoted_implicit: false, style: Plain }
+329:8@10933..329:12@10937 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+329:14@10939..329:36@10961 Scalar { anchor: None, tag: None, value: "docker/login-action@v3", plain_implicit: true, quoted_implicit: false, style: Plain }
+330:8@10970..330:12@10974 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+331:10@10986..331:10@10986 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+331:10@10986..331:18@10994 Scalar { anchor: None, tag: None, value: "username", plain_implicit: true, quoted_implicit: false, style: Plain }
+331:20@10996..331:25@11001 Scalar { anchor: None, tag: None, value: "rhysd", plain_implicit: true, quoted_implicit: false, style: Plain }
+332:10@11012..332:18@11020 Scalar { anchor: None, tag: None, value: "password", plain_implicit: true, quoted_implicit: false, style: Plain }
+332:20@11022..332:50@11052 Scalar { anchor: None, tag: None, value: "${{ secrets.DOCKERHUB_TOKEN }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+333:6@11059..333:6@11059 MappingEnd
+333:6@11059..333:6@11059 MappingEnd
+333:8@11061..333:8@11061 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+333:8@11061..333:12@11065 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+333:14@11067..333:28@11081 Scalar { anchor: None, tag: None, value: "Build and push", plain_implicit: true, quoted_implicit: false, style: Plain }
+334:8@11090..334:12@11094 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+334:14@11096..334:41@11123 Scalar { anchor: None, tag: None, value: "docker/build-push-action@v6", plain_implicit: true, quoted_implicit: false, style: Plain }
+335:8@11132..335:12@11136 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+336:10@11148..336:10@11148 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+336:10@11148..336:19@11157 Scalar { anchor: None, tag: None, value: "platforms", plain_implicit: true, quoted_implicit: false, style: Plain }
+336:21@11159..336:44@11182 Scalar { anchor: None, tag: None, value: "linux/amd64,linux/arm64", plain_implicit: true, quoted_implicit: false, style: Plain }
+337:10@11193..337:20@11203 Scalar { anchor: None, tag: None, value: "build-args", plain_implicit: true, quoted_implicit: false, style: Plain }
+337:22@11205..340:0@11292 Scalar { anchor: None, tag: None, value: "GOLANG_VER=1.25\nACTIONLINT_VER=${{ steps.tag.outputs.name }}\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+340:10@11302..340:14@11306 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+340:16@11308..340:20@11312 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+341:10@11323..341:14@11327 Scalar { anchor: None, tag: None, value: "tags", plain_implicit: true, quoted_implicit: false, style: Plain }
+341:16@11329..344:0@11426 Scalar { anchor: None, tag: None, value: "rhysd/actionlint:${{ steps.tag.outputs.name }}\nrhysd/actionlint:latest\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+344:0@11426..344:0@11426 MappingEnd
+344:0@11426..344:0@11426 MappingEnd
+344:0@11426..344:0@11426 SequenceEnd
+344:0@11426..344:0@11426 MappingEnd
+344:0@11426..344:0@11426 MappingEnd
+344:0@11426..344:0@11426 MappingEnd
+344:0@11426..344:0@11426 DocumentEnd { implicit: true }
+344:0@11426..344:0@11426 StreamEnd

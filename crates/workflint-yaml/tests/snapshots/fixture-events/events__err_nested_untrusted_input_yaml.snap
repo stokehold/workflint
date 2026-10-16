@@ -1,0 +1,29 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/nested_untrusted_input.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:10@10 Scalar { anchor: None, tag: None, value: "Test", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@11..1:2@13 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@15..1:16@27 Scalar { anchor: None, tag: None, value: "pull_request", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@28..2:4@32 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@36..3:2@36 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@36..3:6@40 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@46..4:4@46 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@46..4:11@53 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@55..4:26@68 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@73..5:9@78 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@86..6:6@86 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@88..6:8@88 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@88..6:11@91 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@93..6:113@193 Scalar { anchor: None, tag: None, value: "echo ${{ github.event.pages[github.event.commits[github.event.issue.title].author.name].page_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@194..7:0@194 MappingEnd
+7:0@194..7:0@194 SequenceEnd
+7:0@194..7:0@194 MappingEnd
+7:0@194..7:0@194 MappingEnd
+7:0@194..7:0@194 MappingEnd
+7:0@194..7:0@194 DocumentEnd { implicit: true }
+7:0@194..7:0@194 StreamEnd

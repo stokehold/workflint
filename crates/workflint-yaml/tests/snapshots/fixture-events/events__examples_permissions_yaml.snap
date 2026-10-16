@@ -1,0 +1,42 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/permissions.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:85@95 Comment OwnLine "# ERROR: Available values for whole permissions are \"write-all\", \"read-all\" or \"none\""
+3:0@96..3:11@107 Scalar { anchor: None, tag: None, value: "permissions", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@109..3:18@114 Scalar { anchor: None, tag: None, value: "write", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@116..5:4@120 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@124..6:2@124 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@124..6:6@128 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@134..7:4@134 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:4@134..7:11@141 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@143..7:26@156 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@161..8:15@172 Scalar { anchor: None, tag: None, value: "permissions", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@180..9:45@219 Comment OwnLine "# ERROR: \"checks\" is correct scope name"
+10:6@226..10:6@226 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:6@226..10:11@231 Scalar { anchor: None, tag: None, value: "check", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@233..10:18@238 Scalar { anchor: None, tag: None, value: "write", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@245..11:61@300 Comment OwnLine "# ERROR: Available values are \"read\", \"write\" or \"none\""
+12:6@307..12:12@313 Scalar { anchor: None, tag: None, value: "issues", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:14@315..12:22@323 Scalar { anchor: None, tag: None, value: "readable", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@330..13:50@374 Comment OwnLine "# ERROR: \"models\" doesn't have \"write\" scope"
+14:6@381..14:12@387 Scalar { anchor: None, tag: None, value: "models", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:14@389..14:19@394 Scalar { anchor: None, tag: None, value: "write", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@399..15:4@399 MappingEnd
+15:4@399..15:9@404 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@412..16:6@412 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@414..16:8@414 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@414..16:11@417 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@419..16:23@429 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:0@430..17:0@430 MappingEnd
+17:0@430..17:0@430 SequenceEnd
+17:0@430..17:0@430 MappingEnd
+17:0@430..17:0@430 MappingEnd
+17:0@430..17:0@430 MappingEnd
+17:0@430..17:0@430 DocumentEnd { implicit: true }
+17:0@430..17:0@430 StreamEnd

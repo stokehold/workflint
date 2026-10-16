@@ -1,0 +1,74 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/deprecated_inputs/action/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:17@17 Scalar { anchor: None, tag: None, value: "My action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@18..1:6@24 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@26..1:41@59 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@60..2:11@71 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@73..2:24@84 Scalar { anchor: None, tag: None, value: "my action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@86..4:6@92 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@96..5:2@96 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@96..5:8@102 Scalar { anchor: None, tag: None, value: "input1", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@108..6:4@108 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@108..6:22@126 Scalar { anchor: None, tag: None, value: "deprecationMessage", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:24@128..6:39@143 Scalar { anchor: None, tag: None, value: "minimal message", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@146..7:2@146 MappingEnd
+7:2@146..7:8@152 Scalar { anchor: None, tag: None, value: "input2", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@158..8:4@158 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@158..8:22@176 Scalar { anchor: None, tag: None, value: "deprecationMessage", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:24@178..8:51@205 Scalar { anchor: None, tag: None, value: "message ending with period.", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@208..9:2@208 MappingEnd
+9:2@208..9:8@214 Scalar { anchor: None, tag: None, value: "input3", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@220..10:4@220 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:4@220..10:22@238 Scalar { anchor: None, tag: None, value: "deprecationMessage", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:24@240..10:49@265 Scalar { anchor: None, tag: None, value: "  message with spaces  ", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:49@265..10:49@265 MappingEnd
+11:2@268..11:8@274 Scalar { anchor: None, tag: None, value: "input4", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@280..12:4@280 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@280..12:22@298 Scalar { anchor: None, tag: None, value: "deprecationMessage", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:24@300..16:0@381 Scalar { anchor: None, tag: None, value: "this is first line.\nthis is second line.\nthis is third line.\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+16:2@383..16:2@383 MappingEnd
+16:2@383..16:8@389 Scalar { anchor: None, tag: None, value: "input5", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@395..17:4@395 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:4@395..17:22@413 Scalar { anchor: None, tag: None, value: "deprecationMessage", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:24@415..21:0@530 Scalar { anchor: None, tag: None, value: "this is first line.                   \n  this is second line.\t\t\t\t\t\t\t\t\t\n    this is third line.\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+21:2@532..21:2@532 MappingEnd
+21:2@532..21:8@538 Scalar { anchor: None, tag: None, value: "input6", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:4@544..22:4@544 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:4@544..22:22@562 Scalar { anchor: None, tag: None, value: "deprecationMessage", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:23@563..22:23@563 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:23@563..22:23@563 MappingEnd
+23:2@566..23:83@647 Comment OwnLine "# Usage of this input is not reported as error because it is marked as 'required'"
+24:2@650..24:8@656 Scalar { anchor: None, tag: None, value: "input7", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:4@662..25:4@662 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:4@662..25:12@670 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:14@672..25:18@676 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:4@681..26:22@699 Scalar { anchor: None, tag: None, value: "deprecationMessage", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:24@701..26:36@713 Scalar { anchor: None, tag: None, value: "some message", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:2@716..27:2@716 MappingEnd
+27:2@716..27:105@819 Comment OwnLine "# Usage of this input is reported as error because it is actually not required due to the default value"
+28:2@822..28:8@828 Scalar { anchor: None, tag: None, value: "input8", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:4@834..29:4@834 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:4@834..29:12@842 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:14@844..29:18@848 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:4@853..30:11@860 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:13@862..30:23@872 Scalar { anchor: None, tag: None, value: "some value", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:4@877..31:22@895 Scalar { anchor: None, tag: None, value: "deprecationMessage", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:24@897..31:36@909 Scalar { anchor: None, tag: None, value: "some message", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:0@911..33:0@911 MappingEnd
+33:0@911..33:0@911 MappingEnd
+33:0@911..33:4@915 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:2@919..34:2@919 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:2@919..34:7@924 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:9@926..34:17@934 Scalar { anchor: None, tag: None, value: "node20", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+35:2@937..35:6@941 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:8@943..35:18@953 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+35:18@953..35:18@953 MappingEnd
+36:0@954..36:0@954 MappingEnd
+36:0@954..36:0@954 DocumentEnd { implicit: true }
+36:0@954..36:0@954 StreamEnd

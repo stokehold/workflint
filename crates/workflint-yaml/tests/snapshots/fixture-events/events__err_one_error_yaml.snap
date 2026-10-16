@@ -1,0 +1,29 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/one_error.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:5@5 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+0:5@5..0:9@9 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:9@9..0:10@10 SequenceEnd
+1:0@11..1:4@15 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@19..2:2@19 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@19..2:6@23 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@29..3:4@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@29..3:11@36 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@38..3:26@51 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@56..4:9@61 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@69..5:6@69 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@71..5:8@71 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@71..5:11@74 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@76..5:77@140 Scalar { anchor: None, tag: None, value: "echo \"Checking commit '${{ github.event.head_commit.message }}'\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@141..6:0@141 MappingEnd
+6:0@141..6:0@141 SequenceEnd
+6:0@141..6:0@141 MappingEnd
+6:0@141..6:0@141 MappingEnd
+6:0@141..6:0@141 MappingEnd
+6:0@141..6:0@141 DocumentEnd { implicit: true }
+6:0@141..6:0@141 StreamEnd

@@ -1,0 +1,35 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/paths_config/workflows/nested/piyo.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:58@58 Comment OwnLine "# This error will be ignored by workflows/**/*.yaml config"
+1:0@59..1:0@59 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+1:0@59..1:0@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@59..1:2@61 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@63..1:11@70 Scalar { anchor: None, tag: None, value: "unknown", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@72..3:29@101 Comment OwnLine "# This error will be reported"
+4:0@102..4:3@105 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@109..5:2@109 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@109..5:5@112 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:7@114..5:21@128 Scalar { anchor: None, tag: None, value: "${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@130..7:0@130 MappingEnd
+7:0@130..7:4@134 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@138..8:2@138 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@138..8:6@142 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@148..9:33@177 Comment OwnLine "# This error will be reported"
+10:4@182..10:4@182 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:4@182..10:11@189 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@191..10:20@198 Scalar { anchor: None, tag: None, value: "unknown", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@203..11:9@208 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@216..12:6@216 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@218..12:8@218 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@218..12:11@221 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@223..12:17@227 Scalar { anchor: None, tag: None, value: "echo", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@228..13:0@228 MappingEnd
+13:0@228..13:0@228 SequenceEnd
+13:0@228..13:0@228 MappingEnd
+13:0@228..13:0@228 MappingEnd
+13:0@228..13:0@228 MappingEnd
+13:0@228..13:0@228 DocumentEnd { implicit: true }
+13:0@228..13:0@228 StreamEnd

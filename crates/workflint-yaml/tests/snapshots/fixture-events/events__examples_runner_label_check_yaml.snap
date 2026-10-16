@@ -1,0 +1,63 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/runner_label_check.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@43..4:12@49 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@59..5:8@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@59..5:14@65 Scalar { anchor: None, tag: None, value: "runner", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:10@77..6:14@81 Comment OwnLine "# OK"
+7:10@92..7:10@92 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:12@94..7:24@106 Scalar { anchor: None, tag: None, value: "macos-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@117..8:33@140 Comment OwnLine "# ERROR: Unknown runner"
+9:12@153..9:24@165 Scalar { anchor: None, tag: None, value: "linux-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@176..10:52@218 Comment OwnLine "# OK: Preset labels for self-hosted runner"
+11:12@231..11:13@232 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+11:13@232..11:24@243 Scalar { anchor: None, tag: None, value: "self-hosted", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:26@245..11:31@250 Scalar { anchor: None, tag: None, value: "linux", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:33@252..11:36@255 Scalar { anchor: None, tag: None, value: "x64", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:36@255..11:37@256 SequenceEnd
+12:10@267..12:58@315 Comment OwnLine "# OK: Single preset label for self-hosted runner"
+13:12@328..13:17@333 Scalar { anchor: None, tag: None, value: "arm64", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:10@344..14:99@433 Comment OwnLine "# ERROR: Unknown label \"gpu\". Custom label must be defined in actionlint.yaml config file"
+15:12@446..15:15@449 Scalar { anchor: None, tag: None, value: "gpu", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:4@454..16:4@454 SequenceEnd
+16:4@454..16:4@454 MappingEnd
+16:4@454..16:4@454 MappingEnd
+16:4@454..16:11@461 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@463..16:33@483 Scalar { anchor: None, tag: None, value: "${{ matrix.runner }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@488..17:9@493 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@501..18:6@501 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@503..18:8@503 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@503..18:11@506 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@508..18:21@516 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:2@520..20:2@520 MappingEnd
+20:2@520..20:2@520 SequenceEnd
+20:2@520..20:2@520 MappingEnd
+20:2@520..20:7@525 Scalar { anchor: None, tag: None, value: "test2", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:4@531..21:33@560 Comment OwnLine "# ERROR: Too old macOS worker"
+22:4@565..22:4@565 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:4@565..22:11@572 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:13@574..22:24@585 Scalar { anchor: None, tag: None, value: "macos-10.13", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:4@590..23:9@595 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:6@603..24:6@603 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@605..24:8@605 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@605..24:11@608 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:13@610..24:21@618 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:0@619..25:0@619 MappingEnd
+25:0@619..25:0@619 SequenceEnd
+25:0@619..25:0@619 MappingEnd
+25:0@619..25:0@619 MappingEnd
+25:0@619..25:0@619 MappingEnd
+25:0@619..25:0@619 DocumentEnd { implicit: true }
+25:0@619..25:0@619 StreamEnd

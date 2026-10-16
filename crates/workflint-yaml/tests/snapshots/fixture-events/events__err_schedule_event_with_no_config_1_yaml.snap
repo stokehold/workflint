@@ -1,0 +1,27 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/schedule_event_with_no_config_1.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:12@12 Scalar { anchor: None, tag: None, value: "schedule", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@14..2:4@18 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@22..3:2@22 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@22..3:6@26 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@32..4:4@32 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@32..4:11@39 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@41..4:26@54 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@59..5:9@64 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@72..6:6@72 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@74..6:8@74 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@74..6:11@77 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@79..6:23@89 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@90..7:0@90 MappingEnd
+7:0@90..7:0@90 SequenceEnd
+7:0@90..7:0@90 MappingEnd
+7:0@90..7:0@90 MappingEnd
+7:0@90..7:0@90 MappingEnd
+7:0@90..7:0@90 DocumentEnd { implicit: true }
+7:0@90..7:0@90 StreamEnd

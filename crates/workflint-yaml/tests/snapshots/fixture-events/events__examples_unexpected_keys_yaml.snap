@@ -1,0 +1,39 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/unexpected_keys.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:11@34 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@36..3:26@49 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@54..4:32@82 Comment OwnLine "# ERROR: Typo of `defaults:`"
+5:4@87..5:11@94 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@102..6:6@102 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@102..6:9@105 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@115..7:8@115 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@115..7:25@132 Scalar { anchor: None, tag: None, value: "working-directory", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:27@134..7:39@146 Scalar { anchor: None, tag: None, value: "/path/to/dir", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@151..8:4@151 MappingEnd
+8:4@151..8:4@151 MappingEnd
+8:4@151..8:9@156 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@164..9:6@164 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@166..9:8@166 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@166..9:11@169 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@171..9:23@181 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@190..10:47@229 Comment OwnLine "# ERROR: `shell:` must be in lower case"
+11:8@238..11:13@243 Scalar { anchor: None, tag: None, value: "Shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:15@245..11:19@249 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@250..12:0@250 MappingEnd
+12:0@250..12:0@250 SequenceEnd
+12:0@250..12:0@250 MappingEnd
+12:0@250..12:0@250 MappingEnd
+12:0@250..12:0@250 MappingEnd
+12:0@250..12:0@250 DocumentEnd { implicit: true }
+12:0@250..12:0@250 StreamEnd

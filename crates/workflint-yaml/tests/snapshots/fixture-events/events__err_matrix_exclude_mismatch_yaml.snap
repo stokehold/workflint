@@ -1,0 +1,214 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/matrix_exclude_mismatch.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:8@24 Scalar { anchor: None, tag: None, value: "object", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@30..4:4@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@30..4:12@38 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@46..5:6@46 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@46..5:12@52 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@62..6:8@62 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@62..6:10@64 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:10@76..7:10@76 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:12@78..7:13@79 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+7:13@79..7:21@87 Scalar { anchor: None, tag: None, value: "runner", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:23@89..7:38@104 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:38@104..7:39@105 MappingEnd
+7:39@105..7:39@105 SequenceEnd
+8:8@114..8:15@121 Scalar { anchor: None, tag: None, value: "include", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@133..9:10@133 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@135..9:12@135 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@135..9:14@137 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:16@139..9:17@140 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+9:17@140..9:25@148 Scalar { anchor: None, tag: None, value: "runner", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+9:27@150..9:42@165 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+9:42@165..9:43@166 MappingEnd
+10:12@179..10:15@182 Scalar { anchor: None, tag: None, value: "gui", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:17@184..10:24@191 Scalar { anchor: None, tag: None, value: "gnome", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:24@191..10:24@191 MappingEnd
+10:24@191..10:24@191 SequenceEnd
+11:8@200..11:15@207 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@219..12:30@239 Comment OwnLine "# ERROR: Unknown key"
+13:10@250..13:10@250 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:12@252..13:12@252 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:12@252..13:28@268 Scalar { anchor: None, tag: None, value: "operating-system", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:30@270..13:31@271 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+13:31@271..13:39@279 Scalar { anchor: None, tag: None, value: "runner", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+13:41@281..13:56@296 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+13:56@296..13:57@297 MappingEnd
+13:57@297..13:57@297 MappingEnd
+14:10@308..14:51@349 Comment OwnLine "# ERROR: Type mismatch object v.s. string"
+15:12@362..15:12@362 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:12@362..15:14@364 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:16@366..15:31@381 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+15:31@381..15:31@381 MappingEnd
+16:10@392..16:50@432 Comment OwnLine "# ERROR: Type mismatch object v.s. array"
+17:12@445..17:12@445 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:12@445..17:14@447 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:16@449..17:17@450 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+17:17@450..17:32@465 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+17:32@465..17:33@466 SequenceEnd
+17:33@466..17:33@466 MappingEnd
+18:10@477..18:50@517 Comment OwnLine "# ERROR: Type mismatch object v.s. array"
+19:12@530..19:12@530 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:12@530..19:14@532 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:16@534..19:17@535 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+19:17@535..19:25@543 Scalar { anchor: None, tag: None, value: "runner", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+19:27@545..19:28@546 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+19:28@546..19:34@552 Scalar { anchor: None, tag: None, value: "name", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+19:36@554..19:51@569 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+19:51@569..19:52@570 MappingEnd
+19:52@570..19:53@571 MappingEnd
+19:53@571..19:53@571 MappingEnd
+20:10@582..20:32@604 Comment OwnLine "# ERROR: Unknown value"
+21:12@617..21:12@617 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:12@617..21:14@619 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:16@621..21:17@622 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+21:17@622..21:25@630 Scalar { anchor: None, tag: None, value: "runner", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+21:27@632..21:43@648 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+21:43@648..21:44@649 MappingEnd
+21:44@649..21:44@649 MappingEnd
+22:10@660..22:58@708 Comment OwnLine "# ERROR: Type mismatch in key added by `include`"
+23:12@721..23:12@721 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:12@721..23:14@723 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:16@725..23:17@726 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+23:17@726..23:25@734 Scalar { anchor: None, tag: None, value: "runner", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+23:27@736..23:42@751 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+23:42@751..23:43@752 MappingEnd
+24:12@765..24:15@768 Scalar { anchor: None, tag: None, value: "gui", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:17@770..24:18@771 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+24:18@771..24:25@778 Scalar { anchor: None, tag: None, value: "gnome", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+24:25@778..24:26@779 SequenceEnd
+24:26@779..24:26@779 MappingEnd
+25:10@790..25:58@838 Comment OwnLine "# ERROR: Unknown value in key added by `include`"
+26:12@851..26:12@851 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:12@851..26:14@853 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:16@855..26:17@856 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+26:17@856..26:25@864 Scalar { anchor: None, tag: None, value: "runner", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+26:27@866..26:42@881 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+26:42@881..26:43@882 MappingEnd
+27:12@895..27:15@898 Scalar { anchor: None, tag: None, value: "gui", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:17@900..27:22@905 Scalar { anchor: None, tag: None, value: "kde", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+27:22@905..27:22@905 MappingEnd
+27:22@905..27:22@905 SequenceEnd
+27:22@905..27:22@905 MappingEnd
+27:22@905..27:22@905 MappingEnd
+28:4@910..28:11@917 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:13@919..28:36@942 Scalar { anchor: None, tag: None, value: "${{ matrix.os.runner }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:4@947..29:9@952 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:6@960..30:6@960 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+30:8@962..30:8@962 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+30:8@962..30:11@965 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:13@967..30:35@989 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.gui }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:2@992..31:2@992 MappingEnd
+31:2@992..31:2@992 SequenceEnd
+31:2@992..31:2@992 MappingEnd
+31:2@992..31:7@997 Scalar { anchor: None, tag: None, value: "array", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:4@1003..32:4@1003 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:4@1003..32:12@1011 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:6@1019..33:6@1019 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+33:6@1019..33:12@1025 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:8@1035..34:8@1035 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:8@1035..34:10@1037 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:10@1049..35:10@1049 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+35:12@1051..35:13@1052 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+35:13@1052..35:21@1060 Scalar { anchor: None, tag: None, value: "ubuntu", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+35:23@1062..35:31@1070 Scalar { anchor: None, tag: None, value: "latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+35:31@1070..35:32@1071 SequenceEnd
+35:32@1071..35:32@1071 SequenceEnd
+36:8@1080..36:15@1087 Scalar { anchor: None, tag: None, value: "include", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:10@1099..37:10@1099 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+37:12@1101..37:12@1101 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+37:12@1101..37:14@1103 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:16@1105..37:17@1106 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+37:17@1106..37:25@1114 Scalar { anchor: None, tag: None, value: "ubuntu", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+37:27@1116..37:35@1124 Scalar { anchor: None, tag: None, value: "latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+37:35@1124..37:36@1125 SequenceEnd
+38:12@1138..38:15@1141 Scalar { anchor: None, tag: None, value: "gui", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:17@1143..38:18@1144 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+38:18@1144..38:25@1151 Scalar { anchor: None, tag: None, value: "gnome", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+38:27@1153..38:32@1158 Scalar { anchor: None, tag: None, value: "gtk", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+38:32@1158..38:33@1159 SequenceEnd
+38:33@1159..38:33@1159 MappingEnd
+38:33@1159..38:33@1159 SequenceEnd
+39:8@1168..39:15@1175 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+40:10@1187..40:50@1227 Comment OwnLine "# ERROR: Value mismatch at first element"
+41:10@1238..41:10@1238 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+41:12@1240..41:12@1240 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+41:12@1240..41:14@1242 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+41:16@1244..41:17@1245 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+41:17@1245..41:24@1252 Scalar { anchor: None, tag: None, value: "macos", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+41:26@1254..41:34@1262 Scalar { anchor: None, tag: None, value: "latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+41:34@1262..41:35@1263 SequenceEnd
+41:35@1263..41:35@1263 MappingEnd
+42:10@1274..42:51@1315 Comment OwnLine "# ERROR: Value mismatch at second element"
+43:12@1328..43:12@1328 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+43:12@1328..43:14@1330 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:16@1332..43:17@1333 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+43:17@1333..43:25@1341 Scalar { anchor: None, tag: None, value: "ubuntu", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+43:27@1343..43:34@1350 Scalar { anchor: None, tag: None, value: "22.04", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+43:34@1350..43:35@1351 SequenceEnd
+43:35@1351..43:35@1351 MappingEnd
+44:10@1362..44:50@1402 Comment OwnLine "# ERROR: Type mismatch at second element"
+45:12@1415..45:12@1415 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+45:12@1415..45:14@1417 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:16@1419..45:17@1420 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+45:17@1420..45:25@1428 Scalar { anchor: None, tag: None, value: "ubuntu", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+45:27@1430..45:28@1431 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+45:28@1431..45:37@1440 Scalar { anchor: None, tag: None, value: "version", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+45:39@1442..45:46@1449 Scalar { anchor: None, tag: None, value: "22.04", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+45:46@1449..45:47@1450 MappingEnd
+45:47@1450..45:48@1451 SequenceEnd
+45:48@1451..45:48@1451 MappingEnd
+46:10@1462..46:58@1510 Comment OwnLine "# ERROR: Type mismatch in key added by `include`"
+47:12@1523..47:12@1523 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+47:12@1523..47:14@1525 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:16@1527..47:17@1528 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+47:17@1528..47:25@1536 Scalar { anchor: None, tag: None, value: "ubuntu", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+47:27@1538..47:35@1546 Scalar { anchor: None, tag: None, value: "latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+47:35@1546..47:36@1547 SequenceEnd
+48:12@1560..48:15@1563 Scalar { anchor: None, tag: None, value: "gui", plain_implicit: true, quoted_implicit: false, style: Plain }
+48:17@1565..48:18@1566 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+48:18@1566..48:19@1567 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+48:19@1567..48:25@1573 Scalar { anchor: None, tag: None, value: "name", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+48:27@1575..48:34@1582 Scalar { anchor: None, tag: None, value: "gnome", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+48:34@1582..48:35@1583 MappingEnd
+48:35@1583..48:36@1584 SequenceEnd
+48:36@1584..48:36@1584 MappingEnd
+49:10@1595..49:58@1643 Comment OwnLine "# ERROR: Unknown value in key added by `include`"
+50:12@1656..50:12@1656 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+50:12@1656..50:14@1658 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+50:16@1660..50:17@1661 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+50:17@1661..50:25@1669 Scalar { anchor: None, tag: None, value: "ubuntu", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+50:27@1671..50:35@1679 Scalar { anchor: None, tag: None, value: "latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+50:35@1679..50:36@1680 SequenceEnd
+51:12@1693..51:15@1696 Scalar { anchor: None, tag: None, value: "gui", plain_implicit: true, quoted_implicit: false, style: Plain }
+51:17@1698..51:18@1699 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+51:18@1699..51:25@1706 Scalar { anchor: None, tag: None, value: "gnome", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+51:27@1708..51:32@1713 Scalar { anchor: None, tag: None, value: "x11", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+51:32@1713..51:33@1714 SequenceEnd
+51:33@1714..51:33@1714 MappingEnd
+51:33@1714..51:33@1714 SequenceEnd
+51:33@1714..51:33@1714 MappingEnd
+51:33@1714..51:33@1714 MappingEnd
+52:4@1719..52:11@1726 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+52:13@1728..52:52@1767 Scalar { anchor: None, tag: None, value: "${{ matrix.os[0] }}-${{ matrix.os[1] }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:4@1772..53:9@1777 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+54:6@1785..54:6@1785 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+54:8@1787..54:8@1787 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+54:8@1787..54:11@1790 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+54:13@1792..54:64@1843 Scalar { anchor: None, tag: None, value: "echo '${{ matrix.gui[0] }} on ${{ matrix.gui[1] }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+55:0@1844..55:0@1844 MappingEnd
+55:0@1844..55:0@1844 SequenceEnd
+55:0@1844..55:0@1844 MappingEnd
+55:0@1844..55:0@1844 MappingEnd
+55:0@1844..55:0@1844 MappingEnd
+55:0@1844..55:0@1844 DocumentEnd { implicit: true }
+55:0@1844..55:0@1844 StreamEnd

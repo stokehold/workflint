@@ -1,0 +1,38 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/deprecated_workflow_commands.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:59@121 Comment OwnLine "# ERROR: 'set-output' workflow command was deprecated"
+7:6@128..7:6@128 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@130..7:8@130 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@130..7:11@133 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@135..7:46@168 Scalar { anchor: None, tag: None, value: "echo '::set-output name=foo::bar'", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@175..8:6@175 MappingEnd
+8:6@175..8:28@197 Comment OwnLine "# OK: Use this instead"
+9:8@206..9:8@206 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@206..9:11@209 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@211..9:47@245 Scalar { anchor: None, tag: None, value: "echo \"foo=bar\" >> \"$GITHUB_OUTPUT\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@252..10:6@252 MappingEnd
+10:6@252..10:45@291 Comment OwnLine "# OK: 'debug' command is not deprecated"
+11:8@300..11:8@300 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@300..11:11@303 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@305..11:53@345 Scalar { anchor: None, tag: None, value: "echo \"::debug::Set the Octocat variable\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@346..12:0@346 MappingEnd
+12:0@346..12:0@346 SequenceEnd
+12:0@346..12:0@346 MappingEnd
+12:0@346..12:0@346 MappingEnd
+12:0@346..12:0@346 MappingEnd
+12:0@346..12:0@346 DocumentEnd { implicit: true }
+12:0@346..12:0@346 StreamEnd

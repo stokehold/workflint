@@ -1,0 +1,41 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/builtin_func_special_checks.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:78@102 Comment OwnLine "# ERROR: Key 'mac' does not exist in the object returned by the fromJSON()"
+5:4@107..5:4@107 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@107..5:11@114 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@116..5:88@191 Scalar { anchor: None, tag: None, value: "${{ fromJSON('{\"win\":\"windows-latest\",\"linux\":\"ubuntul-latest\"}')['mac'] }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@196..6:9@201 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@209..7:63@266 Comment OwnLine "# ERROR: {2} is missing in the first argument of format()"
+8:6@273..8:6@273 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@275..8:8@275 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@275..8:11@278 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@280..8:52@319 Scalar { anchor: None, tag: None, value: "echo \"${{ format('{0}{1}', 1, 2, 3) }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@326..9:6@326 MappingEnd
+9:6@326..9:71@391 Comment OwnLine "# ERROR: Argument for {2} is missing in the arguments of format()"
+10:8@400..10:8@400 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@400..10:11@403 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@405..10:52@444 Scalar { anchor: None, tag: None, value: "echo \"${{ format('{0}{1}{2}', 1, 2) }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@451..11:6@451 MappingEnd
+11:8@453..11:8@453 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@453..11:11@456 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@458..11:41@486 Scalar { anchor: None, tag: None, value: "echo This is special branch!", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@495..12:65@552 Comment OwnLine "# ERROR: Broken JSON string. Special check for fromJSON()"
+13:8@561..13:10@563 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:12@565..13:74@627 Scalar { anchor: None, tag: None, value: "contains(fromJson('[\"main\",\"release\",\"dev\"'), github.ref_name)", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@628..14:0@628 MappingEnd
+14:0@628..14:0@628 SequenceEnd
+14:0@628..14:0@628 MappingEnd
+14:0@628..14:0@628 MappingEnd
+14:0@628..14:0@628 MappingEnd
+14:0@628..14:0@628 DocumentEnd { implicit: true }
+14:0@628..14:0@628 StreamEnd

@@ -1,0 +1,43 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/missing_required_keys.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:73@110 Comment OwnLine "# ERROR: Matrix name is duplicated. These keys are case insensitive"
+5:6@117..5:6@117 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@117..5:12@123 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@133..6:8@133 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@133..6:20@145 Scalar { anchor: None, tag: None, value: "version_name", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:22@147..6:23@148 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+6:23@148..6:25@150 Scalar { anchor: None, tag: None, value: "v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:27@152..6:29@154 Scalar { anchor: None, tag: None, value: "v2", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:29@154..6:30@155 SequenceEnd
+7:8@164..7:20@176 Scalar { anchor: None, tag: None, value: "VERSION_NAME", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:22@178..7:23@179 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+7:23@179..7:25@181 Scalar { anchor: None, tag: None, value: "V1", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:27@183..7:29@185 Scalar { anchor: None, tag: None, value: "V2", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:29@185..7:30@186 SequenceEnd
+7:30@186..7:30@186 MappingEnd
+7:30@186..7:30@186 MappingEnd
+8:4@191..8:31@218 Comment OwnLine "# ERROR: runs-on is missing"
+9:4@223..9:9@228 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@236..10:6@236 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@238..10:8@238 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@238..10:11@241 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@243..10:25@255 Scalar { anchor: None, tag: None, value: "echo 'hello'", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:0@256..11:0@256 MappingEnd
+11:0@256..11:0@256 SequenceEnd
+11:0@256..11:0@256 MappingEnd
+11:0@256..11:0@256 MappingEnd
+11:0@256..11:0@256 MappingEnd
+11:0@256..11:0@256 DocumentEnd { implicit: true }
+11:0@256..11:0@256 StreamEnd

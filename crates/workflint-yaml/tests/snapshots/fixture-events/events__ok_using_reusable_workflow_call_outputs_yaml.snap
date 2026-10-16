@@ -1,0 +1,39 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/using_reusable_workflow_call_outputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:50@50 Scalar { anchor: None, tag: None, value: "Call a reusable workflow and use its outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@52..2:2@54 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@58..3:2@58 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@58..3:19@75 Scalar { anchor: None, tag: None, value: "workflow_dispatch", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:20@76..3:20@76 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:20@76..3:20@76 MappingEnd
+5:0@78..5:4@82 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@86..6:2@86 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@86..6:6@90 Scalar { anchor: None, tag: None, value: "job1", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@96..7:4@96 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:4@96..7:8@100 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:10@102..7:72@164 Scalar { anchor: None, tag: None, value: "octo-org/example-repo/.github/workflows/called-workflow.yml@v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@168..9:2@168 MappingEnd
+9:2@168..9:6@172 Scalar { anchor: None, tag: None, value: "job2", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@178..10:4@178 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:4@178..10:11@185 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@187..10:26@200 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@205..11:9@210 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:11@212..11:15@216 Scalar { anchor: None, tag: None, value: "job1", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@221..12:9@226 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@234..13:6@234 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@236..13:8@236 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@236..13:11@239 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@241..13:90@318 Scalar { anchor: None, tag: None, value: "echo ${{ needs.job1.outputs.firstword }} ${{ needs.job1.outputs.secondword }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@319..14:0@319 MappingEnd
+14:0@319..14:0@319 SequenceEnd
+14:0@319..14:0@319 MappingEnd
+14:0@319..14:0@319 MappingEnd
+14:0@319..14:0@319 MappingEnd
+14:0@319..14:0@319 DocumentEnd { implicit: true }
+14:0@319..14:0@319 StreamEnd

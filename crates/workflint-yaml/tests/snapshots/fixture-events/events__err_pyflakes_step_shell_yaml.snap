@@ -1,0 +1,44 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/pyflakes_step_shell.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:12@27 Scalar { anchor: None, tag: None, value: "step-level", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@33..3:4@33 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@33..3:11@40 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@42..3:26@55 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@60..4:9@65 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@73..5:63@130 Comment OwnLine "# Lint check failed. The error is output to stdout (#411)"
+6:6@137..6:6@137 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@139..6:8@139 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@139..6:11@142 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@144..6:31@162 Scalar { anchor: None, tag: None, value: "print(unknown_var)", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@171..7:13@176 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:15@178..7:21@184 Scalar { anchor: None, tag: None, value: "python", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@191..8:6@191 MappingEnd
+8:6@191..8:65@250 Comment OwnLine "# Syntax check failed. The error is output to stderr (#411)"
+9:8@259..9:8@259 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@259..9:11@262 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@264..9:19@270 Scalar { anchor: None, tag: None, value: "print(", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@279..10:13@284 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:15@286..10:21@292 Scalar { anchor: None, tag: None, value: "python", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@299..11:6@299 MappingEnd
+11:6@299..11:26@319 Comment OwnLine "# Check custom shell"
+12:8@328..12:8@328 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@328..12:11@331 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@333..12:31@351 Scalar { anchor: None, tag: None, value: "print(unknown_var)", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@360..13:13@365 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:15@367..13:27@379 Scalar { anchor: None, tag: None, value: "python {0}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+13:27@379..13:27@379 MappingEnd
+13:27@379..13:27@379 SequenceEnd
+13:27@379..13:27@379 MappingEnd
+13:27@379..13:27@379 MappingEnd
+14:0@380..14:0@380 MappingEnd
+14:0@380..14:0@380 DocumentEnd { implicit: true }
+14:0@380..14:0@380 StreamEnd

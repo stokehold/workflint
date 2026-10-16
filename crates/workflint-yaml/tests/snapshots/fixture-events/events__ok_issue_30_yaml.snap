@@ -1,0 +1,47 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-30.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:5@5 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+0:5@5..0:9@9 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:9@9..0:10@10 SequenceEnd
+2:0@12..2:4@16 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@20..3:2@20 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@20..3:7@25 Scalar { anchor: None, tag: None, value: "myjob", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@31..4:4@31 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@31..4:15@42 Scalar { anchor: None, tag: None, value: "environment", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@50..5:6@50 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@50..5:10@54 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:12@56..5:20@64 Scalar { anchor: None, tag: None, value: "env-name", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@71..6:9@74 Scalar { anchor: None, tag: None, value: "url", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:11@76..6:45@110 Scalar { anchor: None, tag: None, value: "${{ steps.thing.outputs.app-url }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@115..7:4@115 MappingEnd
+7:4@115..7:11@122 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@124..7:26@137 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@142..8:9@147 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@155..9:6@155 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@157..9:8@157 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@157..9:12@161 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:14@163..9:42@191 Scalar { anchor: None, tag: None, value: "Run Azure Functions Action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:8@200..10:12@204 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@206..10:43@235 Scalar { anchor: None, tag: None, value: "Azure/functions-action@v1.4.0", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@244..11:10@246 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:12@248..11:17@253 Scalar { anchor: None, tag: None, value: "thing", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@262..12:12@266 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:10@278..13:10@278 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:10@278..13:18@286 Scalar { anchor: None, tag: None, value: "app-name", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:20@288..13:37@305 Scalar { anchor: None, tag: None, value: "my-function-app", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+14:10@316..14:17@323 Scalar { anchor: None, tag: None, value: "package", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:19@325..14:25@331 Scalar { anchor: None, tag: None, value: "my.zip", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@332..15:0@332 MappingEnd
+15:0@332..15:0@332 MappingEnd
+15:0@332..15:0@332 SequenceEnd
+15:0@332..15:0@332 MappingEnd
+15:0@332..15:0@332 MappingEnd
+15:0@332..15:0@332 MappingEnd
+15:0@332..15:0@332 DocumentEnd { implicit: true }
+15:0@332..15:0@332 StreamEnd

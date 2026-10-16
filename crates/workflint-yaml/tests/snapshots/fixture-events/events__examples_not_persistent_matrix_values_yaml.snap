@@ -1,0 +1,74 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/not_persistent_matrix_values.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@43..4:12@49 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@59..5:8@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@59..5:11@62 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:10@74..6:10@74 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:12@76..6:26@90 Scalar { anchor: None, tag: None, value: "string value", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:12@103..7:14@105 Scalar { anchor: None, tag: None, value: "42", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:12@118..8:13@119 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+8:13@119..8:16@122 Scalar { anchor: None, tag: None, value: "aaa", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:18@124..8:22@128 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:24@130..8:27@133 Scalar { anchor: None, tag: None, value: "bbb", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:29@135..8:33@139 Scalar { anchor: None, tag: None, value: "null", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:33@139..8:34@140 MappingEnd
+8:34@140..8:34@140 SequenceEnd
+9:8@149..9:11@152 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@164..10:10@164 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:12@166..10:13@167 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+10:13@167..10:15@169 Scalar { anchor: None, tag: None, value: "42", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:15@169..10:16@170 SequenceEnd
+11:12@183..11:13@184 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+11:13@184..11:17@188 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:17@188..11:18@189 SequenceEnd
+12:12@202..12:13@203 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+12:13@203..12:14@204 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+12:14@204..12:17@207 Scalar { anchor: None, tag: None, value: "aaa", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:19@209..12:23@213 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:25@215..12:28@218 Scalar { anchor: None, tag: None, value: "bbb", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:30@220..12:34@224 Scalar { anchor: None, tag: None, value: "null", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:34@224..12:35@225 MappingEnd
+12:35@225..12:36@226 SequenceEnd
+13:12@239..13:13@240 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+13:13@240..13:14@241 SequenceEnd
+13:14@241..13:14@241 SequenceEnd
+13:14@241..13:14@241 MappingEnd
+13:14@241..13:14@241 MappingEnd
+14:4@246..14:11@253 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@255..14:26@268 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@273..15:9@278 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@286..16:36@316 Comment OwnLine "# matrix.foo is any type value"
+17:6@323..17:6@323 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@325..17:8@325 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@325..17:11@328 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@330..17:35@352 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@359..18:6@359 MappingEnd
+18:6@359..18:43@396 Comment OwnLine "# matrix.bar is array<any> type value"
+19:8@405..19:8@405 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@405..19:11@408 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@410..19:38@435 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.bar[0] }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@442..20:6@442 MappingEnd
+20:6@442..20:50@486 Comment OwnLine "# ERROR: Array cannot be evaluated as string"
+21:8@495..21:8@495 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@495..21:11@498 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@500..21:35@522 Scalar { anchor: None, tag: None, value: "echo ${{ matrix.bar }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:0@523..22:0@523 MappingEnd
+22:0@523..22:0@523 SequenceEnd
+22:0@523..22:0@523 MappingEnd
+22:0@523..22:0@523 MappingEnd
+22:0@523..22:0@523 MappingEnd
+22:0@523..22:0@523 DocumentEnd { implicit: true }
+22:0@523..22:0@523 StreamEnd

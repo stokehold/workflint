@@ -1,0 +1,49 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/duplicate_keys.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:12@36 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@44..5:6@44 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@44..5:12@50 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@60..6:41@93 Comment OwnLine "# Duplicate case-insensitive keys"
+7:8@102..7:8@102 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@102..7:11@105 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@107..7:14@108 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+7:14@108..7:15@109 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:17@111..7:18@112 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:20@114..7:21@115 Scalar { anchor: None, tag: None, value: "c", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:21@115..7:22@116 SequenceEnd
+8:8@125..8:11@128 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@130..8:14@131 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+8:14@131..8:15@132 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:17@134..8:18@135 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:20@137..8:21@138 Scalar { anchor: None, tag: None, value: "c", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:21@138..8:22@139 SequenceEnd
+8:22@139..8:22@139 MappingEnd
+8:22@139..8:22@139 MappingEnd
+9:4@144..9:35@175 Comment OwnLine "# Duplicate case-sensitive keys"
+10:4@180..10:11@187 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@189..10:26@202 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@207..11:11@214 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@216..11:26@229 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@234..12:9@239 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@247..13:6@247 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@249..13:8@249 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@249..13:11@252 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@254..13:17@258 Scalar { anchor: None, tag: None, value: "echo", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@259..14:0@259 MappingEnd
+14:0@259..14:0@259 SequenceEnd
+14:0@259..14:0@259 MappingEnd
+14:0@259..14:0@259 MappingEnd
+14:0@259..14:0@259 MappingEnd
+14:0@259..14:0@259 DocumentEnd { implicit: true }
+14:0@259..14:0@259 StreamEnd

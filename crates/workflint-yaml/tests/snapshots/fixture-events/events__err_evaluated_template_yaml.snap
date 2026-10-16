@@ -1,0 +1,69 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/evaluated_template.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:34@71 Comment OwnLine "# OK: Expanding object value"
+5:6@78..5:6@78 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@78..5:12@84 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:14@86..5:50@122 Scalar { anchor: None, tag: None, value: "${{ fromJSON(github.event.labels) }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@127..6:4@127 MappingEnd
+6:4@127..6:11@134 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@136..6:26@149 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@154..7:9@159 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@167..8:6@167 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@169..8:8@169 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@169..8:12@173 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@175..8:30@191 Scalar { anchor: None, tag: None, value: "actions/cache@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@200..9:10@202 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:12@204..9:17@209 Scalar { anchor: None, tag: None, value: "cache", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@218..10:12@222 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:10@234..11:10@234 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:10@234..11:13@237 Scalar { anchor: None, tag: None, value: "key", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:15@239..11:18@242 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@253..12:14@257 Scalar { anchor: None, tag: None, value: "path", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:16@259..12:19@262 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@269..13:6@269 MappingEnd
+13:6@269..13:6@269 MappingEnd
+13:6@269..13:10@273 Comment OwnLine "# OK"
+14:8@282..14:8@282 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@282..14:11@285 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@287..14:56@330 Scalar { anchor: None, tag: None, value: "echo \"${{ 'hello' }} ${{ true }} ${{ 42 }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@337..15:6@337 MappingEnd
+15:6@337..15:20@351 Comment OwnLine "# OK: Any type"
+16:8@360..16:8@360 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@360..16:11@363 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@365..16:34@386 Scalar { anchor: None, tag: None, value: "echo \"${{ env.FOO }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@393..17:6@393 MappingEnd
+17:6@393..17:34@421 Comment OwnLine "# OK: Expanding object value"
+18:8@430..18:8@430 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@430..18:11@433 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@435..18:24@446 Scalar { anchor: None, tag: None, value: "echo \"$FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@455..19:11@458 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@460..19:30@477 Scalar { anchor: None, tag: None, value: "${{ matrix.env }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@484..20:6@484 MappingEnd
+20:6@484..20:53@531 Comment OwnLine "# ERROR: loose object, strict object, and array"
+21:8@540..21:8@540 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@540..21:11@543 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:13@545..21:90@622 Scalar { anchor: None, tag: None, value: "echo \"${{github.event}} ${{steps.cache.outputs}} ${{github.event.commits.*}}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@629..22:6@629 MappingEnd
+22:6@629..22:19@642 Comment OwnLine "# ERROR: null"
+23:8@651..23:8@651 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@651..23:11@654 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@656..23:29@672 Scalar { anchor: None, tag: None, value: "echo \"${{null}}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:0@673..24:0@673 MappingEnd
+24:0@673..24:0@673 SequenceEnd
+24:0@673..24:0@673 MappingEnd
+24:0@673..24:0@673 MappingEnd
+24:0@673..24:0@673 MappingEnd
+24:0@673..24:0@673 DocumentEnd { implicit: true }
+24:0@673..24:0@673 StreamEnd

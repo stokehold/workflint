@@ -1,0 +1,48 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/minimal_cycle_in_needs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:11@26 Comment OwnLine "# Minimal"
+3:2@29..3:2@29 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@29..3:6@33 Scalar { anchor: None, tag: None, value: "from", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@39..4:4@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@39..4:9@44 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:11@46..4:12@47 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+4:12@47..4:14@49 Scalar { anchor: None, tag: None, value: "to", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:14@49..4:15@50 SequenceEnd
+5:4@55..5:11@62 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@64..5:26@77 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@82..6:9@87 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@95..7:6@95 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@97..7:8@97 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@97..7:11@100 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@102..7:24@113 Scalar { anchor: None, tag: None, value: "echo 'from'", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@116..8:2@116 MappingEnd
+8:2@116..8:2@116 SequenceEnd
+8:2@116..8:2@116 MappingEnd
+8:2@116..8:4@118 Scalar { anchor: None, tag: None, value: "to", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@124..9:4@124 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@124..9:9@129 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:11@131..9:12@132 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+9:12@132..9:16@136 Scalar { anchor: None, tag: None, value: "from", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:16@136..9:17@137 SequenceEnd
+10:4@142..10:11@149 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@151..10:26@164 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@169..11:9@174 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@182..12:6@182 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@184..12:8@184 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@184..12:11@187 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@189..12:22@198 Scalar { anchor: None, tag: None, value: "echo 'to'", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@199..13:0@199 MappingEnd
+13:0@199..13:0@199 SequenceEnd
+13:0@199..13:0@199 MappingEnd
+13:0@199..13:0@199 MappingEnd
+13:0@199..13:0@199 MappingEnd
+13:0@199..13:0@199 DocumentEnd { implicit: true }
+13:0@199..13:0@199 StreamEnd

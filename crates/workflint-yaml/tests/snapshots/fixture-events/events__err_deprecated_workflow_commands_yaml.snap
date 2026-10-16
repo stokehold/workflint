@@ -1,0 +1,73 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/deprecated_workflow_commands.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:13@75 Comment OwnLine "# ERROR"
+7:6@82..7:6@82 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@84..7:8@84 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@84..7:11@87 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@89..7:46@122 Scalar { anchor: None, tag: None, value: "echo '::set-output name=foo::bar'", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@129..8:6@129 MappingEnd
+8:8@131..8:8@131 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@131..8:11@134 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@136..8:46@169 Scalar { anchor: None, tag: None, value: "echo '::save-state name=foo::bar'", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@176..9:6@176 MappingEnd
+9:8@178..9:8@178 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@178..9:11@181 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@183..9:43@213 Scalar { anchor: None, tag: None, value: "echo '::set-env name=foo::bar'", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@220..10:6@220 MappingEnd
+10:8@222..10:8@222 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@222..10:11@225 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@227..10:44@258 Scalar { anchor: None, tag: None, value: "echo '::add-path::/path/to/foo'", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@265..11:6@265 MappingEnd
+11:6@265..11:10@269 Comment OwnLine "# OK"
+12:8@278..12:8@278 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@278..12:11@281 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@283..12:53@323 Scalar { anchor: None, tag: None, value: "echo \"::debug::Set the Octocat variable\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@330..13:6@330 MappingEnd
+13:8@332..13:8@332 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@332..13:11@335 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@337..13:84@408 Scalar { anchor: None, tag: None, value: "echo \"::notice file=app.js,line=1,col=5,endColumn=7::Missing semicolon\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@415..14:6@415 MappingEnd
+14:8@417..14:8@417 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@417..14:11@420 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@422..14:85@494 Scalar { anchor: None, tag: None, value: "echo \"::warning file=app.js,line=1,col=5,endColumn=7::Missing semicolon\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@501..15:6@501 MappingEnd
+15:8@503..15:8@503 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@503..15:11@506 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@508..15:83@578 Scalar { anchor: None, tag: None, value: "echo \"::error file=app.js,line=1,col=5,endColumn=7::Missing semicolon\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@585..16:6@585 MappingEnd
+16:8@587..16:8@587 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@587..16:11@590 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@592..16:37@616 Scalar { anchor: None, tag: None, value: "echo \"::group::My title\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@623..17:6@623 MappingEnd
+17:8@625..17:8@625 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@625..17:11@628 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@630..17:32@649 Scalar { anchor: None, tag: None, value: "echo \"::endgroup::\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@656..18:6@656 MappingEnd
+18:8@658..18:8@658 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:8@658..18:11@661 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@663..18:48@698 Scalar { anchor: None, tag: None, value: "echo \"::add-mask::Mona The Octocat\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@705..19:6@705 MappingEnd
+19:8@707..19:8@707 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@707..19:11@710 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@712..19:45@744 Scalar { anchor: None, tag: None, value: "echo \"::stop-commands::hogehoge\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:0@745..20:0@745 MappingEnd
+20:0@745..20:0@745 SequenceEnd
+20:0@745..20:0@745 MappingEnd
+20:0@745..20:0@745 MappingEnd
+20:0@745..20:0@745 MappingEnd
+20:0@745..20:0@745 DocumentEnd { implicit: true }
+20:0@745..20:0@745 StreamEnd

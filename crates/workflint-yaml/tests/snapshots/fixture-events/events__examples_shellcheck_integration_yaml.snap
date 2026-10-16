@@ -1,0 +1,48 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/shellcheck_integration.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:11@34 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@36..3:26@49 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@54..4:9@59 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@67..5:6@67 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@69..5:8@69 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@69..5:11@72 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@74..5:22@83 Scalar { anchor: None, tag: None, value: "echo $FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@86..6:2@86 MappingEnd
+6:2@86..6:2@86 SequenceEnd
+6:2@86..6:2@86 MappingEnd
+6:2@86..6:10@94 Scalar { anchor: None, tag: None, value: "test-win", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@100..7:4@100 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:4@100..7:11@107 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@109..7:27@123 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@128..8:9@133 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@141..9:50@185 Comment OwnLine "# Shell on Windows is PowerShell by default."
+10:6@192..10:43@229 Comment OwnLine "# shellcheck is not run in this case."
+11:6@236..11:6@236 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@238..11:8@238 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@238..11:11@241 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@243..11:22@252 Scalar { anchor: None, tag: None, value: "echo $FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@259..12:6@259 MappingEnd
+12:6@259..12:66@319 Comment OwnLine "# This script is run with bash due to 'shell:' configuration"
+13:8@328..13:8@328 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@328..13:11@331 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@333..13:22@342 Scalar { anchor: None, tag: None, value: "echo $FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@351..14:13@356 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:15@358..14:19@362 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@363..15:0@363 MappingEnd
+15:0@363..15:0@363 SequenceEnd
+15:0@363..15:0@363 MappingEnd
+15:0@363..15:0@363 MappingEnd
+15:0@363..15:0@363 MappingEnd
+15:0@363..15:0@363 DocumentEnd { implicit: true }
+15:0@363..15:0@363 StreamEnd

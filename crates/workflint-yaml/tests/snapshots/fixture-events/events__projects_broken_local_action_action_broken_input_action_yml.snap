@@ -1,0 +1,27 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/broken_local_action/action/broken_input/action.yml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:10@10 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@11..1:11@22 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:13@24..1:18@29 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@31..3:6@37 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@41..4:2@41 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@41..4:7@46 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@52..5:4@52 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@52..5:12@60 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:6@68 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@68..6:10@72 Scalar { anchor: None, tag: None, value: "this", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:12@74..6:17@79 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@86..7:15@95 Scalar { anchor: None, tag: None, value: "should-be", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:17@97..7:24@104 Scalar { anchor: None, tag: None, value: "boolean", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@105..8:0@105 MappingEnd
+8:0@105..8:0@105 MappingEnd
+8:0@105..8:0@105 MappingEnd
+8:0@105..8:0@105 MappingEnd
+8:0@105..8:0@105 DocumentEnd { implicit: true }
+8:0@105..8:0@105 StreamEnd

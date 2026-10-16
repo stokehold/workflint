@@ -1,0 +1,47 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/yaml_anchor_in_action/action/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:21@21 Scalar { anchor: None, tag: None, value: "Docker action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@22..1:6@28 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@30..1:41@63 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@64..2:11@75 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@77..2:40@104 Scalar { anchor: Some("description"), tag: None, value: "This is test", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@106..4:6@112 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@116..5:2@116 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@116..5:5@119 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:7@121..6:4@132 MappingStart { anchor: Some("input"), tag: None, implicit: true, style: Block }
+6:4@132..6:15@143 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:17@145..6:29@157 Alias { anchor: "description" }
+6:29@157..6:29@157 MappingEnd
+7:2@160..7:5@163 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:7@165..7:13@171 Alias { anchor: "input" }
+7:13@171..7:13@171 MappingEnd
+9:0@173..9:7@180 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@184..10:2@184 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:2@184..10:5@187 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@193..11:4@193 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:4@193..11:15@204 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:17@206..11:29@218 Alias { anchor: "description" }
+11:29@218..11:29@218 MappingEnd
+11:29@218..11:29@218 MappingEnd
+13:0@220..13:4@224 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:2@228..14:2@228 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:2@228..14:7@233 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:9@235..14:17@243 Scalar { anchor: None, tag: None, value: "docker", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+15:2@246..15:7@251 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:9@253..15:42@286 Scalar { anchor: None, tag: None, value: "ghcr.io/rhysd/actionlint:latest", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+16:2@289..16:6@293 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@299..17:4@299 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+17:6@301..17:23@318 Scalar { anchor: None, tag: None, value: "${{ inputs.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@325..18:23@342 Scalar { anchor: None, tag: None, value: "${{ inputs.bar }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@349..19:18@361 Alias { anchor: "description" }
+19:18@361..19:18@361 SequenceEnd
+19:18@361..19:18@361 MappingEnd
+20:0@362..20:0@362 MappingEnd
+20:0@362..20:0@362 DocumentEnd { implicit: true }
+20:0@362..20:0@362 StreamEnd

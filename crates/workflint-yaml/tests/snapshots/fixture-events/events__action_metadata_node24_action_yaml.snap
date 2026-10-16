@@ -1,0 +1,55 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: action_metadata/node24/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:17@17 Scalar { anchor: None, tag: None, value: "My action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@18..1:6@24 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@26..1:41@59 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@60..2:11@71 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@73..2:24@84 Scalar { anchor: None, tag: None, value: "my action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@86..4:6@92 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@96..5:2@96 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@96..5:6@100 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@106..6:4@106 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@106..6:15@117 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:17@119..6:26@128 Scalar { anchor: None, tag: None, value: "your name", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@133..7:11@140 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@142..7:22@151 Scalar { anchor: None, tag: None, value: "anonymous", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@154..8:2@154 MappingEnd
+8:2@154..8:9@161 Scalar { anchor: None, tag: None, value: "message", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@167..9:4@167 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@167..9:15@178 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:17@180..9:39@202 Scalar { anchor: None, tag: None, value: "message to this action", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@207..10:12@215 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@217..10:18@221 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@224..11:2@224 MappingEnd
+11:2@224..11:10@232 Scalar { anchor: None, tag: None, value: "addition", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@238..12:4@238 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@238..12:15@249 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:17@251..12:39@273 Scalar { anchor: None, tag: None, value: "additional information", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@278..13:12@286 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:14@288..13:19@293 Scalar { anchor: None, tag: None, value: "false", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@295..15:0@295 MappingEnd
+15:0@295..15:0@295 MappingEnd
+15:0@295..15:7@302 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:2@306..16:2@306 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:2@306..16:9@313 Scalar { anchor: None, tag: None, value: "user_id", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@319..17:4@319 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:4@319..17:15@330 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:17@332..17:24@339 Scalar { anchor: None, tag: None, value: "user ID", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:0@341..19:0@341 MappingEnd
+19:0@341..19:0@341 MappingEnd
+19:0@341..19:4@345 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:2@349..20:2@349 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:2@349..20:7@354 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:9@356..20:17@364 Scalar { anchor: None, tag: None, value: "node24", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+21:2@367..21:6@371 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@373..21:18@383 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+21:18@383..21:18@383 MappingEnd
+22:0@384..22:0@384 MappingEnd
+22:0@384..22:0@384 DocumentEnd { implicit: true }
+22:0@384..22:0@384 StreamEnd

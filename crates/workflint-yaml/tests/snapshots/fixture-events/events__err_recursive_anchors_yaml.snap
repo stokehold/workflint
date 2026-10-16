@@ -1,0 +1,35 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/recursive_anchors.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:8@24..4:4@40 MappingStart { anchor: Some("recursive2"), tag: None, implicit: true, style: Block }
+4:4@40..4:11@47 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@49..4:26@62 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@67..5:9@72 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@80..6:6@80 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@82..8:8@118 MappingStart { anchor: Some("recursive1"), tag: None, implicit: true, style: Block }
+7:8@102..7:15@109 Comment OwnLine "# ERROR"
+8:8@118..8:11@121 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@123..8:24@134 Alias { anchor: "recursive1" }
+9:8@143..9:15@150 Comment OwnLine "# ERROR"
+10:8@159..10:11@162 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@164..10:24@175 Alias { anchor: "recursive2" }
+10:24@175..10:24@175 MappingEnd
+11:6@182..11:10@186 Comment OwnLine "# OK"
+12:8@195..12:19@206 Alias { anchor: "recursive1" }
+13:6@213..13:13@220 Comment OwnLine "# ERROR"
+14:8@229..14:19@240 Alias { anchor: "recursive2" }
+14:19@240..14:19@240 SequenceEnd
+14:19@240..14:19@240 MappingEnd
+14:19@240..14:19@240 MappingEnd
+15:0@241..15:0@241 MappingEnd
+15:0@241..15:0@241 DocumentEnd { implicit: true }
+15:0@241..15:0@241 StreamEnd

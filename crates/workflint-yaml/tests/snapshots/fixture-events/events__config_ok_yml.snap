@@ -1,0 +1,18 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: config/ok.yml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:18@18 Scalar { anchor: None, tag: None, value: "self-hosted-runner", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@22..1:2@22 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@22..1:8@28 Scalar { anchor: None, tag: None, value: "labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@34..2:4@34 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+2:6@36..2:9@39 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@46..3:9@49 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@50..4:0@50 SequenceEnd
+4:0@50..4:0@50 MappingEnd
+4:0@50..4:0@50 MappingEnd
+4:0@50..4:0@50 DocumentEnd { implicit: true }
+4:0@50..4:0@50 StreamEnd

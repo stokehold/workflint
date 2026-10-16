@@ -1,0 +1,496 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/context_availability.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:10@10 Comment OwnLine "# run-name"
+1:0@11..1:14@25 Comment OwnLine "# ERROR at env"
+2:0@26..2:0@26 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+2:0@26..2:0@26 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:0@26..2:8@34 Scalar { anchor: None, tag: None, value: "run-name", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:10@36..2:53@79 Scalar { anchor: None, tag: None, value: "${{ github.actor }} ${{ env.GITHUB_ACTOR }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@81..4:5@86 Comment OwnLine "# env"
+5:0@87..5:3@90 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@94..6:6@98 Comment OwnLine "# OK"
+7:2@101..7:2@101 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@101..7:5@104 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:7@106..7:25@124 Scalar { anchor: None, tag: None, value: "${{ secrets.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@127..8:9@134 Comment OwnLine "# ERROR"
+9:2@137..9:5@140 Scalar { anchor: None, tag: None, value: "BAR", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:7@142..9:21@156 Scalar { anchor: None, tag: None, value: "${{ env.BAR }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:0@158..11:0@158 MappingEnd
+11:0@158..11:13@171 Comment OwnLine "# concurrency"
+12:0@172..12:11@183 Scalar { anchor: None, tag: None, value: "concurrency", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:2@187..13:16@201 Comment OwnLine "# ERROR at env"
+14:2@204..14:2@204 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:2@204..14:7@209 Scalar { anchor: None, tag: None, value: "group", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:9@211..14:41@243 Scalar { anchor: None, tag: None, value: "${{ github.ref }}-${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:2@246..15:20@264 Scalar { anchor: None, tag: None, value: "cancel-in-progress", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:22@266..15:26@270 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:0@272..17:0@272 MappingEnd
+17:0@272..17:2@274 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:2@278..18:2@278 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:2@278..18:15@291 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@297..19:4@297 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:4@297..19:10@303 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@311..20:51@356 Comment OwnLine "# on.workflow_call.inputs.<inputs_id>.default"
+21:6@363..21:6@363 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:6@363..21:9@366 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:8@376..22:8@376 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:8@376..22:12@380 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:14@382..22:20@388 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:8@397..23:15@404 Comment OwnLine "# ERROR"
+24:8@413..24:15@420 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:17@422..24:31@436 Scalar { anchor: None, tag: None, value: "${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:6@443..25:6@443 MappingEnd
+25:6@443..25:9@446 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:8@456..26:8@456 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:8@456..26:12@460 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:14@462..26:20@468 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:8@477..27:12@481 Comment OwnLine "# OK"
+28:8@490..28:15@497 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:17@499..28:36@518 Scalar { anchor: None, tag: None, value: "${{ github.actor }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:6@525..29:6@525 MappingEnd
+29:6@525..29:13@532 Scalar { anchor: None, tag: None, value: "timeout", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:8@542..30:8@542 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+30:8@542..30:12@546 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:14@548..30:20@554 Scalar { anchor: None, tag: None, value: "number", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:6@561..31:6@561 MappingEnd
+31:6@561..31:10@565 Scalar { anchor: None, tag: None, value: "bool", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:8@575..32:8@575 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@575..32:12@579 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:14@581..32:21@588 Scalar { anchor: None, tag: None, value: "boolean", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:4@593..33:4@593 MappingEnd
+33:4@593..33:4@593 MappingEnd
+33:4@593..33:11@600 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:6@608..34:50@652 Comment OwnLine "# on.workflow_call.outputs.<output_id>.value"
+35:6@659..35:6@659 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+35:6@659..35:9@662 Scalar { anchor: None, tag: None, value: "aaa", plain_implicit: true, quoted_implicit: false, style: Plain }
+36:8@672..36:12@676 Comment OwnLine "# OK"
+37:8@685..37:8@685 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+37:8@685..37:13@690 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:15@692..37:32@709 Scalar { anchor: None, tag: None, value: "${{ inputs.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:6@716..38:6@716 MappingEnd
+38:6@716..38:9@719 Scalar { anchor: None, tag: None, value: "bbb", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:8@729..39:15@736 Comment OwnLine "# ERROR"
+40:8@745..40:8@745 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+40:8@745..40:13@750 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+40:15@752..40:29@766 Scalar { anchor: None, tag: None, value: "${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+42:0@768..42:0@768 MappingEnd
+42:0@768..42:0@768 MappingEnd
+42:0@768..42:0@768 MappingEnd
+42:0@768..42:0@768 MappingEnd
+42:0@768..42:4@772 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:2@776..43:2@776 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+43:2@776..43:6@780 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:4@786..44:31@813 Comment OwnLine "# jobs.<job_id>.concurrency"
+45:4@818..45:4@818 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+45:4@818..45:15@829 Scalar { anchor: None, tag: None, value: "concurrency", plain_implicit: true, quoted_implicit: false, style: Plain }
+46:6@837..46:13@844 Comment OwnLine "# ERROR"
+47:6@851..47:6@851 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+47:6@851..47:11@856 Scalar { anchor: None, tag: None, value: "group", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:13@858..47:45@890 Scalar { anchor: None, tag: None, value: "${{ github.ref }}-${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+48:6@897..48:24@915 Scalar { anchor: None, tag: None, value: "cancel-in-progress", plain_implicit: true, quoted_implicit: false, style: Plain }
+48:26@917..48:30@921 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+49:4@926..49:4@926 MappingEnd
+49:4@926..49:13@935 Scalar { anchor: None, tag: None, value: "container", plain_implicit: true, quoted_implicit: false, style: Plain }
+50:6@943..50:31@968 Comment OwnLine "# jobs.<job_id>.container"
+51:6@975..51:10@979 Comment OwnLine "# OK"
+52:6@986..52:6@986 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+52:6@986..52:11@991 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+52:13@993..52:38@1018 Scalar { anchor: None, tag: None, value: "${{ github.actor }}:14.16", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:6@1025..53:43@1062 Comment OwnLine "# jobs.<job_id>.container.credentials"
+54:6@1069..54:17@1080 Scalar { anchor: None, tag: None, value: "credentials", plain_implicit: true, quoted_implicit: false, style: Plain }
+55:8@1090..55:15@1097 Comment OwnLine "# ERROR"
+56:8@1106..56:8@1106 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+56:8@1106..56:16@1114 Scalar { anchor: None, tag: None, value: "username", plain_implicit: true, quoted_implicit: false, style: Plain }
+56:18@1116..56:34@1132 Scalar { anchor: None, tag: None, value: "${{ runner.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+57:8@1141..57:12@1145 Comment OwnLine "# OK"
+58:8@1154..58:16@1162 Scalar { anchor: None, tag: None, value: "password", plain_implicit: true, quoted_implicit: false, style: Plain }
+58:18@1164..58:32@1178 Scalar { anchor: None, tag: None, value: "${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+59:6@1185..59:6@1185 MappingEnd
+59:6@1185..59:44@1223 Comment OwnLine "# jobs.<job_id>.container.env.<env_id>"
+60:6@1230..60:9@1233 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+61:8@1243..61:12@1247 Comment OwnLine "# OK"
+62:8@1256..62:8@1256 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+62:8@1256..62:19@1267 Scalar { anchor: None, tag: None, value: "RUNNER_NAME", plain_implicit: true, quoted_implicit: false, style: Plain }
+62:21@1269..62:39@1287 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+63:8@1296..63:12@1300 Comment OwnLine "# OK"
+64:8@1309..64:15@1316 Scalar { anchor: None, tag: None, value: "ENV_FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+64:17@1318..64:31@1332 Scalar { anchor: None, tag: None, value: "${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+65:6@1339..65:6@1339 MappingEnd
+65:6@1339..65:31@1364 Comment OwnLine "# jobs.<job_id>.container"
+66:6@1371..66:13@1378 Comment OwnLine "# ERROR"
+67:6@1385..67:13@1392 Scalar { anchor: None, tag: None, value: "options", plain_implicit: true, quoted_implicit: false, style: Plain }
+67:15@1394..67:33@1412 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+68:4@1417..68:4@1417 MappingEnd
+68:4@1417..68:37@1450 Comment OwnLine "# jobs.<job_id>.continue-on-error"
+69:4@1455..69:18@1469 Comment OwnLine "# ERROR at env"
+70:4@1474..70:21@1491 Scalar { anchor: None, tag: None, value: "continue-on-error", plain_implicit: true, quoted_implicit: false, style: Plain }
+70:23@1493..70:57@1527 Scalar { anchor: None, tag: None, value: "${{ inputs.foo || env.FOO == '' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+71:4@1532..71:12@1540 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+72:6@1548..72:34@1576 Comment OwnLine "# jobs.<job_id>.defaults.run"
+73:6@1583..73:6@1583 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+73:6@1583..73:9@1586 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+74:8@1596..74:12@1600 Comment OwnLine "# OK"
+75:8@1609..75:8@1609 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+75:8@1609..75:13@1614 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+75:15@1616..75:31@1632 Scalar { anchor: None, tag: None, value: "${{ env.SHELL }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+76:8@1641..76:15@1648 Comment OwnLine "# ERROR"
+77:8@1657..77:25@1674 Scalar { anchor: None, tag: None, value: "working-directory", plain_implicit: true, quoted_implicit: false, style: Plain }
+77:27@1676..77:45@1694 Scalar { anchor: None, tag: None, value: "${{ runner.temp }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+78:4@1699..78:4@1699 MappingEnd
+78:4@1699..78:4@1699 MappingEnd
+78:4@1699..78:23@1718 Comment OwnLine "# jobs.<job_id>.env"
+79:4@1723..79:7@1726 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+80:6@1734..80:13@1741 Comment OwnLine "# ERROR"
+81:6@1748..81:6@1748 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+81:6@1748..81:11@1753 Scalar { anchor: None, tag: None, value: "OUTER", plain_implicit: true, quoted_implicit: false, style: Plain }
+81:13@1755..81:27@1769 Scalar { anchor: None, tag: None, value: "${{ env.XXX }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+82:6@1776..82:13@1783 Comment OwnLine "# ERROR"
+83:6@1790..83:10@1794 Scalar { anchor: None, tag: None, value: "NAME", plain_implicit: true, quoted_implicit: false, style: Plain }
+83:12@1796..83:30@1814 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+84:6@1821..84:10@1825 Comment OwnLine "# OK"
+85:6@1832..85:9@1835 Scalar { anchor: None, tag: None, value: "BAR", plain_implicit: true, quoted_implicit: false, style: Plain }
+85:11@1837..85:28@1854 Scalar { anchor: None, tag: None, value: "${{ inputs.bar }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+86:4@1859..86:4@1859 MappingEnd
+86:4@1859..86:31@1886 Comment OwnLine "# jobs.<job_id>.environment"
+87:4@1891..87:15@1902 Scalar { anchor: None, tag: None, value: "environment", plain_implicit: true, quoted_implicit: false, style: Plain }
+88:6@1910..88:13@1917 Comment OwnLine "# ERROR"
+89:6@1924..89:6@1924 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+89:6@1924..89:10@1928 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+89:12@1930..89:30@1948 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+90:6@1955..90:37@1986 Comment OwnLine "# jobs.<job_id>.environment.url"
+91:6@1993..91:24@2011 Comment OwnLine "# ERROR at secrets"
+92:6@2018..92:9@2021 Scalar { anchor: None, tag: None, value: "url", plain_implicit: true, quoted_implicit: false, style: Plain }
+92:11@2023..92:46@2058 Scalar { anchor: None, tag: None, value: "${{ secrets.URL }}-${{ runner.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+93:4@2063..93:4@2063 MappingEnd
+93:4@2063..93:22@2081 Comment OwnLine "# jobs.<job_id>.if"
+94:4@2086..94:18@2100 Comment OwnLine "# ERROR at env"
+95:4@2105..95:6@2107 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+95:8@2109..95:36@2137 Scalar { anchor: None, tag: None, value: "${{ github.ref == env.REF }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+96:4@2142..96:24@2162 Comment OwnLine "# jobs.<job_id>.name"
+97:4@2167..97:21@2184 Comment OwnLine "# ERROR at runner"
+98:4@2189..98:8@2193 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+98:10@2195..98:51@2236 Scalar { anchor: None, tag: None, value: "${{ runner.name }} by ${{ github.actor }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+99:4@2241..99:39@2276 Comment OwnLine "# jobs.<job_id>.outputs.<output_id>"
+100:4@2281..100:11@2288 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+101:6@2296..101:10@2300 Comment OwnLine "# OK"
+102:6@2307..102:6@2307 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+102:6@2307..102:9@2310 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+102:11@2312..102:73@2374 Scalar { anchor: None, tag: None, value: "${{ runner.name }}-${{ env.FOO }}-${{ steps.hoge.conclusion }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+103:4@2379..103:4@2379 MappingEnd
+103:4@2379..103:27@2402 Comment OwnLine "# jobs.<job_id>.runs-on"
+104:4@2407..104:34@2437 Comment OwnLine "# ERROR at both runner and env"
+105:4@2442..105:11@2449 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+105:13@2451..105:47@2485 Scalar { anchor: None, tag: None, value: "${{ runner.OS }}-${{ env.SUFFIX }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+106:4@2490..106:28@2514 Comment OwnLine "# jobs.<job_id>.services"
+107:4@2519..107:12@2527 Scalar { anchor: None, tag: None, value: "services", plain_implicit: true, quoted_implicit: false, style: Plain }
+108:6@2535..108:6@2535 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+108:6@2535..108:11@2540 Scalar { anchor: None, tag: None, value: "nginx", plain_implicit: true, quoted_implicit: false, style: Plain }
+109:8@2550..109:15@2557 Comment OwnLine "# ERROR"
+110:8@2566..110:8@2566 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+110:8@2566..110:13@2571 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+110:15@2573..110:36@2594 Scalar { anchor: None, tag: None, value: "${{ env.IMAGE_NAME }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+111:8@2603..111:57@2652 Comment OwnLine "# jobs.<job_id>.services.<service_id>.credentials"
+112:8@2661..112:19@2672 Scalar { anchor: None, tag: None, value: "credentials", plain_implicit: true, quoted_implicit: false, style: Plain }
+113:10@2684..113:49@2723 Comment OwnLine "# ERROR because runner is not available"
+114:10@2734..114:10@2734 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+114:10@2734..114:18@2742 Scalar { anchor: None, tag: None, value: "username", plain_implicit: true, quoted_implicit: false, style: Plain }
+114:20@2744..114:38@2762 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+115:10@2773..115:14@2777 Comment OwnLine "# OK"
+116:10@2788..116:18@2796 Scalar { anchor: None, tag: None, value: "password", plain_implicit: true, quoted_implicit: false, style: Plain }
+116:20@2798..116:42@2820 Scalar { anchor: None, tag: None, value: "${{ env.MY_PASSWORD }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+117:8@2829..117:8@2829 MappingEnd
+117:8@2829..117:58@2879 Comment OwnLine "# jobs.<job_id>.services.<service_id>.env.<env_id>"
+118:8@2888..118:11@2891 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+119:10@2903..119:21@2914 Comment OwnLine "# OK (#500)"
+120:10@2925..120:10@2925 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+120:10@2925..120:16@2931 Scalar { anchor: None, tag: None, value: "RUNNER", plain_implicit: true, quoted_implicit: false, style: Plain }
+120:18@2933..120:36@2951 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+121:4@2956..121:4@2956 MappingEnd
+121:4@2956..121:4@2956 MappingEnd
+121:4@2956..121:4@2956 MappingEnd
+121:4@2956..121:28@2980 Comment OwnLine "# jobs.<job_id>.strategy"
+122:4@2985..122:12@2993 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+123:6@3001..123:6@3001 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+123:6@3001..123:12@3007 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+124:8@3017..124:8@3017 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+124:8@3017..124:12@3021 Scalar { anchor: None, tag: None, value: "fooo", plain_implicit: true, quoted_implicit: false, style: Plain }
+125:10@3033..125:17@3040 Comment OwnLine "# ERROR"
+126:10@3051..126:10@3051 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+126:12@3053..126:25@3066 Scalar { anchor: None, tag: None, value: "${{ env.OS }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+127:10@3077..127:14@3081 Comment OwnLine "# OK"
+128:12@3094..128:29@3111 Scalar { anchor: None, tag: None, value: "${{ inputs.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+129:10@3122..129:14@3126 Comment OwnLine "# OK"
+130:12@3139..130:29@3156 Scalar { anchor: None, tag: None, value: "${{ github.ref }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+131:8@3165..131:8@3165 SequenceEnd
+131:8@3165..131:15@3172 Scalar { anchor: None, tag: None, value: "include", plain_implicit: true, quoted_implicit: false, style: Plain }
+132:10@3184..132:17@3191 Comment OwnLine "# ERROR"
+133:10@3202..133:10@3202 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+133:12@3204..133:12@3204 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+133:12@3204..133:16@3208 Scalar { anchor: None, tag: None, value: "fooo", plain_implicit: true, quoted_implicit: false, style: Plain }
+133:18@3210..133:31@3223 Scalar { anchor: None, tag: None, value: "${{ env.OS }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+134:12@3236..134:16@3240 Comment OwnLine "# OK"
+135:12@3253..135:15@3256 Scalar { anchor: None, tag: None, value: "inc", plain_implicit: true, quoted_implicit: false, style: Plain }
+135:17@3258..135:34@3275 Scalar { anchor: None, tag: None, value: "${{ inputs.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+136:8@3284..136:8@3284 MappingEnd
+136:8@3284..136:8@3284 SequenceEnd
+136:8@3284..136:15@3291 Scalar { anchor: None, tag: None, value: "exclude", plain_implicit: true, quoted_implicit: false, style: Plain }
+137:10@3303..137:17@3310 Comment OwnLine "# ERROR"
+138:10@3321..138:10@3321 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+138:12@3323..138:12@3323 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+138:12@3323..138:16@3327 Scalar { anchor: None, tag: None, value: "fooo", plain_implicit: true, quoted_implicit: false, style: Plain }
+138:18@3329..138:31@3342 Scalar { anchor: None, tag: None, value: "${{ env.OS }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+139:6@3349..139:6@3349 MappingEnd
+139:6@3349..139:6@3349 SequenceEnd
+139:6@3349..139:6@3349 MappingEnd
+139:6@3349..139:13@3356 Comment OwnLine "# ERROR"
+140:6@3363..140:15@3372 Scalar { anchor: None, tag: None, value: "fail-fast", plain_implicit: true, quoted_implicit: false, style: Plain }
+140:17@3374..140:39@3396 Scalar { anchor: None, tag: None, value: "${{ env.SHOULD_FAIL }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+141:6@3403..141:13@3410 Comment OwnLine "# ERROR"
+142:6@3417..142:18@3429 Scalar { anchor: None, tag: None, value: "max-parallel", plain_implicit: true, quoted_implicit: false, style: Plain }
+142:20@3431..142:38@3449 Scalar { anchor: None, tag: None, value: "${{ env.MAX_PAR }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+143:4@3454..143:4@3454 MappingEnd
+143:4@3454..143:35@3485 Comment OwnLine "# jobs.<job_id>.timeout-minutes"
+144:4@3490..144:11@3497 Comment OwnLine "# ERROR"
+145:4@3502..145:19@3517 Scalar { anchor: None, tag: None, value: "timeout-minutes", plain_implicit: true, quoted_implicit: false, style: Plain }
+145:21@3519..145:39@3537 Scalar { anchor: None, tag: None, value: "${{ env.TIMEOUT }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+146:4@3542..146:9@3547 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+147:6@3555..147:6@3555 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+147:8@3557..147:8@3557 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+147:8@3557..147:10@3559 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+147:12@3561..147:16@3565 Scalar { anchor: None, tag: None, value: "hoge", plain_implicit: true, quoted_implicit: false, style: Plain }
+148:8@3574..148:47@3613 Comment OwnLine "# jobs.<job_id>.steps.continue-on-error"
+149:8@3622..149:12@3626 Comment OwnLine "# OK"
+150:8@3635..150:25@3652 Scalar { anchor: None, tag: None, value: "continue-on-error", plain_implicit: true, quoted_implicit: false, style: Plain }
+150:27@3654..150:45@3672 Scalar { anchor: None, tag: None, value: "${{ inputs.bool }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+151:8@3681..151:33@3706 Comment OwnLine "# jobs.<job_id>.steps.env"
+152:8@3715..152:11@3718 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+153:10@3730..153:14@3734 Comment OwnLine "# OK"
+154:10@3745..154:10@3745 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+154:10@3745..154:16@3751 Scalar { anchor: None, tag: None, value: "RUNNER", plain_implicit: true, quoted_implicit: false, style: Plain }
+154:18@3753..154:36@3771 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+155:10@3782..155:14@3786 Comment OwnLine "# OK"
+156:10@3797..156:13@3800 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+156:15@3802..156:29@3816 Scalar { anchor: None, tag: None, value: "${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+157:8@3825..157:8@3825 MappingEnd
+157:8@3825..157:32@3849 Comment OwnLine "# jobs.<job_id>.steps.if"
+158:8@3858..158:26@3876 Comment OwnLine "# ERROR at secrets"
+159:8@3885..159:10@3887 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+159:12@3889..159:54@3931 Scalar { anchor: None, tag: None, value: "${{ env.MY_PASSWORD == secrets.PASSWORD }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+160:8@3940..160:34@3966 Comment OwnLine "# jobs.<job_id>.steps.name"
+161:8@3975..161:12@3979 Comment OwnLine "# OK"
+162:8@3988..162:12@3992 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+162:14@3994..162:54@4034 Scalar { anchor: None, tag: None, value: "${{ env.VERSION }} on ${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+163:8@4043..163:33@4068 Comment OwnLine "# jobs.<job_id>.steps.run"
+164:8@4077..164:12@4081 Comment OwnLine "# OK"
+165:8@4090..165:11@4093 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+165:13@4095..165:46@4128 Scalar { anchor: None, tag: None, value: "echo 'Name is ${{ runner.name }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+166:8@4137..166:45@4174 Comment OwnLine "# jobs.<job_id>.steps.timeout-minutes"
+167:8@4183..167:12@4187 Comment OwnLine "# OK"
+168:8@4196..168:23@4211 Scalar { anchor: None, tag: None, value: "timeout-minutes", plain_implicit: true, quoted_implicit: false, style: Plain }
+168:25@4213..168:46@4234 Scalar { anchor: None, tag: None, value: "${{ inputs.timeout }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+169:8@4243..169:47@4282 Comment OwnLine "# jobs.<job_id>.steps.working-directory"
+170:8@4291..170:12@4295 Comment OwnLine "# OK"
+171:8@4304..171:25@4321 Scalar { anchor: None, tag: None, value: "working-directory", plain_implicit: true, quoted_implicit: false, style: Plain }
+171:27@4323..171:45@4341 Scalar { anchor: None, tag: None, value: "${{ runner.temp }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+172:6@4348..172:6@4348 MappingEnd
+172:8@4350..172:8@4350 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+172:8@4350..172:12@4354 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+172:14@4356..172:28@4370 Scalar { anchor: None, tag: None, value: "owner/repo@ref", plain_implicit: true, quoted_implicit: false, style: Plain }
+173:8@4379..173:34@4405 Comment OwnLine "# jobs.<job_id>.steps.with"
+174:8@4414..174:12@4418 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+175:10@4430..175:14@4434 Comment OwnLine "# OK"
+176:10@4445..176:10@4445 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+176:10@4445..176:17@4452 Scalar { anchor: None, tag: None, value: "message", plain_implicit: true, quoted_implicit: false, style: Plain }
+176:19@4454..176:75@4510 Scalar { anchor: None, tag: None, value: "${{ job.container.id }} is running on ${{ runner.os }}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+176:75@4510..176:75@4510 MappingEnd
+176:75@4510..176:75@4510 MappingEnd
+176:75@4510..176:75@4510 SequenceEnd
+176:75@4510..176:75@4510 MappingEnd
+177:2@4513..177:8@4519 Scalar { anchor: None, tag: None, value: "caller", plain_implicit: true, quoted_implicit: false, style: Plain }
+178:4@4525..178:4@4525 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+178:4@4525..178:8@4529 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+178:10@4531..178:38@4559 Scalar { anchor: None, tag: None, value: "owner/repo/workflow.yml@main", plain_implicit: true, quoted_implicit: false, style: Plain }
+179:4@4564..179:34@4594 Comment OwnLine "# jobs.<job_id>.with.<with_id>"
+180:4@4599..180:8@4603 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+181:6@4611..181:13@4618 Comment OwnLine "# ERROR"
+182:6@4625..182:6@4625 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+182:6@4625..182:16@4635 Scalar { anchor: None, tag: None, value: "some-input", plain_implicit: true, quoted_implicit: false, style: Plain }
+182:18@4637..182:34@4653 Scalar { anchor: None, tag: None, value: "${{ env.HELLO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+183:6@4660..183:10@4664 Comment OwnLine "# OK"
+184:6@4671..184:11@4676 Scalar { anchor: None, tag: None, value: "outer", plain_implicit: true, quoted_implicit: false, style: Plain }
+184:13@4678..184:30@4695 Scalar { anchor: None, tag: None, value: "${{ inputs.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+185:4@4700..185:4@4700 MappingEnd
+185:4@4700..185:40@4736 Comment OwnLine "# jobs.<job_id>.secrets.<secrets_id>"
+186:4@4741..186:11@4748 Comment OwnLine "# ERROR"
+187:4@4753..187:11@4760 Scalar { anchor: None, tag: None, value: "secrets", plain_implicit: true, quoted_implicit: false, style: Plain }
+188:6@4768..188:6@4768 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+188:6@4768..188:14@4776 Scalar { anchor: None, tag: None, value: "password", plain_implicit: true, quoted_implicit: false, style: Plain }
+188:16@4778..188:38@4800 Scalar { anchor: None, tag: None, value: "${{ env.MY_PASSWORD }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+189:2@4803..189:2@4803 MappingEnd
+189:2@4803..189:2@4803 MappingEnd
+189:2@4803..189:15@4816 Scalar { anchor: None, tag: None, value: "concurrency-2", plain_implicit: true, quoted_implicit: false, style: Plain }
+190:4@4822..190:31@4849 Comment OwnLine "# jobs.<job_id>.concurrency"
+191:4@4854..191:18@4868 Comment OwnLine "# ERROR at env"
+192:4@4873..192:4@4873 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+192:4@4873..192:15@4884 Scalar { anchor: None, tag: None, value: "concurrency", plain_implicit: true, quoted_implicit: false, style: Plain }
+192:17@4886..192:49@4918 Scalar { anchor: None, tag: None, value: "${{ github.ref }}-${{ env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+193:4@4923..193:11@4930 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+193:13@4932..193:26@4945 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+194:4@4950..194:9@4955 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+195:6@4963..195:6@4963 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+195:8@4965..195:8@4965 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+195:8@4965..195:11@4968 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+195:13@4970..195:20@4977 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+196:2@4980..196:2@4980 MappingEnd
+196:2@4980..196:2@4980 SequenceEnd
+196:2@4980..196:2@4980 MappingEnd
+196:2@4980..196:15@4993 Scalar { anchor: None, tag: None, value: "environment-2", plain_implicit: true, quoted_implicit: false, style: Plain }
+197:4@4999..197:31@5026 Comment OwnLine "# jobs.<job_id>.environment"
+198:4@5031..198:11@5038 Comment OwnLine "# ERROR"
+199:4@5043..199:4@5043 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+199:4@5043..199:15@5054 Scalar { anchor: None, tag: None, value: "environment", plain_implicit: true, quoted_implicit: false, style: Plain }
+199:17@5056..199:35@5074 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+200:4@5079..200:11@5086 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+200:13@5088..200:26@5101 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+201:4@5106..201:9@5111 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+202:6@5119..202:6@5119 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+202:8@5121..202:8@5121 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+202:8@5121..202:11@5124 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+202:13@5126..202:20@5133 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+203:2@5136..203:2@5136 MappingEnd
+203:2@5136..203:2@5136 SequenceEnd
+203:2@5136..203:2@5136 MappingEnd
+203:2@5136..203:32@5166 Comment OwnLine "# jobs.<job_id>.runs-on (#280)"
+204:2@5169..204:14@5181 Scalar { anchor: None, tag: None, value: "test-runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+205:4@5187..205:4@5187 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+205:4@5187..205:11@5194 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+206:6@5202..206:13@5209 Comment OwnLine "# ERROR"
+207:6@5216..207:6@5216 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+207:6@5216..207:12@5222 Scalar { anchor: None, tag: None, value: "labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+207:14@5224..207:30@5240 Scalar { anchor: None, tag: None, value: "${{ runner.OS }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+208:6@5247..208:13@5254 Comment OwnLine "# ERROR"
+209:6@5261..209:11@5266 Scalar { anchor: None, tag: None, value: "group", plain_implicit: true, quoted_implicit: false, style: Plain }
+209:13@5268..209:29@5284 Scalar { anchor: None, tag: None, value: "${{ runner.OS }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+210:4@5289..210:4@5289 MappingEnd
+210:4@5289..210:9@5294 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+211:6@5302..211:6@5302 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+211:8@5304..211:8@5304 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+211:8@5304..211:11@5307 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+211:13@5309..211:23@5319 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+212:2@5322..212:2@5322 MappingEnd
+212:2@5322..212:2@5322 SequenceEnd
+212:2@5322..212:2@5322 MappingEnd
+212:2@5322..212:15@5335 Scalar { anchor: None, tag: None, value: "test-services", plain_implicit: true, quoted_implicit: false, style: Plain }
+213:4@5341..213:4@5341 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+213:4@5341..213:11@5348 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+213:13@5350..213:26@5363 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+214:4@5368..214:28@5392 Comment OwnLine "# jobs.<job_id>.services"
+215:4@5397..215:18@5411 Comment OwnLine "# ERROR at env"
+216:4@5416..216:12@5424 Scalar { anchor: None, tag: None, value: "services", plain_implicit: true, quoted_implicit: false, style: Plain }
+216:14@5426..216:43@5455 Scalar { anchor: None, tag: None, value: "${{ inputs.bool || env.FOO }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+217:4@5460..217:9@5465 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+218:6@5473..218:6@5473 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+218:8@5475..218:8@5475 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+218:8@5475..218:11@5478 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+218:13@5480..218:17@5484 Scalar { anchor: None, tag: None, value: "echo", plain_implicit: true, quoted_implicit: false, style: Plain }
+219:8@5493..219:55@5540 Comment OwnLine "# ERROR at inputs because `id` allow no context"
+220:8@5549..220:10@5551 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+220:12@5553..220:29@5570 Scalar { anchor: None, tag: None, value: "${{ inputs.foo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+221:2@5573..221:2@5573 MappingEnd
+221:2@5573..221:2@5573 SequenceEnd
+221:2@5573..221:2@5573 MappingEnd
+221:2@5573..221:29@5600 Comment OwnLine "# jobs.<job_id>.snapshot.if"
+222:2@5603..222:14@5615 Scalar { anchor: None, tag: None, value: "snapshot-err", plain_implicit: true, quoted_implicit: false, style: Plain }
+223:4@5621..223:4@5621 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+223:4@5621..223:11@5628 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+223:13@5630..223:26@5643 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+224:4@5648..224:12@5656 Scalar { anchor: None, tag: None, value: "snapshot", plain_implicit: true, quoted_implicit: false, style: Plain }
+225:6@5664..225:6@5664 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+225:6@5664..225:16@5674 Scalar { anchor: None, tag: None, value: "image-name", plain_implicit: true, quoted_implicit: false, style: Plain }
+225:18@5676..225:33@5691 Scalar { anchor: None, tag: None, value: "my-custom-image", plain_implicit: true, quoted_implicit: false, style: Plain }
+226:6@5698..226:13@5705 Comment OwnLine "# ERROR"
+227:6@5712..227:8@5714 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+227:10@5716..227:81@5787 Scalar { anchor: None, tag: None, value: "${{ env.FOO == 'foo' && runner.name == 'foo' && secrets.FOO == 'foo' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+228:4@5792..228:4@5792 MappingEnd
+228:4@5792..228:11@5799 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+229:6@5807..229:6@5807 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+229:6@5807..229:9@5810 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+229:11@5812..229:14@5815 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+230:4@5820..230:4@5820 MappingEnd
+230:4@5820..230:9@5825 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+231:6@5833..231:6@5833 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+231:8@5835..231:8@5835 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+231:8@5835..231:11@5838 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+231:13@5840..231:20@5847 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+232:2@5850..232:2@5850 MappingEnd
+232:2@5850..232:2@5850 SequenceEnd
+232:2@5850..232:2@5850 MappingEnd
+232:2@5850..232:13@5861 Scalar { anchor: None, tag: None, value: "snapshot-ok", plain_implicit: true, quoted_implicit: false, style: Plain }
+233:4@5867..233:4@5867 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+233:4@5867..233:11@5874 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+233:13@5876..233:26@5889 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+234:4@5894..234:12@5902 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+235:6@5910..235:6@5910 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+235:6@5910..235:12@5916 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+236:8@5926..236:8@5926 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+236:8@5926..236:11@5929 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+236:13@5931..236:14@5932 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+236:14@5932..236:15@5933 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+236:17@5935..236:18@5936 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+236:18@5936..236:19@5937 SequenceEnd
+236:19@5937..236:19@5937 MappingEnd
+237:6@5944..237:15@5953 Scalar { anchor: None, tag: None, value: "fail-fast", plain_implicit: true, quoted_implicit: false, style: Plain }
+237:17@5955..237:21@5959 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+238:4@5964..238:4@5964 MappingEnd
+238:4@5964..238:9@5969 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+238:11@5971..238:12@5972 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+238:12@5972..238:24@5984 Scalar { anchor: None, tag: None, value: "snapshot-err", plain_implicit: true, quoted_implicit: false, style: Plain }
+238:24@5984..238:25@5985 SequenceEnd
+239:4@5990..239:12@5998 Scalar { anchor: None, tag: None, value: "snapshot", plain_implicit: true, quoted_implicit: false, style: Plain }
+240:6@6006..240:6@6006 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+240:6@6006..240:16@6016 Scalar { anchor: None, tag: None, value: "image-name", plain_implicit: true, quoted_implicit: false, style: Plain }
+240:18@6018..240:33@6033 Scalar { anchor: None, tag: None, value: "my-custom-image", plain_implicit: true, quoted_implicit: false, style: Plain }
+241:6@6040..241:8@6042 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+241:10@6044..241:166@6200 Scalar { anchor: None, tag: None, value: "${{ matrix.foo == 'a' && github.ref == 'foo' && vars.foo == 'foo' && needs.snapshot-err.outputs.foo == 'foo' && strategy.fail-fast && inputs.foo == 'foo' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+242:4@6205..242:4@6205 MappingEnd
+242:4@6205..242:9@6210 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+243:6@6218..243:6@6218 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+243:8@6220..243:8@6220 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+243:8@6220..243:11@6223 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+243:13@6225..243:20@6232 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+244:2@6235..244:2@6235 MappingEnd
+244:2@6235..244:2@6235 SequenceEnd
+244:2@6235..244:2@6235 MappingEnd
+244:2@6235..244:24@6257 Scalar { anchor: None, tag: None, value: "test-service-overrides", plain_implicit: true, quoted_implicit: false, style: Plain }
+245:4@6263..245:4@6263 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+245:4@6263..245:11@6270 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+245:13@6272..245:26@6285 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+246:4@6290..246:12@6298 Scalar { anchor: None, tag: None, value: "services", plain_implicit: true, quoted_implicit: false, style: Plain }
+247:6@6306..247:6@6306 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+247:6@6306..247:11@6311 Scalar { anchor: None, tag: None, value: "nginx", plain_implicit: true, quoted_implicit: false, style: Plain }
+248:8@6321..248:22@6335 Comment OwnLine "# ERROR at env"
+249:8@6344..249:8@6344 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+249:8@6344..249:18@6354 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+249:20@6356..249:49@6385 Scalar { anchor: None, tag: None, value: "${{ env.SERVICE_ENTRYPOINT }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+250:8@6394..250:22@6408 Comment OwnLine "# ERROR at env"
+251:8@6417..251:15@6424 Scalar { anchor: None, tag: None, value: "command", plain_implicit: true, quoted_implicit: false, style: Plain }
+251:17@6426..251:43@6452 Scalar { anchor: None, tag: None, value: "${{ env.SERVICE_COMMAND }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+252:8@6461..252:13@6466 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+252:15@6468..252:20@6473 Scalar { anchor: None, tag: None, value: "nginx", plain_implicit: true, quoted_implicit: false, style: Plain }
+253:4@6478..253:4@6478 MappingEnd
+253:4@6478..253:4@6478 MappingEnd
+253:4@6478..253:9@6483 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+254:6@6491..254:6@6491 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+254:8@6493..254:8@6493 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+254:8@6493..254:11@6496 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+254:13@6498..254:20@6505 Scalar { anchor: None, tag: None, value: "echo hi", plain_implicit: true, quoted_implicit: false, style: Plain }
+255:0@6506..255:0@6506 MappingEnd
+255:0@6506..255:0@6506 SequenceEnd
+255:0@6506..255:0@6506 MappingEnd
+255:0@6506..255:0@6506 MappingEnd
+255:0@6506..255:0@6506 MappingEnd
+255:0@6506..255:0@6506 DocumentEnd { implicit: true }
+255:0@6506..255:0@6506 StreamEnd

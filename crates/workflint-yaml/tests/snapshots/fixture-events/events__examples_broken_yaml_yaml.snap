@@ -1,0 +1,20 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/broken_yaml.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:7@22 Scalar { anchor: None, tag: None, value: "linux", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@28..3:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@28..3:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@37..3:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@55..4:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@68..5:6@68 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@70..5:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@70..5:11@73 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Scanner error: line 6 column 17: mapping values are not allowed in this context

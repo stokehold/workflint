@@ -1,0 +1,31 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/run_name.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:96@96 Comment OwnLine "# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#run-name"
+1:0@97..1:90@187 Comment OwnLine "# https://github.blog/changelog/2022-09-26-github-actions-dynamic-names-for-workflow-runs/"
+2:0@188..2:0@188 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+2:0@188..2:0@188 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:0@188..2:8@196 Scalar { anchor: None, tag: None, value: "run-name", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:10@198..2:40@228 Scalar { anchor: None, tag: None, value: "Deploy by @${{ github.actor }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@230..4:2@232 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@234..4:8@238 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@240..6:4@244 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@248..7:2@248 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@248..7:6@252 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@258..8:4@258 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@258..8:11@265 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@267..8:26@280 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@285..9:9@290 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@298..10:6@298 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@300..10:8@300 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@300..10:11@303 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@305..10:23@315 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:0@316..11:0@316 MappingEnd
+11:0@316..11:0@316 SequenceEnd
+11:0@316..11:0@316 MappingEnd
+11:0@316..11:0@316 MappingEnd
+11:0@316..11:0@316 MappingEnd
+11:0@316..11:0@316 DocumentEnd { implicit: true }
+11:0@316..11:0@316 StreamEnd

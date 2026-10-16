@@ -1,0 +1,48 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/outputs_of_action_skipping_inputs_check.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:18@34 Scalar { anchor: None, tag: None, value: "logLatestRelease", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@40..4:4@40 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@40..4:11@47 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@49..4:26@62 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@67..5:9@72 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@80..6:6@80 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@82..6:8@82 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@82..6:12@86 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@88..6:41@115 Scalar { anchor: None, tag: None, value: "octokit/request-action@v2.x", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@124..7:10@126 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:12@128..7:30@146 Scalar { anchor: None, tag: None, value: "get_latest_release", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@155..8:12@159 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@171..9:10@171 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:10@171..9:15@176 Scalar { anchor: None, tag: None, value: "route", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:17@178..9:58@219 Scalar { anchor: None, tag: None, value: "GET /repos/{owner}/{repo}/releases/latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@230..10:15@235 Scalar { anchor: None, tag: None, value: "owner", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:17@237..10:24@244 Scalar { anchor: None, tag: None, value: "octokit", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:10@255..11:14@259 Scalar { anchor: None, tag: None, value: "repo", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:16@261..11:30@275 Scalar { anchor: None, tag: None, value: "request-action", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@284..12:8@284 MappingEnd
+12:8@284..12:11@287 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:10@299..13:10@299 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:10@299..13:22@311 Scalar { anchor: None, tag: None, value: "GITHUB_TOKEN", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:24@313..13:51@340 Scalar { anchor: None, tag: None, value: "${{ secrets.GITHUB_TOKEN }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@347..14:6@347 MappingEnd
+14:6@347..14:6@347 MappingEnd
+14:6@347..14:79@420 Comment OwnLine "# octkit/request-action skips inputs check, but outputs are still checked"
+15:8@429..15:8@429 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@429..15:11@432 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@434..15:102@523 Scalar { anchor: None, tag: None, value: "echo latest release: ${{ steps.get_latest_release.outputs.this_output_does_not_exist }}", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+15:102@523..15:102@523 MappingEnd
+15:102@523..15:102@523 SequenceEnd
+15:102@523..15:102@523 MappingEnd
+15:102@523..15:102@523 MappingEnd
+16:0@524..16:0@524 MappingEnd
+16:0@524..16:0@524 DocumentEnd { implicit: true }
+16:0@524..16:0@524 StreamEnd

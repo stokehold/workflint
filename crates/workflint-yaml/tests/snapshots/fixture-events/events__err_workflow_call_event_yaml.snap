@@ -1,0 +1,127 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/workflow_call_event.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:10@31 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..3:28@61 Comment OwnLine "# input without fields"
+4:6@68..4:6@68 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@68..4:12@74 Scalar { anchor: None, tag: None, value: "input0", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@75..4:13@75 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@82..5:12@88 Scalar { anchor: None, tag: None, value: "input1", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@98..6:8@98 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@98..6:19@109 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:21@111..6:39@129 Scalar { anchor: None, tag: None, value: "input without type", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@136..7:6@136 MappingEnd
+7:6@136..7:33@163 Comment OwnLine "# input without description"
+8:6@170..8:12@176 Scalar { anchor: None, tag: None, value: "input2", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@186..9:8@186 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@186..9:12@190 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:14@192..9:20@198 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@205..10:6@205 MappingEnd
+10:6@205..10:12@211 Scalar { anchor: None, tag: None, value: "input3", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@221..11:8@221 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@221..11:19@232 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:21@234..11:44@257 Scalar { anchor: None, tag: None, value: "input with invalid type", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@266..12:12@270 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:14@272..12:21@279 Scalar { anchor: None, tag: None, value: "unknown", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@286..13:6@286 MappingEnd
+13:6@286..13:12@292 Scalar { anchor: None, tag: None, value: "input4", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@302..14:8@302 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@302..14:19@313 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:21@315..14:58@352 Scalar { anchor: None, tag: None, value: "non-boolean type value for 'required'", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:8@361..15:16@369 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:18@371..15:21@374 Scalar { anchor: None, tag: None, value: "yes", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@381..16:6@381 MappingEnd
+16:6@381..16:12@387 Scalar { anchor: None, tag: None, value: "input5", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@397..17:8@397 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@397..17:19@408 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:21@410..17:34@423 Scalar { anchor: None, tag: None, value: "unknown field", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@432..18:12@436 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:14@438..18:20@444 Scalar { anchor: None, tag: None, value: "number", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@453..19:15@460 Scalar { anchor: None, tag: None, value: "unknown", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:17@462..19:22@467 Scalar { anchor: None, tag: None, value: "hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@474..20:6@474 MappingEnd
+20:6@474..20:12@480 Scalar { anchor: None, tag: None, value: "input0", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@490..21:8@490 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+21:8@490..21:19@501 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:21@503..21:41@523 Scalar { anchor: None, tag: None, value: "duplicate input name", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:8@532..22:12@536 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:14@538..22:20@544 Scalar { anchor: None, tag: None, value: "number", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:6@551..23:6@551 MappingEnd
+23:6@551..23:12@557 Scalar { anchor: None, tag: None, value: "input6", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:8@567..24:8@567 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@567..24:19@578 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:21@580..24:52@611 Scalar { anchor: None, tag: None, value: "type mismatch string for number", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:8@620..25:15@627 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:17@629..25:22@634 Scalar { anchor: None, tag: None, value: "foooo", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:8@643..26:12@647 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:14@649..26:20@655 Scalar { anchor: None, tag: None, value: "number", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:6@662..27:6@662 MappingEnd
+27:6@662..27:12@668 Scalar { anchor: None, tag: None, value: "input7", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:8@678..28:8@678 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+28:8@678..28:19@689 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:21@691..28:55@725 Scalar { anchor: None, tag: None, value: "type mismatch (number for boolean)", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:8@734..29:15@741 Scalar { anchor: None, tag: None, value: "default", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:17@743..29:20@746 Scalar { anchor: None, tag: None, value: "123", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:8@755..30:12@759 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:14@761..30:21@768 Scalar { anchor: None, tag: None, value: "boolean", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:6@775..31:6@775 MappingEnd
+31:6@775..31:12@781 Scalar { anchor: None, tag: None, value: "input8", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:8@791..32:8@791 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@791..32:19@802 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:21@804..32:46@829 Scalar { anchor: None, tag: None, value: "invalid mapping at `type`", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:8@838..33:12@842 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:10@854..34:10@854 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:10@854..34:13@857 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:15@859..34:18@862 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:4@867..35:4@867 MappingEnd
+35:4@867..35:4@867 MappingEnd
+35:4@867..35:4@867 MappingEnd
+35:4@867..35:11@874 Scalar { anchor: None, tag: None, value: "secrets", plain_implicit: true, quoted_implicit: false, style: Plain }
+36:6@882..36:16@892 Comment OwnLine "# no field"
+37:6@899..37:6@899 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+37:6@899..37:13@906 Scalar { anchor: None, tag: None, value: "secret0", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:14@907..37:14@907 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:6@914..38:13@921 Scalar { anchor: None, tag: None, value: "secret1", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:8@931..39:8@931 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+39:8@931..39:19@942 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:21@944..39:34@957 Scalar { anchor: None, tag: None, value: "unknown field", plain_implicit: true, quoted_implicit: false, style: Plain }
+40:8@966..40:15@973 Scalar { anchor: None, tag: None, value: "unknown", plain_implicit: true, quoted_implicit: false, style: Plain }
+40:17@975..40:20@978 Scalar { anchor: None, tag: None, value: "bye", plain_implicit: true, quoted_implicit: false, style: Plain }
+41:6@985..41:6@985 MappingEnd
+41:6@985..41:13@992 Scalar { anchor: None, tag: None, value: "secret1", plain_implicit: true, quoted_implicit: false, style: Plain }
+42:8@1002..42:8@1002 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+42:8@1002..42:19@1013 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+42:21@1015..42:42@1036 Scalar { anchor: None, tag: None, value: "duplicate secret name", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:4@1041..43:4@1041 MappingEnd
+43:4@1041..43:4@1041 MappingEnd
+43:4@1041..43:41@1078 Comment OwnLine "# unknown key for workflow_call event"
+44:4@1083..44:11@1090 Scalar { anchor: None, tag: None, value: "unknown", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:12@1091..44:12@1091 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:12@1091..44:12@1091 MappingEnd
+44:12@1091..44:12@1091 MappingEnd
+46:0@1093..46:4@1097 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:2@1101..47:2@1101 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+47:2@1101..47:6@1105 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+48:4@1111..48:4@1111 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+48:4@1111..48:11@1118 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+48:13@1120..48:25@1132 Scalar { anchor: None, tag: None, value: "ubuntu-24.04", plain_implicit: true, quoted_implicit: false, style: Plain }
+49:4@1137..49:9@1142 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+50:6@1150..50:6@1150 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+50:8@1152..50:8@1152 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+50:8@1152..50:11@1155 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+50:13@1157..50:45@1189 Scalar { anchor: None, tag: None, value: "echo ${{ inputs.unknown_input }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+51:0@1190..51:0@1190 MappingEnd
+51:0@1190..51:0@1190 SequenceEnd
+51:0@1190..51:0@1190 MappingEnd
+51:0@1190..51:0@1190 MappingEnd
+51:0@1190..51:0@1190 MappingEnd
+51:0@1190..51:0@1190 DocumentEnd { implicit: true }
+51:0@1190..51:0@1190 StreamEnd

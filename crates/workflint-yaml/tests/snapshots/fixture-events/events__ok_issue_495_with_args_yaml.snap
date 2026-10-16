@@ -1,0 +1,46 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-495_with_args.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:4@25 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@25..2:10@31 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..3:6@39 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@39..3:10@43 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@53..4:8@53 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:8@53..4:12@57 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:14@59..4:20@65 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@67..6:0@67 MappingEnd
+6:0@67..6:0@67 MappingEnd
+6:0@67..6:0@67 MappingEnd
+6:0@67..6:0@67 MappingEnd
+6:0@67..6:4@71 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@75..7:2@75 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@75..7:8@81 Scalar { anchor: None, tag: None, value: "my_job", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@87..8:4@87 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@87..8:11@94 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@96..8:26@109 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@114..9:9@119 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@127..10:6@127 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@129..10:8@129 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@129..10:12@133 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@135..10:41@162 Scalar { anchor: None, tag: None, value: "docker://example.com:latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@171..11:12@175 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@187..12:10@187 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:10@187..12:20@197 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:22@199..12:42@219 Scalar { anchor: None, tag: None, value: "${{ inputs.test }}", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+13:10@230..13:14@234 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:16@236..13:42@262 Scalar { anchor: None, tag: None, value: "--arg \"${{ inputs.test }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@263..14:0@263 MappingEnd
+14:0@263..14:0@263 MappingEnd
+14:0@263..14:0@263 SequenceEnd
+14:0@263..14:0@263 MappingEnd
+14:0@263..14:0@263 MappingEnd
+14:0@263..14:0@263 MappingEnd
+14:0@263..14:0@263 DocumentEnd { implicit: true }
+14:0@263..14:0@263 StreamEnd

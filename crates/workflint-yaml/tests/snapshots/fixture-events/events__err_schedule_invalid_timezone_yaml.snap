@@ -1,0 +1,59 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/schedule_invalid_timezone.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:10@14 Scalar { anchor: None, tag: None, value: "schedule", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@20..2:4@20 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+2:6@22..2:6@22 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:6@22..2:10@26 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:12@28..2:25@41 Scalar { anchor: None, tag: None, value: "*/5 * * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:6@48..3:14@56 Scalar { anchor: None, tag: None, value: "timezone", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:16@58..3:32@74 Scalar { anchor: None, tag: None, value: "Not/A/Timezone", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:32@74..3:32@74 MappingEnd
+4:6@81..4:6@81 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@81..4:10@85 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:12@87..4:25@100 Scalar { anchor: None, tag: None, value: "*/5 * * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:6@107..5:14@115 Scalar { anchor: None, tag: None, value: "timezone", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:16@117..5:21@122 Scalar { anchor: None, tag: None, value: "UTC", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:21@122..5:21@122 MappingEnd
+6:6@129..6:6@129 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@129..6:10@133 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:12@135..6:25@148 Scalar { anchor: None, tag: None, value: "*/5 * * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:6@155..7:14@163 Scalar { anchor: None, tag: None, value: "timezone", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:16@165..7:23@172 Scalar { anchor: None, tag: None, value: "local", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:23@172..7:23@172 MappingEnd
+8:6@179..8:6@179 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:6@179..8:10@183 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:12@185..8:25@198 Scalar { anchor: None, tag: None, value: "*/5 * * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+9:6@205..9:14@213 Scalar { anchor: None, tag: None, value: "timezone", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:16@215..9:18@217 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+9:18@217..9:18@217 MappingEnd
+10:6@224..10:6@224 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:6@224..10:10@228 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:12@230..10:14@232 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:14@232..10:14@232 MappingEnd
+10:14@232..10:14@232 SequenceEnd
+10:14@232..10:14@232 MappingEnd
+12:0@234..12:4@238 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:2@242..13:2@242 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:2@242..13:6@246 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@252..14:4@252 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:4@252..14:11@259 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@261..14:26@274 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@279..15:9@284 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@292..16:6@292 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@294..16:8@294 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@294..16:11@297 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@299..16:23@309 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:0@310..17:0@310 MappingEnd
+17:0@310..17:0@310 SequenceEnd
+17:0@310..17:0@310 MappingEnd
+17:0@310..17:0@310 MappingEnd
+17:0@310..17:0@310 MappingEnd
+17:0@310..17:0@310 DocumentEnd { implicit: true }
+17:0@310..17:0@310 StreamEnd

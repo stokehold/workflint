@@ -1,0 +1,52 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/shellcheck_step_shell.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@43..4:12@49 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@59..5:8@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@59..5:10@61 Scalar { anchor: None, tag: None, value: "os", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:12@63..5:13@64 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+5:13@64..5:26@77 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:28@79..5:42@93 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:42@93..5:43@94 SequenceEnd
+5:43@94..5:43@94 MappingEnd
+5:43@94..5:43@94 MappingEnd
+6:4@99..6:11@106 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@108..6:29@124 Scalar { anchor: None, tag: None, value: "${{ matrix.os }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@129..7:9@134 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@142..8:60@196 Comment OwnLine "# This causes SC1001 if `shell:` is not set explicitly"
+9:6@203..9:6@203 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@205..9:8@205 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@205..9:11@208 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@210..9:28@225 Scalar { anchor: None, tag: None, value: "cat xxx\\yyy.txt", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@234..10:10@236 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:12@238..10:48@274 Scalar { anchor: None, tag: None, value: "${{ matrix.os == 'windows-latest' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@283..11:13@288 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:15@290..11:19@294 Scalar { anchor: None, tag: None, value: "pwsh", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@301..12:6@301 MappingEnd
+12:6@301..12:60@355 Comment OwnLine "# This causes SC1001 if `shell:` is not set explicitly"
+13:8@364..13:8@364 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@364..13:11@367 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@369..13:28@384 Scalar { anchor: None, tag: None, value: "cat xxx\\yyy.txt", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@393..14:10@395 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:12@397..14:48@433 Scalar { anchor: None, tag: None, value: "${{ matrix.os == 'windows-latest' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:8@442..15:13@447 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:15@449..15:25@459 Scalar { anchor: None, tag: None, value: "pwsh {0}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+15:25@459..15:25@459 MappingEnd
+15:25@459..15:25@459 SequenceEnd
+15:25@459..15:25@459 MappingEnd
+15:25@459..15:25@459 MappingEnd
+16:0@460..16:0@460 MappingEnd
+16:0@460..16:0@460 DocumentEnd { implicit: true }
+16:0@460..16:0@460 StreamEnd

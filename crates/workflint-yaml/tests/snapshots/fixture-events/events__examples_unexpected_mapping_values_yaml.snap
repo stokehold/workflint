@@ -1,0 +1,39 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/unexpected_mapping_values.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:58@95 Comment OwnLine "# ERROR: Boolean value \"true\" or \"false\" is expected"
+5:6@102..5:6@102 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@102..5:15@111 Scalar { anchor: None, tag: None, value: "fail-fast", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:17@113..5:20@116 Scalar { anchor: None, tag: None, value: "off", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@123..6:40@157 Comment OwnLine "# ERROR: Integer value is expected"
+7:6@164..7:18@176 Scalar { anchor: None, tag: None, value: "max-parallel", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:20@178..7:23@181 Scalar { anchor: None, tag: None, value: "1.5", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@186..8:4@186 MappingEnd
+8:4@186..8:11@193 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@195..8:26@208 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@213..9:9@218 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@226..10:6@226 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@228..10:8@228 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@228..10:11@231 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@233..10:22@242 Scalar { anchor: None, tag: None, value: "sleep 200", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@251..11:40@283 Comment OwnLine "# ERROR: Float value is expected"
+12:8@292..12:23@307 Scalar { anchor: None, tag: None, value: "timeout-minutes", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:25@309..12:36@320 Scalar { anchor: None, tag: None, value: "two minutes", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@321..13:0@321 MappingEnd
+13:0@321..13:0@321 SequenceEnd
+13:0@321..13:0@321 MappingEnd
+13:0@321..13:0@321 MappingEnd
+13:0@321..13:0@321 MappingEnd
+13:0@321..13:0@321 DocumentEnd { implicit: true }
+13:0@321..13:0@321 StreamEnd

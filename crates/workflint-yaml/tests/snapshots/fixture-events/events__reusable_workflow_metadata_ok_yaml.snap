@@ -1,0 +1,73 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: reusable_workflow_metadata/ok.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:13@13 Scalar { anchor: None, tag: None, value: "minimal", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@15..2:2@17 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@21..3:2@21 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@21..3:15@34 Scalar { anchor: None, tag: None, value: "workflow_call", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@40..4:4@40 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@40..4:10@46 Scalar { anchor: None, tag: None, value: "inputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@54..5:6@54 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@54..5:12@60 Scalar { anchor: None, tag: None, value: "input1", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@70..6:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:19@81 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:21@83..6:26@88 Scalar { anchor: None, tag: None, value: "input", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@97..7:12@101 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:14@103..7:20@109 Scalar { anchor: None, tag: None, value: "string", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@116..8:6@116 MappingEnd
+8:6@116..8:12@122 Scalar { anchor: None, tag: None, value: "input2", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@132..9:8@132 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@132..9:12@136 Scalar { anchor: None, tag: None, value: "type", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:14@138..9:21@145 Scalar { anchor: None, tag: None, value: "boolean", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@154..10:16@162 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:18@164..10:22@168 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@173..11:4@173 MappingEnd
+11:4@173..11:4@173 MappingEnd
+11:4@173..11:11@180 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@188..12:6@188 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:6@188..12:13@195 Scalar { anchor: None, tag: None, value: "output1", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@205..13:8@205 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@205..13:19@216 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:21@218..13:27@224 Scalar { anchor: None, tag: None, value: "output", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@233..14:13@238 Scalar { anchor: None, tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:15@240..14:18@243 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@248..15:4@248 MappingEnd
+15:4@248..15:4@248 MappingEnd
+15:4@248..15:11@255 Scalar { anchor: None, tag: None, value: "secrets", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@263..16:6@263 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:6@263..16:13@270 Scalar { anchor: None, tag: None, value: "secret1", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@280..17:8@280 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@280..17:19@291 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:21@293..17:27@299 Scalar { anchor: None, tag: None, value: "secret", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@306..18:6@306 MappingEnd
+18:6@306..18:13@313 Scalar { anchor: None, tag: None, value: "secret2", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:8@323..19:8@323 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@323..19:16@331 Scalar { anchor: None, tag: None, value: "required", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:18@333..19:22@337 Scalar { anchor: None, tag: None, value: "true", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:0@339..21:0@339 MappingEnd
+21:0@339..21:0@339 MappingEnd
+21:0@339..21:0@339 MappingEnd
+21:0@339..21:0@339 MappingEnd
+21:0@339..21:4@343 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:2@347..22:2@347 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:2@347..22:6@351 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:4@357..23:4@357 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:4@357..23:11@364 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@366..23:25@378 Scalar { anchor: None, tag: None, value: "ubuntu-18.04", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:4@383..24:9@388 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:6@396..25:6@396 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+25:8@398..25:8@398 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:8@398..25:11@401 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:13@403..25:21@411 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:0@412..26:0@412 MappingEnd
+26:0@412..26:0@412 SequenceEnd
+26:0@412..26:0@412 MappingEnd
+26:0@412..26:0@412 MappingEnd
+26:0@412..26:0@412 MappingEnd
+26:0@412..26:0@412 DocumentEnd { implicit: true }
+26:0@412..26:0@412 StreamEnd

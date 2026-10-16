@@ -1,0 +1,42 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/example_workflow_call_outputs_downstream_jobs/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:16@32 Scalar { anchor: None, tag: None, value: "get_build_info", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@38..4:4@38 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@38..4:8@42 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@44..4:49@83 Scalar { anchor: None, tag: None, value: "./.github/workflows/get-build-info.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@86..5:2@86 MappingEnd
+5:2@86..5:12@96 Scalar { anchor: None, tag: None, value: "downstream", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@102..6:4@102 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@102..6:9@107 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:11@109..6:12@110 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+6:12@110..6:26@124 Scalar { anchor: None, tag: None, value: "get_build_info", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:26@124..6:27@125 SequenceEnd
+7:4@130..7:11@137 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@139..7:26@152 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@157..8:9@162 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@170..9:57@221 Comment OwnLine "# OK. `version` is defined in the reusable workflow"
+10:6@228..10:6@228 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@230..10:8@230 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@230..10:11@233 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@235..10:63@285 Scalar { anchor: None, tag: None, value: "echo '${{ needs.get_build_info.outputs.version }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@292..11:6@292 MappingEnd
+11:6@292..11:60@346 Comment OwnLine "# ERROR: `tag` is not defined in the reusable workflow"
+12:8@355..12:8@355 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@355..12:11@358 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@360..12:59@406 Scalar { anchor: None, tag: None, value: "echo '${{ needs.get_build_info.outputs.tag }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@407..13:0@407 MappingEnd
+13:0@407..13:0@407 SequenceEnd
+13:0@407..13:0@407 MappingEnd
+13:0@407..13:0@407 MappingEnd
+13:0@407..13:0@407 MappingEnd
+13:0@407..13:0@407 DocumentEnd { implicit: true }
+13:0@407..13:0@407 StreamEnd

@@ -1,0 +1,12 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: config/broken.yml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:18@18 Scalar { anchor: None, tag: None, value: "self-hosted-runner", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:20@20..0:22@22 Scalar { anchor: None, tag: None, value: "42", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@23..1:0@23 MappingEnd
+1:0@23..1:0@23 DocumentEnd { implicit: true }
+1:0@23..1:0@23 StreamEnd

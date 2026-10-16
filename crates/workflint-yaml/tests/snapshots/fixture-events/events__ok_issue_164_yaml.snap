@@ -1,0 +1,56 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-164.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:48@48 Comment OwnLine "# https://github.com/rhysd/actionlint/issues/164"
+2:0@50..2:0@50 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+2:0@50..2:0@50 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:0@50..2:2@52 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@54..2:8@58 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@60..4:4@64 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@68..5:2@68 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@68..5:7@73 Scalar { anchor: None, tag: None, value: "build", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@79..6:4@79 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@79..6:12@87 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@95..7:6@95 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:6@95..7:12@101 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@111..8:8@111 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@111..8:15@118 Scalar { anchor: None, tag: None, value: "include", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@130..9:10@130 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@132..9:12@132 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@132..9:15@135 Scalar { anchor: None, tag: None, value: "msg", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:17@137..9:28@148 Scalar { anchor: None, tag: None, value: "hello macos", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:12@161..10:23@172 Scalar { anchor: None, tag: None, value: "host-labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:25@174..10:26@175 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+10:26@175..10:39@188 Scalar { anchor: None, tag: None, value: "self-hosted", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+10:41@190..10:48@197 Scalar { anchor: None, tag: None, value: "macOS", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+10:50@199..10:55@204 Scalar { anchor: None, tag: None, value: "X64", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+10:55@204..10:56@205 SequenceEnd
+10:56@205..10:56@205 MappingEnd
+11:12@218..11:12@218 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:12@218..11:15@221 Scalar { anchor: None, tag: None, value: "msg", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:17@223..11:28@234 Scalar { anchor: None, tag: None, value: "hello linux", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:12@247..12:23@258 Scalar { anchor: None, tag: None, value: "host-labels", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:25@260..12:26@261 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+12:26@261..12:39@274 Scalar { anchor: None, tag: None, value: "self-hosted", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+12:41@276..12:48@283 Scalar { anchor: None, tag: None, value: "linux", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+12:48@283..12:49@284 SequenceEnd
+12:49@284..12:49@284 MappingEnd
+12:49@284..12:49@284 SequenceEnd
+12:49@284..12:49@284 MappingEnd
+12:49@284..12:49@284 MappingEnd
+13:4@289..13:11@296 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@298..13:38@323 Scalar { anchor: None, tag: None, value: "${{ matrix.host-labels }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@328..14:9@333 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@341..15:6@341 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@343..15:8@343 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@343..15:11@346 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@348..15:37@372 Scalar { anchor: None, tag: None, value: "echo \"${{ matrix.msg }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:0@373..16:0@373 MappingEnd
+16:0@373..16:0@373 SequenceEnd
+16:0@373..16:0@373 MappingEnd
+16:0@373..16:0@373 MappingEnd
+16:0@373..16:0@373 MappingEnd
+16:0@373..16:0@373 DocumentEnd { implicit: true }
+16:0@373..16:0@373 StreamEnd

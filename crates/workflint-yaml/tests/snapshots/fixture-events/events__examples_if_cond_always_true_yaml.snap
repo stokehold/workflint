@@ -1,0 +1,72 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/if_cond_always_true.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:6@68 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:11@73 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@75..6:51@113 Scalar { anchor: None, tag: None, value: "echo \"DEBUG! ${{ github.event_name }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@122..7:48@162 Comment OwnLine "# ERROR: It is always evaluated to false"
+8:8@171..8:10@173 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:12@175..8:17@180 Scalar { anchor: None, tag: None, value: "false", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@187..9:6@187 MappingEnd
+9:8@189..9:8@189 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@189..9:11@192 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@194..9:36@217 Scalar { anchor: None, tag: None, value: "echo 'Commit is pushed'", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@226..10:12@230 Comment OwnLine "# OK"
+11:8@239..11:10@241 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:12@243..11:46@277 Scalar { anchor: None, tag: None, value: "${{ github.event_name == 'push' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@284..12:6@284 MappingEnd
+12:8@286..12:8@286 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@286..12:11@289 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@291..12:36@314 Scalar { anchor: None, tag: None, value: "echo 'Commit is pushed'", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@323..13:12@327 Comment OwnLine "# OK"
+14:8@336..14:10@338 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:12@340..16:0@380 Scalar { anchor: None, tag: None, value: "github.event_name == 'push'\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+16:6@386..16:6@386 MappingEnd
+16:8@388..16:8@388 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:8@388..16:11@391 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@393..16:36@416 Scalar { anchor: None, tag: None, value: "echo 'Commit is pushed'", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:8@425..17:47@464 Comment OwnLine "# ERROR: It is always evaluated to true"
+18:8@473..18:10@475 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:12@477..20:0@524 Scalar { anchor: None, tag: None, value: "${{ github.event_name == 'push' }}\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+20:6@530..20:6@530 MappingEnd
+20:8@532..20:8@532 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@532..20:11@535 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:13@537..20:36@560 Scalar { anchor: None, tag: None, value: "echo 'Commit is pushed'", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:8@569..21:47@608 Comment OwnLine "# ERROR: It is always evaluated to true"
+22:8@617..22:10@619 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:12@621..22:49@658 Scalar { anchor: None, tag: None, value: "${{ github.event_name == 'push' }} ", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+22:49@658..22:49@658 MappingEnd
+23:8@667..23:8@667 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@667..23:11@670 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@672..23:44@703 Scalar { anchor: None, tag: None, value: "echo 'Commit is pushed to main'", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:8@712..24:12@716 Comment OwnLine "# OK"
+25:8@725..25:10@727 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:12@729..25:68@785 Scalar { anchor: None, tag: None, value: "github.event_name == 'push' && github.ref_name == 'main'", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:6@792..26:6@792 MappingEnd
+26:8@794..26:8@794 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:8@794..26:11@797 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:13@799..26:44@830 Scalar { anchor: None, tag: None, value: "echo 'Commit is pushed to main'", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:8@839..27:47@878 Comment OwnLine "# ERROR: It is always evaluated to true"
+28:8@887..28:10@889 Scalar { anchor: None, tag: None, value: "if", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:12@891..28:82@961 Scalar { anchor: None, tag: None, value: "${{ github.event_name == 'push' }} && ${{ github.ref_name == 'main' }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:0@962..29:0@962 MappingEnd
+29:0@962..29:0@962 SequenceEnd
+29:0@962..29:0@962 MappingEnd
+29:0@962..29:0@962 MappingEnd
+29:0@962..29:0@962 MappingEnd
+29:0@962..29:0@962 DocumentEnd { implicit: true }
+29:0@962..29:0@962 StreamEnd

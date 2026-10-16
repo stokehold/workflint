@@ -1,0 +1,52 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/popular_action_outputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:52@114 Comment OwnLine "# ERROR: The step is not run yet at this point"
+7:6@121..7:6@121 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@123..7:8@123 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@123..7:11@126 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@128..7:54@169 Scalar { anchor: None, tag: None, value: "echo ${{ steps.cache.outputs.cache-hit }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@176..8:6@176 MappingEnd
+8:6@176..8:43@213 Comment OwnLine "# actions/cache sets cache-hit output"
+9:8@222..9:8@222 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@222..9:12@226 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:14@228..9:30@244 Scalar { anchor: None, tag: None, value: "actions/cache@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@253..10:10@255 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:12@257..10:17@262 Scalar { anchor: None, tag: None, value: "cache", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@271..11:12@275 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@287..12:10@287 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:10@287..12:13@290 Scalar { anchor: None, tag: None, value: "key", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:15@292..12:44@321 Scalar { anchor: None, tag: None, value: "${{ hashFiles('**/*.lock') }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:10@332..13:14@336 Scalar { anchor: None, tag: None, value: "path", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:16@338..13:26@348 Scalar { anchor: None, tag: None, value: "./packages", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@355..14:6@355 MappingEnd
+14:6@355..14:6@355 MappingEnd
+14:6@355..14:10@359 Comment OwnLine "# OK"
+15:8@368..15:8@368 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@368..15:11@371 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@373..15:54@414 Scalar { anchor: None, tag: None, value: "echo ${{ steps.cache.outputs.cache-hit }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@421..16:6@421 MappingEnd
+16:6@421..16:34@449 Comment OwnLine "# ERROR: Typo at output name"
+17:8@458..17:8@458 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@458..17:11@461 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@463..17:54@504 Scalar { anchor: None, tag: None, value: "echo ${{ steps.cache.outputs.cache_hit }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:0@505..18:0@505 MappingEnd
+18:0@505..18:0@505 SequenceEnd
+18:0@505..18:0@505 MappingEnd
+18:0@505..18:0@505 MappingEnd
+18:0@505..18:0@505 MappingEnd
+18:0@505..18:0@505 DocumentEnd { implicit: true }
+18:0@505..18:0@505 StreamEnd

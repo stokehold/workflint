@@ -1,0 +1,45 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/undefined_anchor.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:6@68 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:11@73 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@75..6:16@78 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@87..7:11@90 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@92..7:25@104 Alias { anchor: "default_env" }
+7:25@104..7:25@104 MappingEnd
+8:8@113..8:8@113 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@113..8:11@116 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@118..8:16@121 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:8@130..9:11@133 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@135..10:10@158 MappingStart { anchor: Some("default_env"), tag: None, implicit: true, style: Block }
+10:10@158..10:13@161 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:15@163..10:18@166 Scalar { anchor: None, tag: None, value: "BAR", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@173..11:6@173 MappingEnd
+11:6@173..11:6@173 MappingEnd
+11:8@175..11:8@175 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@175..11:11@178 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@180..11:16@183 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@192..12:104@288 Comment OwnLine "# Currently this is not reported as error because go-yaml only reports the first dangling alias."
+13:8@297..13:11@300 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@302..13:25@314 Alias { anchor: "another_env" }
+13:25@314..13:25@314 MappingEnd
+13:25@314..13:25@314 SequenceEnd
+13:25@314..13:25@314 MappingEnd
+13:25@314..13:25@314 MappingEnd
+14:0@315..14:0@315 MappingEnd
+14:0@315..14:0@315 DocumentEnd { implicit: true }
+14:0@315..14:0@315 StreamEnd

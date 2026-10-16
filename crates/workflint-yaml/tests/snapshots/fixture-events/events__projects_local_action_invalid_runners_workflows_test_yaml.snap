@@ -1,0 +1,52 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_action_invalid_runners/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:6@68 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:12@74 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@76..6:24@86 Scalar { anchor: None, tag: None, value: "./old_node", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@93..7:6@93 MappingEnd
+7:8@95..7:8@95 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@95..7:12@99 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:14@101..7:28@115 Scalar { anchor: None, tag: None, value: "./missing_runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@122..8:6@122 MappingEnd
+8:8@124..8:8@124 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@124..8:12@128 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@130..8:29@145 Scalar { anchor: None, tag: None, value: "./missing_using", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@152..9:6@152 MappingEnd
+9:8@154..9:8@154 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@154..9:12@158 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:14@160..9:30@176 Scalar { anchor: None, tag: None, value: "./unknown_runner", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@183..10:6@183 MappingEnd
+10:8@185..10:8@185 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@185..10:12@189 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@191..10:36@213 Scalar { anchor: None, tag: None, value: "./invalid_node_version", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@220..11:6@220 MappingEnd
+11:8@222..11:8@222 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@222..11:12@226 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:14@228..11:22@236 Scalar { anchor: None, tag: None, value: "./node12", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@243..12:6@243 MappingEnd
+12:6@243..12:75@312 Comment OwnLine "# Check using same invalid action twice does not duplicate the errors"
+13:8@321..13:8@321 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@321..13:12@325 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:14@327..13:24@337 Scalar { anchor: None, tag: None, value: "./old_node", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@338..14:0@338 MappingEnd
+14:0@338..14:0@338 SequenceEnd
+14:0@338..14:0@338 MappingEnd
+14:0@338..14:0@338 MappingEnd
+14:0@338..14:0@338 MappingEnd
+14:0@338..14:0@338 DocumentEnd { implicit: true }
+14:0@338..14:0@338 StreamEnd

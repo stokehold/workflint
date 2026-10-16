@@ -1,0 +1,43 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/expression_syntax_error.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:11@34 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:13@36..3:26@49 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@54..4:9@59 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@67..5:55@116 Comment OwnLine "# \" is not available for string literal delimiter"
+6:6@123..6:6@123 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@125..6:8@125 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@125..6:11@128 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@130..6:34@151 Scalar { anchor: None, tag: None, value: "echo '${{ \"hello\" }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@158..7:6@158 MappingEnd
+7:6@158..7:33@185 Comment OwnLine "# + operator does not exist"
+8:8@194..8:8@194 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@194..8:11@197 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@199..8:32@218 Scalar { anchor: None, tag: None, value: "echo '${{ 1 + 1 }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@225..9:6@225 MappingEnd
+9:6@225..9:25@244 Comment OwnLine "# Missing ')' paren"
+10:8@253..10:8@253 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@253..10:11@256 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@258..10:67@312 Scalar { anchor: None, tag: None, value: "echo \"${{ toJson(hashFiles('**/lock', '**/cache/') }}\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@319..11:6@319 MappingEnd
+11:6@319..11:31@344 Comment OwnLine "# unexpected end of input"
+12:8@353..12:8@353 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@353..12:11@356 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@358..12:40@385 Scalar { anchor: None, tag: None, value: "echo '${{ github.event. }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@386..13:0@386 MappingEnd
+13:0@386..13:0@386 SequenceEnd
+13:0@386..13:0@386 MappingEnd
+13:0@386..13:0@386 MappingEnd
+13:0@386..13:0@386 MappingEnd
+13:0@386..13:0@386 DocumentEnd { implicit: true }
+13:0@386..13:0@386 StreamEnd

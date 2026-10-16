@@ -1,0 +1,23 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_docker_action/invalid_dockerfile/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:21@21 Scalar { anchor: None, tag: None, value: "Docker action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@22..1:6@28 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@30..1:41@63 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@64..2:11@75 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@77..2:38@102 Scalar { anchor: None, tag: None, value: "Incorrect Docker action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@104..4:4@108 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@112..5:2@112 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@112..5:7@117 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:9@119..5:17@127 Scalar { anchor: None, tag: None, value: "docker", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:2@130..6:7@135 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:9@137..6:22@150 Scalar { anchor: None, tag: None, value: "Dockerfile2", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:22@150..6:22@150 MappingEnd
+7:0@151..7:0@151 MappingEnd
+7:0@151..7:0@151 DocumentEnd { implicit: true }
+7:0@151..7:0@151 StreamEnd

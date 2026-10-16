@@ -1,0 +1,45 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/local_action_outputs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:38@100 Comment OwnLine "# ERROR: The step is not yet run"
+7:6@107..7:6@107 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@109..7:8@109 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@109..7:11@112 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@114..7:59@160 Scalar { anchor: None, tag: None, value: "echo ${{ steps.my_action.outputs.some_value }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@167..8:6@167 MappingEnd
+8:6@167..8:49@210 Comment OwnLine "# The action runs here and sets its outputs"
+9:8@219..9:8@219 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@219..9:12@223 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:14@225..9:53@264 Scalar { anchor: None, tag: None, value: "./.github/actions/my-action-with-output", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@273..10:10@275 Scalar { anchor: None, tag: None, value: "id", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:12@277..10:21@286 Scalar { anchor: None, tag: None, value: "my_action", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@293..11:6@293 MappingEnd
+11:6@293..11:10@297 Comment OwnLine "# OK"
+12:8@306..12:8@306 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:8@306..12:11@309 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@311..12:59@357 Scalar { anchor: None, tag: None, value: "echo ${{ steps.my_action.outputs.some_value }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@364..13:6@364 MappingEnd
+13:6@364..13:50@408 Comment OwnLine "# ERROR: No output named 'some-value' (typo)"
+14:8@417..14:8@417 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@417..14:11@420 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@422..14:59@468 Scalar { anchor: None, tag: None, value: "echo ${{ steps.my_action.outputs.some-value }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@469..15:0@469 MappingEnd
+15:0@469..15:0@469 SequenceEnd
+15:0@469..15:0@469 MappingEnd
+15:0@469..15:0@469 MappingEnd
+15:0@469..15:0@469 MappingEnd
+15:0@469..15:0@469 DocumentEnd { implicit: true }
+15:0@469..15:0@469 StreamEnd

@@ -1,0 +1,48 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_javascript_action/all_invalid_keys/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:24@24 Scalar { anchor: None, tag: None, value: "Composite action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@25..1:6@31 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@33..1:41@66 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@67..2:11@78 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@80..2:39@106 Scalar { anchor: None, tag: None, value: "Correct composite action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@108..4:4@112 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@116..5:2@116 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@116..5:7@121 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:9@123..5:15@129 Scalar { anchor: None, tag: None, value: "node20", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@132..6:6@136 Scalar { anchor: None, tag: None, value: "main", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@138..6:16@146 Scalar { anchor: None, tag: None, value: "index.js", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@149..7:7@154 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@160..8:4@160 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:6@162..8:6@162 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:6@162..8:9@165 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:11@167..8:21@177 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@180..9:2@180 MappingEnd
+9:2@180..9:2@180 SequenceEnd
+9:2@180..9:7@185 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:9@187..9:39@217 Scalar { anchor: None, tag: None, value: "docker://debian:stretch-slim", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:2@220..10:16@234 Scalar { anchor: None, tag: None, value: "pre-entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:18@236..10:24@242 Scalar { anchor: None, tag: None, value: "pre.sh", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@245..11:12@255 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:14@257..11:21@264 Scalar { anchor: None, tag: None, value: "main.sh", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:2@267..12:17@282 Scalar { anchor: None, tag: None, value: "post-entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:19@284..12:26@291 Scalar { anchor: None, tag: None, value: "post.sh", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:2@294..13:6@298 Scalar { anchor: None, tag: None, value: "args", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@300..13:9@301 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+13:9@301..13:12@304 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:14@306..13:17@309 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:17@309..13:18@310 SequenceEnd
+14:2@313..14:5@316 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@322..15:4@322 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:4@322..15:7@325 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:9@327..15:12@330 Scalar { anchor: None, tag: None, value: "BAR", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:0@331..16:0@331 MappingEnd
+16:0@331..16:0@331 MappingEnd
+16:0@331..16:0@331 MappingEnd
+16:0@331..16:0@331 DocumentEnd { implicit: true }
+16:0@331..16:0@331 StreamEnd

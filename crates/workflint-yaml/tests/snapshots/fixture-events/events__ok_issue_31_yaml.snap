@@ -1,0 +1,41 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-31.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:24@24 Scalar { anchor: None, tag: None, value: "Create new release", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@25..1:2@27 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@31..2:2@31 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@31..2:19@48 Scalar { anchor: None, tag: None, value: "workflow_dispatch", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:20@49..2:20@49 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:20@49..2:20@49 MappingEnd
+4:0@51..4:4@55 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@59..5:2@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@59..5:16@73 Scalar { anchor: None, tag: None, value: "create_release", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@79..6:4@79 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@79..6:11@86 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@88..6:26@101 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@106..7:9@111 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@119..8:6@119 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@121..8:8@121 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@121..8:12@125 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@127..8:33@146 Scalar { anchor: None, tag: None, value: "actions/checkout@v4", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@153..9:6@153 MappingEnd
+9:8@155..9:8@155 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@155..9:12@159 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:14@161..9:40@187 Scalar { anchor: None, tag: None, value: "ncipollo/release-action@v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@196..10:12@200 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:10@212..11:10@212 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:10@212..11:22@224 Scalar { anchor: None, tag: None, value: "allowUpdates", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:24@226..11:29@231 Scalar { anchor: None, tag: None, value: "false", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@232..12:0@232 MappingEnd
+12:0@232..12:0@232 MappingEnd
+12:0@232..12:0@232 SequenceEnd
+12:0@232..12:0@232 MappingEnd
+12:0@232..12:0@232 MappingEnd
+12:0@232..12:0@232 MappingEnd
+12:0@232..12:0@232 DocumentEnd { implicit: true }
+12:0@232..12:0@232 StreamEnd

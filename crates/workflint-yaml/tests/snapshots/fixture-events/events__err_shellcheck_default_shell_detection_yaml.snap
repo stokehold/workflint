@@ -1,0 +1,137 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/shellcheck_default_shell_detection.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:8@18 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@22..3:2@22 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@22..3:5@25 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@31..4:4@31 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@31..4:9@36 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:11@38..4:15@42 Scalar { anchor: None, tag: None, value: "pwsh", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@44..6:0@44 MappingEnd
+6:0@44..6:0@44 MappingEnd
+6:0@44..6:4@48 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@52..7:2@52 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:2@52..7:11@61 Scalar { anchor: None, tag: None, value: "job-level", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@67..8:4@67 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@67..8:11@74 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@76..8:26@89 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@94..9:12@102 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@110..10:6@110 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:6@110..10:9@113 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@123..11:8@123 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@123..11:13@128 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:15@130..11:19@134 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@139..12:4@139 MappingEnd
+12:4@139..12:4@139 MappingEnd
+12:4@139..12:9@144 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@152..13:44@190 Comment OwnLine "# ERROR: shellcheck checks this script"
+14:6@197..14:6@197 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@199..14:8@199 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@199..14:11@202 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@204..14:29@220 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:2@223..15:2@223 MappingEnd
+15:2@223..15:2@223 SequenceEnd
+15:2@223..15:2@223 MappingEnd
+15:2@223..15:12@233 Scalar { anchor: None, tag: None, value: "step-level", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:4@239..16:4@239 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:4@239..16:11@246 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@248..16:26@261 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@266..17:9@271 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@279..18:44@317 Comment OwnLine "# ERROR: shellcheck checks this script"
+19:6@324..19:6@324 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@326..19:8@326 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:8@326..19:11@329 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@331..19:29@347 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:8@356..20:13@361 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:15@363..20:19@367 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:2@370..21:2@370 MappingEnd
+21:2@370..21:2@370 SequenceEnd
+21:2@370..21:2@370 MappingEnd
+21:2@370..21:14@382 Scalar { anchor: None, tag: None, value: "step-level-2", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:4@388..22:60@444 Comment OwnLine "# Even if pwsh is detected from runner or job's defaults"
+23:4@449..23:4@449 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:4@449..23:11@456 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@458..23:27@472 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:4@477..24:12@485 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:6@493..25:6@493 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:6@493..25:9@496 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:8@506..26:8@506 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:8@506..26:13@511 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:15@513..26:19@517 Scalar { anchor: None, tag: None, value: "pwsh", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:4@522..27:4@522 MappingEnd
+27:4@522..27:4@522 MappingEnd
+27:4@522..27:9@527 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:6@535..28:44@573 Comment OwnLine "# ERROR: shellcheck checks this script"
+29:6@580..29:6@580 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+29:8@582..29:8@582 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:8@582..29:11@585 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:13@587..29:29@603 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:8@612..30:43@647 Comment OwnLine "# Step-level `shell` is prioritized"
+31:8@656..31:13@661 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:15@663..31:19@667 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:2@670..32:2@670 MappingEnd
+32:2@670..32:2@670 SequenceEnd
+32:2@670..32:2@670 MappingEnd
+32:2@670..32:14@682 Scalar { anchor: None, tag: None, value: "step-level-1", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:4@688..33:42@726 Comment OwnLine "# Even if pwsh is detected from runner"
+34:4@731..34:4@731 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+34:4@731..34:11@738 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+34:13@740..34:27@754 Scalar { anchor: None, tag: None, value: "windows-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:4@759..35:31@786 Comment OwnLine "# `defaults` is prioritized"
+36:4@791..36:12@799 Scalar { anchor: None, tag: None, value: "defaults", plain_implicit: true, quoted_implicit: false, style: Plain }
+37:6@807..37:6@807 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+37:6@807..37:9@810 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:8@820..38:8@820 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+38:8@820..38:13@825 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+38:15@827..38:19@831 Scalar { anchor: None, tag: None, value: "bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+39:4@836..39:4@836 MappingEnd
+39:4@836..39:4@836 MappingEnd
+39:4@836..39:9@841 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+40:6@849..40:44@887 Comment OwnLine "# ERROR: shellcheck checks this script"
+41:6@894..41:6@894 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+41:8@896..41:8@896 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+41:8@896..41:11@899 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+41:13@901..41:29@917 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+42:2@920..42:2@920 MappingEnd
+42:2@920..42:2@920 SequenceEnd
+42:2@920..42:2@920 MappingEnd
+42:2@920..42:13@931 Scalar { anchor: None, tag: None, value: "custom-bash", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:4@937..43:4@937 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+43:4@937..43:11@944 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+43:13@946..43:26@959 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+44:4@964..44:9@969 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+45:6@977..45:44@1015 Comment OwnLine "# ERROR: shellcheck checks this script"
+46:6@1022..46:6@1022 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+46:8@1024..46:8@1024 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+46:8@1024..46:11@1027 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+46:13@1029..46:29@1045 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:8@1054..47:13@1059 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+47:15@1061..47:28@1074 Scalar { anchor: None, tag: None, value: "bash -e {0}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+47:28@1074..47:28@1074 MappingEnd
+47:28@1074..47:28@1074 SequenceEnd
+47:28@1074..47:28@1074 MappingEnd
+48:2@1077..48:11@1086 Scalar { anchor: None, tag: None, value: "custom-sh", plain_implicit: true, quoted_implicit: false, style: Plain }
+49:4@1092..49:4@1092 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+49:4@1092..49:11@1099 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+49:13@1101..49:26@1114 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+50:4@1119..50:9@1124 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+51:6@1132..51:44@1170 Comment OwnLine "# ERROR: shellcheck checks this script"
+52:6@1177..52:6@1177 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+52:8@1179..52:8@1179 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+52:8@1179..52:11@1182 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+52:13@1184..52:29@1200 Scalar { anchor: None, tag: None, value: "$Env:FOO = \"FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:8@1209..53:13@1214 Scalar { anchor: None, tag: None, value: "shell", plain_implicit: true, quoted_implicit: false, style: Plain }
+53:15@1216..53:26@1227 Scalar { anchor: None, tag: None, value: "sh -e {0}", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+53:26@1227..53:26@1227 MappingEnd
+53:26@1227..53:26@1227 SequenceEnd
+53:26@1227..53:26@1227 MappingEnd
+53:26@1227..53:26@1227 MappingEnd
+54:0@1228..54:0@1228 MappingEnd
+54:0@1228..54:0@1228 DocumentEnd { implicit: true }
+54:0@1228..54:0@1228 StreamEnd

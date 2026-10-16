@@ -1,0 +1,76 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: ok/issue-312_expression_in_env_var.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:3@13 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@17..3:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@17..3:26@41 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:28@43..3:30@45 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:2@48..4:30@76 Scalar { anchor: None, tag: None, value: "foo-${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:32@78..4:34@80 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:2@83..5:30@111 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}-bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:32@113..5:34@115 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:2@118..6:51@167 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}-${{ github.event_path }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:53@169..6:55@171 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:55@171..6:55@171 MappingEnd
+8:0@173..8:4@177 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@181..9:2@181 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:2@181..9:6@185 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@191..10:4@191 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:4@191..10:11@198 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@200..10:26@213 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@218..11:13@227 Scalar { anchor: None, tag: None, value: "container", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@235..12:6@235 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:6@235..12:11@240 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@242..12:23@252 Scalar { anchor: None, tag: None, value: "node:14.16", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@259..13:9@262 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:8@272..14:8@272 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@272..14:32@296 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:34@298..14:36@300 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+15:8@309..15:36@337 Scalar { anchor: None, tag: None, value: "foo-${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:38@339..15:40@341 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+16:8@350..16:36@378 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}-bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:38@380..16:40@382 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+17:8@391..17:57@440 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}-${{ github.event_path }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:59@442..17:61@444 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+17:61@444..17:61@444 MappingEnd
+17:61@444..17:61@444 MappingEnd
+18:4@449..18:7@452 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@460..19:6@460 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:6@460..19:30@484 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:32@486..19:34@488 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+20:6@495..20:34@523 Scalar { anchor: None, tag: None, value: "foo-${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:36@525..20:38@527 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+21:6@534..21:34@562 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}-bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:36@564..21:38@566 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+22:6@573..22:55@622 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}-${{ github.event_path }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:57@624..22:59@626 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+22:59@626..22:59@626 MappingEnd
+23:4@631..23:9@636 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:6@644..24:6@644 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@646..24:8@646 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+24:8@646..24:11@649 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:13@651..24:25@663 Scalar { anchor: None, tag: None, value: "echo \"$push\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:8@672..25:11@675 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:10@687..26:10@687 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:10@687..26:34@711 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:36@713..26:38@715 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+27:10@726..27:38@754 Scalar { anchor: None, tag: None, value: "foo-${{ github.event_name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:40@756..27:42@758 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+28:10@769..28:38@797 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}-bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:40@799..28:42@801 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+29:10@812..29:59@861 Scalar { anchor: None, tag: None, value: "${{ github.event_name }}-${{ github.event_path }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:61@863..29:63@865 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+29:63@865..29:63@865 MappingEnd
+29:63@865..29:63@865 MappingEnd
+29:63@865..29:63@865 SequenceEnd
+29:63@865..29:63@865 MappingEnd
+29:63@865..29:63@865 MappingEnd
+30:0@866..30:0@866 MappingEnd
+30:0@866..30:0@866 DocumentEnd { implicit: true }
+30:0@866..30:0@866 StreamEnd

@@ -1,0 +1,16 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_action_invalid_runners/missing_runs/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:27@27 Scalar { anchor: None, tag: None, value: "Missing runner name", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@28..1:6@34 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@36..1:41@69 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@70..2:11@81 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@83..2:38@108 Scalar { anchor: None, tag: None, value: "Runner name is required", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:0@109..3:0@109 MappingEnd
+3:0@109..3:0@109 DocumentEnd { implicit: true }
+3:0@109..3:0@109 StreamEnd

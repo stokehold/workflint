@@ -1,0 +1,47 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_javascript_action/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:6@22 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@28..4:4@28 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@28..4:11@35 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@37..4:26@50 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@55..5:9@60 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@68..6:6@68 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:8@70 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@70..6:12@74 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@76..6:18@80 Scalar { anchor: None, tag: None, value: "./ok", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@87..7:6@87 MappingEnd
+7:8@89..7:8@89 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@89..7:12@93 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:14@95..7:31@112 Scalar { anchor: None, tag: None, value: "./ok_all_optional", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@119..8:6@119 MappingEnd
+8:8@121..8:8@121 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:8@121..8:12@125 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:14@127..8:28@141 Scalar { anchor: None, tag: None, value: "./missing_main", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@148..9:6@148 MappingEnd
+9:8@150..9:8@150 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:8@150..9:12@154 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:14@156..9:32@174 Scalar { anchor: None, tag: None, value: "./all_invalid_keys", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@181..10:6@181 MappingEnd
+10:8@183..10:8@183 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@183..10:12@187 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:14@189..10:29@204 Scalar { anchor: None, tag: None, value: "./missing_files", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@211..11:6@211 MappingEnd
+11:8@213..11:8@213 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@213..11:12@217 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:14@219..11:35@240 Scalar { anchor: None, tag: None, value: "./invalid_if_sections", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@241..12:0@241 MappingEnd
+12:0@241..12:0@241 SequenceEnd
+12:0@241..12:0@241 MappingEnd
+12:0@241..12:0@241 MappingEnd
+12:0@241..12:0@241 MappingEnd
+12:0@241..12:0@241 DocumentEnd { implicit: true }
+12:0@241..12:0@241 StreamEnd

@@ -1,0 +1,48 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/cron_schedule_check.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:10@14 Scalar { anchor: None, tag: None, value: "schedule", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@20..2:39@55 Comment OwnLine "# ERROR: Cron syntax is not correct"
+3:4@60..3:4@60 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@62..3:6@62 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@62..3:10@66 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:12@68..3:23@79 Scalar { anchor: None, tag: None, value: "0 */3 * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:23@79..3:23@79 MappingEnd
+4:4@84..4:77@157 Comment OwnLine "# ERROR: Interval of scheduled job is too small (job runs too frequently)"
+5:6@164..5:6@164 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@164..5:10@168 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:12@170..5:25@183 Scalar { anchor: None, tag: None, value: "* */3 * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:25@183..5:25@183 MappingEnd
+6:4@188..6:57@241 Comment OwnLine "# ERROR: Timezone is not a valid IANA timezone string"
+7:6@248..7:6@248 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:6@248..7:10@252 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:12@254..7:25@267 Scalar { anchor: None, tag: None, value: "*/5 * * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+8:6@274..8:14@282 Scalar { anchor: None, tag: None, value: "timezone", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:16@284..8:32@300 Scalar { anchor: None, tag: None, value: "Asia/Somewhere", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+8:32@300..8:32@300 MappingEnd
+8:32@300..8:32@300 SequenceEnd
+8:32@300..8:32@300 MappingEnd
+10:0@302..10:4@306 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:2@310..11:2@310 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:2@310..11:6@314 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@320..12:4@320 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@320..12:11@327 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:13@329..12:26@342 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@347..13:9@352 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@360..14:6@360 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@362..14:8@362 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@362..14:11@365 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@367..14:21@375 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@376..15:0@376 MappingEnd
+15:0@376..15:0@376 SequenceEnd
+15:0@376..15:0@376 MappingEnd
+15:0@376..15:0@376 MappingEnd
+15:0@376..15:0@376 MappingEnd
+15:0@376..15:0@376 DocumentEnd { implicit: true }
+15:0@376..15:0@376 StreamEnd

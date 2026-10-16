@@ -1,0 +1,54 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/webhook_checks.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:6@10 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@16..2:52@64 Comment OwnLine "# ERROR: Incorrect filter. 'branches' is correct"
+3:4@69..3:4@69 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@69..3:10@75 Scalar { anchor: None, tag: None, value: "branch", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:12@77..3:15@80 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@85..4:86@167 Comment OwnLine "# ERROR: Both 'paths' and 'paths-ignore' filters cannot be used for the same event"
+5:4@172..5:9@177 Scalar { anchor: None, tag: None, value: "paths", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:11@179..5:22@190 Scalar { anchor: None, tag: None, value: "path/to/foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@195..6:16@207 Scalar { anchor: None, tag: None, value: "paths-ignore", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:18@209..6:29@220 Scalar { anchor: None, tag: None, value: "path/to/foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@223..7:2@223 MappingEnd
+7:2@223..7:8@229 Scalar { anchor: None, tag: None, value: "issues", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@235..8:48@279 Comment OwnLine "# ERROR: Incorrect type. 'opened' is correct"
+9:4@284..9:4@284 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@284..9:9@289 Scalar { anchor: None, tag: None, value: "types", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:11@291..9:18@298 Scalar { anchor: None, tag: None, value: "created", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@301..10:2@301 MappingEnd
+10:2@301..10:9@308 Scalar { anchor: None, tag: None, value: "release", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@314..11:63@373 Comment OwnLine "# ERROR: 'tags' filter is not available for 'release' event"
+12:4@378..12:4@378 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:4@378..12:8@382 Scalar { anchor: None, tag: None, value: "tags", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:10@384..12:16@390 Scalar { anchor: None, tag: None, value: "v*.*.*", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:2@393..13:2@393 MappingEnd
+13:2@393..13:29@420 Comment OwnLine "# ERROR: Unknown event name"
+14:2@423..14:9@430 Scalar { anchor: None, tag: None, value: "pullreq", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:10@431..14:10@431 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:10@431..14:10@431 MappingEnd
+16:0@433..16:4@437 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:2@441..17:2@441 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:2@441..17:6@445 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@451..18:4@451 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:4@451..18:11@458 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@460..18:26@473 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@478..19:9@483 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@491..20:6@491 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@493..20:8@493 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@493..20:11@496 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:13@498..20:21@506 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:0@507..21:0@507 MappingEnd
+21:0@507..21:0@507 SequenceEnd
+21:0@507..21:0@507 MappingEnd
+21:0@507..21:0@507 MappingEnd
+21:0@507..21:0@507 MappingEnd
+21:0@507..21:0@507 DocumentEnd { implicit: true }
+21:0@507..21:0@507 StreamEnd

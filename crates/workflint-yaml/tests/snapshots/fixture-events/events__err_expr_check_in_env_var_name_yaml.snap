@@ -1,0 +1,52 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/expr_check_in_env_var_name.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:3@13 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@17..3:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@17..3:20@35 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:22@37..3:24@39 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:24@39..3:24@39 MappingEnd
+5:0@41..5:4@45 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@49..6:2@49 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@49..6:6@53 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@59..7:4@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:4@59..7:11@66 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@68..7:26@81 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@86..8:13@95 Scalar { anchor: None, tag: None, value: "container", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@103..9:6@103 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:6@103..9:11@108 Scalar { anchor: None, tag: None, value: "image", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@110..9:23@120 Scalar { anchor: None, tag: None, value: "node:14.16", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@127..10:9@130 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@140..11:8@140 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@140..11:29@161 Scalar { anchor: None, tag: None, value: "${{ runner.foooooo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:31@163..11:33@165 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+11:33@165..11:33@165 MappingEnd
+11:33@165..11:33@165 MappingEnd
+12:4@170..12:7@173 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@181..13:6@181 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:6@181..13:28@203 Scalar { anchor: None, tag: None, value: "${{ runner.fooooooo }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:30@205..13:32@207 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+13:32@207..13:32@207 MappingEnd
+14:4@212..14:9@217 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@225..15:6@225 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@227..15:8@227 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@227..15:11@230 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@232..15:26@245 Scalar { anchor: None, tag: None, value: "echo \"$Linux\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:8@254..16:11@257 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:10@269..17:10@269 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:10@269..17:28@287 Scalar { anchor: None, tag: None, value: "${{ runner.name }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:30@289..17:32@291 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+17:32@291..17:32@291 MappingEnd
+17:32@291..17:32@291 MappingEnd
+17:32@291..17:32@291 SequenceEnd
+17:32@291..17:32@291 MappingEnd
+17:32@291..17:32@291 MappingEnd
+18:0@292..18:0@292 MappingEnd
+18:0@292..18:0@292 DocumentEnd { implicit: true }
+18:0@292..18:0@292 StreamEnd

@@ -1,0 +1,42 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/invalid_image_version_event.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:15@19 Scalar { anchor: None, tag: None, value: "image_version", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@25..2:32@53 Comment OwnLine "# It must be array of string"
+3:4@58..3:4@58 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@58..3:9@63 Scalar { anchor: None, tag: None, value: "names", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:11@65..3:18@72 Scalar { anchor: None, tag: None, value: "MyImage", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@77..4:33@106 Comment OwnLine "# Empty string is not allowed"
+5:4@111..5:12@119 Scalar { anchor: None, tag: None, value: "versions", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:14@121..5:15@122 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+5:15@122..5:17@124 Scalar { anchor: None, tag: None, value: "", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:17@124..5:18@125 SequenceEnd
+6:4@130..6:17@143 Comment OwnLine "# Unknown key"
+7:4@148..7:14@158 Scalar { anchor: None, tag: None, value: "entrypoint", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:16@160..7:22@166 Scalar { anchor: None, tag: None, value: "run.sh", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:0@168..9:0@168 MappingEnd
+9:0@168..9:0@168 MappingEnd
+9:0@168..9:4@172 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@176..10:2@176 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:2@176..10:6@180 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@186..11:4@186 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:4@186..11:11@193 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@195..11:26@208 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@213..12:9@218 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@226..13:6@226 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@228..13:8@228 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@228..13:11@231 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@233..13:23@243 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@244..14:0@244 MappingEnd
+14:0@244..14:0@244 SequenceEnd
+14:0@244..14:0@244 MappingEnd
+14:0@244..14:0@244 MappingEnd
+14:0@244..14:0@244 MappingEnd
+14:0@244..14:0@244 DocumentEnd { implicit: true }
+14:0@244..14:0@244 StreamEnd

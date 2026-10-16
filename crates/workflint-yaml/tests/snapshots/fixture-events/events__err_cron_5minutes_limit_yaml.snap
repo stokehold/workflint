@@ -1,0 +1,41 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/cron_5minutes_limit.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@6..1:2@6 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@6..1:10@14 Scalar { anchor: None, tag: None, value: "schedule", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@20..2:51@67 Comment OwnLine "# It's OK. The interval can be every 5 minutes."
+3:4@72..3:4@72 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@74..3:6@74 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@74..3:10@78 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:12@80..3:25@93 Scalar { anchor: None, tag: None, value: "*/5 * * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+3:25@93..3:25@93 MappingEnd
+4:4@98..4:64@158 Comment OwnLine "# It's bad. The interval can't be less than every 5 minutes."
+5:6@165..5:6@165 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:6@165..5:10@169 Scalar { anchor: None, tag: None, value: "cron", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:12@171..5:25@184 Scalar { anchor: None, tag: None, value: "*/4 * * * *", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:25@184..5:25@184 MappingEnd
+5:25@184..5:25@184 SequenceEnd
+5:25@184..5:25@184 MappingEnd
+7:0@186..7:4@190 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@194..8:2@194 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@194..8:6@198 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@204..9:4@204 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@204..9:11@211 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:13@213..9:26@226 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@231..10:9@236 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@244..11:6@244 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@246..11:8@246 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:8@246..11:11@249 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@251..11:21@259 Scalar { anchor: None, tag: None, value: "echo ...", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@260..12:0@260 MappingEnd
+12:0@260..12:0@260 SequenceEnd
+12:0@260..12:0@260 MappingEnd
+12:0@260..12:0@260 MappingEnd
+12:0@260..12:0@260 MappingEnd
+12:0@260..12:0@260 DocumentEnd { implicit: true }
+12:0@260..12:0@260 StreamEnd

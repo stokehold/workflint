@@ -1,0 +1,59 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/expand_object.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:12@35 Scalar { anchor: None, tag: None, value: "strategy", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@43..4:6@43 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@43..4:12@49 Scalar { anchor: None, tag: None, value: "matrix", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@59..5:8@59 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:8@59..5:18@69 Scalar { anchor: None, tag: None, value: "env_string", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:10@81..6:10@81 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:12@83..6:21@92 Scalar { anchor: None, tag: None, value: "FOO=BAR", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:12@105..7:22@115 Scalar { anchor: None, tag: None, value: "FOO=PIYO", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:22@115..7:22@115 SequenceEnd
+8:8@124..8:18@134 Scalar { anchor: None, tag: None, value: "env_object", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@146..9:10@146 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@148..9:12@148 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:12@148..9:15@151 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:17@153..9:20@156 Scalar { anchor: None, tag: None, value: "BAR", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:10@167..10:10@167 MappingEnd
+10:12@169..10:12@169 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:12@169..10:15@172 Scalar { anchor: None, tag: None, value: "FOO", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:17@174..10:21@178 Scalar { anchor: None, tag: None, value: "PIYO", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@183..11:4@183 MappingEnd
+11:4@183..11:4@183 SequenceEnd
+11:4@183..11:4@183 MappingEnd
+11:4@183..11:4@183 MappingEnd
+11:4@183..11:11@190 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@192..11:26@205 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@210..12:9@215 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@223..13:46@263 Comment OwnLine "# OK: Expanding object at 'env:' section"
+14:6@270..14:6@270 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@272..14:8@272 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:8@272..14:11@275 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:13@277..14:24@288 Scalar { anchor: None, tag: None, value: "echo \"$FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:8@297..15:11@300 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@302..15:37@326 Scalar { anchor: None, tag: None, value: "${{ matrix.env_object }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@333..16:6@333 MappingEnd
+16:6@333..16:56@383 Comment OwnLine "# ERROR: String value cannot be expanded as object"
+17:8@392..17:8@392 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:8@392..17:11@395 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:13@397..17:24@408 Scalar { anchor: None, tag: None, value: "echo \"$FOO\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:8@417..18:11@420 Scalar { anchor: None, tag: None, value: "env", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@422..18:37@446 Scalar { anchor: None, tag: None, value: "${{ matrix.env_string }}", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:0@447..19:0@447 MappingEnd
+19:0@447..19:0@447 SequenceEnd
+19:0@447..19:0@447 MappingEnd
+19:0@447..19:0@447 MappingEnd
+19:0@447..19:0@447 MappingEnd
+19:0@447..19:0@447 DocumentEnd { implicit: true }
+19:0@447..19:0@447 StreamEnd

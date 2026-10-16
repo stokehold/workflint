@@ -1,0 +1,20 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/workflow_call_missing_required/workflows/test.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:8@24 Scalar { anchor: None, tag: None, value: "caller", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@30..4:4@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@30..4:8@34 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@36..4:35@61 Scalar { anchor: None, tag: None, value: "./workflows/reusable.yaml", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@62..5:0@62 MappingEnd
+5:0@62..5:0@62 MappingEnd
+5:0@62..5:0@62 MappingEnd
+5:0@62..5:0@62 DocumentEnd { implicit: true }
+5:0@62..5:0@62 StreamEnd

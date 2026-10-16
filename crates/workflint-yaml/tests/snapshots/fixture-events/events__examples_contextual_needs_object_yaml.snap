@@ -1,0 +1,100 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/contextual_needs_object.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:9@24 Scalar { anchor: None, tag: None, value: "install", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@30..3:4@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@30..3:11@37 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@45..4:6@45 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:6@45..4:15@54 Scalar { anchor: None, tag: None, value: "installed", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:17@56..4:22@61 Scalar { anchor: None, tag: None, value: "...", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:22@61..4:22@61 MappingEnd
+5:4@66..5:11@73 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@75..5:26@88 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@93..6:9@98 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@106..7:6@106 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@108..7:8@108 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@108..7:11@111 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@113..7:37@137 Scalar { anchor: None, tag: None, value: "echo 'install something'", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:2@140..8:2@140 MappingEnd
+8:2@140..8:2@140 SequenceEnd
+8:2@140..8:2@140 MappingEnd
+8:2@140..8:9@147 Scalar { anchor: None, tag: None, value: "prepare", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@153..9:4@153 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@153..9:11@160 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@168..10:6@168 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:6@168..10:14@176 Scalar { anchor: None, tag: None, value: "prepared", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:16@178..10:21@183 Scalar { anchor: None, tag: None, value: "...", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+10:21@183..10:21@183 MappingEnd
+11:4@188..11:11@195 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@197..11:26@210 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@215..12:9@220 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@228..13:6@228 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@230..13:8@230 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@230..13:11@233 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@235..13:38@260 Scalar { anchor: None, tag: None, value: "echo 'parepare something'", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@267..14:6@267 MappingEnd
+14:6@267..14:53@314 Comment OwnLine "# ERROR: Outputs in other job is not accessible"
+15:8@323..15:8@323 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@323..15:11@326 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@328..15:57@372 Scalar { anchor: None, tag: None, value: "echo '${{ needs.prepare.outputs.prepared }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:2@375..16:2@375 MappingEnd
+16:2@375..16:2@375 SequenceEnd
+16:2@375..16:2@375 MappingEnd
+16:2@375..16:7@380 Scalar { anchor: None, tag: None, value: "build", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@386..17:4@386 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:4@386..17:9@391 Scalar { anchor: None, tag: None, value: "needs", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:11@393..17:12@394 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+17:12@394..17:19@401 Scalar { anchor: None, tag: None, value: "install", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:21@403..17:28@410 Scalar { anchor: None, tag: None, value: "prepare", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:28@410..17:29@411 SequenceEnd
+18:4@416..18:11@423 Scalar { anchor: None, tag: None, value: "outputs", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:6@431..19:6@431 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:6@431..19:11@436 Scalar { anchor: None, tag: None, value: "built", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:13@438..19:18@443 Scalar { anchor: None, tag: None, value: "...", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+19:18@443..19:18@443 MappingEnd
+20:4@448..20:11@455 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:13@457..20:26@470 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:4@475..21:9@480 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@488..22:33@515 Comment OwnLine "# OK: Accessing job results"
+23:6@522..23:6@522 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@524..23:8@524 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:8@524..23:11@527 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:13@529..23:121@637 Scalar { anchor: None, tag: None, value: "echo 'build something with ${{ needs.install.outputs.installed }} and ${{ needs.prepare.outputs.prepared }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:6@644..24:6@644 MappingEnd
+24:6@644..24:57@695 Comment OwnLine "# ERROR: Accessing undefined output causes an error"
+25:8@704..25:8@704 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+25:8@704..25:11@707 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:13@709..25:52@748 Scalar { anchor: None, tag: None, value: "echo '${{ needs.install.outputs.foo }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:6@755..26:6@755 MappingEnd
+26:6@755..26:41@790 Comment OwnLine "# ERROR: Accessing undefined job ID"
+27:8@799..27:8@799 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+27:8@799..27:11@802 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+27:13@804..27:41@832 Scalar { anchor: None, tag: None, value: "echo '${{ needs.some_job }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+28:2@835..28:2@835 MappingEnd
+28:2@835..28:2@835 SequenceEnd
+28:2@835..28:2@835 MappingEnd
+28:2@835..28:7@840 Scalar { anchor: None, tag: None, value: "other", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:4@846..29:4@846 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:4@846..29:11@853 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:13@855..29:26@868 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+30:4@873..30:9@878 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+31:6@886..31:48@928 Comment OwnLine "# ERROR: Cannot access outputs across jobs"
+32:6@935..32:6@935 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@937..32:8@937 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:8@937..32:11@940 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:13@942..32:52@981 Scalar { anchor: None, tag: None, value: "echo '${{ needs.build.outputs.built }}'", plain_implicit: true, quoted_implicit: false, style: Plain }
+33:0@982..33:0@982 MappingEnd
+33:0@982..33:0@982 SequenceEnd
+33:0@982..33:0@982 MappingEnd
+33:0@982..33:0@982 MappingEnd
+33:0@982..33:0@982 MappingEnd
+33:0@982..33:0@982 DocumentEnd { implicit: true }
+33:0@982..33:0@982 StreamEnd

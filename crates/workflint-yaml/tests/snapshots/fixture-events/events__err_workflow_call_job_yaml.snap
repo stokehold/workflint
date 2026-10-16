@@ -1,0 +1,94 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/workflow_call_job.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:59@74 Comment OwnLine "# steps is only for normal job, uses is only for call job"
+3:2@77..3:2@77 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@77..3:7@82 Scalar { anchor: None, tag: None, value: "call1", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@88..4:4@88 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@88..4:8@92 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@94..4:34@118 Scalar { anchor: None, tag: None, value: "org/repo/workflow.yml@v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@123..5:9@128 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@136..6:6@136 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@138..6:8@138 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@138..6:11@141 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@143..6:17@147 Scalar { anchor: None, tag: None, value: "echo", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@150..7:2@150 MappingEnd
+7:2@150..7:2@150 SequenceEnd
+7:2@150..7:2@150 MappingEnd
+7:2@150..7:22@170 Comment OwnLine "# with requires uses"
+8:2@173..8:7@178 Scalar { anchor: None, tag: None, value: "call2", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@184..9:4@184 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+9:4@184..9:8@188 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@196..10:6@196 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:6@196..10:9@199 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:11@201..10:14@204 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@209..11:4@209 MappingEnd
+11:4@209..11:11@216 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:13@218..11:26@231 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:4@236..12:9@241 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@249..13:6@249 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@251..13:8@251 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:8@251..13:11@254 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@256..13:17@260 Scalar { anchor: None, tag: None, value: "echo", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:2@263..14:2@263 MappingEnd
+14:2@263..14:2@263 SequenceEnd
+14:2@263..14:2@263 MappingEnd
+14:2@263..14:25@286 Comment OwnLine "# secrets requires uses"
+15:2@289..15:7@294 Scalar { anchor: None, tag: None, value: "call3", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:4@300..16:4@300 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+16:4@300..16:11@307 Scalar { anchor: None, tag: None, value: "secrets", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@315..17:6@315 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+17:6@315..17:9@318 Scalar { anchor: None, tag: None, value: "aaa", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:11@320..17:14@323 Scalar { anchor: None, tag: None, value: "bbb", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:4@328..18:4@328 MappingEnd
+18:4@328..18:11@335 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:13@337..18:26@350 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@355..19:9@360 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@368..20:6@368 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@370..20:8@370 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+20:8@370..20:11@373 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:13@375..20:17@379 Scalar { anchor: None, tag: None, value: "echo", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:2@382..21:2@382 MappingEnd
+21:2@382..21:2@382 SequenceEnd
+21:2@382..21:2@382 MappingEnd
+21:2@382..21:17@397 Comment OwnLine "# uses is empty"
+22:2@400..22:7@405 Scalar { anchor: None, tag: None, value: "call4", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:4@411..23:4@411 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+23:4@411..23:8@415 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:9@416..23:9@416 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:9@416..23:9@416 MappingEnd
+24:2@419..24:17@434 Comment OwnLine "# relative path"
+25:2@437..25:7@442 Scalar { anchor: None, tag: None, value: "call5", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:4@448..26:4@448 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+26:4@448..26:8@452 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:10@454..26:39@483 Scalar { anchor: None, tag: None, value: "./foo/bar/workflow.yml@main", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+26:39@483..26:39@483 MappingEnd
+27:2@486..27:17@501 Comment OwnLine "# absolute path"
+28:2@504..28:7@509 Scalar { anchor: None, tag: None, value: "call6", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:4@515..29:4@515 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+29:4@515..29:8@519 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:10@521..29:38@549 Scalar { anchor: None, tag: None, value: "/foo/bar/workflow.yml@main", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+29:38@549..29:38@549 MappingEnd
+30:2@552..30:21@571 Comment OwnLine "# missing repo name"
+31:2@574..31:7@579 Scalar { anchor: None, tag: None, value: "call7", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:4@585..32:4@585 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+32:4@585..32:8@589 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+32:10@591..32:33@614 Scalar { anchor: None, tag: None, value: "foo/workflow.yml@main", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+32:33@614..32:33@614 MappingEnd
+33:2@617..33:15@630 Comment OwnLine "# missing ref"
+34:2@633..34:7@638 Scalar { anchor: None, tag: None, value: "call8", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:4@644..35:4@644 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+35:4@644..35:8@648 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+35:10@650..35:32@672 Scalar { anchor: None, tag: None, value: "foo/bar/workflow.yml", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+35:32@672..35:32@672 MappingEnd
+35:32@672..35:32@672 MappingEnd
+36:0@673..36:0@673 MappingEnd
+36:0@673..36:0@673 DocumentEnd { implicit: true }
+36:0@673..36:0@673 StreamEnd

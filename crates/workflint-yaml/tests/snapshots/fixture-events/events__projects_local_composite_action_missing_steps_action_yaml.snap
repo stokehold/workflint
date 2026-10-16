@@ -1,0 +1,21 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: projects/local_composite_action/missing_steps/action.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:24@24 Scalar { anchor: None, tag: None, value: "Composite action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@25..1:6@31 Scalar { anchor: None, tag: None, value: "author", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@33..1:41@66 Scalar { anchor: None, tag: None, value: "rhysd <https://rhysd.github.io>", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@67..2:11@78 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@80..2:39@106 Scalar { anchor: None, tag: None, value: "Correct composite action", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@108..4:4@112 Scalar { anchor: None, tag: None, value: "runs", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@116..5:2@116 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@116..5:7@121 Scalar { anchor: None, tag: None, value: "using", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:9@123..5:20@134 Scalar { anchor: None, tag: None, value: "composite", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:20@134..5:20@134 MappingEnd
+6:0@135..6:0@135 MappingEnd
+6:0@135..6:0@135 DocumentEnd { implicit: true }
+6:0@135..6:0@135 StreamEnd

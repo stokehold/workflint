@@ -1,0 +1,39 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: err/macos_10.15_removed.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@10..2:4@14 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@18..3:2@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:2@18..3:13@29 Scalar { anchor: None, tag: None, value: "macos-10-15", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@35..4:4@35 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@35..4:11@42 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@44..4:24@55 Scalar { anchor: None, tag: None, value: "macos-10.15", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@60..5:9@65 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@73..6:6@73 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@75..6:8@75 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:8@75..6:11@78 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@80..6:22@89 Scalar { anchor: None, tag: None, value: "echo test", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@92..7:2@92 MappingEnd
+7:2@92..7:2@92 SequenceEnd
+7:2@92..7:2@92 MappingEnd
+7:2@92..7:10@100 Scalar { anchor: None, tag: None, value: "macos-10", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@106..8:4@106 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@106..8:11@113 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:13@115..8:21@123 Scalar { anchor: None, tag: None, value: "macos-10", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:4@128..9:9@133 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:6@141..10:6@141 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@143..10:8@143 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:8@143..10:11@146 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:13@148..10:22@157 Scalar { anchor: None, tag: None, value: "echo test", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:0@158..11:0@158 MappingEnd
+11:0@158..11:0@158 SequenceEnd
+11:0@158..11:0@158 MappingEnd
+11:0@158..11:0@158 MappingEnd
+11:0@158..11:0@158 MappingEnd
+11:0@158..11:0@158 DocumentEnd { implicit: true }
+11:0@158..11:0@158 StreamEnd

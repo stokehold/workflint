@@ -1,0 +1,53 @@
+---
+source: crates/workflint-yaml/tests/fixture_events.rs
+description: examples/workflow_call_jobs.yaml
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:2@2 Scalar { anchor: None, tag: None, value: "on", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:4@4..0:8@8 Scalar { anchor: None, tag: None, value: "push", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@9..1:4@13 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@17..2:2@17 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@17..2:6@21 Scalar { anchor: None, tag: None, value: "job1", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@27..3:4@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@27..3:8@31 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:10@33..3:44@67 Scalar { anchor: None, tag: None, value: "owner/repo/path/to/workflow.yml@v1", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@72..4:68@136 Comment OwnLine "# ERROR: 'runs-on' is not available on calling reusable workflow"
+5:4@141..5:11@148 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@150..5:26@163 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@166..6:2@166 MappingEnd
+6:2@166..6:6@170 Scalar { anchor: None, tag: None, value: "job2", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@176..7:54@226 Comment OwnLine "# ERROR: Local file path with ref is not available"
+8:4@231..8:4@231 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+8:4@231..8:8@235 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:10@237..8:41@268 Scalar { anchor: None, tag: None, value: "./.github/workflows/ci.yml@main", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@271..9:2@271 MappingEnd
+9:2@271..9:6@275 Scalar { anchor: None, tag: None, value: "job3", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:4@281..10:66@343 Comment OwnLine "# ERROR: 'with' is only available on calling reusable workflow"
+11:4@348..11:4@348 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+11:4@348..11:8@352 Scalar { anchor: None, tag: None, value: "with", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:6@360..12:6@360 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+12:6@360..12:9@363 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:11@365..12:14@368 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:4@373..13:4@373 MappingEnd
+13:4@373..13:11@380 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:13@382..13:26@395 Scalar { anchor: None, tag: None, value: "ubuntu-latest", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:4@400..14:9@405 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:6@413..15:6@413 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@415..15:8@415 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:8@415..15:11@418 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:13@420..15:23@430 Scalar { anchor: None, tag: None, value: "echo hello", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:2@433..16:2@433 MappingEnd
+16:2@433..16:2@433 SequenceEnd
+16:2@433..16:2@433 MappingEnd
+16:2@433..16:6@437 Scalar { anchor: None, tag: None, value: "job4", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:4@443..17:41@480 Comment OwnLine "# ERROR: This workflow does not exist"
+18:4@485..18:4@485 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:4@485..18:8@489 Scalar { anchor: None, tag: None, value: "uses", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:10@491..18:46@527 Scalar { anchor: None, tag: None, value: "./.github/workflows/not-existing.yml", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:0@528..19:0@528 MappingEnd
+19:0@528..19:0@528 MappingEnd
+19:0@528..19:0@528 MappingEnd
+19:0@528..19:0@528 DocumentEnd { implicit: true }
+19:0@528..19:0@528 StreamEnd
