@@ -1,8 +1,7 @@
 //! The type checker of expressions.
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `ExprSemanticsChecker` in `expr_sema.go`,
-//! without context availability (M3.6), untrusted input (M3.7), and the types of `fromJSON()`
-//! literals (M3.9).
+//! without context availability (M3.6) and untrusted input (M3.7).
 
 use workflint_diagnostics::RuleMeta;
 use workflint_diagnostics::quote::{ordinal, quote, sorted_quotes};
@@ -12,9 +11,10 @@ use crate::env::TypeEnv;
 use crate::error::ExprError;
 use crate::format::placeholders;
 use crate::functions::{self, Function, Mismatch, Signature};
+use crate::json;
 use crate::rules::{
     CASE_ARGUMENT_COUNT, INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS,
-    INVALID_OBJECT_FILTER, INVALID_PROPERTY_ACCESS, MISSING_FORMAT_ARGUMENT,
+    INVALID_JSON_LITERAL, INVALID_OBJECT_FILTER, INVALID_PROPERTY_ACCESS, MISSING_FORMAT_ARGUMENT,
     UNDEFINED_CONFIG_VARIABLE, UNDEFINED_FUNCTION, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
     UNUSED_FORMAT_ARGUMENT, WRONG_ARGUMENT_COUNT, WRONG_ARGUMENT_TYPE,
 };
@@ -161,7 +161,7 @@ impl Checker<'_> {
         match &receiver_ty {
             Ty::Any => Ty::Any,
             Ty::Object(object) => {
-                if let Some(ty) = object.prop(prop) {
+                if let Some(ty) = object.prop_ignore_case(prop) {
                     return ty.clone();
                 }
                 if let Some(ty) = object.unknown_prop_ty() {
@@ -180,7 +180,10 @@ impl Checker<'_> {
             Ty::Array(array) if array.is_filtered() => match array.elem() {
                 Ty::Any => receiver_ty.clone(),
                 Ty::Object(elem) => {
-                    if let Some(ty) = elem.prop(prop).or_else(|| elem.unknown_prop_ty()) {
+                    if let Some(ty) = elem
+                        .prop_ignore_case(prop)
+                        .or_else(|| elem.unknown_prop_ty())
+                    {
                         return Ty::filtered_array(ty.clone());
                     }
                     let message = format!(
@@ -355,7 +358,7 @@ impl Checker<'_> {
                         // The exact key first, for keys that are not lower case.
                         let prop = object
                             .prop(lit.value())
-                            .or_else(|| object.prop(lit.folded()));
+                            .or_else(|| object.prop_ignore_case(lit.folded()));
                         if let Some(ty) = prop.or_else(|| object.unknown_prop_ty()) {
                             return ty.clone();
                         }
@@ -468,9 +471,13 @@ impl Checker<'_> {
         args: &[Expr],
     ) -> Ty {
         // TODO(#87): check where the special functions, such as `success()`, are allowed.
-        // TODO(#90): type a literal argument of `fromJSON()` and report broken JSON.
         match function.key.as_str() {
             "format" => self.check_format(expr, args),
+            "fromjson" => {
+                if let Some(ty) = self.check_from_json(args) {
+                    return ty;
+                }
+            }
             "case" if args.len().is_multiple_of(2) => {
                 let message = format!(
                     "case() requires an odd number of arguments (pred/value pairs + default) but got {}",
@@ -509,6 +516,26 @@ impl Checker<'_> {
                 "format string {format} contains placeholder {{{i}}} but only {count} arguments are given to format"
             );
             self.error(expr, &MISSING_FORMAT_ARGUMENT, message);
+        }
+    }
+
+    /// Returns the type of the JSON value when the argument of `fromJSON()` is a string
+    /// literal, or reports Go's syntax error at the literal when it is broken JSON.
+    fn check_from_json(&mut self, args: &[Expr]) -> Option<Ty> {
+        let arg = args.first()?;
+        let ExprKind::String(lit) = &arg.kind else {
+            return None;
+        };
+        match json::type_of(lit.value()) {
+            Ok(ty) => ty,
+            Err(err) => {
+                let message = format!(
+                    "broken JSON string is passed to fromJSON() at offset {}: {}",
+                    err.offset, err.message
+                );
+                self.error(arg, &INVALID_JSON_LITERAL, message);
+                None
+            }
         }
     }
 
