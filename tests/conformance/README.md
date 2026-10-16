@@ -136,6 +136,8 @@ Every entry needs a matching section in `docs/differences.md`. Write that sectio
 
 `cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. An `upstream` line must be in the fixture's `.out` file, as in the runner. The oracle removes the first line of the reference's output that this `.out` line matches, exactly or as a `/pattern/`. An entry that does not apply is a problem in the report that names the `.out` file, and the other entries of the fixture still apply. The corpus files have no fixture ID, so no entry applies to them yet (#49).
 
+`cargo xtask oracle --kind KIND` compares only the lines of the given kinds (`CONTRIBUTING.md#oracle`). It reads the kind of an `upstream` or `workflint` line, and of a `.out` line, from its brackets. A `/pattern/` line has the kind its pattern ends with, as `\[kind\]` or `\[(kind|kind)\]`, and a pattern line without one counts for every kind. The oracle uses only the `upstream` and `workflint` lines of the given kinds, and skips an entry that has neither, without a problem. An entry that replaces a line of one kind with a line of another kind applies one half: the half of the given kind.
+
 ## Rule kinds
 
 workflint prints rule IDs in brackets, and the `.out` files have actionlint kinds (`docs/differences.md#rule-id-in-brackets`). `rule-kinds.toml` maps each rule ID to its kind:

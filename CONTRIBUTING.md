@@ -58,6 +58,14 @@ The inputs are the vendored `err`, `examples`, `ok`, and `projects` fixtures and
 
 It prints a summary and a diff for each file that differs, and writes the same Markdown to `target/oracle/report.md`, with the summary alone in `target/oracle/summary.md`. It exits with an error if a difference is not in the allow-list. `--report-only` exits with success after writing the report.
 
+`--kind KIND` compares only the diagnostics of that actionlint kind, and repeating it adds kinds. A milestone uses it to show that workflint matches the reference on the checks it has built, while the checks of other kinds are still missing:
+
+```sh
+cargo xtask oracle --kind syntax-check --report-only
+```
+
+The kinds are the values in `tests/conformance/rule-kinds.toml`, and any other name is an error. The command keeps a line of either output when its kind is one of the given kinds: the kind in the reference's brackets, or the kind that workflint's rule ID maps to. It filters the `.out` lines and the lines of each allow-list record the same way, so a record for another kind is neither applied nor reported as stale (`tests/conformance/README.md#allowed-differences`). A line without a kind stays, such as a line without a position or a rule ID missing from `rule-kinds.toml`. Exit codes 0 and 1 count as equal, because the lines of the other kinds decide them. A fatal error or a signal still counts as another exit code. The report and the summary name the kinds.
+
 Pass fixture files, project directories, directories of fixtures, the corpus archive, or files in `.reference/realworld` to compare only those. CI runs the command with `--report-only` on pull requests that change `crates/`, `xtask/`, or `tests/conformance/`, and adds the summary to the run page. M5.9 removes `--report-only`, so that an unexplained difference fails the job. The job first runs the hidden `--self-check` flag, which runs the reference in place of workflint without the kind mapping or the allow-list and fails on any difference. That shows the runs are deterministic, and the job log keeps its report. Then the job runs the conformance suite with the reference binary (`tests/conformance/README.md#running-the-reference`), which shows that the runner works. Every run of the command skips the three fixtures on which the reference's output varies between runs (`docs/differences.md#cached-metadata-errors`), and the report lists them.
 
 ## Benchmarks

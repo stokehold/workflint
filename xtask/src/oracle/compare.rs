@@ -7,6 +7,8 @@ use xtask::conformance::matcher::line_matches;
 use xtask::conformance::output::{Diagnostic, parse_line};
 use xtask::conformance::rule_kinds::actionlint_kind;
 
+use super::kinds::Kinds;
+
 /// What one binary did in one run.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Output {
@@ -65,6 +67,10 @@ pub(crate) struct Allowed<'a> {
 /// lines are sorted as the reference sorts errors and, with `map_kinds`, get
 /// the actionlint kind of their rule ID in brackets. Then both are grouped by
 /// file.
+///
+/// Only the lines that `kinds` keeps are compared: the reference's lines,
+/// workflint's lines after the kind mapping, the `.out` lines, and each line
+/// of an entry. A rule ID without a kind is kept.
 pub(crate) fn compare(
     name: &str,
     inputs: &[String],
@@ -72,11 +78,17 @@ pub(crate) fn compare(
     workflint: &Output,
     allowed: &Allowed<'_>,
     map_kinds: bool,
+    kinds: &Kinds,
 ) -> Run {
     let mut problems = BTreeSet::new();
 
-    let printed: Vec<String> = reference.stdout.lines().map(normalize).collect();
-    let (expected, applied) = apply(printed, allowed, &mut problems);
+    let printed: Vec<String> = reference
+        .stdout
+        .lines()
+        .map(normalize)
+        .filter(|line| kinds.keeps_line(line))
+        .collect();
+    let (expected, applied) = apply(printed, allowed, kinds, &mut problems);
 
     let mut diagnostics = Vec::new();
     let mut unparsed = Vec::new();
@@ -88,17 +100,19 @@ pub(crate) fn compare(
     }
     diagnostics.sort_by(Diagnostic::reference_order);
     if map_kinds {
-        for diagnostic in &mut diagnostics {
-            match actionlint_kind(&diagnostic.code) {
-                Some(kind) => kind.clone_into(&mut diagnostic.code),
-                None => {
-                    problems.insert(format!(
-                        "rule ID {:?} has no actionlint kind in tests/conformance/rule-kinds.toml",
-                        diagnostic.code
-                    ));
-                }
+        diagnostics.retain_mut(|diagnostic| {
+            if let Some(kind) = actionlint_kind(&diagnostic.code) {
+                kind.clone_into(&mut diagnostic.code);
+                return kinds.keeps_kind(kind);
             }
-        }
+            problems.insert(format!(
+                "rule ID {:?} has no actionlint kind in tests/conformance/rule-kinds.toml",
+                diagnostic.code
+            ));
+            true
+        });
+    } else {
+        diagnostics.retain(|diagnostic| kinds.keeps_kind(&diagnostic.code));
     }
     let actual: Vec<String> = diagnostics
         .iter()
@@ -163,16 +177,27 @@ pub(crate) fn compare(
 /// conformance runner, and may be a `/pattern/`. The entry removes the first
 /// printed line that this `.out` line matches. An entry that does not apply
 /// adds a problem and is skipped; the others still apply.
+///
+/// Each line of an entry, and each `.out` line, counts only if `kinds` keeps
+/// it. An entry with neither line kept is skipped without a problem.
 fn apply(
     printed: Vec<String>,
     allowed: &Allowed<'_>,
+    kinds: &Kinds,
     problems: &mut BTreeSet<String>,
 ) -> (Vec<String>, usize) {
     let mut lines = printed;
     let mut applied = 0;
+    let kept = |line: &&String| kinds.keeps_line(line);
+    let out_lines: Vec<&String> = allowed.out_lines.iter().filter(kept).collect();
     for entry in allowed.entries {
-        if let Some(upstream) = &entry.upstream {
-            if !allowed.out_lines.contains(upstream) {
+        let upstream = entry.upstream.as_ref().filter(kept);
+        let workflint = entry.workflint.as_ref().filter(kept);
+        if upstream.is_none() && workflint.is_none() {
+            continue;
+        }
+        if let Some(upstream) = upstream {
+            if !out_lines.contains(&upstream) {
                 problems.insert(format!(
                     "{}: `upstream` matches no line of {}: {upstream:?}",
                     entry.describe(),
@@ -196,7 +221,7 @@ fn apply(
             };
             lines.remove(index);
         }
-        if let Some(workflint) = &entry.workflint {
+        if let Some(workflint) = workflint {
             allow_list::insert(&mut lines, workflint);
         }
         applied += 1;
@@ -266,6 +291,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("", 0),
             &Allowed::default(),
             false,
+            &Kinds::default(),
         );
         assert_eq!(
             paths(&run),
@@ -298,6 +324,7 @@ workflows/a.yaml:3:1: c [expression]
             ),
             &Allowed::default(),
             false,
+            &Kinds::default(),
         );
         assert_eq!(
             paths(&run),
@@ -326,6 +353,7 @@ workflows/a.yaml:3:1: c [expression]
             ),
             &Allowed::default(),
             true,
+            &Kinds::default(),
         );
         assert_eq!(
             run.files[0].actual,
@@ -348,6 +376,7 @@ workflows/a.yaml:3:1: c [expression]
             &output(stdout, 1),
             &Allowed::default(),
             false,
+            &Kinds::default(),
         );
         assert!(run.files[0].identical);
         assert_eq!(run.problems, Vec::<String>::new());
@@ -362,6 +391,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("test.yaml:1:1: a [no-such-rule]\n", 1),
             &Allowed::default(),
             true,
+            &Kinds::default(),
         );
         assert_eq!(run.files[0].actual, ["test.yaml:1:1: a [no-such-rule]"]);
         assert!(!run.files[0].identical);
@@ -396,6 +426,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("test.yaml:2:5: a [yaml-syntax-error]\n", 1),
             &allowed(&out, &[&replaced]),
             true,
+            &Kinds::default(),
         );
         assert!(run.files[0].identical, "{run:?}");
         assert_eq!(run.applied, 1);
@@ -419,6 +450,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("test.yaml:2:1: b [undefined-variable]\n", 1),
             &allowed(&out, &[&removed]),
             true,
+            &Kinds::default(),
         );
         assert_eq!(run.problems, Vec::<String>::new());
         assert_eq!(run.applied, 1);
@@ -437,6 +469,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("", 0),
             &allowed(&out, &[&stale]),
             true,
+            &Kinds::default(),
         );
         assert_eq!(run.applied, 0);
         assert_eq!(run.problems.len(), 1, "{run:?}");
@@ -458,6 +491,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("", 0),
             &allowed(&out, &[&missing]),
             true,
+            &Kinds::default(),
         );
         assert_eq!(run.applied, 0);
         assert!(
@@ -478,6 +512,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("", 0),
             &allowed(&out, &[&stale, &removed]),
             true,
+            &Kinds::default(),
         );
         assert_eq!(run.applied, 1);
         assert_eq!(run.problems.len(), 1, "{run:?}");
@@ -499,6 +534,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("test.yaml:3:1: anything [undefined-variable]\n", 1),
             &allowed(&[], &[&added]),
             true,
+            &Kinds::default(),
         );
         assert!(run.files[0].identical, "{run:?}");
         assert_eq!(run.expected_code, Some(1));
@@ -515,6 +551,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("", 0),
             &allowed(&out, &[&removed]),
             true,
+            &Kinds::default(),
         );
         assert!(run.files[0].identical);
         assert_eq!((run.expected_code, run.actual_code), (Some(0), Some(0)));
@@ -529,6 +566,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("test.yaml:1:2: a [yaml-syntax-error]\n", 1),
             &Allowed::default(),
             true,
+            &Kinds::default(),
         );
         assert!(!run.files[0].identical);
         assert_eq!(run.files[0].expected, ["test.yaml:1:1: a [syntax-check]"]);
@@ -548,6 +586,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("test.yaml:1:1: a [yaml-syntax-error]\n", 1),
             &allowed(&out, &[&stale]),
             true,
+            &Kinds::default(),
         );
         assert!(run.files[0].identical);
         assert_eq!(run.applied, 0);
@@ -564,6 +603,7 @@ workflows/a.yaml:3:1: c [expression]
             &output("", 0),
             &Allowed::default(),
             true,
+            &Kinds::default(),
         );
         assert_eq!((run.expected_code, run.actual_code), (Some(3), Some(0)));
     }
@@ -577,8 +617,143 @@ workflows/a.yaml:3:1: c [expression]
             &output("workflows\\nested\\a.yaml:1:1: m [undefined-variable]\n", 1),
             &Allowed::default(),
             true,
+            &Kinds::default(),
         );
         assert_eq!(paths(&run), [Some("workflows/nested/a.yaml")]);
         assert!(run.files[0].identical);
+    }
+
+    fn only(names: &[&str]) -> Kinds {
+        let names: Vec<String> = names.iter().map(|name| (*name).to_owned()).collect();
+        Kinds::new(&names).unwrap()
+    }
+
+    #[test]
+    fn a_kind_filter_drops_the_lines_of_other_kinds_from_both_outputs() {
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output(
+                "test.yaml:1:1: a [syntax-check]\ntest.yaml:2:1: b [expression]\n",
+                1,
+            ),
+            &output(
+                "test.yaml:1:1: a [yaml-syntax-error]\ntest.yaml:3:1: c [undefined-variable]\n",
+                1,
+            ),
+            &Allowed::default(),
+            true,
+            &only(&["syntax-check"]),
+        );
+        assert_eq!(run.files[0].expected, ["test.yaml:1:1: a [syntax-check]"]);
+        assert_eq!(run.files[0].actual, ["test.yaml:1:1: a [syntax-check]"]);
+        assert!(run.files[0].identical, "{run:?}");
+        assert_eq!(run.problems, Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_kind_filter_keeps_lines_without_a_kind_and_rule_ids_without_one() {
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("", 0),
+            &output("Hello, world!\ntest.yaml:1:1: a [no-such-rule]\n", 1),
+            &Allowed::default(),
+            true,
+            &only(&["syntax-check"]),
+        );
+        assert_eq!(run.files[0].actual, ["test.yaml:1:1: a [no-such-rule]"]);
+        assert_eq!(run.files[1].actual, ["Hello, world!"]);
+        assert_eq!(run.problems.len(), 1, "{run:?}");
+    }
+
+    #[test]
+    fn a_kind_filter_without_kind_mapping_reads_the_kinds_in_the_brackets() {
+        let stdout = "test.yaml:1:1: a [syntax-check]\ntest.yaml:2:1: b [expression]\n";
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output(stdout, 1),
+            &output(stdout, 1),
+            &Allowed::default(),
+            false,
+            &only(&["expression"]),
+        );
+        assert_eq!(run.files[0].actual, ["test.yaml:2:1: b [expression]"]);
+        assert!(run.files[0].identical);
+    }
+
+    #[test]
+    fn an_out_file_line_of_another_kind_is_not_an_upstream_line() {
+        let pattern = r"/test\.yaml:1:1: .+ \[expression\]/";
+        let removed = entry(Some(pattern), None);
+        let out = lines(&[pattern, "test.yaml:2:1: b [syntax-check]"]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output(
+                "test.yaml:1:1: a [expression]\ntest.yaml:2:1: b [syntax-check]\n",
+                1,
+            ),
+            &output("test.yaml:2:1: b [yaml-syntax-error]\n", 1),
+            &allowed(&out, &[&removed]),
+            true,
+            &only(&["syntax-check"]),
+        );
+        assert_eq!(run.applied, 0);
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert!(run.files[0].identical, "{run:?}");
+    }
+
+    #[test]
+    fn an_allow_list_entry_of_another_kind_is_neither_applied_nor_stale() {
+        let stale = entry(
+            Some("test.yaml:9:9: gone [expression]"),
+            Some("test.yaml:9:9: new [expression]"),
+        );
+        let out = lines(&["test.yaml:1:1: a [syntax-check]"]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("test.yaml:1:1: a [syntax-check]\n", 1),
+            &output("test.yaml:1:1: a [yaml-syntax-error]\n", 1),
+            &allowed(&out, &[&stale]),
+            true,
+            &only(&["syntax-check"]),
+        );
+        assert_eq!(run.applied, 0);
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert!(run.files[0].identical, "{run:?}");
+        let unfiltered = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("test.yaml:1:1: a [syntax-check]\n", 1),
+            &output("test.yaml:1:1: a [yaml-syntax-error]\n", 1),
+            &allowed(&out, &[&stale]),
+            true,
+            &Kinds::default(),
+        );
+        assert_eq!(unfiltered.problems.len(), 1, "{unfiltered:?}");
+    }
+
+    #[test]
+    fn an_entry_that_changes_the_kind_applies_only_its_half_of_a_selected_kind() {
+        let changed = entry(
+            Some("test.yaml:1:1: a [expression]"),
+            Some("test.yaml:1:1: a [syntax-check]"),
+        );
+        let out = lines(&["test.yaml:1:1: a [expression]"]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("test.yaml:1:1: a [expression]\n", 1),
+            &output("test.yaml:1:1: a [yaml-syntax-error]\n", 1),
+            &allowed(&out, &[&changed]),
+            true,
+            &only(&["syntax-check"]),
+        );
+        assert_eq!(run.applied, 1);
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert!(run.files[0].identical, "{run:?}");
     }
 }
