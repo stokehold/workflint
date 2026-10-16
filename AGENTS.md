@@ -18,7 +18,7 @@ Tasks are GitHub issues in `stokehold/workflint` (ADR 0020). `docs/roadmap.md` i
 3. Write the failing test first: the conformance fixture for parity work, or a unit, snapshot, or rule-doc example for new behaviour.
 4. Implement until it passes, and meet every acceptance criterion in the issue. When the issue leaves a choice open, pick an option, note it under "Decisions to review" in the pull request, and keep going. Stop and ask only when you cannot continue without an answer.
 5. Run the checks under "Done", tick the matching rows in `docs/parity-checklist.md`, push, and fill in the pull request description from the template.
-6. If "Decisions to review" lists any decisions, ask the maintainer about them after pushing, with your question tool (`AskUserQuestion` in Claude Code). Ask one question per decision, put your recommended option first, and add "(Recommended)" to its label. Apply the answers, push again, and record each outcome in the section.
+6. If "Decisions to review" lists any decisions, ask the maintainer about them after pushing, with your question tool (`AskUserQuestion` in Claude Code). Ask one question per decision, put your recommended option first, and add "(Recommended)" to its label. Apply the answers, push again, and delete the section from the description. "What changed" then describes the options that were chosen.
 7. Mark the pull request ready for review.
 
 The maintainer reviews and merges. Leave merging and auto-merge to the maintainer.

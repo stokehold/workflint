@@ -8,7 +8,7 @@ Closes #
 
 ## Decisions to review
 
-<!-- Each choice the issue left open: the option you took, the alternatives, and why. Write "None." if there are none. After pushing, ask the maintainer about each one, then record the answer here. -->
+<!-- Each choice the issue left open: the option you took, the alternatives, and why. Write "None." if there are none. After pushing, ask the maintainer about each one. Once every decision is answered, delete this section and describe the chosen options under "What changed". -->
 
 ## How I verified it
 
