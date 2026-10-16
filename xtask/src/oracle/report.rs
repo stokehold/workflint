@@ -6,6 +6,7 @@ use similar::{Algorithm, ChangeTag, DiffOp, capture_diff_slices, group_diff_ops}
 use xtask::conformance::matcher::{line_matches, pattern};
 
 use super::compare::{File, Run};
+use super::kinds::Kinds;
 
 /// The runs of one oracle invocation.
 #[derive(Debug, Default)]
@@ -14,6 +15,8 @@ pub(crate) struct Report {
     pub(crate) description: String,
     /// Whether the reference ran against itself.
     pub(crate) self_check: bool,
+    /// The kinds that the runs compared.
+    pub(crate) kinds: Kinds,
     /// The IDs of the fixtures on which the reference's output varies
     /// between runs, which no run compares.
     pub(crate) skipped: Vec<String>,
@@ -50,7 +53,7 @@ impl Report {
         for run in &self.runs {
             totals.applied += run.applied;
             totals.problems += run.problems.len();
-            totals.exit_codes += usize::from(run.expected_code != run.actual_code);
+            totals.exit_codes += usize::from(self.codes_differ(run));
             for file in &run.files {
                 totals.files += 1;
                 if file.identical {
@@ -70,6 +73,24 @@ impl Report {
         let mut out = String::from("# Oracle report\n\n");
         if !self.description.is_empty() {
             let _ = writeln!(out, "{}\n", self.description);
+        }
+        if !self.kinds.is_all() {
+            let names: Vec<String> = self
+                .kinds
+                .names()
+                .iter()
+                .map(|name| format!("`{name}`"))
+                .collect();
+            let (noun, list) = match names.split_last() {
+                Some((last, [])) => ("kind", last.clone()),
+                Some((last, rest)) => ("kinds", format!("{} and {last}", rest.join(", "))),
+                None => ("kinds", String::new()),
+            };
+            let _ = writeln!(
+                out,
+                "Only the diagnostics of the {noun} {list} were compared. Exit codes 0 and 1 were \
+                 not compared, because the lines of the other kinds decide them.\n"
+            );
         }
         out.push_str("| Result | Count |\n|---|---:|\n");
         for (label, count) in [
@@ -108,17 +129,28 @@ impl Report {
     pub(crate) fn render(&self) -> String {
         let mut out = self.summary();
         for run in &self.runs {
-            if let Some(section) = section(run) {
+            if let Some(section) = section(run, self.codes_differ(run)) {
                 out.push('\n');
                 out.push_str(&section);
             }
         }
         out
     }
+
+    /// Whether the exit codes of `run` differ. With selected kinds, 0 and 1
+    /// count as equal.
+    fn codes_differ(&self, run: &Run) -> bool {
+        let decided_by_lines = |code| matches!(code, Some(0 | 1));
+        run.expected_code != run.actual_code
+            && (self.kinds.is_all()
+                || !decided_by_lines(run.expected_code)
+                || !decided_by_lines(run.actual_code))
+    }
 }
 
-/// The section of `run`, or `None` if it has no difference.
-fn section(run: &Run) -> Option<String> {
+/// The section of `run`, or `None` if it has no difference. `codes_differ`
+/// says whether its exit codes differ.
+fn section(run: &Run, codes_differ: bool) -> Option<String> {
     let mut blocks = Vec::new();
     if !run.problems.is_empty() {
         let mut list = String::new();
@@ -127,7 +159,7 @@ fn section(run: &Run) -> Option<String> {
         }
         blocks.push(list);
     }
-    if run.expected_code != run.actual_code {
+    if codes_differ {
         blocks.push(format!(
             "The reference {} and workflint {}.\n",
             exit(run.expected_code),
@@ -250,6 +282,7 @@ mod tests {
         Report {
             description: "Compared the test runs.".to_owned(),
             self_check: false,
+            kinds: Kinds::default(),
             skipped: Vec::new(),
             runs: vec![
                 run(
@@ -313,6 +346,7 @@ mod tests {
         let report = Report {
             description: String::new(),
             self_check: false,
+            kinds: Kinds::default(),
             skipped: Vec::new(),
             runs: vec![run(
                 "ok/fine.yaml",
@@ -333,6 +367,7 @@ mod tests {
         let report = Report {
             description: String::new(),
             self_check: false,
+            kinds: Kinds::default(),
             skipped: Vec::new(),
             runs: vec![problem],
         };
@@ -415,6 +450,7 @@ workflint: oops
         let report = Report {
             description: String::new(),
             self_check: false,
+            kinds: Kinds::default(),
             skipped: Vec::new(),
             runs: vec![run(
                 "err/x",
@@ -512,6 +548,7 @@ workflint: oops
         let report = Report {
             description: String::new(),
             self_check: false,
+            kinds: Kinds::default(),
             skipped: Vec::new(),
             runs: vec![problem],
         };
@@ -520,5 +557,56 @@ workflint: oops
             rendered.contains("## err/x\n\n- rule ID \"x\" has no actionlint kind\n"),
             "{rendered}"
         );
+    }
+
+    fn only(names: &[&str]) -> Kinds {
+        let names: Vec<String> = names.iter().map(|name| (*name).to_owned()).collect();
+        Kinds::new(&names).unwrap()
+    }
+
+    #[test]
+    fn the_summary_names_the_kinds_and_that_exit_codes_zero_and_one_are_not_compared() {
+        let report = Report {
+            kinds: only(&["syntax-check", "expression"]),
+            ..Report::default()
+        };
+        let summary = report.summary();
+        assert!(
+            summary.contains(
+                "Only the diagnostics of the kinds `expression` and `syntax-check` were compared."
+            ),
+            "{summary}"
+        );
+        assert!(
+            summary.contains("Exit codes 0 and 1 were not compared"),
+            "{summary}"
+        );
+        let one = Report {
+            kinds: only(&["syntax-check"]),
+            ..Report::default()
+        };
+        assert!(
+            one.summary()
+                .contains("Only the diagnostics of the kind `syntax-check` were compared.")
+        );
+        assert!(!self::report().summary().contains("Only the diagnostics"));
+    }
+
+    #[test]
+    fn with_kinds_exit_codes_zero_and_one_count_as_equal() {
+        let mut report = self::report();
+        report.kinds = only(&["action"]);
+        assert_eq!(report.totals().exit_codes, 0);
+        assert!(!report.render().contains("exited with code"));
+
+        report.runs[2].actual_code = Some(3);
+        assert_eq!(report.totals().exit_codes, 1);
+        assert!(
+            report
+                .render()
+                .contains("The reference exited with code 1 and workflint exited with code 3.")
+        );
+        report.runs[2].actual_code = None;
+        assert_eq!(report.totals().exit_codes, 1);
     }
 }

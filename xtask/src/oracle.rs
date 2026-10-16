@@ -6,9 +6,11 @@
 //! fixtures and the corpus from the vendored archive. Each fixture runs with
 //! the conformance runner's command line, external tools off. The corpus is
 //! one run over all its files. [`compare`] compares the outputs of a run and
-//! [`report`] writes the result.
+//! [`report`] writes the result. With `--kind`, [`kinds`] limits the
+//! comparison to some actionlint kinds.
 
 mod compare;
+mod kinds;
 mod report;
 mod select;
 
@@ -26,6 +28,7 @@ use crate::bench;
 use crate::reference::{self, CORPUS_FILES, Layout, corpus};
 use crate::vendor_testdata;
 use compare::{Allowed, Output};
+use kinds::Kinds;
 use report::Report;
 use select::{Corpus, Places};
 
@@ -51,6 +54,8 @@ pub(crate) struct Options {
     /// Run the reference in place of workflint, without the kind mapping or
     /// the allow-list, to show that the runs are deterministic.
     pub(crate) self_check: bool,
+    /// The actionlint kinds to compare. Empty means every kind.
+    pub(crate) kinds: Vec<String>,
 }
 
 /// Builds both binaries, compares them on the selected inputs, prints the
@@ -62,6 +67,7 @@ pub(crate) struct Options {
 /// Fails if a step cannot run, or, without `report_only`, if a difference is
 /// not explained.
 pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
+    let kinds = Kinds::new(&options.kinds)?;
     let root = layout.root();
     let archive = root
         .join(vendor_testdata::DESTINATION)
@@ -97,41 +103,21 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
     } else {
         read_allow_list(layout)?
     };
-    let map_kinds = !options.self_check;
+    let sides = Sides {
+        reference: &reference,
+        workflint: &workflint,
+        map_kinds: !options.self_check,
+        kinds: &kinds,
+    };
 
     let mut runs = Vec::new();
     for fixture in &fixtures {
-        let invocation = fixture
-            .prepare(&Tools::default())
-            .with_context(|| format!("cannot prepare {}", fixture.id))?;
-        let inputs = input_files(&invocation.args);
-        let expected = execute(&reference, &invocation.cwd, &invocation.args)?;
-        let actual = execute(&workflint, &invocation.cwd, &invocation.args)?;
-        let out_file = fixture
-            .expected
-            .as_deref()
-            .map(|path| layout.display(path).to_string())
-            .unwrap_or_default();
-        let out_lines = fixture.expected_lines();
-        let entries = allow_list.entries_for(&fixture.id);
-        let allowed = Allowed {
-            out_file: &out_file,
-            out_lines: &out_lines,
-            entries: &entries,
-        };
-        runs.push(compare::compare(
-            &fixture.id,
-            &inputs,
-            &expected,
-            &actual,
-            &allowed,
-            map_kinds,
-        ));
+        runs.push(fixture_run(layout, fixture, &sides, &allow_list)?);
     }
     let corpus_files = match &selection.corpus {
         Corpus::None => 0,
         selected => {
-            let (run, files) = corpus_run(&archive, selected, &reference, &workflint, map_kinds)?;
+            let (run, files) = corpus_run(&archive, selected, &sides)?;
             runs.push(run);
             files
         }
@@ -140,6 +126,7 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
     let report = Report {
         description: description(options.self_check, fixtures.len(), corpus_files),
         self_check: options.self_check,
+        kinds,
         skipped,
         runs,
     };
@@ -249,15 +236,58 @@ fn execute(program: &Path, cwd: &Path, args: &[OsString]) -> Result<Output> {
     })
 }
 
+/// The binaries that a run compares, and how it compares them.
+struct Sides<'a> {
+    reference: &'a Path,
+    workflint: &'a Path,
+    map_kinds: bool,
+    kinds: &'a Kinds,
+}
+
+/// Runs both binaries on `fixture` with the conformance runner's command
+/// line and compares them, with the fixture's entries in `allow_list`.
+fn fixture_run(
+    layout: &Layout,
+    fixture: &Fixture,
+    sides: &Sides<'_>,
+    allow_list: &AllowList,
+) -> Result<compare::Run> {
+    let invocation = fixture
+        .prepare(&Tools::default())
+        .with_context(|| format!("cannot prepare {}", fixture.id))?;
+    let inputs = input_files(&invocation.args);
+    let expected = execute(sides.reference, &invocation.cwd, &invocation.args)?;
+    let actual = execute(sides.workflint, &invocation.cwd, &invocation.args)?;
+    let out_file = fixture
+        .expected
+        .as_deref()
+        .map(|path| layout.display(path).to_string())
+        .unwrap_or_default();
+    let out_lines = fixture.expected_lines();
+    let entries = allow_list.entries_for(&fixture.id);
+    let allowed = Allowed {
+        out_file: &out_file,
+        out_lines: &out_lines,
+        entries: &entries,
+    };
+    Ok(compare::compare(
+        &fixture.id,
+        &inputs,
+        &expected,
+        &actual,
+        &allowed,
+        sides.map_kinds,
+        sides.kinds,
+    ))
+}
+
 /// Unpacks the corpus into a temporary project and runs both binaries once
 /// on the `selected` files, in sorted order. Returns the number of files
 /// too.
 fn corpus_run(
     archive: &Path,
     selected: &Corpus,
-    reference: &Path,
-    workflint: &Path,
-    map_kinds: bool,
+    sides: &Sides<'_>,
 ) -> Result<(compare::Run, usize)> {
     let temp = tempfile::Builder::new()
         .prefix("workflint-oracle-")
@@ -296,15 +326,16 @@ fn corpus_run(
     args.push(config.into_os_string());
     args.extend(names.iter().map(OsString::from));
 
-    let expected = execute(reference, &project, &args)?;
-    let actual = execute(workflint, &project, &args)?;
+    let expected = execute(sides.reference, &project, &args)?;
+    let actual = execute(sides.workflint, &project, &args)?;
     let run = compare::compare(
         "realworld",
         &names,
         &expected,
         &actual,
         &Allowed::default(),
-        map_kinds,
+        sides.map_kinds,
+        sides.kinds,
     );
     Ok((run, names.len()))
 }

@@ -78,6 +78,12 @@ enum Command {
         /// deterministic.
         #[arg(long, hide = true)]
         self_check: bool,
+        /// Compare only the diagnostics of this actionlint kind, such as
+        /// `syntax-check`. Repeat it for more kinds. The kinds are the values
+        /// in tests/conformance/rule-kinds.toml. Exit codes 0 and 1 are not
+        /// compared, because the lines of the other kinds decide them.
+        #[arg(long = "kind", value_name = "KIND")]
+        kinds: Vec<String>,
     },
     /// Recreate the actionlint checkout, reference binary, and corpus in
     /// `.reference/`. Needs git and the Go version in `.go-version`.
@@ -134,11 +140,13 @@ fn main() -> anyhow::Result<()> {
             paths,
             report_only,
             self_check,
+            kinds,
         }) => {
             let options = oracle::Options {
                 paths,
                 report_only,
                 self_check,
+                kinds,
             };
             oracle::run(&reference::Layout::repository(), &options)?;
         }
@@ -187,6 +195,7 @@ mod tests {
             paths,
             report_only,
             self_check,
+            kinds,
         }) = cli.command
         else {
             panic!("{:?}", cli.command);
@@ -194,6 +203,24 @@ mod tests {
         assert_eq!(paths, [PathBuf::from("a.yaml")]);
         assert!(report_only);
         assert!(!self_check);
+        assert_eq!(kinds, Vec::<String>::new());
+    }
+
+    #[test]
+    fn oracle_kind_can_be_repeated() {
+        let cli = Cli::try_parse_from([
+            "xtask",
+            "oracle",
+            "--kind",
+            "syntax-check",
+            "--kind",
+            "expression",
+        ])
+        .unwrap();
+        let Some(Command::Oracle { kinds, .. }) = cli.command else {
+            panic!("{:?}", cli.command);
+        };
+        assert_eq!(kinds, ["syntax-check", "expression"]);
     }
 
     #[test]
