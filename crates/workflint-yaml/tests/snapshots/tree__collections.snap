@@ -1,0 +1,49 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "block_map:\n  a: 1\n  b: 2\nblock_seq:\n  - 1\n  - 2\nindentless_seq:\n- 1\n- 2\nflow_map: {a: 1, b: [x, y]}\nflow_seq: [1, {c: d}, [e]]\nnested:\n  - - a\n    - b\n  - k: v\n    l: w\nempty_flow: [[], {}]\n"
+---
+root #0 mapping block !!map 1:1@0..17:21@189
+  key #1 scalar plain !!str 1:1@0..1:10@9 "block_map"
+  value #2 mapping block !!map 2:3@13..3:7@24
+    key #3 scalar plain !!str 2:3@13..2:4@14 "a"
+    value #4 scalar plain !!int 2:6@16..2:7@17 "1"
+    key #5 scalar plain !!str 3:3@20..3:4@21 "b"
+    value #6 scalar plain !!int 3:6@23..3:7@24 "2"
+  key #7 scalar plain !!str 4:1@25..4:10@34 "block_seq"
+  value #8 sequence block !!seq 5:3@38..6:6@47
+    item #9 scalar plain !!int 5:5@40..5:6@41 "1"
+    item #10 scalar plain !!int 6:5@46..6:6@47 "2"
+  key #11 scalar plain !!str 7:1@48..7:15@62 "indentless_seq"
+  value #12 sequence block !!seq 8:1@64..9:4@71
+    item #13 scalar plain !!int 8:3@66..8:4@67 "1"
+    item #14 scalar plain !!int 9:3@70..9:4@71 "2"
+  key #15 scalar plain !!str 10:1@72..10:9@80 "flow_map"
+  value #16 mapping flow !!map 10:11@82..10:28@99
+    key #17 scalar plain !!str 10:12@83..10:13@84 "a"
+    value #18 scalar plain !!int 10:15@86..10:16@87 "1"
+    key #19 scalar plain !!str 10:18@89..10:19@90 "b"
+    value #20 sequence flow !!seq 10:21@92..10:27@98
+      item #21 scalar plain !!str 10:22@93..10:23@94 "x"
+      item #22 scalar plain !!str 10:25@96..10:26@97 "y"
+  key #23 scalar plain !!str 11:1@100..11:9@108 "flow_seq"
+  value #24 sequence flow !!seq 11:11@110..11:27@126
+    item #25 scalar plain !!int 11:12@111..11:13@112 "1"
+    item #26 mapping flow !!map 11:15@114..11:21@120
+      key #27 scalar plain !!str 11:16@115..11:17@116 "c"
+      value #28 scalar plain !!str 11:19@118..11:20@119 "d"
+    item #29 sequence flow !!seq 11:23@122..11:26@125
+      item #30 scalar plain !!str 11:24@123..11:25@124 "e"
+  key #31 scalar plain !!str 12:1@127..12:7@133 "nested"
+  value #32 sequence block !!seq 13:3@137..16:9@168
+    item #33 sequence block !!seq 13:5@139..14:8@150
+      item #34 scalar plain !!str 13:7@141..13:8@142 "a"
+      item #35 scalar plain !!str 14:7@149..14:8@150 "b"
+    item #36 mapping block !!map 15:5@155..16:9@168
+      key #37 scalar plain !!str 15:5@155..15:6@156 "k"
+      value #38 scalar plain !!str 15:8@158..15:9@159 "v"
+      key #39 scalar plain !!str 16:5@164..16:6@165 "l"
+      value #40 scalar plain !!str 16:8@167..16:9@168 "w"
+  key #41 scalar plain !!str 17:1@169..17:11@179 "empty_flow"
+  value #42 sequence flow !!seq 17:13@181..17:21@189
+    item #43 sequence flow !!seq 17:14@182..17:16@184
+    item #44 mapping flow !!map 17:18@186..17:20@188

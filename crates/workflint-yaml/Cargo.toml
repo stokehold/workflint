@@ -1,6 +1,6 @@
 [package]
 name = "workflint-yaml"
-description = "YAML layer of workflint: a vendored libyaml-safer event parser"
+description = "YAML layer of workflint: a span tree built on a vendored libyaml-safer event parser"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,6 +11,9 @@ authors.workspace = true
 readme = "README.md"
 # Keep the yaml-test-suite data out of the published package (ADR 0006).
 include = ["/src", "/README.md"]
+
+[dependencies]
+workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
 
 [dev-dependencies]
 datatest-stable = "0.3.3"

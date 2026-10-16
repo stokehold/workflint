@@ -4,7 +4,7 @@
 
 #![allow(clippy::unwrap_used)]
 
-use workflint_yaml::{ErrorKind, EventData, EventParser, Mark, ScalarStyle};
+use workflint_yaml::event::{ErrorKind, EventData, EventParser, Mark, ScalarStyle};
 
 struct Scalar {
     value: String,
@@ -13,7 +13,7 @@ struct Scalar {
 }
 
 /// Parses `input` and returns its scalars in order, or the first error.
-fn scalars(input: &str) -> Result<Vec<Scalar>, workflint_yaml::Error> {
+fn scalars(input: &str) -> Result<Vec<Scalar>, workflint_yaml::event::Error> {
     let mut scalars = Vec::new();
     for event in EventParser::new(input) {
         let event = event?;
@@ -29,7 +29,7 @@ fn scalars(input: &str) -> Result<Vec<Scalar>, workflint_yaml::Error> {
 }
 
 /// Parses `input`, which must fail, and returns the error.
-fn parse_error(input: &str) -> workflint_yaml::Error {
+fn parse_error(input: &str) -> workflint_yaml::event::Error {
     scalars(input).err().unwrap()
 }
 

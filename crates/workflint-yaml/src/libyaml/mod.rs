@@ -32,7 +32,7 @@ mod token;
 
 pub(crate) use self::error::Result;
 pub use self::error::{Error, ErrorKind, Mark};
-pub use self::event::{Event, EventData};
+pub use self::event::{Event, EventData, NodeMarks};
 pub use self::parser::Parser;
 
 pub(crate) const INPUT_BUFFER_SIZE: usize = 16384;

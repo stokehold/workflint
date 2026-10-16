@@ -13,6 +13,26 @@ pub struct Event {
     pub start_mark: Mark,
     /// The end of the event.
     pub end_mark: Mark,
+    /// Where the anchor token and the content of a node are, a workflint
+    /// addition.
+    pub node_marks: NodeMarks,
+}
+
+/// The marks inside a node event's properties, a workflint addition.
+///
+/// libyaml starts a node event at its first property, the `&anchor` or
+/// `!tag` token, and drops the marks of the other tokens. The tree needs
+/// them for the span of the anchor and for the start of the content.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct NodeMarks {
+    /// The start and end of the `&anchor` token, if the node has an anchor.
+    pub anchor: Option<(Mark, Mark)>,
+    /// Where the node's content starts after its anchor and tag, if it has
+    /// either. For a node with properties and no content, such as `&a` alone,
+    /// this is the end of the properties. `None` means the content starts at
+    /// the event's `start_mark`.
+    pub content: Option<Mark>,
 }
 
 /// The kind of an [`Event`] and its data.

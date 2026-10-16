@@ -9,7 +9,7 @@ mod support;
 
 use insta::assert_snapshot;
 use support::{dump_comments, dump_events};
-use workflint_yaml::EventData;
+use workflint_yaml::event::EventData;
 
 /// Checks the snapshots of the case `name`.
 fn check(name: &str, input: &str) {
@@ -237,7 +237,7 @@ fn hash_in_plain_scalar_without_preceding_whitespace_is_not_a_comment() {
 
 #[test]
 fn comment_events_come_before_the_first_event_that_starts_after_them() {
-    let kinds: Vec<String> = workflint_yaml::EventParser::new("a: # c\n  b: 1 # d\n# e\n")
+    let kinds: Vec<String> = workflint_yaml::event::EventParser::new("a: # c\n  b: 1 # d\n# e\n")
         .map(|event| {
             let event = event.map_err(|err| err.to_string());
             match event.map(|event| event.data) {

@@ -1,0 +1,9 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "%TAG !e! tag:example.com,2000:app/\n---\na: !e!foo x\nb: !!binary aGk=\n"
+---
+root #0 mapping block !!map 3:1@39..4:17@67
+  key #1 scalar plain !!str 3:1@39..3:2@40 "a"
+  value #2 scalar plain tag:example.com,2000:app/foo 3:4@42..3:12@50 content 3:11@49 "x"
+  key #3 scalar plain !!str 4:1@51..4:2@52 "b"
+  value #4 scalar plain !!binary 4:4@54..4:17@67 content 4:13@63 "aGk="

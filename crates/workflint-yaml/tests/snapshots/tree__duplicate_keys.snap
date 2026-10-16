@@ -1,0 +1,17 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "a: 1\nA: 2\na: 3\nb: 4\nB: 5\nb: 6\n"
+---
+root #0 mapping block !!map 1:1@0..6:5@29
+  key #1 scalar plain !!str 1:1@0..1:2@1 "a"
+  value #2 scalar plain !!int 1:4@3..1:5@4 "1"
+  key #3 scalar plain !!str 2:1@5..2:2@6 "A"
+  value #4 scalar plain !!int 2:4@8..2:5@9 "2"
+  key #5 scalar plain !!str 3:1@10..3:2@11 "a"
+  value #6 scalar plain !!int 3:4@13..3:5@14 "3"
+  key #7 scalar plain !!str 4:1@15..4:2@16 "b"
+  value #8 scalar plain !!int 4:4@18..4:5@19 "4"
+  key #9 scalar plain !!str 5:1@20..5:2@21 "B"
+  value #10 scalar plain !!int 5:4@23..5:5@24 "5"
+  key #11 scalar plain !!str 6:1@25..6:2@26 "b"
+  value #12 scalar plain !!int 6:4@28..6:5@29 "6"

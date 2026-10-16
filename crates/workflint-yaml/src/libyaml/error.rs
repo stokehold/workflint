@@ -114,6 +114,15 @@ impl Error {
         }
     }
 
+    /// The byte offset of the problem in the input, a workflint addition.
+    /// Unlike [`Error::problem_mark`], it exists for reader errors too.
+    pub fn problem_offset(&self) -> u64 {
+        match &*self.0 {
+            ErrorImpl::Reader { offset, .. } => *offset as u64,
+            ErrorImpl::Scanner(p) | ErrorImpl::Parser(p) => p.problem_mark.index,
+        }
+    }
+
     /// Where the construct that contains the problem starts, if the error has
     /// a context.
     pub fn context_mark(&self) -> Option<Mark> {

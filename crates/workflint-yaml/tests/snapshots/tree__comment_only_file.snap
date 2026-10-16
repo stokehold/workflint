@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "# one\n  # two\n"
+---
+no root
+comments:
+  1:1@0..1:6@5 own-line "# one" -> none
+  2:3@8..2:8@13 own-line "# two" -> none

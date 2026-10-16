@@ -1,0 +1,27 @@
+---
+source: crates/workflint-yaml/tests/tree.rs
+description: "scalar: &s value\nuse_scalar: *s\nmap: &m {k: v}\nuse_map: *m\nseq: &q\n  - a\nuse_seq: *q\n*s : alias as key\n"
+---
+root #0 mapping block !!map 1:1@0..8:18@102
+  key #1 scalar plain !!str 1:1@0..1:7@6 "scalar"
+  value #2 scalar plain !!str 1:9@8..1:17@16 content 1:12@11 &s 1:9@8..1:11@10 "value"
+  key #3 scalar plain !!str 2:1@17..2:11@27 "use_scalar"
+  value #2 (printed above)
+  key #5 scalar plain !!str 3:1@32..3:4@35 "map"
+  value #6 mapping flow !!map 3:6@37..3:15@46 content 3:9@40 &m 3:6@37..3:8@39
+    key #7 scalar plain !!str 3:10@41..3:11@42 "k"
+    value #8 scalar plain !!str 3:13@44..3:14@45 "v"
+  key #9 scalar plain !!str 4:1@47..4:8@54 "use_map"
+  value #6 (printed above)
+  key #11 scalar plain !!str 5:1@59..5:4@62 "seq"
+  value #12 sequence block !!seq 5:6@64..6:6@72 content 6:3@69 &q 5:6@64..5:8@66
+    item #13 scalar plain !!str 6:5@71..6:6@72 "a"
+  key #14 scalar plain !!str 7:1@73..7:8@80 "use_seq"
+  value #12 (printed above)
+  key #2 (printed above)
+  value #17 scalar plain !!str 8:6@90..8:18@102 "alias as key"
+aliases:
+  #4 *s 2:13@29..2:15@31 -> #2
+  #10 *m 4:10@56..4:12@58 -> #6
+  #15 *q 7:10@82..7:12@84 -> #12
+  #16 *s 8:1@85..8:3@87 -> #2

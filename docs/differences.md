@@ -74,8 +74,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="yaml-error-positions"></a>
 ### YAML syntax error positions
 
-- Upstream: YAML syntax errors use go-yaml's position, which takes the line from libyaml's context mark when it has one and reports a 0-based column. `steps: -` is reported at `2:7`, although the problem is at `2:8`.
-- workflint: the error is reported at the 1-based problem position. The message text is unchanged.
+- Upstream: YAML syntax errors use go-yaml's position, which takes the line from libyaml's context mark when it has one and reports a 0-based column. `steps: -` is reported at `2:7`, although the problem is at `2:8`. A control character in the file gives `control characters are not allowed` at `0:0`, because libyaml's reader records only a byte offset.
+- workflint: the error is reported at the 1-based problem position, and a control character at its own position. The message text is unchanged.
 - Why: the upstream position is off by one column and sometimes on the wrong line.
 - Upstream issue: #519.
 - Milestone: M1.
@@ -310,8 +310,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="yaml-core-schema"></a>
 ### Plain scalars follow the YAML 1.2 core schema
 
-- Upstream: go-yaml resolves some plain scalars with YAML 1.1 rules. `1_000` and `0b10` become integers that later fail Go's number parsing, and dates such as `2026-10-15` get the `!!timestamp` tag, which appears in messages.
-- workflint: plain scalars are typed under the YAML 1.2 core schema (ADR 0005). `1_000`, `0b10`, and `2026-10-15` are strings, so a numeric key such as `timeout-minutes: 1_000` reports a string where a number is expected, and no message names a `!!timestamp` tag.
+- Upstream: go-yaml resolves some plain scalars with YAML 1.1 rules. `1_000` and `0b10` become integers that later fail Go's number parsing, and dates such as `2026-10-15` get the `!!timestamp` tag, which appears in messages. A plain `<<` gets the `!!merge` tag, so `timeout-minutes: <<` reports a `"!!merge" tag`, and `-0` is a float.
+- workflint: plain scalars are typed under the YAML 1.2 core schema (ADR 0005). `1_000`, `0b10`, `2026-10-15`, and `<<` are strings, so a numeric key such as `timeout-minutes: 1_000` reports a string where a number is expected, and no message names a `!!timestamp` or `!!merge` tag. `-0` is an integer.
 - Why: the 1.2 core schema matches how GitHub types plain scalars, so the diagnostic describes what GitHub does with the file. M2 confirms this against the scalar handling in `actions/runner` before the change ships.
 - Upstream issue: none.
 - Milestone: M2.

@@ -1,8 +1,8 @@
 use super::scanner::Scanner;
 use super::token::TokenData;
 use super::{
-    Error, Event, EventData, MappingStyle, Mark, Result, ScalarStyle, SequenceStyle, TagDirective,
-    VersionDirective,
+    Error, Event, EventData, MappingStyle, Mark, NodeMarks, Result, ScalarStyle, SequenceStyle,
+    TagDirective, VersionDirective,
 };
 
 /// A YAML event parser over a string.
@@ -138,6 +138,7 @@ impl<'input> Parser<'input> {
                 data: EventData::StreamEnd,
                 start_mark: Mark::default(),
                 end_mark: Mark::default(),
+                node_marks: NodeMarks::default(),
             });
         } else {
             self.state_machine()?
@@ -170,6 +171,7 @@ impl<'input> Parser<'input> {
             data: EventData::Comment { kind: comment.kind },
             start_mark: comment.start_mark,
             end_mark: comment.end_mark,
+            node_marks: NodeMarks::default(),
         }
     }
 
@@ -217,6 +219,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark: token.start_mark,
                 end_mark: token.end_mark,
+                node_marks: NodeMarks::default(),
             };
             self.inner.state = ParserState::ImplicitDocumentStart;
             self.scanner.skip_token();
@@ -260,6 +263,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark: token.start_mark,
                 end_mark: token.end_mark,
+                node_marks: NodeMarks::default(),
             };
             self.process_directives(None, None)?;
             self.inner.states.push(ParserState::DocumentEnd);
@@ -280,6 +284,7 @@ impl<'input> Parser<'input> {
                     },
                     start_mark,
                     end_mark,
+                    node_marks: NodeMarks::default(),
                 };
                 self.inner.states.push(ParserState::DocumentEnd);
                 self.inner.state = ParserState::DocumentContent;
@@ -298,6 +303,7 @@ impl<'input> Parser<'input> {
                 data: EventData::StreamEnd,
                 start_mark: token.start_mark,
                 end_mark: token.end_mark,
+                node_marks: NodeMarks::default(),
             };
             self.inner.state = ParserState::End;
             self.scanner.skip_token();
@@ -338,6 +344,7 @@ impl<'input> Parser<'input> {
             data: EventData::DocumentEnd { implicit },
             start_mark,
             end_mark,
+            node_marks: NodeMarks::default(),
         })
     }
 
@@ -353,6 +360,7 @@ impl<'input> Parser<'input> {
             line: 0,
             column: 0,
         };
+        let mut anchor_marks: Option<(Mark, Mark)> = None;
 
         let mut token = self.scanner.peek_mut()?;
 
@@ -363,6 +371,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark: token.start_mark,
                 end_mark: token.end_mark,
+                node_marks: NodeMarks::default(),
             };
             self.inner.state = self.inner.pop_state(self.scanner.mark)?;
             self.scanner.skip_token();
@@ -375,6 +384,7 @@ impl<'input> Parser<'input> {
             anchor = Some(core::mem::take(value));
             start_mark = token.start_mark;
             end_mark = token.end_mark;
+            anchor_marks = Some((token.start_mark, token.end_mark));
             self.scanner.skip_token();
             token = self.scanner.peek_mut()?;
             if let TokenData::Tag { handle, suffix } = &mut token.data {
@@ -395,6 +405,7 @@ impl<'input> Parser<'input> {
             if let TokenData::Anchor { value } = &mut token.data {
                 anchor = Some(core::mem::take(value));
                 end_mark = token.end_mark;
+                anchor_marks = Some((token.start_mark, token.end_mark));
                 self.scanner.skip_token();
             }
         }
@@ -424,6 +435,11 @@ impl<'input> Parser<'input> {
         let token = self.scanner.peek_mut()?;
 
         let implicit = tag.is_none() || tag.as_deref() == Some("");
+        let has_properties = anchor.is_some() || tag_handle.is_some();
+        let node_marks = NodeMarks {
+            anchor: anchor_marks,
+            content: has_properties.then_some(token.start_mark),
+        };
 
         if indentless_sequence && matches!(token.data, TokenData::BlockEntry) {
             end_mark = token.end_mark;
@@ -437,6 +453,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark,
                 end_mark,
+                node_marks,
             };
             Ok(event)
         } else if let TokenData::Scalar { value, style } = &mut token.data {
@@ -459,6 +476,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark,
                 end_mark,
+                node_marks,
             };
             self.inner.state = self.inner.pop_state(self.scanner.mark)?;
             self.scanner.skip_token();
@@ -475,6 +493,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark,
                 end_mark,
+                node_marks,
             };
             Ok(event)
         } else if let TokenData::FlowMappingStart = &token.data {
@@ -489,6 +508,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark,
                 end_mark,
+                node_marks,
             };
             Ok(event)
         } else if block && matches!(token.data, TokenData::BlockSequenceStart) {
@@ -503,6 +523,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark,
                 end_mark,
+                node_marks,
             };
             Ok(event)
         } else if block && matches!(token.data, TokenData::BlockMappingStart) {
@@ -517,6 +538,7 @@ impl<'input> Parser<'input> {
                 },
                 start_mark,
                 end_mark,
+                node_marks,
             };
             Ok(event)
         } else if anchor.is_some() || tag.is_some() {
@@ -532,6 +554,10 @@ impl<'input> Parser<'input> {
                 },
                 start_mark,
                 end_mark,
+                node_marks: NodeMarks {
+                    content: Some(end_mark),
+                    ..node_marks
+                },
             };
             Ok(event)
         } else {
@@ -574,6 +600,7 @@ impl<'input> Parser<'input> {
                 data: EventData::SequenceEnd,
                 start_mark: token.start_mark,
                 end_mark: token.end_mark,
+                node_marks: NodeMarks::default(),
             };
             self.inner.state = self.inner.pop_state(self.scanner.mark)?;
             let _ = self.inner.marks.pop();
@@ -613,6 +640,7 @@ impl<'input> Parser<'input> {
                 data: EventData::SequenceEnd,
                 start_mark: token.start_mark,
                 end_mark: token.end_mark,
+                node_marks: NodeMarks::default(),
             };
             self.inner.state = self.inner.pop_state(self.scanner.mark)?;
             Ok(event)
@@ -647,6 +675,7 @@ impl<'input> Parser<'input> {
                 data: EventData::MappingEnd,
                 start_mark: token.start_mark,
                 end_mark: token.end_mark,
+                node_marks: NodeMarks::default(),
             };
             self.inner.state = self.inner.pop_state(self.scanner.mark)?;
             _ = self.inner.marks.pop();
@@ -722,6 +751,7 @@ impl<'input> Parser<'input> {
                     },
                     start_mark: token.start_mark,
                     end_mark: token.end_mark,
+                    node_marks: NodeMarks::default(),
                 };
                 self.inner.state = ParserState::FlowSequenceEntryMappingKey;
                 self.scanner.skip_token();
@@ -735,6 +765,7 @@ impl<'input> Parser<'input> {
             data: EventData::SequenceEnd,
             start_mark: token.start_mark,
             end_mark: token.end_mark,
+            node_marks: NodeMarks::default(),
         };
         self.inner.state = self.inner.pop_state(self.scanner.mark)?;
         _ = self.inner.marks.pop();
@@ -789,6 +820,7 @@ impl<'input> Parser<'input> {
             data: EventData::MappingEnd,
             start_mark,
             end_mark,
+            node_marks: NodeMarks::default(),
         })
     }
 
@@ -839,6 +871,7 @@ impl<'input> Parser<'input> {
             data: EventData::MappingEnd,
             start_mark: token.start_mark,
             end_mark: token.end_mark,
+            node_marks: NodeMarks::default(),
         };
         self.inner.state = self.inner.pop_state(self.scanner.mark)?;
         _ = self.inner.marks.pop();
@@ -878,6 +911,7 @@ impl<'input> Parser<'input> {
             },
             start_mark: mark,
             end_mark: mark,
+            node_marks: NodeMarks::default(),
         })
     }
 
