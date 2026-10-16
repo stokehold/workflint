@@ -144,13 +144,17 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     },
     KeySpec {
         name: "container",
-        // TODO(#77): parse the container.
-        parse: |_, b, e| b.steps_only.push(e.key),
+        parse: |p, b, e| {
+            b.job.container = p.parse_job_container(e);
+            b.steps_only.push(e.key);
+        },
     },
     KeySpec {
         name: "services",
-        // TODO(#77): parse the services.
-        parse: |_, b, e| b.steps_only.push(e.key),
+        parse: |p, b, e| {
+            b.job.services = p.parse_services(e);
+            b.steps_only.push(e.key);
+        },
     },
     KeySpec {
         name: "uses",

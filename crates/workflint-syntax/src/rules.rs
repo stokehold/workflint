@@ -118,13 +118,21 @@ pub static NON_POSITIVE_NUMBER: RuleMeta = syntax_check(
     "https://github.com/stokehold/workflint/blob/main/docs/rules/non-positive-number.md",
 );
 
+/// `credentials` of a container or service is not one expression and lacks
+/// `username` or `password`. The parser drops the credentials.
+pub static INCOMPLETE_CREDENTIALS: RuleMeta = syntax_check(
+    "incomplete-credentials",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/incomplete-credentials.md",
+);
+
 /// Every rule in this module, in the order of their IDs.
-pub static ALL: [&RuleMeta; 17] = [
+pub static ALL: [&RuleMeta; 18] = [
     &DUPLICATE_KEY,
     &EMPTY_SECTION,
     &EMPTY_STRING,
     &EMPTY_WORKFLOW,
     &EXPECTED_SINGLE_EXPRESSION,
+    &INCOMPLETE_CREDENTIALS,
     &INVALID_DISPATCH_INPUT_TYPE,
     &INVALID_LITERAL_VALUE,
     &INVALID_REUSABLE_CALL_KEY,

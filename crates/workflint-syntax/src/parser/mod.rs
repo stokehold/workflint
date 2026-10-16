@@ -14,6 +14,7 @@
 //! GitHub accepts. So a "billion laughs" input cannot make the walk
 //! exponential.
 
+mod container;
 mod event;
 mod job;
 mod leaf;
