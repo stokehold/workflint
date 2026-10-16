@@ -6,6 +6,8 @@
 //! [`BUILTIN_FUNCTIONS`] lists the signatures of the built-in functions, and
 //! [`builtin_function`] looks one up by name. [`WORKFLOW_KEYS`] lists the contexts and special
 //! functions that expressions at each workflow key may use, and [`workflow_key`] looks one up.
+//! [`UNTRUSTED_INPUTS`] holds the context properties whose values someone outside the repository
+//! can set, such as `github.event.issue.title`.
 //!
 //! Every table is `static` data, so reading one allocates nothing. The crate reads no files,
 //! environment variables, or clocks: it is `no_std`.
@@ -18,6 +20,7 @@ mod availability;
 mod functions;
 mod global_contexts;
 mod types;
+mod untrusted_inputs;
 
 pub use availability::{
     Availability, SPECIAL_FUNCTIONS, WORKFLOW_KEYS, WorkflowKey, special_function_keys,
@@ -26,3 +29,4 @@ pub use availability::{
 pub use functions::{BUILTIN_FUNCTIONS, Function, Signature, builtin_function};
 pub use global_contexts::{Context, GLOBAL_CONTEXTS, global_context};
 pub use types::{ObjectDesc, Property, Rest, TypeDesc};
+pub use untrusted_inputs::{UNTRUSTED_INPUTS, UntrustedInput};
