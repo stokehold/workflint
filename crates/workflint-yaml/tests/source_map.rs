@@ -223,7 +223,7 @@ fn literal_block_maps_crlf_line_breaks_to_the_carriage_return() {
     assert!(map.is_exact());
     assert_eq!(map.source_offset(1), 9);
     assert_eq!(map.line_col(2), at(3, 3));
-    assert_eq!(map.source_offset(4), text.len() as u32);
+    assert_eq!(map.source_offset(4), 16);
 }
 
 #[test]

@@ -11,7 +11,7 @@
 use std::path::{Path, PathBuf};
 
 use workflint_diagnostics::{FileId, SourceFile};
-use workflint_yaml::parse;
+use workflint_yaml::{Document, NodeKind, parse};
 
 fn yaml_files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
@@ -31,8 +31,40 @@ fn yaml_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Parses every YAML file under `dir` and checks that the tree's spans lie
-/// on character boundaries of the file. Returns the number of files.
+/// Builds the source map of every scalar in `document` and checks that it is
+/// exact, and that each decoded character maps to a character boundary
+/// inside the scalar's span, in increasing order.
+fn check_source_maps(path: &Path, file: &SourceFile, document: &Document) {
+    for (_, node) in document.nodes() {
+        let NodeKind::Scalar(scalar) = &node.kind else {
+            continue;
+        };
+        let map = node.source_map(file).unwrap();
+        assert!(
+            map.is_exact(),
+            "{}: inexact map at {}",
+            path.display(),
+            node.span.start
+        );
+        let mut previous = node.span.start;
+        for (offset, _) in scalar.value.char_indices() {
+            let mapped = map.source_offset(offset);
+            assert!(
+                previous <= mapped
+                    && mapped < node.span.end
+                    && file.text().is_char_boundary(mapped as usize),
+                "{}: decoded offset {offset} of the scalar at {} maps to {mapped}",
+                path.display(),
+                node.span.start
+            );
+            previous = mapped;
+        }
+    }
+}
+
+/// Parses every YAML file under `dir`, checks that the tree's spans lie on
+/// character boundaries of the file, and checks every scalar's source map.
+/// Returns the number of files.
 fn parse_all(dir: &Path) -> usize {
     let mut files = Vec::new();
     yaml_files(dir, &mut files);
@@ -52,6 +84,7 @@ fn parse_all(dir: &Path) -> usize {
                     path.display()
                 );
             }
+            check_source_maps(path, &file, document);
             let _ = document.dump(&file);
         }
     }

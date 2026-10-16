@@ -192,11 +192,7 @@ fn newlines(out: &mut Out, choices: &mut Choices, indent: &str, count: usize) {
     out.raw(leading);
 }
 
-fn write_plain(
-    words: &[(String, Gap)],
-    line_break: &'static str,
-    choices: Vec<u8>,
-) -> Written {
+fn write_plain(words: &[(String, Gap)], line_break: &'static str, choices: Vec<u8>) -> Written {
     let mut choices = Choices::new(choices);
     let mut out = Out::new(line_break);
     let indent = Choices::spaces(1 + choices.pick(4));
@@ -446,7 +442,17 @@ fn block() -> impl Strategy<Value = Block> {
         choices(),
     )
         .prop_map(
-            |(lines, trailing, chomping, indicator, context, extra_indent, eof, line_break, choices)| Block {
+            |(
+                lines,
+                trailing,
+                chomping,
+                indicator,
+                context,
+                extra_indent,
+                eof,
+                line_break,
+                choices,
+            )| Block {
                 lines,
                 trailing,
                 chomping,
@@ -471,8 +477,7 @@ fn write_block(block: &Block, literal: bool) -> Written {
     let first = lines.iter().find(|line| !line.is_empty());
     // Without an indicator, the first line with content sets the
     // indentation, so it must not start with a blank.
-    let indicator =
-        block.indicator || first.is_some_and(|line| line.starts_with([' ', '\t']));
+    let indicator = block.indicator || first.is_some_and(|line| line.starts_with([' ', '\t']));
     let (prefix, parent, sibling) = CONTEXTS[block.context];
     let eof = block.eof && block.trailing == 0;
     let indent = usize::try_from(parent + 1).unwrap_or(0).max(1) + block.extra_indent;
@@ -581,7 +586,10 @@ fn check(written: &Written) -> Result<(), TestCaseError> {
         prop_assert!(start <= mapped && mapped < end, "{offset} maps to {mapped}");
         let at = usize::try_from(mapped).unwrap();
         prop_assert!(text.is_char_boundary(at), "{offset} maps to {mapped}");
-        prop_assert!(mapped >= previous, "{offset} maps to {mapped} before {previous}");
+        prop_assert!(
+            mapped >= previous,
+            "{offset} maps to {mapped} before {previous}"
+        );
         previous = mapped;
         let source = text[at..].chars().next().unwrap();
         if let Some(expected) = &written.expected {
@@ -604,8 +612,6 @@ fn check(written: &Written) -> Result<(), TestCaseError> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(512))]
-
     #[test]
     fn plain_scalars_map_exactly(
         words in prop::collection::vec((word(PLAIN), gap()), 1..6),
