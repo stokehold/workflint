@@ -22,6 +22,9 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # The prebuilt cargo-fuzz is a musl binary and builds for musl by default,
+  # where the address sanitizer does not work.
+  FUZZ_BUILD_TARGET: x86_64-unknown-linux-gnu
 
 jobs:
   build:
@@ -51,7 +54,7 @@ jobs:
         run: cargo fetch --locked
       - name: Build the fuzz targets
         working-directory: fuzz
-        run: cargo fuzz build
+        run: cargo fuzz build --target "$FUZZ_BUILD_TARGET"
 
   run:
     name: cargo fuzz run (${{ matrix.target }})
@@ -86,7 +89,7 @@ jobs:
       # the run like a crash.
       - name: Fuzz for five minutes
         working-directory: fuzz
-        run: cargo fuzz run "$TARGET" -- -max_total_time=300 -timeout=10
+        run: cargo fuzz run --target "$FUZZ_BUILD_TARGET" "$TARGET" -- -max_total_time=300 -timeout=10
         env:
           TARGET: ${{ matrix.target }}
       - name: Upload the failing input
