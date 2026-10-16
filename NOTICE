@@ -9,9 +9,10 @@ actionlint
   Copyright (c) 2021 rhysd
   MIT license
   workflint ports actionlint's design, diagnostic messages, and test data.
-  The vendored test data in tests/conformance/actionlint/ and
-  crates/workflint-diagnostics/tests/actionlint/ keeps its original LICENSE
-  file.
+  The test data in tests/conformance/actionlint/ is copied from commit
+  011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7, with its original LICENSE.txt
+  file. The test data in crates/workflint-diagnostics/tests/actionlint/
+  keeps its original LICENSE file.
 
 libyaml-safer 0.3.0
   https://github.com/simonask/libyaml-safer

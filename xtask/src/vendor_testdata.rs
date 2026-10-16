@@ -7,9 +7,10 @@
 //! does not have.
 
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 
 use crate::reference::{self, Layout};
 
@@ -68,8 +69,25 @@ pub(crate) fn run(layout: &Layout) -> Result<()> {
 /// Fails if an entry of [`PATHS`] matched no tracked file, which means the
 /// path is wrong.
 fn check_every_path_matched(files: &[String]) -> Result<()> {
-    let _ = files;
-    bail!("not implemented")
+    let unmatched: Vec<&str> = PATHS
+        .iter()
+        .copied()
+        .filter(|path| {
+            !files.iter().any(|file| {
+                file == path
+                    || file
+                        .strip_prefix(path)
+                        .is_some_and(|rest| rest.starts_with('/'))
+            })
+        })
+        .collect();
+    if !unmatched.is_empty() {
+        bail!(
+            "the checkout tracks no file at these paths:\n  {}",
+            unmatched.join("\n  ")
+        );
+    }
+    Ok(())
 }
 
 /// Makes `destination` hold exactly `files`, copied byte for byte from
@@ -79,14 +97,91 @@ fn check_every_path_matched(files: &[String]) -> Result<()> {
 /// A file that already has the upstream contents is not written again.
 /// Directories that end up empty are removed.
 pub(crate) fn mirror(source: &Path, files: &[String], destination: &Path) -> Result<Summary> {
-    let _ = (
-        source,
-        files,
-        destination,
-        BTreeSet::<String>::new(),
-        README,
-    );
-    bail!("not implemented")
+    let (existing, directories) = walk(destination)?;
+    let mut summary = Summary {
+        files: files.len(),
+        ..Summary::default()
+    };
+
+    for file in files {
+        let from = source.join(file);
+        let contents =
+            fs::read(&from).with_context(|| format!("cannot read {}", from.display()))?;
+        let to = destination.join(file);
+        if existing.contains(file) {
+            let current = fs::read(&to).with_context(|| format!("cannot read {}", to.display()))?;
+            if current == contents {
+                continue;
+            }
+            summary.updated += 1;
+        } else {
+            summary.added += 1;
+        }
+        if let Some(parent) = to.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("cannot create {}", parent.display()))?;
+        }
+        fs::write(&to, contents).with_context(|| format!("cannot write {}", to.display()))?;
+    }
+
+    let wanted: BTreeSet<&str> = files.iter().map(String::as_str).collect();
+    for file in &existing {
+        if file != README && !wanted.contains(file.as_str()) {
+            let path = destination.join(file);
+            fs::remove_file(&path).with_context(|| format!("cannot remove {}", path.display()))?;
+            summary.removed += 1;
+        }
+    }
+
+    // `walk` lists each directory before the directories inside it.
+    for directory in directories.iter().rev() {
+        let mut entries = fs::read_dir(directory)
+            .with_context(|| format!("cannot read {}", directory.display()))?;
+        if entries.next().is_none() {
+            fs::remove_dir(directory)
+                .with_context(|| format!("cannot remove {}", directory.display()))?;
+        }
+    }
+    Ok(summary)
+}
+
+/// The files under `dir`, relative and with `/` separators, and the
+/// directories under it, each before its subdirectories. A missing `dir` has
+/// neither. Symbolic links count as files.
+fn walk(dir: &Path) -> Result<(BTreeSet<String>, Vec<PathBuf>)> {
+    let mut files = BTreeSet::new();
+    let mut directories = Vec::new();
+    if !dir.exists() {
+        return Ok((files, directories));
+    }
+    let mut pending = vec![(dir.to_path_buf(), String::new())];
+    let mut next = 0;
+    while let Some((absolute, relative)) = pending.get(next).cloned() {
+        next += 1;
+        let entries = fs::read_dir(&absolute)
+            .with_context(|| format!("cannot read {}", absolute.display()))?;
+        for entry in entries {
+            let entry = entry.with_context(|| format!("cannot read {}", absolute.display()))?;
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else {
+                bail!("{} has a name that is not UTF-8", entry.path().display());
+            };
+            let key = if relative.is_empty() {
+                name.to_owned()
+            } else {
+                format!("{relative}/{name}")
+            };
+            let metadata = fs::symlink_metadata(entry.path())
+                .with_context(|| format!("cannot read {}", entry.path().display()))?;
+            if metadata.is_dir() {
+                directories.push(entry.path());
+                pending.push((entry.path(), key));
+            } else {
+                files.insert(key);
+            }
+        }
+    }
+    Ok((files, directories))
 }
 
 #[cfg(test)]

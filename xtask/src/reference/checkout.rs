@@ -77,8 +77,28 @@ fn create(dir: &Path, url: &str, commit: &str) -> Result<()> {
 /// are left out. A tracked symbolic link or submodule is an error, because a
 /// copy of the checkout could not reproduce it.
 pub(crate) fn tracked_files(dir: &Path, pathspecs: &[&str]) -> Result<Vec<String>> {
-    let _ = (dir, pathspecs);
-    bail!("not implemented")
+    let mut args = vec!["ls-files", "--stage", "-z", "--"];
+    args.extend(pathspecs);
+    let listing = git_untrimmed(dir, &args)?;
+    let mut files = Vec::new();
+    // Each entry is `mode object stage\tpath`.
+    for entry in listing.split('\0').filter(|entry| !entry.is_empty()) {
+        let Some((columns, path)) = entry.split_once('\t') else {
+            bail!(
+                "unexpected `git ls-files` entry in {}: {entry}",
+                dir.display()
+            );
+        };
+        let mode = columns.split(' ').next().unwrap_or_default();
+        if mode != "100644" && mode != "100755" {
+            bail!(
+                "{path} in {} has git mode {mode}, but only regular files can be copied",
+                dir.display()
+            );
+        }
+        files.push(path.to_owned());
+    }
+    Ok(files)
 }
 
 /// The tracked files that differ from `HEAD` or the index.
