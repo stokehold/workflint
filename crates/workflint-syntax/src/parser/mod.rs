@@ -19,6 +19,7 @@ mod job;
 mod leaf;
 mod mapping;
 mod shared;
+mod step;
 mod workflow;
 
 use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};

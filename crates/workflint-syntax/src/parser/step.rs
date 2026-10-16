@@ -1,0 +1,231 @@
+//! Steps, as the reference's `parseSteps`, `parseStep`,
+//! `parseStepExecRun`, and `parseStepExecAction` at `parse.go:1120-1267`.
+//!
+//! Step keys are case-sensitive, and the keys of `with` are not. The later
+//! of `run` and `uses` in source order decides whether a step runs a script
+//! or an action. The keys of the other kind, including the key that lost,
+//! are then unexpected. A step with neither key is reported, and its other
+//! keys are not checked.
+
+use std::sync::Arc;
+
+use workflint_yaml::Node;
+
+use super::shared::mapping_field;
+use super::{KeySpec, Label, MapEntry, Parser, Section};
+use crate::rules::STEP_WITHOUT_RUN_OR_USES;
+use crate::{Exec, ExecAction, ExecRun, Field, Step, Str, Value};
+
+/// What a step runs, from the later of its `run` and `uses` keys.
+#[derive(Clone, Copy, PartialEq)]
+enum Kind {
+    /// Neither key is written.
+    Unknown,
+    /// `uses`, with a value that does not start with `docker://`.
+    Action,
+    /// `uses`, with a value that starts with `docker://`.
+    Docker,
+    /// `run`.
+    Run,
+}
+
+/// A key that both kinds of step have. The first pass over the step's keys
+/// parses it, so the second pass skips it.
+const fn common<S: Section>(name: &'static str) -> KeySpec<S> {
+    KeySpec {
+        name,
+        parse: |_, _, _| {},
+    }
+}
+
+impl Section for ExecRun<'static> {
+    type Ast<'a> = ExecRun<'a>;
+}
+
+/// The keys of a step that runs a script, in the reference's order.
+static RUN_STEP_KEYS: [KeySpec<ExecRun<'static>>; 9] = [
+    common("id"),
+    common("if"),
+    common("name"),
+    common("env"),
+    common("continue-on-error"),
+    common("timeout-minutes"),
+    KeySpec {
+        name: "run",
+        parse: |p, r, e| r.run = p.parse_string(e.key.string, e.value, false),
+    },
+    KeySpec {
+        name: "shell",
+        parse: |p, r, e| r.shell = p.parse_string(e.key.string, e.value, false),
+    },
+    KeySpec {
+        name: "working-directory",
+        parse: |p, r, e| r.working_directory = p.parse_string(e.key.string, e.value, false),
+    },
+];
+
+/// A step that runs an action while its keys are parsed.
+struct ActionBody<'a> {
+    action: ExecAction<'a>,
+    /// Whether the action is a Docker image, which decides where
+    /// `with.entrypoint` and `with.args` go.
+    docker: bool,
+}
+
+impl Section for ActionBody<'static> {
+    type Ast<'a> = ActionBody<'a>;
+}
+
+/// The keys of a step that runs an action, in the reference's order.
+static ACTION_STEP_KEYS: [KeySpec<ActionBody<'static>>; 8] = [
+    common("id"),
+    common("if"),
+    common("name"),
+    common("env"),
+    common("continue-on-error"),
+    common("timeout-minutes"),
+    KeySpec {
+        name: "uses",
+        // TODO(#72): parse the typed `uses` value.
+        parse: |p, b, e| b.action.uses = p.parse_string(e.key.string, e.value, false),
+    },
+    KeySpec {
+        name: "with",
+        parse: |p, b, e| p.parse_step_inputs(b, e),
+    },
+];
+
+impl<'a> Parser<'a, '_> {
+    /// Parses `steps` of a job, the reference's `parseSteps`: a sequence of
+    /// steps that must have items.
+    ///
+    /// Any other value is reported and gives an invalid field, which the job
+    /// then reports as missing, as in the reference.
+    pub(super) fn parse_steps(&mut self, entry: &MapEntry<'a>) -> Field<'a, Arc<[Step<'a>]>> {
+        let key = entry.key.string;
+        let node = entry.value;
+        let span = node.span;
+        let Some(items) = self.check_sequence("steps", node, false) else {
+            return Field::Invalid { key, span };
+        };
+        let mut steps = Vec::with_capacity(items.len());
+        for &id in items {
+            if let Some(item) = self.node(id) {
+                steps.push(self.parse_step(item));
+            }
+        }
+        Field::Valid {
+            key,
+            span,
+            value: steps.into(),
+        }
+    }
+
+    /// Parses one step, the reference's `parseStep`.
+    ///
+    /// The first pass parses the keys that both kinds of step have and finds
+    /// the kind. The second pass parses the keys of that kind and reports
+    /// the others. A step that is not a mapping is reported by the mapping
+    /// walker and as a step with neither `run` nor `uses`.
+    fn parse_step(&mut self, node: &'a Node) -> Step<'a> {
+        let entries =
+            self.parse_mapping(Label::At("element of \"steps\" section"), node, false, true);
+        let mut step = Step {
+            span: node.span,
+            id: Field::Absent,
+            condition: Field::Absent,
+            name: Field::Absent,
+            exec: None,
+            env: Value::Absent,
+            continue_on_error: Value::Absent,
+            timeout_minutes: Value::Absent,
+        };
+        let mut kind = Kind::Unknown;
+        for entry in &entries {
+            let key = entry.key.string;
+            match &*entry.id {
+                "id" => step.id = self.parse_string(key, entry.value, false),
+                "if" => step.condition = self.parse_string(key, entry.value, false),
+                "name" => step.name = self.parse_string(key, entry.value, true),
+                "env" => step.env = self.parse_env(entry.key, entry.value),
+                "continue-on-error" => step.continue_on_error = self.parse_bool(key, entry.value),
+                "timeout-minutes" => step.timeout_minutes = self.parse_timeout_minutes(entry),
+                // The reference reads the value without checking its kind,
+                // so a value that is not a scalar makes an action step.
+                "uses" => {
+                    let docker = Str::new(entry.value)
+                        .is_some_and(|uses| uses.value().starts_with("docker://"));
+                    kind = if docker { Kind::Docker } else { Kind::Action };
+                }
+                "run" => kind = Kind::Run,
+                _ => {}
+            }
+        }
+        step.exec = match kind {
+            Kind::Action | Kind::Docker => {
+                let mut body = ActionBody {
+                    action: ExecAction::default(),
+                    docker: kind == Kind::Docker,
+                };
+                self.parse_keys(
+                    entries,
+                    "step to execute action",
+                    &ACTION_STEP_KEYS,
+                    &mut body,
+                );
+                Some(Exec::Action(body.action))
+            }
+            Kind::Run => {
+                let mut run = ExecRun::default();
+                self.parse_keys(
+                    entries,
+                    "step to run shell command",
+                    &RUN_STEP_KEYS,
+                    &mut run,
+                );
+                Some(Exec::Run(run))
+            }
+            Kind::Unknown => {
+                self.error(
+                    &STEP_WITHOUT_RUN_OR_USES,
+                    node.span,
+                    "step must run script with \"run\" section or run action with \"uses\" section"
+                        .to_owned(),
+                );
+                None
+            }
+        };
+        step
+    }
+
+    /// Parses `with` of a step that runs an action: a case-insensitive
+    /// mapping of input names to strings that may be empty, and must have
+    /// entries.
+    ///
+    /// For a Docker image, `entrypoint` and `args` go to their own fields,
+    /// as in the reference. `entrypoint` must not be empty, and `args` may
+    /// be.
+    fn parse_step_inputs(&mut self, body: &mut ActionBody<'a>, entry: &MapEntry<'a>) {
+        let node = entry.value;
+        let mut entries = self.parse_mapping(Label::Section("with"), node, false, false);
+        if body.docker {
+            entries.retain(|input| match &*input.id {
+                "entrypoint" => {
+                    body.action.entrypoint =
+                        self.parse_string(input.key.string, input.value, false);
+                    false
+                }
+                "args" => {
+                    body.action.args = self.parse_string(input.key.string, input.value, true);
+                    false
+                }
+                _ => true,
+            });
+        }
+        let inputs = self.keyed_strings(entries, true);
+        body.action.inputs = mapping_field(entry.key, node, inputs);
+    }
+}
+
+#[cfg(test)]
+mod tests;
