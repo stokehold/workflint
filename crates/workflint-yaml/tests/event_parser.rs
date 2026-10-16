@@ -685,6 +685,24 @@ fn explicit_key_without_a_value_at_the_end_of_the_stream_has_its_value_on_the_ne
     assert_eq!(at(scalars[1].start), (1, 0));
 }
 
+/// The 1-based line and column of the last node in the tree of `input`.
+fn last_node_position(input: &str) -> (usize, usize) {
+    let file = SourceFile::new(FileId::new(0), "a.yaml", input).unwrap();
+    let document = parse(&file).document.unwrap();
+    let (_, node) = document.nodes().last().unwrap();
+    let pos = file.line_col(node.span.start);
+    (pos.line, pos.column)
+}
+
+// docs/differences.md#empty-scalar-past-last-line
+#[test]
+fn tree_puts_an_empty_scalar_past_the_last_line_at_the_end_of_the_file() {
+    assert_eq!(last_node_position("---"), (1, 4));
+    assert_eq!(last_node_position("? "), (1, 3));
+    assert_eq!(last_node_position("---\n"), (2, 1));
+    assert_eq!(last_node_position("? \n"), (2, 1));
+}
+
 #[test]
 fn explicit_key_without_a_value_has_its_value_after_the_last_token() {
     let scalars = scalars("x:\n  ? !!str\n\ny: 1\n").unwrap();

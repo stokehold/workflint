@@ -82,6 +82,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Status: planned.
 - Fixtures: `err/yaml_syntax_error`, `examples/broken_yaml`.
 
+<a id="empty-scalar-past-last-line"></a>
+### Empty value after the last line of a file without a final line break
+
+- Upstream: go-yaml ends the stream on a new line, so an empty scalar at the end of a file without a final line break is on the line after the last one. A file that holds only `---` has its empty document at `2:1`, and a file that holds only `? ` has the empty value of its key at `2:1`.
+- workflint: positions are byte offsets into the file, and no offset lies on a line after the last one. The empty document is at `1:4`, after the `---`, and the empty value is at `1:3`. With a final line break, both tools report `2:1`.
+- Why: a position must point into the file.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned. No fixture covers it.
+
 <a id="unknown-anchor-position"></a>
 ### Undefined alias position and message prefix
 
