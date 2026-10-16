@@ -1,6 +1,14 @@
 Closes #
 
+## Summary
+
+<!-- What this pull request implements and why it exists, in two to four sentences. A reader should understand it without opening the issue. -->
+
 ## What changed
+
+## Decisions to review
+
+<!-- Each choice the issue left open: the option you took, the alternatives, and why. Write "None." if there are none. After pushing, ask the maintainer about each one, then record the answer here. -->
 
 ## How I verified it
 
