@@ -94,7 +94,9 @@ impl AllowList {
 }
 
 impl Entry {
-    fn describe(&self) -> String {
+    /// Names the entry in a message.
+    #[must_use]
+    pub fn describe(&self) -> String {
         format!(
             "the allowed-differences.toml entry for {} with anchor {}",
             self.fixture, self.anchor
@@ -139,15 +141,21 @@ pub fn apply(expected: &[String], entries: &[&Entry]) -> Result<Vec<String>, Str
             lines.remove(index);
         }
         if let Some(workflint) = &entry.workflint {
-            let key = sort_key(workflint);
-            let index = lines
-                .iter()
-                .position(|line| compare(&sort_key(line), &key) == Ordering::Greater)
-                .unwrap_or(lines.len());
-            lines.insert(index, workflint.clone());
+            insert(&mut lines, workflint);
         }
     }
     Ok(lines)
+}
+
+/// Inserts `line` before the first of `lines` that sorts after it, as
+/// [`apply`] inserts a `workflint` line.
+pub fn insert(lines: &mut Vec<String>, line: &str) {
+    let key = sort_key(line);
+    let index = lines
+        .iter()
+        .position(|other| compare(&sort_key(other), &key) == Ordering::Greater)
+        .unwrap_or(lines.len());
+    lines.insert(index, line.to_owned());
 }
 
 /// The file path of an expected line: the path of an exact line, or the path

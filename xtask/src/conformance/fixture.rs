@@ -153,19 +153,13 @@ impl Fixture {
     /// Returns a skip message if the file name names a tool that is not
     /// installed.
     pub fn tools(&self, installed: &Tools) -> Result<Tools, String> {
-        let name = self.name();
-        let wants = |tool: &str| self.suite != Suite::Projects && name.contains(tool);
-        for (tool, path) in [
-            ("shellcheck", &installed.shellcheck),
-            ("pyflakes", &installed.pyflakes),
-        ] {
-            if wants(tool) && path.is_none() {
-                return Err(format!(
-                    "skipped {} because {tool:?} is not installed",
-                    self.id
-                ));
-            }
+        if let Some(tool) = self.missing_tool(installed) {
+            return Err(format!(
+                "skipped {} because {tool:?} is not installed",
+                self.id
+            ));
         }
+        let name = self.name();
         let enabled = |tool: &str, path: &Option<PathBuf>| match self.suite {
             Suite::Err | Suite::Examples if name.contains(tool) => path.clone(),
             Suite::Ok => path.clone(),
@@ -175,6 +169,20 @@ impl Fixture {
             shellcheck: enabled("shellcheck", &installed.shellcheck),
             pyflakes: enabled("pyflakes", &installed.pyflakes),
         })
+    }
+
+    /// The tool that the fixture's file name names but that is not in
+    /// `installed`, if any. The runner skips such a fixture.
+    #[must_use]
+    pub fn missing_tool(&self, installed: &Tools) -> Option<&'static str> {
+        let name = self.name();
+        [
+            ("shellcheck", &installed.shellcheck),
+            ("pyflakes", &installed.pyflakes),
+        ]
+        .into_iter()
+        .find(|(tool, path)| self.suite != Suite::Projects && name.contains(tool) && path.is_none())
+        .map(|(tool, _)| tool)
     }
 
     /// Copies the fixture into a new temporary project and returns the
@@ -332,22 +340,43 @@ fn copy_dir(from: &Path, to: &Path) -> io::Result<()> {
 
 /// Every fixture of `origin`, found the way the conformance target finds
 /// them.
-pub fn discover(origin: Origin) -> Vec<Fixture> {
-    let root = origin.root();
+///
+/// # Errors
+///
+/// See [`discover_in`].
+pub fn discover(origin: Origin) -> Result<Vec<Fixture>, String> {
+    discover_in(origin, &origin.root())
+}
+
+/// Every fixture of `origin` in the suite directories under `root`. A suite
+/// directory that does not exist has no fixtures.
+///
+/// # Errors
+///
+/// Returns a message that names the directory if a suite directory exists
+/// but cannot be read.
+pub fn discover_in(origin: Origin, root: &Path) -> Result<Vec<Fixture>, String> {
     let mut fixtures = Vec::new();
     for suite in [Suite::Err, Suite::Examples, Suite::Ok, Suite::Projects] {
-        let Ok(entries) = fs::read_dir(root.join(suite.directory())) else {
-            continue;
+        let directory = root.join(suite.directory());
+        let cannot_read =
+            |error: io::Error| format!("cannot read {}: {error}", directory.display());
+        let entries = match fs::read_dir(&directory) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(cannot_read(error)),
         };
-        let mut paths: Vec<PathBuf> = entries
-            .filter_map(Result::ok)
-            .map(|entry| entry.path())
-            .filter(|path| path.is_file() && is_test_file(suite, path))
-            .collect();
+        let mut paths = Vec::new();
+        for entry in entries {
+            let path = entry.map_err(cannot_read)?.path();
+            if path.is_file() && is_test_file(suite, &path) {
+                paths.push(path);
+            }
+        }
         paths.sort();
         fixtures.extend(paths.iter().map(|path| Fixture::new(origin, path)));
     }
-    fixtures
+    Ok(fixtures)
 }
 
 fn is_test_file(suite: Suite, path: &Path) -> bool {
@@ -358,14 +387,24 @@ fn is_test_file(suite: Suite, path: &Path) -> bool {
     }
 }
 
+/// Every fixture of both origins.
+///
+/// # Errors
+///
+/// See [`discover_in`].
+pub fn all() -> Result<Vec<Fixture>, String> {
+    let mut fixtures = discover(Origin::Actionlint)?;
+    fixtures.extend(discover(Origin::Workflint)?);
+    Ok(fixtures)
+}
+
 /// The IDs of every fixture of both origins.
-#[must_use]
-pub fn all_ids() -> BTreeSet<String> {
-    discover(Origin::Actionlint)
-        .into_iter()
-        .chain(discover(Origin::Workflint))
-        .map(|fixture| fixture.id)
-        .collect()
+///
+/// # Errors
+///
+/// See [`discover_in`].
+pub fn all_ids() -> Result<BTreeSet<String>, String> {
+    Ok(all()?.into_iter().map(|fixture| fixture.id).collect())
 }
 
 #[cfg(test)]
@@ -402,9 +441,31 @@ mod tests {
         assert!(project.expected.unwrap().ends_with("projects/issue173.out"));
     }
 
+    // Windows may report a file in place of a directory as not found.
+    #[cfg(unix)]
+    #[test]
+    fn discovery_fails_on_a_suite_directory_it_cannot_read() {
+        let root = tempfile::tempdir().unwrap();
+        // A file where the `err` directory should be cannot be listed.
+        fs::write(root.path().join("err"), "").unwrap();
+        let error = discover_in(Origin::Workflint, root.path()).unwrap_err();
+        assert!(error.starts_with("cannot read "), "{error}");
+        assert!(error.contains("err"), "{error}");
+    }
+
+    #[test]
+    fn discovery_skips_a_missing_suite_directory() {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir(root.path().join("ok")).unwrap();
+        fs::write(root.path().join("ok").join("a.yaml"), "").unwrap();
+        let fixtures = discover_in(Origin::Workflint, root.path()).unwrap();
+        let ids: Vec<&str> = fixtures.iter().map(|f| f.id.as_str()).collect();
+        assert_eq!(ids, ["workflint/ok/a.yaml"]);
+    }
+
     #[test]
     fn the_reference_has_the_fixture_counts_of_its_commit() {
-        let fixtures = discover(Origin::Actionlint);
+        let fixtures = discover(Origin::Actionlint).unwrap();
         let count = |suite| fixtures.iter().filter(|f| f.suite == suite).count();
         assert_eq!(count(Suite::Err), 95);
         assert_eq!(count(Suite::Examples), 51);
