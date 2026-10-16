@@ -5,17 +5,19 @@ use std::fmt::Write as _;
 
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{FileId, SourceFile};
-use workflint_yaml::{Document, Node, NodeId, NodeKind, parse};
+use workflint_yaml::{Document, Node, NodeId, NodeKind, decode, parse};
 
 /// Dumps the tree that `workflint-yaml` builds from `bytes`.
 ///
 /// The format is the one `xtask/goyaml-dump/main.go` documents: one line per
 /// node of the tree before alias resolution, in pre-order, then `empty` for
 /// a file without a root and `error: ` for a file that `workflint-yaml`
-/// rejects. Positions come from the line index of [`SourceFile`].
+/// rejects. The bytes are decoded as go-yaml decodes them, with [`decode`].
+/// Positions come from the line index of [`SourceFile`].
 pub(crate) fn dump(bytes: &[u8]) -> String {
-    let Ok(text) = std::str::from_utf8(bytes) else {
-        return "error: the file is not valid UTF-8\n".to_owned();
+    let text = match decode(bytes) {
+        Ok(text) => text,
+        Err(error) => return format!("error: {}\n", error.problem()),
     };
     let file = match SourceFile::new(FileId::new(0), "", text) {
         Ok(file) => file,
@@ -255,7 +257,21 @@ mod tests {
     }
 
     #[test]
-    fn invalid_utf8_is_an_error() {
-        assert_eq!(dump(b"a: \xff\n"), "error: the file is not valid UTF-8\n");
+    fn invalid_utf8_is_an_error_with_the_go_yaml_message() {
+        assert_eq!(dump(b"a: \xff\n"), "error: invalid leading UTF-8 octet\n");
+    }
+
+    #[test]
+    fn utf16_with_a_byte_order_mark_is_decoded() {
+        let mut bytes = vec![0xFF, 0xFE];
+        bytes.extend("a: \u{e9}\n".encode_utf16().flat_map(u16::to_le_bytes));
+        assert_eq!(
+            dump(&bytes),
+            lines(&[
+                "mapping 1:1",
+                "  scalar 1:1 \"a\"",
+                "  scalar 1:4 \"\u{e9}\""
+            ]),
+        );
     }
 }
