@@ -12,5 +12,9 @@ readme = "../../README.md"
 keywords = ["github-actions", "linter", "workflow", "ci", "actionlint"]
 categories = ["command-line-utilities", "development-tools"]
 
+[dependencies]
+workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
+workflint-yaml = { path = "../workflint-yaml", version = "0.0.1" }
+
 [lints]
 workspace = true
