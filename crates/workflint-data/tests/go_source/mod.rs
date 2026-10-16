@@ -1,5 +1,5 @@
-//! Reads tables from the reference's `expr_sema.go`, vendored by `cargo xtask vendor-testdata`,
-//! for the tests that compare them with `workflint-data`.
+//! Reads tables from the reference's `expr_sema.go` and `expr_insecure.go`, vendored by
+//! `cargo xtask vendor-testdata`, for the tests that compare them with `workflint-data`.
 
 // Each test file uses part of this module.
 #![allow(clippy::panic, dead_code)]
@@ -11,6 +11,10 @@ use workflint_data::{Rest, TypeDesc};
 
 /// The reference's `expr_sema.go`.
 const EXPR_SEMA_GO: &str = include_str!("../../../../tests/conformance/actionlint/expr_sema.go");
+
+/// The reference's `expr_insecure.go`.
+const EXPR_INSECURE_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/expr_insecure.go");
 
 /// An owned expression type, built from the Go source or from a [`TypeDesc`].
 #[derive(Debug, PartialEq, Eq)]
@@ -152,13 +156,13 @@ struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    /// A parser of the source after `declaration`, such as `var Foo = `.
-    fn after(declaration: &str) -> Self {
-        let Some(start) = EXPR_SEMA_GO.find(declaration) else {
-            panic!("expr_sema.go has no {declaration:?}");
+    /// A parser of `source` after `declaration`, such as `var Foo = `.
+    fn after(source: &'a str, declaration: &str) -> Self {
+        let Some(start) = source.find(declaration) else {
+            panic!("the Go source has no {declaration:?}");
         };
         Parser {
-            tokens: tokenize(&EXPR_SEMA_GO[start + declaration.len()..])
+            tokens: tokenize(&source[start + declaration.len()..])
                 .into_iter()
                 .peekable(),
         }
@@ -318,6 +322,50 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// `NewUntrustedInputMap("name", child, ...)`. Pushes the path of each node without
+    /// children, which is an untrusted value, to `paths`.
+    fn untrusted_input_map(&mut self, prefix: &str, paths: &mut Vec<String>) {
+        self.expect_all(&[Token::Ident("NewUntrustedInputMap"), Token::Punct('(')]);
+        let Token::Str(name) = self.next() else {
+            panic!("expected the name of an untrusted input");
+        };
+        let path = if prefix.is_empty() {
+            name.to_owned()
+        } else {
+            format!("{prefix}.{name}")
+        };
+        let mut leaf = true;
+        // gofmt adds a comma after the last argument when it ends its own line.
+        while self.eat(&Token::Punct(',')) {
+            if self.tokens.peek() == Some(&Token::Punct(')')) {
+                break;
+            }
+            self.untrusted_input_map(&path, paths);
+            leaf = false;
+        }
+        self.expect(&Token::Punct(')'));
+        if leaf {
+            paths.push(path);
+        }
+    }
+
+    /// `UntrustedInputSearchRoots{"name": NewUntrustedInputMap(...), ...}`
+    fn untrusted_input_roots(&mut self) -> Vec<String> {
+        self.expect_all(&[Token::Ident("UntrustedInputSearchRoots"), Token::Punct('{')]);
+        let mut paths = Vec::new();
+        loop {
+            match self.next() {
+                Token::Punct('}') => return paths,
+                Token::Str(_) => {
+                    self.expect(&Token::Punct(':'));
+                    self.untrusted_input_map("", &mut paths);
+                    self.expect(&Token::Punct(','));
+                }
+                token => panic!("expected a key or `}}`, got {token:?}"),
+            }
+        }
+    }
+
     /// `map[string][]*FuncSignature{"name": {{...}, ...}, ...}`
     fn signature_map(&mut self) -> BTreeMap<String, Vec<FuncSignature>> {
         self.expect_all(&[
@@ -356,10 +404,16 @@ impl<'a> Parser<'a> {
 
 /// The reference's `BuiltinGlobalVariableTypes`.
 pub(crate) fn builtin_global_variable_types() -> BTreeMap<String, Ty> {
-    Parser::after("var BuiltinGlobalVariableTypes = ").type_map()
+    Parser::after(EXPR_SEMA_GO, "var BuiltinGlobalVariableTypes = ").type_map()
 }
 
 /// The reference's `BuiltinFuncSignatures`.
 pub(crate) fn builtin_func_signatures() -> BTreeMap<String, Vec<FuncSignature>> {
-    Parser::after("var BuiltinFuncSignatures = ").signature_map()
+    Parser::after(EXPR_SEMA_GO, "var BuiltinFuncSignatures = ").signature_map()
+}
+
+/// The paths of the untrusted values in the reference's `BuiltinUntrustedInputs`, such as
+/// `github.event.commits.*.message`, in source order.
+pub(crate) fn builtin_untrusted_inputs() -> Vec<String> {
+    Parser::after(EXPR_INSECURE_GO, "var BuiltinUntrustedInputs = ").untrusted_input_roots()
 }

@@ -22,6 +22,7 @@ pub(crate) const PATHS: &[&str] = &[
     "scripts/generate-actionlint-matcher/test",
     ".github/actionlint-matcher.json",
     "expr_sema.go",
+    "expr_insecure.go",
     "LICENSE.txt",
 ];
 
@@ -383,6 +384,7 @@ mod tests {
             "scripts/generate-actionlint-matcher/test/want.json".to_owned(),
             ".github/actionlint-matcher.json".to_owned(),
             "expr_sema.go".to_owned(),
+            "expr_insecure.go".to_owned(),
             "LICENSE.txt".to_owned(),
         ];
 
