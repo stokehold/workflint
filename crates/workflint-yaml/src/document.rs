@@ -236,8 +236,8 @@ fn written_len(node: &Node) -> usize {
 ///
 /// The simple mapping takes one character to one character. Rust's
 /// lowercase differs from it only for U+0130, whose lowercase adds a
-/// combining dot after the `i`. Characters added to Unicode after the
-/// version that Go uses may still differ.
+/// combining dot after the `i`. [`KeyComparison::CaseInsensitive`] says
+/// where the Unicode versions of Rust and Go differ.
 fn simple_lowercase(text: &str) -> String {
     text.chars()
         .map(|ch| {
@@ -390,6 +390,11 @@ pub enum KeyComparison {
     /// Keys are equal if they are equal after lowercasing each character
     /// with its Unicode simple case mapping, as actionlint does with Go's
     /// `strings.ToLower`.
+    ///
+    /// The mapping comes from the Unicode version of the Rust toolchain.
+    /// Rust 1.99 has Unicode 17 and Go 1.26 has Unicode 15, so the 55
+    /// letters with a lowercase added in Unicode 16 and 17 are lowercased
+    /// here and kept by actionlint.
     CaseInsensitive,
 }
 
