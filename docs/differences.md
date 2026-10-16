@@ -1,10 +1,10 @@
 # Differences from actionlint
 
-workflint is compatible with actionlint at commit `011a6d1` (ADR 0003, ADR 0004). This file lists every place where workflint deliberately behaves differently. Each entry has a matching record in the conformance suite's allow-list, `tests/conformance/allowed-differences.toml`, keyed by the entry's anchor. Any other difference from actionlint is a bug in workflint.
+workflint is compatible with actionlint at commit `011a6d1` (ADR 0003, ADR 0004). This file lists every place where workflint deliberately behaves differently. Any other difference from actionlint is a bug in workflint. An entry that changes the output of a fixture or of the corpus also has records in the conformance suite's allow-list, `tests/conformance/allowed-differences.toml`, keyed by the entry's anchor (ADR 0023). An entry that changes neither has no record.
 
 Rules for this file:
 
-- Add an entry before or in the same pull request as the change. The allow-list record must name the anchor.
+- Add an entry before or in the same pull request as the change. Each allow-list record names the anchor and the fixture.
 - Keep anchors stable. Other documents and the allow-list link to them.
 - An entry describes behaviour that users can observe: output, exit codes, files read or written. Internal design choices that do not change output belong in the ADRs.
 - Status is `planned` until the change ships, then `done` with the version.
@@ -314,7 +314,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - workflint: plain scalars are typed under the YAML 1.2 core schema (ADR 0005). `1_000`, `0b10`, `2026-10-15`, and `<<` are strings, so a numeric key such as `timeout-minutes: 1_000` reports a string where a number is expected, and no message names a `!!timestamp` or `!!merge` tag. `-0` is an integer.
 - Why: the 1.2 core schema matches how GitHub types plain scalars, so the diagnostic describes what GitHub does with the file. M2 confirms this against the scalar handling in `actions/runner` before the change ships.
 - Upstream issue: none.
-- Milestone: M2.
+- Milestone: M1.
 - Status: planned. The conformance allow-list records each fixture whose message changes.
 
 <a id="quoted-scalar-types"></a>

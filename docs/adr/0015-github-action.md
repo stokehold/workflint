@@ -1,7 +1,8 @@
 # ADR 0015: Official GitHub Action
 
-- Status: accepted. Under ADR 0021, each action release waits for the maintainer's approval of its `release` environment, so new workflint versions reach the action after that approval rather than automatically.
+- Status: accepted
 - Date: 2026-10-15
+- Amended by: ADR 0021. Each action release waits for the maintainer's approval of its `release` environment, so new workflint versions reach the action after that approval rather than automatically.
 
 ## Context
 

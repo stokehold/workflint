@@ -27,18 +27,18 @@ The maintainer reviews and merges. Leave merging and auto-merge to the maintaine
 
 A task is done when all of these hold:
 
-- `cargo fmt --all --check`, `cargo clippy --workspace --all-targets` with zero warnings, `cargo nextest run --workspace`, and `cargo test --doc --workspace` pass.
-- The conformance suite passes. Every new difference from the reference has an entry in `docs/differences.md` and in `tests/conformance/allowed-differences.toml`.
+- `cargo fmt --all --check`, `cargo clippy --workspace --all-targets` with zero warnings, `cargo nextest run --workspace`, `cargo test --doc --workspace`, and `cargo deny check` pass.
+- The conformance suite passes. `cargo nextest run --workspace` runs it. Every new difference from the reference has an entry in `docs/differences.md`. A difference that changes a fixture's or the corpus's output also has records in `tests/conformance/allowed-differences.toml` (ADR 0023).
 - Docs touched by the change are updated in the same pull request.
 - The pull request title follows Conventional Commits (it becomes the squash commit). The description opens with a summary of what the pull request implements and why, and says how you verified the change.
 
 ## Code conventions
 
-These come from ADR 0016 and ADR 0018. The ADRs have the reasons.
+These come from ADR 0016, ADR 0018, and ADR 0024. The ADRs have the reasons.
 
 - Malformed input produces diagnostics. Handle every fallible lookup explicitly; library code has no `unwrap`, `expect`, or `panic!`.
 - Platform facts (runner labels, permissions, events, contexts, action inputs) live only in `workflint-data`.
-- One rule per module in `workflint-rules`, with a page in `docs/rules/<id>.md` whose examples run as tests.
+- One rule per module in `workflint-rules`, with a page in `docs/rules/<id>.md` whose examples run as tests. A parse-stage rule, reported by a parsing crate such as `workflint-yaml`, keeps its `RuleMeta` in that crate and is listed in the registry. Its page arrives in M4.x.
 - Only `workflint-linter` and `workflint` touch the file system, processes, the network, or the environment.
 - Output is deterministic: iterate in source or sorted order, never hash order, and never depend on the clock.
 - Name tests after the behaviour they check.
