@@ -13,10 +13,15 @@ workflint is early in development. The plan lives in `docs/roadmap.md`, and the 
 
 You need [rustup](https://rustup.rs). The repository pins its toolchain in `rust-toolchain.toml`, and rustup installs it on first use.
 
+The tests run with [cargo-nextest](https://nexte.st). CI uses version 0.9.148. Install it with `cargo install --locked cargo-nextest`, or download a prebuilt binary as the nextest documentation describes.
+
 ```sh
 cargo run -p workflint
-cargo test --workspace
+cargo nextest run --workspace
+cargo test --doc --workspace
 ```
+
+nextest does not run doctests, so the last command runs them. CI runs nextest with `--profile ci`, defined in `.config/nextest.toml`, which runs every test instead of stopping at the first failure.
 
 `cargo xtask --help` lists the developer commands.
 
@@ -27,7 +32,7 @@ Parity work also needs the reference checkout of actionlint and its test corpus.
 - One issue per pull request. Open it as a draft with `Closes #N` in the description as soon as you start, so others can see the task is taken.
 - The pull request title follows Conventional Commits and names the task, for example `feat(expr): M3.2 Pratt parser`. It becomes the squash commit message.
 - Write the failing test before the fix or feature.
-- Before you open the pull request, run `cargo fmt --all`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace`.
+- Before you open the pull request, run `cargo fmt --all`, `cargo clippy --workspace --all-targets`, `cargo nextest run --workspace`, and `cargo test --doc --workspace`.
 - If your change makes workflint differ from actionlint, add an entry to `docs/differences.md`.
 - Say in the pull request how you verified the change.
 

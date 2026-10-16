@@ -25,7 +25,7 @@ The maintainer reviews and merges. Leave merging and auto-merge to the maintaine
 
 A task is done when all of these hold:
 
-- `cargo fmt --all --check`, `cargo clippy --workspace --all-targets` with zero warnings, and the workspace tests pass.
+- `cargo fmt --all --check`, `cargo clippy --workspace --all-targets` with zero warnings, `cargo nextest run --workspace`, and `cargo test --doc --workspace` pass.
 - The conformance suite passes. Every new difference from the reference has an entry in `docs/differences.md` and in `tests/conformance/allowed-differences.toml`.
 - Docs touched by the change are updated in the same pull request.
 - The pull request title follows Conventional Commits (it becomes the squash commit), and the description says how you verified the change.
