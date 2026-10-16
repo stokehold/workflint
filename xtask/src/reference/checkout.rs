@@ -57,6 +57,9 @@ fn create(dir: &Path, url: &str, commit: &str) -> Result<()> {
     fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
     let result = (|| {
         git(dir, &["init", "--quiet"])?;
+        // Keep the files byte for byte as upstream has them, also where git
+        // converts line endings by default, as on Windows.
+        git(dir, &["config", "core.autocrlf", "false"])?;
         git(dir, &["remote", "add", "origin", url])?;
         git(dir, &["fetch", "--quiet", "--depth", "1", "origin", commit])?;
         git(dir, &["checkout", "--quiet", "--detach", "FETCH_HEAD"])?;
@@ -218,6 +221,7 @@ mod tests {
             "first\n"
         );
         assert_eq!(git(&dir, &["remote", "get-url", "origin"]), upstream.url);
+        assert_eq!(git(&dir, &["config", "core.autocrlf"]), "false");
     }
 
     #[test]
