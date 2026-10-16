@@ -94,3 +94,62 @@ pub static UNDEFINED_CONFIG_VARIABLE: RuleMeta = RuleMeta {
     default_severity: Severity::Error,
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/undefined-config-variable.md",
 };
+
+/// An expression calls a function that is not built in, such as `foo()`.
+pub static UNDEFINED_FUNCTION: RuleMeta = RuleMeta {
+    id: "undefined-function",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/undefined-function.md",
+};
+
+/// A call of a built-in function has the wrong number of arguments for an overload, such as
+/// `contains('foo')`.
+pub static WRONG_ARGUMENT_COUNT: RuleMeta = RuleMeta {
+    id: "wrong-argument-count",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/wrong-argument-count.md",
+};
+
+/// An argument of a built-in function has a type that its parameter does not accept, such as
+/// `startsWith('foo', null)`.
+pub static WRONG_ARGUMENT_TYPE: RuleMeta = RuleMeta {
+    id: "wrong-argument-type",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/wrong-argument-type.md",
+};
+
+/// The literal format string of `format()` has no placeholder for an argument, such as
+/// `format('{0}', 1, 2)`.
+pub static UNUSED_FORMAT_ARGUMENT: RuleMeta = RuleMeta {
+    id: "unused-format-argument",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/unused-format-argument.md",
+};
+
+/// The literal format string of `format()` has a placeholder beyond its arguments, such as
+/// `format('{0} {1}', 1)`.
+pub static MISSING_FORMAT_ARGUMENT: RuleMeta = RuleMeta {
+    id: "missing-format-argument",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/missing-format-argument.md",
+};
+
+/// `case()` has an even number of arguments, so it has no default value, such as
+/// `case(true, 'a', false, 'b')`.
+pub static CASE_ARGUMENT_COUNT: RuleMeta = RuleMeta {
+    id: "case-argument-count",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/case-argument-count.md",
+};

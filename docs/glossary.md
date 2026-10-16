@@ -22,6 +22,8 @@ Use these words with these meanings in code, docs, and pull requests.
 | context | A top-level expression variable such as `github`, `env`, `matrix`, or `steps`. |
 | object filter | `.*` in an expression, as in `labels.*.name`, which applies the rest of the expression to each element of an array or each value of an object (`ExprKind::ObjectFilter`). |
 | type environment | The types of the contexts at one place in a workflow, which the type checker checks expressions against (`TypeEnv`). It has the global contexts and the types of `matrix`, `steps`, `needs`, `secrets`, `inputs`, and `jobs` that the workflow, job, or step sets. |
+| built-in function | A function that expressions can call, such as `contains` or `format`, with its overloads (`BUILTIN_FUNCTIONS`). Calls match the name without regard to case. |
+| overload | One signature of a built-in function: its parameter types, whether the last parameter repeats, and its return type. A call takes the first overload that accepts its arguments. |
 | availability | Which contexts and functions a given workflow key allows. |
 | platform data | Facts about GitHub that change over time: runner labels, permissions, events, contexts, popular actions (ADR 0011). |
 | rule | One check with a stable ID and rule metadata, listed in the registry in `workflint-rules`. |
