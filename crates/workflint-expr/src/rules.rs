@@ -1,4 +1,5 @@
-//! The rules whose diagnostics the expression lexer, parser, and type checker report.
+//! The rules whose diagnostics the expression lexer, parser, type checker, and untrusted-input
+//! check report.
 
 use workflint_diagnostics::{Category, RuleMeta, Severity};
 
@@ -152,4 +153,24 @@ pub static CASE_ARGUMENT_COUNT: RuleMeta = RuleMeta {
     category: Category::Correctness,
     default_severity: Severity::Error,
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/case-argument-count.md",
+};
+
+/// A script reads a value that someone outside the repository can set, such as
+/// `github.event.issue.title`, so the value can inject code.
+pub static UNTRUSTED_INPUT: RuleMeta = RuleMeta {
+    id: "untrusted-input",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/untrusted-input.md",
+};
+
+/// A script reads an object filter, such as `github.event.*.body`, that extracts several
+/// values that someone outside the repository can set.
+pub static UNTRUSTED_OBJECT_FILTER: RuleMeta = RuleMeta {
+    id: "untrusted-object-filter",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/untrusted-object-filter.md",
 };

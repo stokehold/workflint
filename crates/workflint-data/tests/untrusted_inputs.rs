@@ -102,7 +102,10 @@ fn names_are_lower_case_and_star_is_an_only_child() {
             } else {
                 assert!(
                     !node.name.is_empty()
-                        && node.name.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'),
+                        && node
+                            .name
+                            .bytes()
+                            .all(|b| b.is_ascii_lowercase() || b == b'_'),
                     "{here} does not match ^[a-z_]+$"
                 );
             }

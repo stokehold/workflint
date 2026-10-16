@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, LazyLock};
 
-use workflint_data::GLOBAL_CONTEXTS;
+use workflint_data::{GLOBAL_CONTEXTS, UntrustedInput};
 
 use crate::types::{ObjectTy, Rest, Ty};
 
@@ -58,6 +58,9 @@ pub struct TypeEnv {
     /// The configured variable names. `None` turns the check of `vars.NAME` against the list
     /// off.
     config_vars: Option<Arc<[String]>>,
+    /// The untrusted input paths that [`check`](Self::check) reports. `None` turns the check
+    /// off.
+    untrusted_inputs: Option<&'static [UntrustedInput]>,
 }
 
 impl TypeEnv {
@@ -130,6 +133,34 @@ impl TypeEnv {
     /// compared without regard to case. Without a call, any name is allowed.
     pub fn set_config_vars<S: Into<String>>(&mut self, names: impl IntoIterator<Item = S>) {
         self.config_vars = Some(names.into_iter().map(Into::into).collect());
+    }
+
+    /// Turns on the check for untrusted input with the paths in `roots`, as for an expression in
+    /// a script. [`check`](Self::check) then reports each untrusted value that the expression
+    /// reads, as [`find_untrusted_inputs`](crate::find_untrusted_inputs) does, after the
+    /// semantic errors. The check is off in a new environment.
+    ///
+    /// `roots` is usually [`workflint_data::UNTRUSTED_INPUTS`]. This is the reference's
+    /// `NewExprSemanticsChecker` with `checkUntrustedInput` set, plus the custom roots of
+    /// `NewUntrustedInputChecker`.
+    ///
+    /// ```
+    /// use workflint_data::UNTRUSTED_INPUTS;
+    /// use workflint_expr::{TypeEnv, parse_expression};
+    ///
+    /// let mut env = TypeEnv::new();
+    /// env.set_untrusted_inputs(UNTRUSTED_INPUTS);
+    /// let (expr, _) = parse_expression("github.head_ref }}").unwrap();
+    /// let (_, errors) = env.check(&expr);
+    /// assert_eq!(errors[0].rule.id, "untrusted-input");
+    /// ```
+    pub fn set_untrusted_inputs(&mut self, roots: &'static [UntrustedInput]) {
+        self.untrusted_inputs = Some(roots);
+    }
+
+    /// Returns the untrusted input paths, if the check is on.
+    pub(crate) fn untrusted_inputs(&self) -> Option<&'static [UntrustedInput]> {
+        self.untrusted_inputs
     }
 
     /// Returns the type of the context `name`, which must be lower case.

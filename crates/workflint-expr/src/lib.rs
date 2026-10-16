@@ -20,6 +20,11 @@
 //! built-in function with the wrong arguments, each with its rule from [`rules`].
 //! [`Expr::is_constant`] tells whether an expression has the same value in every run.
 //!
+//! [`TypeEnv::set_untrusted_inputs`] turns on the check for expressions in scripts: `check` then
+//! also reports the values that someone outside the repository can set, such as
+//! `github.event.issue.title`, after the semantic errors. [`find_untrusted_inputs`] runs that
+//! check alone.
+//!
 //! ```
 //! use workflint_expr::Ty;
 //!
@@ -59,6 +64,7 @@ mod parser;
 pub mod rules;
 mod token;
 mod types;
+mod untrusted;
 
 pub use ast::{CompareOp, Expr, ExprKind, LogicalOp, Name, StringLit, Visit};
 pub use env::TypeEnv;
@@ -67,3 +73,4 @@ pub use lexer::{Lexer, lex_expression};
 pub use parser::parse_expression;
 pub use token::{Token, TokenKind};
 pub use types::{ArrayTy, ObjectTy, Rest, Ty};
+pub use untrusted::find_untrusted_inputs;

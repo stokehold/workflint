@@ -72,9 +72,9 @@ fn found(input: &str) -> Vec<Error> {
     found_with(UNTRUSTED_INPUTS, input)
 }
 
-/// The byte offset of the `n`th `github` in `input`, counting from 0.
+/// The byte offset of the `n`th `github` in `input`, in any case, counting from 0.
 fn nth_github(input: &str, n: usize) -> u32 {
-    let Some((offset, _)) = input.match_indices("github").nth(n) else {
+    let Some((offset, _)) = input.to_ascii_lowercase().match_indices("github").nth(n) else {
         panic!("{input:?} has no github number {n}");
     };
     u32::try_from(offset).expect("a short input")
@@ -113,7 +113,9 @@ mod detect_untrusted_value {
                 if *prop == "*" {
                     out.push_str(star);
                 } else {
-                    out.push_str(&format!("['{prop}']"));
+                    out.push_str("['");
+                    out.push_str(prop);
+                    out.push_str("']");
                 }
             }
             out
@@ -288,11 +290,7 @@ mod detect_untrusted_value {
         assert_eq!(
             found(input),
             [
-                at(
-                    input,
-                    0,
-                    filtered(&BODIES)
-                ),
+                at(input, 0, filtered(&BODIES)),
                 at(
                     input,
                     1,
@@ -402,11 +400,7 @@ mod init_state {
             let (_, errors) = env.check(&parse("github.event.issue.title }}"));
             assert_eq!(
                 simplify(&errors),
-                [(
-                    UNTRUSTED_INPUT.id,
-                    0,
-                    untrusted("github.event.issue.title")
-                )]
+                [(UNTRUSTED_INPUT.id, 0, untrusted("github.event.issue.title"))]
             );
         }
     }
@@ -471,8 +465,7 @@ mod customized_untrusted_input_mapping {
     }
 
     static FOO: [UntrustedInput; 1] = [node("foo", &[])];
-    static FOO_BAR_PIYO: [UntrustedInput; 1] =
-        [node("foo", &[node("bar", &[node("piyo", &[])])])];
+    static FOO_BAR_PIYO: [UntrustedInput; 1] = [node("foo", &[node("bar", &[node("piyo", &[])])])];
     static GITHUB_FOO_ARRAY: [UntrustedInput; 1] =
         [node("github", &[node("foo", &[node("*", &[])])])];
 
@@ -670,10 +663,7 @@ mod type_env {
     #[test]
     fn object_filter_has_its_own_rule() {
         let input = "github.event.*.body";
-        assert_eq!(
-            checked(&env(), input),
-            [at(input, 0, filtered(&BODIES))]
-        );
+        assert_eq!(checked(&env(), input), [at(input, 0, filtered(&BODIES))]);
     }
 
     /// The reference's `Check` does not visit the arguments of a function that is not built in,
