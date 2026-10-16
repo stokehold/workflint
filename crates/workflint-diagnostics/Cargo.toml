@@ -9,10 +9,11 @@ repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
 readme = "README.md"
-exclude = ["gen/"]
 
 [dependencies]
 thiserror = "2.0.21"
+# Pinned to Unicode 15.0.0, the version Go uses. See `quote::is_print`.
+unicode-general-category = "=0.6.0"
 
 [lints]
 workspace = true

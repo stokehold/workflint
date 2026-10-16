@@ -5,9 +5,6 @@
 
 use std::fmt::Write as _;
 
-#[rustfmt::skip]
-mod printable;
-
 /// Quotes `s` with double quotes, as Go's `strconv.Quote` and `%q` do.
 #[must_use]
 pub fn quote(s: &str) -> String {
@@ -126,20 +123,49 @@ fn push_escaped(out: &mut String, c: char, delimiter: char) {
 }
 
 /// Reports whether Go's `strconv.IsPrint` accepts `c`: letters, marks, numbers, punctuation,
-/// symbols, and the ASCII space, by the Unicode version of the Go release the table came from.
+/// symbols, and the ASCII space.
+///
+/// The answer depends on the Unicode version. Go 1.21 to 1.26 use Unicode 15.0.0, and so does
+/// `unicode-general-category` 0.6.0, which is why `Cargo.toml` pins that version. Bump the crate
+/// only to the release whose Unicode version matches the Go release that builds the reference.
 fn is_print(c: char) -> bool {
-    let code = u32::from(c);
-    printable::PRINTABLE
-        .binary_search_by(|&(lo, hi)| {
-            if hi < code {
-                std::cmp::Ordering::Less
-            } else if lo > code {
-                std::cmp::Ordering::Greater
-            } else {
-                std::cmp::Ordering::Equal
-            }
-        })
-        .is_ok()
+    use unicode_general_category::GeneralCategory as Gc;
+
+    if c == ' ' {
+        return true;
+    }
+    match unicode_general_category::get_general_category(c) {
+        Gc::UppercaseLetter
+        | Gc::LowercaseLetter
+        | Gc::TitlecaseLetter
+        | Gc::ModifierLetter
+        | Gc::OtherLetter
+        | Gc::NonspacingMark
+        | Gc::SpacingMark
+        | Gc::EnclosingMark
+        | Gc::DecimalNumber
+        | Gc::LetterNumber
+        | Gc::OtherNumber
+        | Gc::ConnectorPunctuation
+        | Gc::DashPunctuation
+        | Gc::OpenPunctuation
+        | Gc::ClosePunctuation
+        | Gc::InitialPunctuation
+        | Gc::FinalPunctuation
+        | Gc::OtherPunctuation
+        | Gc::MathSymbol
+        | Gc::CurrencySymbol
+        | Gc::ModifierSymbol
+        | Gc::OtherSymbol => true,
+        Gc::SpaceSeparator
+        | Gc::LineSeparator
+        | Gc::ParagraphSeparator
+        | Gc::Control
+        | Gc::Format
+        | Gc::Surrogate
+        | Gc::PrivateUse
+        | Gc::Unassigned => false,
+    }
 }
 
 // The expected values come from Go 1.26.4's `strconv.Quote` and `strconv.QuoteRune`.
@@ -260,6 +286,16 @@ mod tests {
         for (input, want) in cases {
             assert_eq!(quote_rune(input), want, "{input:?}");
         }
+    }
+
+    #[test]
+    fn unicode_version_matches_the_one_go_uses() {
+        assert_eq!(
+            unicode_general_category::UNICODE_VERSION,
+            (15, 0, 0),
+            "Go 1.21 to 1.26 use Unicode 15.0.0. Another version changes which characters \
+             `quote` escapes, so the messages stop matching actionlint's. See `is_print`."
+        );
     }
 
     #[test]

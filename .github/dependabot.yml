@@ -9,6 +9,10 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
+    ignore:
+      # Pinned to the Unicode version Go uses, so quoting matches actionlint.
+      # Bump it by hand. See `is_print` in crates/workflint-diagnostics/src/quote.rs.
+      - dependency-name: unicode-general-category
     commit-message:
       prefix: chore
       include: scope
