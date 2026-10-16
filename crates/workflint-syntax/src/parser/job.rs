@@ -39,10 +39,6 @@ struct JobBody<'a> {
     /// The keys written that only a job that calls a reusable workflow may
     /// have, in source order.
     call_only: Vec<Key<'a>>,
-    /// Whether `steps` is written.
-    // TODO(#71): check `job.steps` instead, so that an invalid `steps` is
-    // missing too.
-    steps: bool,
 }
 
 impl Section for JobBody<'static> {
@@ -117,9 +113,8 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     },
     KeySpec {
         name: "steps",
-        // TODO(#71): parse the steps.
-        parse: |_, b, e| {
-            b.steps = true;
+        parse: |p, b, e| {
+            b.job.steps = p.parse_steps(e);
             b.steps_only.push(e.key);
         },
     },
@@ -261,7 +256,8 @@ impl<'a> Parser<'a, '_> {
     /// each key that only a job with steps may have is reported, and the
     /// job then has no [`workflow_call`](Job::workflow_call). Without
     /// `uses`, a missing `runs-on` or `steps` is reported at the job ID, and
-    /// each of `with` and `secrets` is reported at its key. The reference
+    /// each of `with` and `secrets` is reported at its key. An invalid
+    /// `steps` counts as missing, as in the reference. The reference
     /// reports only the last such key
     /// (`docs/differences.md#reusable-call-keys`).
     fn parse_job(&mut self, id: Key<'a>, node: &'a Node) -> Job<'a> {
@@ -275,7 +271,6 @@ impl<'a> Parser<'a, '_> {
             call,
             steps_only,
             call_only,
-            steps,
         } = body;
         if call.uses.is_present() {
             for key in &steps_only {
@@ -295,7 +290,7 @@ impl<'a> Parser<'a, '_> {
             }
             return job;
         }
-        if !steps {
+        if !job.steps.is_valid() {
             self.error(
                 &MISSING_REQUIRED_KEY,
                 id.span,
@@ -419,10 +414,10 @@ impl<'a> Parser<'a, '_> {
         mapping_field(entry.key, node, outputs)
     }
 
-    /// Parses `timeout-minutes` of a job, the reference's
+    /// Parses `timeout-minutes` of a job or a step, the reference's
     /// `parseTimeoutMinutes`: a float, or a single expression. A literal
     /// that is zero or less is reported and kept.
-    fn parse_timeout_minutes(&mut self, entry: &MapEntry<'a>) -> Value<'a, f64> {
+    pub(super) fn parse_timeout_minutes(&mut self, entry: &MapEntry<'a>) -> Value<'a, f64> {
         let value = self.parse_float(entry.key.string, entry.value);
         if let Value::Literal { value: minutes, .. } = value
             && minutes <= 0.0
