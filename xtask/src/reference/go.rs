@@ -55,11 +55,13 @@ pub(crate) fn read_pinned_version(path: &Path) -> Result<String> {
     Ok(format!("go{version}"))
 }
 
-/// Runs `go version` in `dir` and fails unless it reports `pinned`.
+/// Runs `go version` in `dir` and fails unless it reports `pinned`. `task`
+/// names what needs Go in the error message, for example `building the
+/// reference`.
 ///
-/// Running it in the checkout applies the same toolchain selection as the
-/// build, so a `GOTOOLCHAIN` setting counts.
-pub(crate) fn require_version(go: &OsString, dir: &Path, pinned: &str) -> Result<()> {
+/// Running it in the directory of the build applies the same toolchain
+/// selection as the build, so a `GOTOOLCHAIN` setting counts.
+pub(crate) fn require_version(go: &OsString, dir: &Path, pinned: &str, task: &str) -> Result<()> {
     let how = format!(
         "Install {pinned} from https://go.dev/dl/, or set GOTOOLCHAIN={pinned} \
          to make an installed Go 1.21 or later download it."
@@ -68,7 +70,7 @@ pub(crate) fn require_version(go: &OsString, dir: &Path, pinned: &str) -> Result
         Ok(output) => output,
         Err(error) if error.kind() == ErrorKind::NotFound => {
             bail!(
-                "building the reference needs {pinned}, but `{}` was not found on PATH. {how}",
+                "{task} needs {pinned}, but `{}` was not found on PATH. {how}",
                 go.display()
             );
         }
@@ -90,7 +92,7 @@ pub(crate) fn require_version(go: &OsString, dir: &Path, pinned: &str) -> Result
         Some(GoVersion::Devel(description)) => format!("the development build {description}"),
         None => format!("{:?}", stdout.trim()),
     };
-    bail!("building the reference needs {pinned}, but `go version` reports {found}. {how}")
+    bail!("{task} needs {pinned}, but `go version` reports {found}. {how}")
 }
 
 #[cfg(test)]
@@ -180,7 +182,8 @@ mod tests {
     fn missing_go_names_the_required_version() {
         let dir = tempfile::tempdir().unwrap();
         let go = OsString::from("workflint-test-no-such-go");
-        let error = require_version(&go, dir.path(), "go1.26.4").unwrap_err();
+        let error =
+            require_version(&go, dir.path(), "go1.26.4", "building the reference").unwrap_err();
         let message = format!("{error:#}");
         assert!(message.contains("go1.26.4"), "{message}");
         assert!(message.contains("not found"), "{message}");
@@ -201,7 +204,8 @@ mod tests {
     fn different_go_version_names_both_versions() {
         let dir = tempfile::tempdir().unwrap();
         let go = fake_go(dir.path(), "go version go1.25.0 linux/amd64");
-        let error = require_version(&go, dir.path(), "go1.26.4").unwrap_err();
+        let error =
+            require_version(&go, dir.path(), "go1.26.4", "building the reference").unwrap_err();
         let message = format!("{error:#}");
         assert!(message.contains("go1.26.4"), "{message}");
         assert!(message.contains("go1.25.0"), "{message}");
@@ -216,7 +220,8 @@ mod tests {
             dir.path(),
             "go version devel go1.27-2a3d4e5f6a Tue Oct 13 18:00:00 2026 +0000 linux/amd64",
         );
-        let error = require_version(&go, dir.path(), "go1.26.4").unwrap_err();
+        let error =
+            require_version(&go, dir.path(), "go1.26.4", "building the reference").unwrap_err();
         assert!(format!("{error:#}").contains("go1.26.4"));
     }
 
@@ -225,6 +230,6 @@ mod tests {
     fn pinned_go_version_passes() {
         let dir = tempfile::tempdir().unwrap();
         let go = fake_go(dir.path(), "go version go1.26.4 X:nodwarf5 linux/amd64");
-        require_version(&go, dir.path(), "go1.26.4").unwrap();
+        require_version(&go, dir.path(), "go1.26.4", "building the reference").unwrap();
     }
 }

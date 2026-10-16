@@ -1,0 +1,55 @@
+name: YAML parity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - crates/workflint-yaml/**
+      - crates/workflint-diagnostics/**
+      - xtask/goyaml-dump/**
+      - xtask/src/yaml_parity.rs
+      - xtask/src/yaml_parity/**
+      - xtask/src/reference/**
+      - tests/yaml-parity/**
+      - tests/conformance/actionlint/**
+      - .go-version
+      - .github/workflows/yaml-parity.yml
+  pull_request:
+    paths:
+      - crates/workflint-yaml/**
+      - crates/workflint-diagnostics/**
+      - xtask/goyaml-dump/**
+      - xtask/src/yaml_parity.rs
+      - xtask/src/yaml_parity/**
+      - xtask/src/reference/**
+      - tests/yaml-parity/**
+      - tests/conformance/actionlint/**
+      - .go-version
+      - .github/workflows/yaml-parity.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yaml-parity-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  yaml-parity:
+    name: cargo xtask yaml-parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo xtask yaml-parity

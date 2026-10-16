@@ -7,8 +7,8 @@
 
 mod binary;
 mod checkout;
-mod corpus;
-mod go;
+pub(crate) mod corpus;
+pub(crate) mod go;
 
 use std::env;
 use std::ffi::OsString;

@@ -35,6 +35,14 @@ The command checks the Go version before it builds. With another Go 1.21 or late
 
 The test suite does not need `.reference/`. It reads a copy of the reference's test data in `tests/conformance/actionlint/`, which is in git. `cargo xtask vendor-testdata` recreates that copy from the checkout, and the `README.md` there lists the files it holds.
 
+After a change to `crates/workflint-yaml/`, `crates/workflint-diagnostics/`, or `xtask/goyaml-dump/`, run:
+
+```sh
+cargo xtask yaml-parity
+```
+
+It builds a small Go program with go-yaml, the YAML library of the reference, and compares the trees of both parsers on the vendored test data, the 1,503 corpus files, and `tests/yaml-parity/`. Every node must have the same kind, position, decoded value, anchor, and alias name. A file that go-yaml rejects must fail in workflint too, at any position. The command prints a diff for each file that differs and exits with an error. It needs Go 1.26.4, not `.reference/`. Pass file or directory paths to compare only those. CI runs it when these paths change.
+
 ## Pull requests
 
 - One issue per pull request. Open it as a draft with `Closes #N` in the description as soon as you start, so others can see the task is taken.
