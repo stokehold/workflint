@@ -41,6 +41,14 @@ Use these words with these meanings in code, docs, and pull requests.
 | event parser | The parser of the vendored libyaml-safer fork, `workflint_yaml::event::EventParser`. It turns YAML text into events, including comment events. |
 | span tree | The tree that `workflint_yaml::parse` builds from the events of a file's first YAML document (`Document`): one arena of nodes with byte spans, tags, styles, anchors, and attached comments. |
 | source map | The mapping from a decoded scalar's characters back to source bytes, used for positions inside `run:` scripts and quoted strings. `Node::source_map` builds it on demand (ADR 0022). |
+| AST | The typed tree of a workflow that `workflint-syntax` builds from the span tree (`Workflow`). It borrows its strings from the span tree. |
+| string leaf | A key or string value in the AST (`Str`): the decoded value of a YAML scalar and the node it comes from, which gives its span, tag, style, and source map. |
+| field | A key with a fixed name in a section, such as `name` or `steps` of a job, and its value. It is absent, invalid, or valid (`Field`). |
+| expression value | A value that may be a literal or a single `${{ }}` expression, such as `continue-on-error`. It is absent, invalid, a literal, or an expression (`Value`). |
+| invalid value | A value that is written but has the wrong type or is otherwise unusable. The parser reports it once, and the AST marks it (`Field::Invalid`, `Value::Invalid`) so that rules skip it. |
+| short form | A string written where a mapping is also accepted, such as `concurrency: ci` or `container: node:24`. The string fills one field of the mapping form, and that field has no key. |
+| keyed collection | Entries keyed by names that compare case-insensitively, such as jobs, `env`, or `with` (`Keyed`). It keeps source order, and each entry keeps its key as written and its folded key. |
+| folded key | A key lowercased as Go's `strings.ToLower` does. Keyed collections compare folded keys, and lookup returns the first entry with a name. |
 | ignore comment | A `# workflint: ignore[...]` YAML comment that suppresses diagnostics (ADR 0009). |
 | project root | The directory that contains `.github/workflows` and a version control marker (ADR 0010). |
 | external tool | shellcheck, ruff, or pyflakes, run as a subprocess (ADR 0012). |
