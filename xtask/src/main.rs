@@ -6,8 +6,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod bench;
+mod fuzz_seeds;
 mod reference;
 mod vendor_testdata;
+mod yaml_parity;
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -25,13 +27,6 @@ struct Cli {
 /// Each subcommand lives in its own module in `xtask/src/`.
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Recreate the actionlint checkout, reference binary, and corpus in
-    /// `.reference/`. Needs git and the Go version in `.go-version`.
-    Reference,
-    /// Copy the reference's test data from `.reference/actionlint` into
-    /// `tests/conformance/actionlint/`. Clones the checkout first if it is
-    /// missing.
-    VendorTestdata,
     /// Compare workflint with the reference on the benchmark scenarios of ADR
     /// 0019 and write `target/bench/results.json` and `results.md`. Needs
     /// hyperfine 2 and the reference's tools, plus shellcheck 0.11.0 for the
@@ -56,6 +51,29 @@ enum Command {
         #[arg(long, value_name = "FILE")]
         issue_body: Option<PathBuf>,
     },
+    /// Write seed inputs for the fuzz targets into `fuzz/corpus/<target>/`:
+    /// the YAML files of the vendored test data, the corpus archive, the YAML
+    /// test suite, and the fuzz regression inputs.
+    FuzzSeeds,
+    /// Recreate the actionlint checkout, reference binary, and corpus in
+    /// `.reference/`. Needs git and the Go version in `.go-version`.
+    Reference,
+    /// Copy the reference's test data from `.reference/actionlint` into
+    /// `tests/conformance/actionlint/`. Clones the checkout first if it is
+    /// missing.
+    VendorTestdata,
+    /// Compare the YAML trees of workflint-yaml and go-yaml: node kinds,
+    /// positions, decoded values, anchors, and aliases. Run it after
+    /// changing crates/workflint-yaml, crates/workflint-diagnostics, or
+    /// xtask/goyaml-dump. Needs the Go version in `.go-version`.
+    ///
+    /// Without paths, it compares the vendored test data, the corpus, and
+    /// tests/yaml-parity/. It exits with an error if a file differs.
+    YamlParity {
+        /// Files, or directories to search for `.yaml` and `.yml` files, to
+        /// compare instead of the default inputs.
+        paths: Vec<PathBuf>,
+    },
 }
 
 fn parse_seconds(text: &str) -> Result<Duration, String> {
@@ -71,10 +89,6 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         None => Cli::command().print_help()?,
-        Some(Command::Reference) => reference::run(&reference::Layout::repository())?,
-        Some(Command::VendorTestdata) => {
-            vendor_testdata::run(&reference::Layout::repository())?;
-        }
         Some(Command::Bench { timeout }) => {
             bench::run(&reference::Layout::repository(), timeout)?;
         }
@@ -90,6 +104,14 @@ fn main() -> anyhow::Result<()> {
                     .join("results.json"),
             };
             bench::history::run(&history, &results, issue_body.as_deref())?;
+        }
+        Some(Command::FuzzSeeds) => fuzz_seeds::run(reference::Layout::repository().root())?,
+        Some(Command::Reference) => reference::run(&reference::Layout::repository())?,
+        Some(Command::VendorTestdata) => {
+            vendor_testdata::run(&reference::Layout::repository())?;
+        }
+        Some(Command::YamlParity { paths }) => {
+            yaml_parity::run(&reference::Layout::repository(), &paths)?;
         }
     }
     Ok(())
@@ -117,9 +139,30 @@ mod tests {
     }
 
     #[test]
+    fn fuzz_seeds_selects_the_fuzz_seeds_subcommand() {
+        let cli = Cli::try_parse_from(["xtask", "fuzz-seeds"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::FuzzSeeds)));
+    }
+
+    #[test]
     fn reference_selects_the_reference_subcommand() {
         let cli = Cli::try_parse_from(["xtask", "reference"]).unwrap();
         assert!(matches!(cli.command, Some(Command::Reference)));
+    }
+
+    #[test]
+    fn yaml_parity_without_paths_compares_every_input() {
+        let cli = Cli::try_parse_from(["xtask", "yaml-parity"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::YamlParity { paths }) if paths.is_empty()));
+    }
+
+    #[test]
+    fn yaml_parity_takes_paths_to_compare() {
+        let cli = Cli::try_parse_from(["xtask", "yaml-parity", "a.yaml", "dir"]).unwrap();
+        let Some(Command::YamlParity { paths }) = cli.command else {
+            panic!("{:?}", cli.command);
+        };
+        assert_eq!(paths, [PathBuf::from("a.yaml"), PathBuf::from("dir")]);
     }
 
     #[test]

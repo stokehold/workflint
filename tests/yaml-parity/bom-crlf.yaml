@@ -1,0 +1,12 @@
+﻿on: push
+env: &env
+  A: "1"
+  B: |
+    line one
+    line two
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env: *env
+    steps:
+      - run: echo hi

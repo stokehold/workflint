@@ -1,7 +1,8 @@
 version: 2
 updates:
   - package-ecosystem: cargo
-    directory: /
+    # fuzz/ is a separate workspace with its own Cargo.lock.
+    directories: ["/", "/fuzz"]
     schedule:
       interval: weekly
     cooldown:

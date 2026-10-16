@@ -1,0 +1,15 @@
+名前: ビルド
+env:
+  日本語: "値 ${{ github.ref }}"
+  émoji: 😀 and 🚀
+  "キー\t": 'it''s 値'
+  combining: "e\u0301 ñ"
+  rtl: שלום
+jobs:
+  ビルド:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "日本 😀"
+      - name: ✓ check
+        run: echo "${{ matrix.名前 }}"
