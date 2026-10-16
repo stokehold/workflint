@@ -141,6 +141,7 @@ To turn a failing input into a regression test:
   cargo nextest run --workspace
   cargo test --doc --workspace
   cargo deny check
+  cargo deny --manifest-path fuzz/Cargo.toml check
   ```
 
 - If your change makes workflint differ from actionlint, add an entry to `docs/differences.md`. If the difference changes a fixture's output, also add records to `tests/conformance/allowed-differences.toml` (ADR 0023).
