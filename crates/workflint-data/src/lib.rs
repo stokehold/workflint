@@ -4,7 +4,8 @@
 //! `workflint-expr`, which converts it to its own type. [`GLOBAL_CONTEXTS`] lists the type of
 //! each context that every expression can read, and [`global_context`] looks one up by name.
 //! [`BUILTIN_FUNCTIONS`] lists the signatures of the built-in functions, and
-//! [`builtin_function`] looks one up by name.
+//! [`builtin_function`] looks one up by name. [`WORKFLOW_KEYS`] lists the contexts and special
+//! functions that expressions at each workflow key may use, and [`workflow_key`] looks one up.
 //!
 //! Every table is `static` data, so reading one allocates nothing. The crate reads no files,
 //! environment variables, or clocks: it is `no_std`.
@@ -13,10 +14,15 @@
 
 #![no_std]
 
+mod availability;
 mod functions;
 mod global_contexts;
 mod types;
 
+pub use availability::{
+    Availability, SPECIAL_FUNCTIONS, WORKFLOW_KEYS, WorkflowKey, special_function_keys,
+    workflow_key,
+};
 pub use functions::{BUILTIN_FUNCTIONS, Function, Signature, builtin_function};
 pub use global_contexts::{Context, GLOBAL_CONTEXTS, global_context};
 pub use types::{ObjectDesc, Property, Rest, TypeDesc};
