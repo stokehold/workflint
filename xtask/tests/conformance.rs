@@ -9,7 +9,7 @@ use std::path::Path;
 
 use xtask::conformance::fixture::{Fixture, Origin};
 use xtask::conformance::runner::{self, Outcome};
-use xtask::conformance::verdict::Verdict;
+use xtask::conformance::verdict::{Listing, Verdict};
 
 /// A failure message that the harness prints as written. datatest-stable
 /// prints errors with `{:?}`, which would quote a `String`.
@@ -37,12 +37,22 @@ fn lint(origin: Origin, path: &Path) -> datatest_stable::Result<()> {
     let fixture = Fixture::new(origin, path);
     match runner::run_fixture(&fixture) {
         Ok(Outcome::Judged(Verdict::Passed)) => Ok(()),
-        Ok(Outcome::Judged(Verdict::ExpectedFailure { milestone, reason })) => {
+        Ok(Outcome::Judged(Verdict::ExpectedFailure { listing, reason })) => {
             let first = reason.lines().next().unwrap_or_default();
-            println!(
-                "{}: expected failure until {milestone}: {first}",
-                fixture.id
-            );
+            match listing {
+                Listing::Until(milestone) => {
+                    println!(
+                        "{}: expected failure until {milestone}: {first}",
+                        fixture.id
+                    );
+                }
+                Listing::Reference(why) => {
+                    println!(
+                        "{}: known failure of the reference ({why}): {first}",
+                        fixture.id
+                    );
+                }
+            }
             Ok(())
         }
         Ok(Outcome::Skipped(message)) => {
@@ -73,10 +83,18 @@ fn rule_kinds(_: &Path) -> datatest_stable::Result<()> {
     check(runner::check_rule_kinds())
 }
 
+/// Prints how many fixtures the runner skips and why. `.config/nextest.toml`
+/// shows the output of this test when it passes.
+fn skipped_fixtures(_: &Path) -> datatest_stable::Result<()> {
+    check(runner::skip_summary().map(|summary| println!("{summary}")))
+}
+
 datatest_stable::harness! {
     { test = actionlint, root = "../tests/conformance/actionlint/testdata", pattern = r"^((err|examples|ok)/[^/]+\.ya?ml|projects/[^/]+\.out)$" },
     { test = workflint, root = "../tests/conformance/workflint", pattern = r"^((err|examples|ok)/[^/]+\.ya?ml|projects/[^/]+\.out)$" },
     { test = allowed_differences, root = "../tests/conformance", pattern = r"^allowed-differences\.toml$" },
     { test = expected_failures, root = "../tests/conformance", pattern = r"^expected-failures\.toml$" },
     { test = rule_kinds, root = "../tests/conformance", pattern = r"^rule-kinds\.toml$" },
+    // The README says when the runner skips a fixture.
+    { test = skipped_fixtures, root = "../tests/conformance", pattern = r"^README\.md$" },
 }

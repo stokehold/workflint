@@ -3,6 +3,7 @@
 use std::fmt::Write as _;
 
 use similar::{Algorithm, ChangeTag, DiffOp, capture_diff_slices, group_diff_ops};
+use xtask::conformance::matcher::{line_matches, pattern};
 
 use super::compare::{File, Run};
 
@@ -11,6 +12,11 @@ use super::compare::{File, Run};
 pub(crate) struct Report {
     /// A sentence about what the runs compared, shown under the title.
     pub(crate) description: String,
+    /// Whether the reference ran against itself.
+    pub(crate) self_check: bool,
+    /// The IDs of the fixtures on which the reference's output varies
+    /// between runs, which no run compares.
+    pub(crate) skipped: Vec<String>,
     pub(crate) runs: Vec<Run>,
 }
 
@@ -75,15 +81,26 @@ impl Report {
             ("Unexplained lines", totals.unexplained),
             ("Runs with another exit code", totals.exit_codes),
             ("Problems", totals.problems),
+            ("Skipped fixtures", self.skipped.len()),
         ] {
             let _ = writeln!(out, "| {label} | {count} |");
         }
         out.push('\n');
-        out.push_str(if totals.clean() {
-            "The allow-list explains every difference.\n"
-        } else {
-            "The allow-list does not explain every difference.\n"
+        out.push_str(match (self.self_check, totals.clean()) {
+            (true, true) => "The two runs of the reference printed the same output.\n",
+            (true, false) => "The two runs of the reference printed different output.\n",
+            (false, true) => "The allow-list explains every difference.\n",
+            (false, false) => "The allow-list does not explain every difference.\n",
         });
+        if !self.skipped.is_empty() {
+            out.push_str(
+                "\nThese fixtures were skipped, because the reference's output on them varies \
+                 between runs (`docs/differences.md#cached-metadata-errors`):\n\n",
+            );
+            for id in &self.skipped {
+                let _ = writeln!(out, "- `{id}`");
+            }
+        }
         out
     }
 
@@ -141,17 +158,46 @@ fn exit(code: Option<i32>) -> String {
     )
 }
 
-fn ops(file: &File) -> Vec<DiffOp> {
-    capture_diff_slices(Algorithm::Myers, &file.expected, &file.actual)
+/// The expected lines of `file`, with each `/pattern/` line that matches a
+/// line of workflint replaced by that line, so that the diff counts the two
+/// as equal. A pattern takes the first line it matches that no other pattern
+/// took and that no exact expected line equals.
+fn aligned(file: &File) -> Vec<String> {
+    let mut taken = vec![false; file.actual.len()];
+    file.expected
+        .iter()
+        .map(|want| {
+            if pattern(want).is_none() {
+                return want.clone();
+            }
+            let found = file.actual.iter().enumerate().position(|(index, have)| {
+                !taken[index]
+                    && !file.expected.contains(have)
+                    && line_matches(want, have) == Ok(true)
+            });
+            match found {
+                Some(index) => {
+                    taken[index] = true;
+                    file.actual[index].clone()
+                }
+                None => want.clone(),
+            }
+        })
+        .collect()
+}
+
+fn ops(expected: &[String], file: &File) -> Vec<DiffOp> {
+    capture_diff_slices(Algorithm::Myers, expected, &file.actual)
 }
 
 /// The changed lines of `file`, with three lines of context around each
 /// change.
 fn diff(file: &File) -> String {
+    let expected = aligned(file);
     let mut out = String::new();
-    for group in group_diff_ops(ops(file), 3) {
+    for group in group_diff_ops(ops(&expected, file), 3) {
         for op in group {
-            for change in op.iter_changes(&file.expected, &file.actual) {
+            for change in op.iter_changes(&expected, &file.actual) {
                 let sign = match change.tag() {
                     ChangeTag::Equal => ' ',
                     ChangeTag::Delete => '-',
@@ -164,11 +210,13 @@ fn diff(file: &File) -> String {
     out
 }
 
-/// The number of lines that only one side of `file` has.
+/// The number of lines that only one side of `file` has. A line that a
+/// `/pattern/` line matches is on both sides.
 fn changed_lines(file: &File) -> usize {
-    ops(file)
+    let expected = aligned(file);
+    ops(&expected, file)
         .iter()
-        .flat_map(|op| op.iter_changes(&file.expected, &file.actual))
+        .flat_map(|op| op.iter_changes(&expected, &file.actual))
         .filter(|change| change.tag() != ChangeTag::Equal)
         .count()
 }
@@ -201,6 +249,8 @@ mod tests {
     fn report() -> Report {
         Report {
             description: "Compared the test runs.".to_owned(),
+            self_check: false,
+            skipped: Vec::new(),
             runs: vec![
                 run(
                     "err/one_error",
@@ -262,6 +312,8 @@ mod tests {
     fn a_report_without_differences_is_clean() {
         let report = Report {
             description: String::new(),
+            self_check: false,
+            skipped: Vec::new(),
             runs: vec![run(
                 "ok/fine.yaml",
                 vec![file(Some("test.yaml"), &[], &[])],
@@ -280,6 +332,8 @@ mod tests {
             .push("rule ID \"x\" has no actionlint kind".to_owned());
         let report = Report {
             description: String::new(),
+            self_check: false,
+            skipped: Vec::new(),
             runs: vec![problem],
         };
         assert_eq!(report.totals().problems, 1);
@@ -360,6 +414,8 @@ workflint: oops
         actual[9] = "t.yaml:10:1: other [x]".to_owned();
         let report = Report {
             description: String::new(),
+            self_check: false,
+            skipped: Vec::new(),
             runs: vec![run(
                 "err/x",
                 vec![file(Some("t.yaml"), &refs(&expected), &refs(&actual))],
@@ -377,6 +433,77 @@ workflint: oops
     }
 
     #[test]
+    fn a_line_that_matched_a_pattern_is_not_unexplained() {
+        let mut differing = file(
+            Some("test.yaml"),
+            &[r"/test\.yaml:1:1: .+ \[x\]/", "test.yaml:2:1: b [x]"],
+            &["test.yaml:1:1: anything [x]", "test.yaml:3:1: c [x]"],
+        );
+        differing.identical = false;
+        let report = Report {
+            runs: vec![run("err/x", vec![differing], (1, 1))],
+            ..Report::default()
+        };
+        assert_eq!(report.totals().unexplained, 2);
+        let rendered = report.render();
+        assert!(
+            rendered.contains(
+                "```diff\n test.yaml:1:1: anything [x]\n-test.yaml:2:1: b [x]\n+test.yaml:3:1: c [x]\n```"
+            ),
+            "{rendered}"
+        );
+    }
+
+    #[test]
+    fn a_pattern_that_matches_nothing_is_unexplained() {
+        let differing = file(
+            Some("test.yaml"),
+            &[r"/test\.yaml:1:1: z/"],
+            &["test.yaml:1:1: a [x]"],
+        );
+        let report = Report {
+            runs: vec![run("err/x", vec![differing], (1, 1))],
+            ..Report::default()
+        };
+        assert_eq!(report.totals().unexplained, 2);
+    }
+
+    #[test]
+    fn the_summary_lists_the_skipped_fixtures() {
+        let report = Report {
+            skipped: vec!["projects/broken_local_action".to_owned()],
+            ..Report::default()
+        };
+        let summary = report.summary();
+        assert!(summary.contains("| Skipped fixtures | 1 |"), "{summary}");
+        assert!(
+            summary.contains("cached-metadata-errors`):\n\n- `projects/broken_local_action`\n"),
+            "{summary}"
+        );
+    }
+
+    #[test]
+    fn the_self_check_summary_does_not_mention_the_allow_list() {
+        let mut report = self::report();
+        report.self_check = true;
+        let summary = report.summary();
+        assert!(
+            summary.contains("The two runs of the reference printed different output.\n"),
+            "{summary}"
+        );
+        assert!(!summary.contains("allow-list"), "{summary}");
+        let clean = Report {
+            self_check: true,
+            ..Report::default()
+        };
+        assert!(
+            clean
+                .summary()
+                .contains("The two runs of the reference printed the same output.\n")
+        );
+    }
+
+    #[test]
     fn problems_are_listed_in_their_run() {
         let mut problem = run("err/x", vec![file(Some("test.yaml"), &[], &[])], (0, 0));
         problem
@@ -384,6 +511,8 @@ workflint: oops
             .push("rule ID \"x\" has no actionlint kind".to_owned());
         let report = Report {
             description: String::new(),
+            self_check: false,
+            skipped: Vec::new(),
             runs: vec![problem],
         };
         let rendered = report.render();

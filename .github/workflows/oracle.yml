@@ -34,8 +34,29 @@ jobs:
           go-version-file: .go-version
           cache: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # The conformance runner lints the fixtures that need shellcheck or
+      # pyflakes only when the tool is installed.
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: shellcheck@0.11.0
+      - name: Install pyflakes
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pyflakes"
+          "$RUNNER_TEMP/pyflakes/bin/pip" install --no-deps --require-hashes -r tests/conformance/requirements.txt
+          mkdir -p "$RUNNER_TEMP/tools"
+          ln -s "$RUNNER_TEMP/pyflakes/bin/pyflakes" "$RUNNER_TEMP/tools/pyflakes"
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+      # The report goes to the log, so that a difference between the two runs
+      # can be read there.
       - name: The reference against itself reports no difference
-        run: cargo xtask oracle --self-check > /dev/null
+        run: cargo xtask oracle --self-check
+      # A runner that passes fixtures it should fail shows up here: the
+      # reference passes every fixture except the known failures in
+      # REFERENCE_FAILURES in xtask/src/conformance/runner.rs.
+      - name: The reference passes the conformance suite
+        run: cargo test --locked -p xtask --test conformance
+        env:
+          WORKFLINT_CONFORMANCE_REFERENCE: .reference/bin/actionlint
       # M5.9 removes --report-only, so that an unexplained difference fails
       # the job.
       - name: Compare workflint with the reference

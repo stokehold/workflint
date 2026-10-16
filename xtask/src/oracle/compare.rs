@@ -48,30 +48,35 @@ pub(crate) struct Run {
     pub(crate) problems: Vec<String>,
 }
 
+/// The allow-list entries of one fixture, with its `.out` file, which their
+/// `upstream` lines quote.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct Allowed<'a> {
+    /// The `.out` file as messages name it.
+    pub(crate) out_file: &'a str,
+    pub(crate) out_lines: &'a [String],
+    pub(crate) entries: &'a [&'a Entry],
+}
+
 /// Compares the outputs of one run, named `name`, that linted `inputs`.
 ///
-/// The reference's lines stay in the order it printed them, and `entries`
-/// change them as in the conformance runner. workflint's lines are sorted as
-/// the reference sorts errors and, with `map_kinds`, get the actionlint kind
-/// of their rule ID in brackets. Then both are grouped by file.
+/// The reference's lines stay in the order it printed them, and the
+/// `allowed` entries change them, each on its own: see [`apply`]. workflint's
+/// lines are sorted as the reference sorts errors and, with `map_kinds`, get
+/// the actionlint kind of their rule ID in brackets. Then both are grouped by
+/// file.
 pub(crate) fn compare(
     name: &str,
     inputs: &[String],
     reference: &Output,
     workflint: &Output,
-    entries: &[&Entry],
+    allowed: &Allowed<'_>,
     map_kinds: bool,
 ) -> Run {
     let mut problems = BTreeSet::new();
 
     let printed: Vec<String> = reference.stdout.lines().map(normalize).collect();
-    let (expected, applied) = match allow_list::apply(&printed, entries) {
-        Ok(lines) => (lines, entries.len()),
-        Err(problem) => {
-            problems.insert(problem);
-            (printed, 0)
-        }
-    };
+    let (expected, applied) = apply(printed, allowed, &mut problems);
 
     let mut diagnostics = Vec::new();
     let mut unparsed = Vec::new();
@@ -151,6 +156,54 @@ pub(crate) fn compare(
     }
 }
 
+/// Applies the `allowed` entries to the reference's `printed` lines and
+/// returns the lines with the number of entries applied.
+///
+/// An entry's `upstream` is a line of the `.out` file, as in the
+/// conformance runner, and may be a `/pattern/`. The entry removes the first
+/// printed line that this `.out` line matches. An entry that does not apply
+/// adds a problem and is skipped; the others still apply.
+fn apply(
+    printed: Vec<String>,
+    allowed: &Allowed<'_>,
+    problems: &mut BTreeSet<String>,
+) -> (Vec<String>, usize) {
+    let mut lines = printed;
+    let mut applied = 0;
+    for entry in allowed.entries {
+        if let Some(upstream) = &entry.upstream {
+            if !allowed.out_lines.contains(upstream) {
+                problems.insert(format!(
+                    "{}: `upstream` matches no line of {}: {upstream:?}",
+                    entry.describe(),
+                    allowed.out_file
+                ));
+                continue;
+            }
+            if let Err(problem) = line_matches(upstream, "") {
+                problems.insert(format!("{}: `upstream` {problem}", entry.describe()));
+                continue;
+            }
+            let Some(index) = lines
+                .iter()
+                .position(|line| line_matches(upstream, line) == Ok(true))
+            else {
+                problems.insert(format!(
+                    "{}: the reference printed no line that `upstream` matches: {upstream:?}",
+                    entry.describe()
+                ));
+                continue;
+            };
+            lines.remove(index);
+        }
+        if let Some(workflint) = &entry.workflint {
+            allow_list::insert(&mut lines, workflint);
+        }
+        applied += 1;
+    }
+    (lines, applied)
+}
+
 /// Writes a line that parses as `path:line:col: message [code]` with `/`
 /// separators in the path, and keeps any other line as it is.
 fn normalize(line: &str) -> String {
@@ -211,7 +264,7 @@ workflows/a.yaml:3:1: c [expression]
             &inputs(&["workflows/b.yaml", "workflows/a.yaml", "workflows/c.yaml"]),
             &output(stdout, 1),
             &output("", 0),
-            &[],
+            &Allowed::default(),
             false,
         );
         assert_eq!(
@@ -243,7 +296,7 @@ workflows/a.yaml:3:1: c [expression]
                 "Hello, world!\n.github/actions/y/action.yaml:1:1: m [action]\n",
                 0,
             ),
-            &[],
+            &Allowed::default(),
             false,
         );
         assert_eq!(
@@ -271,7 +324,7 @@ workflows/a.yaml:3:1: c [expression]
                 "test.yaml:1:1: b [yaml-syntax-error]\ntest.yaml:1:1: a [undefined-variable]\n",
                 1,
             ),
-            &[],
+            &Allowed::default(),
             true,
         );
         assert_eq!(
@@ -293,7 +346,7 @@ workflows/a.yaml:3:1: c [expression]
             &inputs(&["test.yaml"]),
             &output(stdout, 1),
             &output(stdout, 1),
-            &[],
+            &Allowed::default(),
             false,
         );
         assert!(run.files[0].identical);
@@ -307,7 +360,7 @@ workflows/a.yaml:3:1: c [expression]
             &inputs(&["test.yaml"]),
             &output("test.yaml:1:1: a [expression]\n", 1),
             &output("test.yaml:1:1: a [no-such-rule]\n", 1),
-            &[],
+            &Allowed::default(),
             true,
         );
         assert_eq!(run.files[0].actual, ["test.yaml:1:1: a [no-such-rule]"]);
@@ -316,24 +369,124 @@ workflows/a.yaml:3:1: c [expression]
         assert!(run.problems[0].contains("\"no-such-rule\""), "{run:?}");
     }
 
+    /// The allow-list of a fixture whose `.out` file has `out_lines`.
+    fn allowed<'a>(out_lines: &'a [String], entries: &'a [&'a Entry]) -> Allowed<'a> {
+        Allowed {
+            out_file: "testdata/err/x.out",
+            out_lines,
+            entries,
+        }
+    }
+
+    fn lines(lines: &[&str]) -> Vec<String> {
+        lines.iter().map(|line| (*line).to_owned()).collect()
+    }
+
     #[test]
     fn an_allow_list_entry_explains_a_difference() {
         let replaced = entry(
             Some("test.yaml:1:1: a [syntax-check]"),
             Some("test.yaml:2:5: a [syntax-check]"),
         );
+        let out = lines(&["test.yaml:1:1: a [syntax-check]"]);
         let run = compare(
             "err/x",
             &inputs(&["test.yaml"]),
             &output("test.yaml:1:1: a [syntax-check]\n", 1),
             &output("test.yaml:2:5: a [yaml-syntax-error]\n", 1),
-            &[&replaced],
+            &allowed(&out, &[&replaced]),
             true,
         );
         assert!(run.files[0].identical, "{run:?}");
         assert_eq!(run.applied, 1);
         assert_eq!(run.expected_code, Some(1));
         assert_eq!(run.problems, Vec::<String>::new());
+    }
+
+    #[test]
+    fn an_upstream_pattern_line_of_the_out_file_removes_the_printed_line_it_matches() {
+        let pattern = r"/test\.yaml:1:1: could not parse .+ \[syntax-check\]/";
+        let removed = entry(Some(pattern), None);
+        let out = lines(&[pattern, "test.yaml:2:1: b [expression]"]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output(
+                "test.yaml:1:1: could not parse as YAML [syntax-check]\n\
+                 test.yaml:2:1: b [expression]\n",
+                1,
+            ),
+            &output("test.yaml:2:1: b [undefined-variable]\n", 1),
+            &allowed(&out, &[&removed]),
+            true,
+        );
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert_eq!(run.applied, 1);
+        assert!(run.files[0].identical, "{run:?}");
+    }
+
+    #[test]
+    fn an_upstream_line_that_is_not_in_the_out_file_is_a_problem_even_if_printed() {
+        let printed = "test.yaml:1:1: a [syntax-check]";
+        let stale = entry(Some(printed), None);
+        let out = lines(&[r"/test\.yaml:1:1: a/"]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output(&format!("{printed}\n"), 1),
+            &output("", 0),
+            &allowed(&out, &[&stale]),
+            true,
+        );
+        assert_eq!(run.applied, 0);
+        assert_eq!(run.problems.len(), 1, "{run:?}");
+        assert!(
+            run.problems[0].contains("matches no line of testdata/err/x.out"),
+            "{run:?}"
+        );
+        assert!(!run.files[0].identical);
+    }
+
+    #[test]
+    fn an_upstream_line_that_the_reference_did_not_print_is_a_problem() {
+        let missing = entry(Some("test.yaml:1:1: a [syntax-check]"), None);
+        let out = lines(&["test.yaml:1:1: a [syntax-check]"]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("", 0),
+            &output("", 0),
+            &allowed(&out, &[&missing]),
+            true,
+        );
+        assert_eq!(run.applied, 0);
+        assert!(
+            run.problems[0].contains("the reference printed no line"),
+            "{run:?}"
+        );
+    }
+
+    #[test]
+    fn a_stale_entry_is_reported_and_the_other_entries_still_apply() {
+        let stale = entry(Some("test.yaml:9:9: gone [syntax-check]"), None);
+        let removed = entry(Some("test.yaml:1:1: a [syntax-check]"), None);
+        let out = lines(&["test.yaml:1:1: a [syntax-check]"]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("test.yaml:1:1: a [syntax-check]\n", 1),
+            &output("", 0),
+            &allowed(&out, &[&stale, &removed]),
+            true,
+        );
+        assert_eq!(run.applied, 1);
+        assert_eq!(run.problems.len(), 1, "{run:?}");
+        assert!(
+            run.problems[0].contains("matches no line of testdata/err/x.out"),
+            "{run:?}"
+        );
+        assert!(run.files[0].identical, "{run:?}");
+        assert_eq!(run.expected_code, Some(0));
     }
 
     #[test]
@@ -344,7 +497,7 @@ workflows/a.yaml:3:1: c [expression]
             &inputs(&["test.yaml"]),
             &output("", 0),
             &output("test.yaml:3:1: anything [undefined-variable]\n", 1),
-            &[&added],
+            &allowed(&[], &[&added]),
             true,
         );
         assert!(run.files[0].identical, "{run:?}");
@@ -354,12 +507,13 @@ workflows/a.yaml:3:1: c [expression]
     #[test]
     fn removing_the_only_error_expects_exit_code_zero() {
         let removed = entry(Some("test.yaml:1:1: a [syntax-check]"), None);
+        let out = lines(&["test.yaml:1:1: a [syntax-check]"]);
         let run = compare(
             "err/x",
             &inputs(&["test.yaml"]),
             &output("test.yaml:1:1: a [syntax-check]\n", 1),
             &output("", 0),
-            &[&removed],
+            &allowed(&out, &[&removed]),
             true,
         );
         assert!(run.files[0].identical);
@@ -373,7 +527,7 @@ workflows/a.yaml:3:1: c [expression]
             &inputs(&["test.yaml"]),
             &output("test.yaml:1:1: a [syntax-check]\n", 1),
             &output("test.yaml:1:2: a [yaml-syntax-error]\n", 1),
-            &[],
+            &Allowed::default(),
             true,
         );
         assert!(!run.files[0].identical);
@@ -386,12 +540,13 @@ workflows/a.yaml:3:1: c [expression]
     fn an_entry_that_does_not_apply_is_a_problem_and_is_skipped() {
         let stale = entry(Some("test.yaml:9:9: gone [syntax-check]"), None);
         let stdout = "test.yaml:1:1: a [syntax-check]\n";
+        let out = lines(&["test.yaml:1:1: a [syntax-check]"]);
         let run = compare(
             "err/x",
             &inputs(&["test.yaml"]),
             &output(stdout, 1),
             &output("test.yaml:1:1: a [yaml-syntax-error]\n", 1),
-            &[&stale],
+            &allowed(&out, &[&stale]),
             true,
         );
         assert!(run.files[0].identical);
@@ -407,7 +562,7 @@ workflows/a.yaml:3:1: c [expression]
             &inputs(&["test.yaml"]),
             &output("", 3),
             &output("", 0),
-            &[],
+            &Allowed::default(),
             true,
         );
         assert_eq!((run.expected_code, run.actual_code), (Some(3), Some(0)));
@@ -420,7 +575,7 @@ workflows/a.yaml:3:1: c [expression]
             &inputs(&["workflows/nested/a.yaml"]),
             &output("workflows/nested/a.yaml:1:1: m [expression]\n", 1),
             &output("workflows\\nested\\a.yaml:1:1: m [undefined-variable]\n", 1),
-            &[],
+            &Allowed::default(),
             true,
         );
         assert_eq!(paths(&run), [Some("workflows/nested/a.yaml")]);

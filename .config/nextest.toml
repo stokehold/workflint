@@ -4,6 +4,12 @@
 # Older versions stop with an error that names this file.
 nextest-version = "0.9.148"
 
+# Print how many conformance fixtures the runner skipped, and why, at the end
+# of every run. Every profile uses the overrides of the default profile.
+[[profile.default.overrides]]
+filter = "binary_id(xtask::conformance) & test(=skipped_fixtures::README.md)"
+success-output = "final"
+
 [profile.ci]
 # Run every test and report all failures, instead of stopping at the first one.
 fail-fast = false
