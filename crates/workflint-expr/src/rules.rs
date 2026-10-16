@@ -153,3 +153,23 @@ pub static CASE_ARGUMENT_COUNT: RuleMeta = RuleMeta {
     default_severity: Severity::Error,
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/case-argument-count.md",
 };
+
+/// An expression reads a context that its workflow key does not allow, such as `env` in
+/// `jobs.<job_id>.if`.
+pub static CONTEXT_NOT_ALLOWED: RuleMeta = RuleMeta {
+    id: "context-not-allowed",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/context-not-allowed.md",
+};
+
+/// An expression calls a special function that its workflow key does not allow, such as
+/// `success()` in `jobs.<job_id>.env`.
+pub static FUNCTION_NOT_ALLOWED: RuleMeta = RuleMeta {
+    id: "function-not-allowed",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/function-not-allowed.md",
+};

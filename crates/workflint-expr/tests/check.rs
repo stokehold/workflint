@@ -3,9 +3,9 @@
 //!
 //! The modules `semantics_check_ok`, `semantics_check_error`, `compare_operands_check`,
 //! `update_inputs_multiple_times`, `update_dispatch_inputs`, and `is_constant` port the
-//! reference's tests of the same names. The cases that check context availability and where
-//! `success()` and the other special functions are allowed move to M3.6, and the cases that
-//! type a `fromJSON()` literal move to M3.9. The reference's error tests check that each
+//! reference's tests of the same names, without the cases that check where contexts and special
+//! functions are allowed, which the module `availability` ports. The cases that type a
+//! `fromJSON()` literal move to M3.9. The reference's error tests check that each
 //! message contains a fragment. These tests compare whole messages, the rule, and the byte
 //! offset where the reference reports each error.
 //!
@@ -2150,5 +2150,288 @@ mod is_constant {
         unknown_function: "unknownFunc(1, 2, 3)" => false,
         from_json_literal: "fromJSON('[1]')" => false,
         function_name_in_upper_case: "STARTSWITH('foo', 'f')" => true,
+    }
+}
+
+/// The cases of `TestExprSemanticsCheckOK` and `TestExprSemanticsCheckError` that check where
+/// contexts and special functions are allowed, and the cases where the reference has no test.
+mod availability {
+    use workflint_data::Availability;
+    use workflint_expr::rules::{CONTEXT_NOT_ALLOWED, FUNCTION_NOT_ALLOWED};
+
+    use super::*;
+
+    const SEE: &str = "see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details";
+
+    /// The workflow keys that allow `always()`, `cancelled()`, `failure()`, and `success()`.
+    const STATUS_KEYS: &str = r#""jobs.<job_id>.if", "jobs.<job_id>.steps.if""#;
+
+    /// The contexts of the reference's tests, which allow every special function unless a
+    /// case says otherwise.
+    const ALL_CONTEXTS: &[&str] = &[
+        "github", "job", "jobs", "matrix", "steps", "needs", "env", "inputs", "secrets", "vars",
+        "runner",
+    ];
+
+    fn env_allowing(
+        contexts: &'static [&'static str],
+        special_functions: &'static [&'static str],
+    ) -> TypeEnv {
+        let mut env = TypeEnv::new();
+        env.set_availability(Availability {
+            contexts,
+            special_functions,
+        });
+        env
+    }
+
+    fn env_at(key: &str) -> TypeEnv {
+        let mut env = TypeEnv::new();
+        env.set_workflow_key(key);
+        env
+    }
+
+    fn context_error(start: u32, name: &str, note: &str) -> Error {
+        error(
+            &CONTEXT_NOT_ALLOWED,
+            start,
+            format!("context \"{name}\" is not allowed here. {note}. {SEE}"),
+        )
+    }
+
+    fn function_error(start: u32, name: &str, keys: &str) -> Error {
+        error(
+            &FUNCTION_NOT_ALLOWED,
+            start,
+            format!(
+                "calling function \"{name}\" is not allowed here. \"{name}\" is only available in {keys}. {SEE}"
+            ),
+        )
+    }
+
+    // `TestExprSemanticsCheckOK`.
+
+    #[test]
+    fn available_context() {
+        let env = env_allowing(&["strategy"], workflint_data::SPECIAL_FUNCTIONS);
+        assert_eq!(ty_in(&env, "strategy.fail-fast"), Ty::Bool);
+    }
+
+    #[test]
+    fn available_contexts() {
+        let env = env_allowing(&["matrix", "strategy"], workflint_data::SPECIAL_FUNCTIONS);
+        assert_eq!(ty_in(&env, "strategy.fail-fast"), Ty::Bool);
+    }
+
+    #[test]
+    fn special_function() {
+        let env = env_allowing(ALL_CONTEXTS, &["success"]);
+        assert_eq!(ty_in(&env, "success()"), Ty::Bool);
+    }
+
+    #[test]
+    fn non_special_function() {
+        let env = env_allowing(ALL_CONTEXTS, &[]);
+        assert_eq!(ty_in(&env, "contains('hello, world', 'o, w')"), Ty::Bool);
+    }
+
+    // `TestExprSemanticsCheckError`.
+
+    #[test]
+    fn available_context_in_the_message() {
+        let env = env_allowing(&["github"], workflint_data::SPECIAL_FUNCTIONS);
+        assert_eq!(
+            errors_in(&env, "env.FOO"),
+            [context_error(0, "env", r#"available context is "github""#)]
+        );
+    }
+
+    #[test]
+    fn available_contexts_in_the_message() {
+        let env = env_allowing(&["env", "matrix"], workflint_data::SPECIAL_FUNCTIONS);
+        assert_eq!(
+            errors_in(&env, "github.event.labels"),
+            [context_error(
+                0,
+                "github",
+                r#"available contexts are "env", "matrix""#
+            )]
+        );
+    }
+
+    #[test]
+    fn no_available_context() {
+        let env = env_allowing(&[], workflint_data::SPECIAL_FUNCTIONS);
+        assert_eq!(
+            errors_in(&env, "github"),
+            [context_error(0, "github", "no context is available here")]
+        );
+    }
+
+    #[test]
+    fn no_special_function_allowed() {
+        let env = env_allowing(ALL_CONTEXTS, &[]);
+        assert_eq!(
+            errors_in(&env, "success()"),
+            [function_error(0, "success", STATUS_KEYS)]
+        );
+    }
+
+    #[test]
+    fn special_function_not_in_the_allowed_list() {
+        let env = env_allowing(ALL_CONTEXTS, &["fail", "success"]);
+        assert_eq!(
+            errors_in(&env, "always()"),
+            [function_error(0, "always", STATUS_KEYS)]
+        );
+    }
+
+    #[test]
+    fn case_insensitive_special_function_name() {
+        let env = env_allowing(ALL_CONTEXTS, &["fail"]);
+        assert_eq!(
+            errors_in(&env, "hashFiles('aaa.txt')"),
+            [function_error(
+                0,
+                "hashFiles",
+                r#""jobs.<job_id>.steps.continue-on-error", "jobs.<job_id>.steps.env", "jobs.<job_id>.steps.if", "jobs.<job_id>.steps.name", "jobs.<job_id>.steps.run", "jobs.<job_id>.steps.timeout-minutes", "jobs.<job_id>.steps.with", "jobs.<job_id>.steps.working-directory""#
+            )]
+        );
+    }
+
+    // workflint's own cases.
+
+    #[test]
+    fn environment_without_availability_allows_every_context_and_special_function() {
+        assert_eq!(
+            errors("github.sha == env.FOO && success() && hashFiles('a')"),
+            []
+        );
+    }
+
+    #[test]
+    fn workflow_key_allows_its_contexts_and_special_functions() {
+        let env = env_at("jobs.<job_id>.steps.if");
+        assert_eq!(
+            errors_in(&env, "success() && runner.os == 'Linux' && hashFiles('a')"),
+            []
+        );
+    }
+
+    #[test]
+    fn workflow_key_lists_its_contexts_in_the_message() {
+        let env = env_at("jobs.<job_id>.if");
+        assert_eq!(
+            errors_in(&env, "env.FOO"),
+            [context_error(
+                0,
+                "env",
+                r#"available contexts are "github", "inputs", "needs", "vars""#
+            )]
+        );
+    }
+
+    #[test]
+    fn unknown_workflow_key_allows_no_context_and_no_special_function() {
+        let env = env_at("jobs.<job_id>.steps.shell");
+        assert_eq!(
+            errors_in(&env, "github.sha && always()"),
+            [
+                context_error(0, "github", "no context is available here"),
+                function_error(14, "always", STATUS_KEYS),
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_workflow_key_allows_no_context() {
+        let env = env_at("");
+        assert_eq!(
+            errors_in(&env, "github.sha"),
+            [context_error(0, "github", "no context is available here")]
+        );
+    }
+
+    #[test]
+    fn context_name_in_the_message_is_lower_case() {
+        let env = env_at("run-name");
+        assert_eq!(
+            errors_in(&env, "ENV.foo"),
+            [context_error(
+                0,
+                "env",
+                r#"available contexts are "github", "inputs", "vars""#
+            )]
+        );
+    }
+
+    #[test]
+    fn function_name_in_the_message_keeps_its_spelling() {
+        let env = env_at("run-name");
+        assert_eq!(
+            errors_in(&env, "SUCCESS()"),
+            [function_error(0, "SUCCESS", STATUS_KEYS)]
+        );
+    }
+
+    #[test]
+    fn undefined_variable_is_not_also_reported_as_not_allowed() {
+        let env = env_at("run-name");
+        assert_eq!(
+            errors_in(&env, "fooooo"),
+            [error(
+                &UNDEFINED_VARIABLE,
+                0,
+                format!("undefined variable \"fooooo\". available variables are {GLOBAL_NAMES}")
+            )]
+        );
+    }
+
+    #[test]
+    fn call_with_wrong_arguments_is_not_also_reported_as_not_allowed() {
+        let env = env_at("run-name");
+        assert_eq!(
+            errors_in(&env, "success(1)"),
+            [error(
+                &WRONG_ARGUMENT_COUNT,
+                0,
+                "number of arguments is wrong. function \"success() -> bool\" takes 0 parameters but 1 arguments are given"
+            )]
+        );
+    }
+
+    #[test]
+    fn errors_in_arguments_come_before_the_error_of_the_call() {
+        let env = env_at("jobs.<job_id>.if");
+        assert_eq!(
+            errors_in(&env, "hashFiles(env.FOO)"),
+            [
+                context_error(
+                    10,
+                    "env",
+                    r#"available contexts are "github", "inputs", "needs", "vars""#
+                ),
+                function_error(
+                    0,
+                    "hashFiles",
+                    r#""jobs.<job_id>.steps.continue-on-error", "jobs.<job_id>.steps.env", "jobs.<job_id>.steps.if", "jobs.<job_id>.steps.name", "jobs.<job_id>.steps.run", "jobs.<job_id>.steps.timeout-minutes", "jobs.<job_id>.steps.with", "jobs.<job_id>.steps.working-directory""#
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn jobs_context_is_allowed_where_the_workflow_key_allows_it() {
+        let mut env = env_at("on.workflow_call.outputs.<output_id>.value");
+        env.set_jobs(strict([("build", Ty::empty_loose())]));
+        assert_eq!(errors_in(&env, "jobs.build"), []);
+    }
+
+    #[test]
+    fn error_covers_the_context_and_the_call() {
+        let env = env_at("");
+        let (_, errors) = env.check(&parse("github.sha || always()"));
+        let ranges: Vec<(u32, u32)> = errors.iter().map(|err| (err.start, err.end)).collect();
+        assert_eq!(ranges, [(0, 6), (14, 22)]);
     }
 }
