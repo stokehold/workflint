@@ -5,12 +5,14 @@
 // never on user input.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod bench;
 mod fuzz_seeds;
 mod reference;
 mod vendor_testdata;
 mod yaml_parity;
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use clap::{CommandFactory, Parser, Subcommand};
 
@@ -25,6 +27,30 @@ struct Cli {
 /// Each subcommand lives in its own module in `xtask/src/`.
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Compare workflint with the reference on the benchmark scenarios of ADR
+    /// 0019 and write `target/bench/results.json` and `results.md`. Needs
+    /// hyperfine 2 and the reference's tools, plus shellcheck 0.11.0 for the
+    /// shellcheck scenario.
+    Bench {
+        /// Time limit in seconds for one run, instead of each scenario's own.
+        #[arg(long, value_name = "SECONDS", value_parser = parse_seconds)]
+        timeout: Option<Duration>,
+    },
+    /// Append a benchmark result to a history file and compare it with the
+    /// previous entry. The nightly benchmark job runs it.
+    BenchHistory {
+        /// The history file, with one result per line. It is created if
+        /// missing.
+        #[arg(long, value_name = "FILE")]
+        history: PathBuf,
+        /// The result to append [default: target/bench/results.json].
+        #[arg(long, value_name = "FILE")]
+        results: Option<PathBuf>,
+        /// Where to write the body of a `performance` issue when the result
+        /// regressed or, from 0.1.0, missed a target. Removed otherwise.
+        #[arg(long, value_name = "FILE")]
+        issue_body: Option<PathBuf>,
+    },
     /// Write seed inputs for the fuzz targets into `fuzz/corpus/<target>/`:
     /// the YAML files of the vendored test data, the corpus archive, the YAML
     /// test suite, and the fuzz regression inputs.
@@ -50,10 +76,35 @@ enum Command {
     },
 }
 
+fn parse_seconds(text: &str) -> Result<Duration, String> {
+    match text.parse::<f64>() {
+        Ok(seconds) if seconds > 0.0 && seconds.is_finite() => Ok(Duration::from_secs_f64(seconds)),
+        _ => Err(format!(
+            "expected a positive number of seconds, got {text:?}"
+        )),
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         None => Cli::command().print_help()?,
+        Some(Command::Bench { timeout }) => {
+            bench::run(&reference::Layout::repository(), timeout)?;
+        }
+        Some(Command::BenchHistory {
+            history,
+            results,
+            issue_body,
+        }) => {
+            let results = match results {
+                Some(results) => results,
+                None => bench::target_directory(&reference::Layout::repository())?
+                    .join("bench")
+                    .join("results.json"),
+            };
+            bench::history::run(&history, &results, issue_body.as_deref())?;
+        }
         Some(Command::FuzzSeeds) => fuzz_seeds::run(reference::Layout::repository().root())?,
         Some(Command::Reference) => reference::run(&reference::Layout::repository())?,
         Some(Command::VendorTestdata) => {
@@ -118,5 +169,22 @@ mod tests {
     fn vendor_testdata_selects_the_vendor_testdata_subcommand() {
         let cli = Cli::try_parse_from(["xtask", "vendor-testdata"]).unwrap();
         assert!(matches!(cli.command, Some(Command::VendorTestdata)));
+    }
+
+    #[test]
+    fn bench_timeout_takes_seconds() {
+        let cli = Cli::try_parse_from(["xtask", "bench", "--timeout", "1.5"]).unwrap();
+        let Some(Command::Bench { timeout }) = cli.command else {
+            panic!("expected the bench subcommand");
+        };
+        assert_eq!(timeout, Some(Duration::from_millis(1500)));
+        assert!(Cli::try_parse_from(["xtask", "bench", "--timeout", "0"]).is_err());
+    }
+
+    #[test]
+    fn bench_history_needs_a_history_file() {
+        assert!(Cli::try_parse_from(["xtask", "bench-history"]).is_err());
+        let cli = Cli::try_parse_from(["xtask", "bench-history", "--history", "h.jsonl"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::BenchHistory { .. })));
     }
 }

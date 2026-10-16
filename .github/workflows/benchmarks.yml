@@ -1,0 +1,120 @@
+name: Benchmarks
+
+# ADR 0019: compares workflint with the reference every night, keeps the
+# results in history.jsonl on the benchmarks branch, and opens or updates a
+# performance issue when a scenario's wall time grows by more than 10%.
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: benchmarks
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  HISTORY_BRANCH: benchmarks
+  HISTORY_FILE: history.jsonl
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bench:
+    name: cargo xtask bench
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write # appends to the history on the benchmarks branch
+      issues: write # opens or updates the performance issue
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # Keep these versions in sync with xtask/src/bench/tools.rs.
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: hyperfine@2.0.0,shellcheck@0.11.0
+      - name: Run the benchmarks
+        run: cargo xtask bench
+      - name: Add the results to the job summary
+        if: ${{ !cancelled() && hashFiles('target/bench/results.md') != '' }}
+        run: cat target/bench/results.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Read the history
+        id: history
+        run: |
+          history="$RUNNER_TEMP/$HISTORY_FILE"
+          if parent="$(gh api "repos/$GH_REPO/git/ref/heads/$HISTORY_BRANCH" --jq .object.sha 2>/dev/null)"; then
+            gh api -H "Accept: application/vnd.github.raw+json" \
+              "repos/$GH_REPO/contents/$HISTORY_FILE?ref=$parent" > "$history"
+            echo "Read $(wc -l < "$history") entries from $HISTORY_BRANCH at $parent."
+          else
+            echo "The $HISTORY_BRANCH branch does not exist yet. This run creates it."
+            parent=""
+            : > "$history"
+          fi
+          echo "parent=$parent" >> "$GITHUB_OUTPUT"
+      - name: Compare with the previous run
+        run: |
+          echo >> "$GITHUB_STEP_SUMMARY"
+          cargo xtask bench-history \
+            --history "$RUNNER_TEMP/$HISTORY_FILE" \
+            --issue-body "$RUNNER_TEMP/issue.md" | tee -a "$GITHUB_STEP_SUMMARY"
+      # The GitHub API writes the commit, so the job needs no git credentials.
+      - name: Append to the history
+        env:
+          PARENT: ${{ steps.history.outputs.parent }}
+        run: |
+          blob="$(jq -n --rawfile content "$RUNNER_TEMP/$HISTORY_FILE" \
+            '{content: $content, encoding: "utf-8"}' |
+            gh api "repos/$GH_REPO/git/blobs" --input - --jq .sha)"
+          base_tree=""
+          if [ -n "$PARENT" ]; then
+            base_tree="$(gh api "repos/$GH_REPO/git/commits/$PARENT" --jq .tree.sha)"
+          fi
+          tree="$(jq -n --arg blob "$blob" --arg path "$HISTORY_FILE" --arg base "$base_tree" \
+            '{tree: [{path: $path, mode: "100644", type: "blob", sha: $blob}]}
+             + (if $base == "" then {} else {base_tree: $base} end)' |
+            gh api "repos/$GH_REPO/git/trees" --input - --jq .sha)"
+          message="Add the benchmark results for $(jq -r '.workflint.commit // "an unknown commit"' target/bench/results.json)"
+          commit="$(jq -n --arg tree "$tree" --arg parent "$PARENT" --arg message "$message" \
+            '{message: $message, tree: $tree, parents: (if $parent == "" then [] else [$parent] end)}' |
+            gh api "repos/$GH_REPO/git/commits" --input - --jq .sha)"
+          if [ -n "$PARENT" ]; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/heads/$HISTORY_BRANCH" \
+              -f sha="$commit" -F force=false > /dev/null
+          else
+            gh api "repos/$GH_REPO/git/refs" \
+              -f ref="refs/heads/$HISTORY_BRANCH" -f sha="$commit" > /dev/null
+          fi
+          echo "Committed $commit to $HISTORY_BRANCH."
+      - name: Open or update the performance issue
+        run: |
+          body="$RUNNER_TEMP/issue.md"
+          if [ ! -f "$body" ]; then
+            echo "No regression to report."
+            exit 0
+          fi
+          printf '\nRun: %s/%s/actions/runs/%s\n' \
+            "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> "$body"
+          title="Nightly benchmark found a performance problem"
+          number="$(gh issue list --label performance --state open \
+            --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file "$body"
+          else
+            gh issue create --title "$title" --label performance --body-file "$body"
+          fi
