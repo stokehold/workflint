@@ -24,6 +24,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | type environment | The types of the contexts at one place in a workflow, which the type checker checks expressions against (`TypeEnv`). It has the global contexts and the types of `matrix`, `steps`, `needs`, `secrets`, `inputs`, and `jobs` that the workflow, job, or step sets. |
 | built-in function | A function that expressions can call, such as `contains` or `format`, with its overloads (`BUILTIN_FUNCTIONS`). Calls match the name without regard to case. |
 | overload | One signature of a built-in function: its parameter types, whether the last parameter repeats, and its return type. A call takes the first overload that accepts its arguments. |
+| untrusted input | A context property that someone outside the repository can set, such as `github.event.issue.title` or `github.head_ref`, which can inject code when a script reads it in `${{ }}` (`UNTRUSTED_INPUTS`). Paths write array elements as `*`, as in `github.event.commits.*.message`. |
 | workflow key | The path of a place in a workflow where expressions can appear, as GitHub's context availability table writes it, such as `jobs.<job_id>.steps.if` (`WORKFLOW_KEYS`). |
 | special function | A built-in function that only some workflow keys allow: `always`, `cancelled`, `failure`, `hashFiles`, and `success` (`SPECIAL_FUNCTIONS`). |
 | availability | Which contexts and special functions a given workflow key allows (`Availability`). A key that the table does not list allows none. |

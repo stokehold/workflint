@@ -1,7 +1,6 @@
 //! The type checker of expressions.
 //!
-//! Ported from rhysd/actionlint at commit `011a6d1`: `ExprSemanticsChecker` in `expr_sema.go`,
-//! without untrusted input (M3.7).
+//! Ported from rhysd/actionlint at commit `011a6d1`: `ExprSemanticsChecker` in `expr_sema.go`.
 
 use workflint_diagnostics::RuleMeta;
 use workflint_diagnostics::quote::{ordinal, quote, quotes, sorted_quotes};
@@ -20,6 +19,7 @@ use crate::rules::{
     UNUSED_FORMAT_ARGUMENT, WRONG_ARGUMENT_COUNT, WRONG_ARGUMENT_TYPE,
 };
 use crate::types::Ty;
+use crate::untrusted::UntrustedChecker;
 
 const CONTEXT_AVAILABILITY: &str = "see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details";
 
@@ -35,14 +35,22 @@ impl TypeEnv {
     ///
     /// A call of a built-in function has the return type of the first overload that accepts
     /// its arguments, and `any` when no overload does or the function is not built in.
+    ///
+    /// When [`set_untrusted_inputs`](Self::set_untrusted_inputs) turned the check on, the
+    /// errors about untrusted input follow the semantic errors, as in the reference's `Check`.
     #[must_use]
     pub fn check(&self, expr: &Expr) -> (Ty, Vec<ExprError>) {
         let mut checker = Checker {
             env: self,
             errors: Vec::new(),
+            untrusted: self.untrusted_inputs().map(UntrustedChecker::new),
         };
         let ty = checker.check(expr);
-        (ty, checker.errors)
+        let mut errors = checker.errors;
+        if let Some(untrusted) = checker.untrusted {
+            errors.extend(untrusted.finish());
+        }
+        (ty, errors)
     }
 }
 
@@ -93,6 +101,10 @@ impl Expr {
 struct Checker<'env> {
     env: &'env TypeEnv,
     errors: Vec<ExprError>,
+    /// The untrusted-input check, if the environment turns it on. It sees each node that the
+    /// type checker checks, before and after the node's children, in the order the type
+    /// checker checks them.
+    untrusted: Option<UntrustedChecker>,
 }
 
 impl Checker<'_> {
@@ -107,6 +119,17 @@ impl Checker<'_> {
     }
 
     fn check(&mut self, expr: &Expr) -> Ty {
+        if let Some(untrusted) = &mut self.untrusted {
+            untrusted.enter(expr);
+        }
+        let ty = self.check_node(expr);
+        if let Some(untrusted) = &mut self.untrusted {
+            untrusted.leave(expr);
+        }
+        ty
+    }
+
+    fn check_node(&mut self, expr: &Expr) -> Ty {
         match &expr.kind {
             ExprKind::Variable(name) => self.check_variable(expr, name),
             ExprKind::Null => Ty::Null,

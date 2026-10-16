@@ -1,5 +1,6 @@
-//! Reads tables from the reference's `expr_sema.go` and `availability.go`, vendored by
-//! `cargo xtask vendor-testdata`, for the tests that compare them with `workflint-data`.
+//! Reads tables from the reference's `expr_sema.go`, `availability.go`, and `expr_insecure.go`,
+//! vendored by `cargo xtask vendor-testdata`, for the tests that compare them with
+//! `workflint-data`.
 
 // Each test file uses part of this module.
 #![allow(clippy::panic, dead_code)]
@@ -15,6 +16,10 @@ const EXPR_SEMA_GO: &str = include_str!("../../../../tests/conformance/actionlin
 /// The reference's `availability.go`.
 const AVAILABILITY_GO: &str =
     include_str!("../../../../tests/conformance/actionlint/availability.go");
+
+/// The reference's `expr_insecure.go`.
+const EXPR_INSECURE_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/expr_insecure.go");
 
 /// An owned expression type, built from the Go source or from a [`TypeDesc`].
 #[derive(Debug, PartialEq, Eq)]
@@ -404,6 +409,50 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// `NewUntrustedInputMap("name", child, ...)`. Pushes the path of each node without
+    /// children, which is an untrusted value, to `paths`.
+    fn untrusted_input_map(&mut self, prefix: &str, paths: &mut Vec<String>) {
+        self.expect_all(&[Token::Ident("NewUntrustedInputMap"), Token::Punct('(')]);
+        let Token::Str(name) = self.next() else {
+            panic!("expected the name of an untrusted input");
+        };
+        let path = if prefix.is_empty() {
+            name.to_owned()
+        } else {
+            format!("{prefix}.{name}")
+        };
+        let mut leaf = true;
+        // gofmt adds a comma after the last argument when it ends its own line.
+        while self.eat(&Token::Punct(',')) {
+            if self.tokens.peek() == Some(&Token::Punct(')')) {
+                break;
+            }
+            self.untrusted_input_map(&path, paths);
+            leaf = false;
+        }
+        self.expect(&Token::Punct(')'));
+        if leaf {
+            paths.push(path);
+        }
+    }
+
+    /// `UntrustedInputSearchRoots{"name": NewUntrustedInputMap(...), ...}`
+    fn untrusted_input_roots(&mut self) -> Vec<String> {
+        self.expect_all(&[Token::Ident("UntrustedInputSearchRoots"), Token::Punct('{')]);
+        let mut paths = Vec::new();
+        loop {
+            match self.next() {
+                Token::Punct('}') => return paths,
+                Token::Str(_) => {
+                    self.expect(&Token::Punct(':'));
+                    self.untrusted_input_map("", &mut paths);
+                    self.expect(&Token::Punct(','));
+                }
+                token => panic!("expected a key or `}}`, got {token:?}"),
+            }
+        }
+    }
+
     /// `map[string][]*FuncSignature{"name": {{...}, ...}, ...}`
     fn signature_map(&mut self) -> BTreeMap<String, Vec<FuncSignature>> {
         self.expect_all(&[
@@ -475,4 +524,10 @@ pub(crate) fn special_function_names() -> BTreeMap<String, Vec<String>> {
 /// The reference's `AllContexts`.
 pub(crate) fn all_contexts() -> BTreeMap<String, Vec<String>> {
     Parser::after(AVAILABILITY_GO, "var AllContexts = ").strings_map()
+}
+
+/// The paths of the untrusted values in the reference's `BuiltinUntrustedInputs`, such as
+/// `github.event.commits.*.message`, in source order.
+pub(crate) fn builtin_untrusted_inputs() -> Vec<String> {
+    Parser::after(EXPR_INSECURE_GO, "var BuiltinUntrustedInputs = ").untrusted_input_roots()
 }
