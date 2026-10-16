@@ -26,6 +26,11 @@ use crate::vendor_testdata;
 /// root.
 const EXTRA_INPUTS: &str = "tests/yaml-parity";
 
+/// The number of `.yaml` and `.yml` files in the vendored `testdata/`
+/// directory. The corpus archive in it is counted apart, as
+/// [`CORPUS_FILES`].
+const TESTDATA_FILES: usize = 375;
+
 /// Compares the trees of `paths`, or of the default inputs if `paths` is
 /// empty, prints a report, and fails if a file differs.
 pub(crate) fn run(layout: &Layout, paths: &[PathBuf]) -> Result<()> {
@@ -104,18 +109,23 @@ fn default_inputs(layout: &Layout) -> Result<(Vec<PathBuf>, PathBuf)> {
         );
     }
     let extra = layout.root().join(EXTRA_INPUTS);
-    let inputs = files::collect(&[testdata, corpus.clone(), extra])?;
-    let in_corpus = inputs
-        .iter()
-        .filter(|path| path.starts_with(&corpus))
-        .count();
-    if in_corpus != CORPUS_FILES {
+    let inputs = files::collect(&[testdata.clone(), corpus.clone(), extra])?;
+    expect_yaml_files(&testdata, &inputs, TESTDATA_FILES)?;
+    expect_yaml_files(&corpus, &inputs, CORPUS_FILES)?;
+    Ok((inputs, corpus))
+}
+
+/// Fails unless `inputs` holds exactly `expected` files below `dir`, so a
+/// missing or partly restored directory cannot make the run pass.
+fn expect_yaml_files(dir: &Path, inputs: &[PathBuf], expected: usize) -> Result<()> {
+    let found = inputs.iter().filter(|path| path.starts_with(dir)).count();
+    if found != expected {
         bail!(
-            "{} holds {in_corpus} YAML files, but {CORPUS_FILES} were expected",
-            corpus.display()
+            "{} holds {found} YAML files, but {expected} were expected",
+            dir.display()
         );
     }
-    Ok((inputs, corpus))
+    Ok(())
 }
 
 /// Unpacks `archive` into `target` and returns the number of files.
@@ -201,6 +211,109 @@ mod tests {
             "on: pull_request\n"
         );
         assert!(!target.join("stale.yml").exists());
+    }
+
+    #[test]
+    fn a_directory_with_fewer_yaml_files_than_expected_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let testdata = dir.path().join("testdata");
+        fs::create_dir_all(testdata.join("ok")).unwrap();
+        fs::write(testdata.join("ok").join("a.yaml"), "on: push\n").unwrap();
+        let inputs = files::collect(std::slice::from_ref(&testdata)).unwrap();
+
+        expect_yaml_files(&testdata, &inputs, 1).unwrap();
+        let error = expect_yaml_files(&testdata, &inputs, 2).unwrap_err();
+        assert_eq!(
+            format!("{error:#}"),
+            format!(
+                "{} holds 1 YAML files, but 2 were expected",
+                testdata.display()
+            )
+        );
+        let error = expect_yaml_files(&testdata, &[], TESTDATA_FILES).unwrap_err();
+        assert!(
+            format!("{error:#}").contains("holds 0 YAML files"),
+            "{error:#}"
+        );
+    }
+
+    #[test]
+    fn the_vendored_testdata_holds_the_expected_number_of_yaml_files() {
+        let testdata = Layout::repository()
+            .root()
+            .join(vendor_testdata::DESTINATION)
+            .join("testdata");
+        let inputs = files::collect(std::slice::from_ref(&testdata)).unwrap();
+        expect_yaml_files(&testdata, &inputs, TESTDATA_FILES).unwrap();
+    }
+
+    /// Returns the scalar values of the sequence at `path` of mapping keys
+    /// below the root of `document`.
+    fn strings_at(document: &workflint_yaml::Document, path: &[&str]) -> Vec<String> {
+        use workflint_yaml::NodeKind;
+        let scalar = |id| match &document.node(id).unwrap().kind {
+            NodeKind::Scalar(scalar) => scalar.value.clone(),
+            other => panic!("{other:?} is not a scalar"),
+        };
+        let mut node = document.root().unwrap();
+        for key in path {
+            let NodeKind::Mapping(mapping) = &document.node(node).unwrap().kind else {
+                panic!("the parent of {key} is not a mapping");
+            };
+            let entry = document
+                .entries(mapping)
+                .iter()
+                .find(|e| scalar(e.key) == *key);
+            node = entry.unwrap_or_else(|| panic!("no key {key}")).value;
+        }
+        let NodeKind::Sequence(sequence) = &document.node(node).unwrap().kind else {
+            panic!("{path:?} is not a sequence");
+        };
+        document
+            .items(sequence)
+            .iter()
+            .map(|&id| scalar(id))
+            .collect()
+    }
+
+    #[test]
+    fn the_workflow_runs_when_an_input_of_the_comparison_changes() {
+        let inputs = [
+            "crates/workflint-yaml/**",
+            "crates/workflint-diagnostics/**",
+            "xtask/goyaml-dump/**",
+            "xtask/src/yaml_parity.rs",
+            "xtask/src/yaml_parity/**",
+            "xtask/src/reference.rs",
+            "xtask/src/reference/**",
+            "xtask/src/vendor_testdata.rs",
+            "xtask/src/main.rs",
+            "xtask/Cargo.toml",
+            "tests/yaml-parity/**",
+            "tests/conformance/actionlint/**",
+            ".go-version",
+            "Cargo.lock",
+            "rust-toolchain.toml",
+            ".github/workflows/yaml-parity.yml",
+        ];
+        let path = Layout::repository()
+            .root()
+            .join(".github")
+            .join("workflows")
+            .join("yaml-parity.yml");
+        let text = fs::read_to_string(path).unwrap();
+        let file =
+            workflint_diagnostics::SourceFile::new(workflint_diagnostics::FileId::new(0), "", text)
+                .unwrap();
+        let document = workflint_yaml::parse(&file).document.unwrap();
+        for event in ["push", "pull_request"] {
+            let paths = strings_at(&document, &["on", event, "paths"]);
+            let missing: Vec<_> = inputs
+                .iter()
+                .filter(|input| !paths.iter().any(|path| path == *input))
+                .collect();
+            assert!(missing.is_empty(), "{event} misses {missing:?}");
+        }
     }
 
     fn all_identical() -> BTreeMap<String, Verdict> {

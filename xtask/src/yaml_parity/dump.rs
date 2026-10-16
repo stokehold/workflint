@@ -68,51 +68,59 @@ struct Dumper<'a> {
 }
 
 impl Dumper<'_> {
+    /// Prints the node in `slot` and the nodes under it, in pre-order.
+    ///
+    /// The walk keeps the slots still to print on a heap stack, so a deep
+    /// tree cannot overflow the thread's stack.
     fn node(&mut self, slot: NodeId, depth: usize) {
-        let indent = "  ".repeat(depth);
-        let Some(&(id, node)) = self.nodes.get(self.next) else {
-            let _ = writeln!(self.out, "{indent}missing node #{}", slot.index());
-            return;
-        };
-        self.next += 1;
-        let pos = self.file.line_col(node.span.start);
-        let _ = write!(
-            self.out,
-            "{indent}{} {}:{}",
-            kind(node),
-            pos.line,
-            pos.column
-        );
-        if let Some(anchor) = &node.anchor {
-            let _ = write!(self.out, " &{}", anchor.name);
-        }
-        // A note in parentheses marks a tree that breaks the ID order above.
-        // go-yaml's dump never has one, so the file shows up as differing.
-        match &node.kind {
-            NodeKind::Alias(alias) => {
-                let _ = write!(self.out, " *{}", alias.name);
-                if id != slot && alias.target != Some(slot) {
-                    let _ = write!(self.out, " (its parent refers to #{})", slot.index());
+        // The slot and depth of each node still to print, the next one last.
+        let mut stack = vec![(slot, depth)];
+        while let Some((slot, depth)) = stack.pop() {
+            let indent = "  ".repeat(depth);
+            let Some(&(id, node)) = self.nodes.get(self.next) else {
+                let _ = writeln!(self.out, "{indent}missing node #{}", slot.index());
+                continue;
+            };
+            self.next += 1;
+            let pos = self.file.line_col(node.span.start);
+            let _ = write!(
+                self.out,
+                "{indent}{} {}:{}",
+                kind(node),
+                pos.line,
+                pos.column
+            );
+            if let Some(anchor) = &node.anchor {
+                let _ = write!(self.out, " &{}", anchor.name);
+            }
+            // A note in parentheses marks a tree that breaks the ID order
+            // above. go-yaml's dump never has one, so the file shows up as
+            // differing.
+            match &node.kind {
+                NodeKind::Alias(alias) => {
+                    let _ = write!(self.out, " *{}", alias.name);
+                    if id != slot && alias.target != Some(slot) {
+                        let _ = write!(self.out, " (its parent refers to #{})", slot.index());
+                    }
+                    self.out.push('\n');
                 }
-                self.out.push('\n');
-            }
-            _ if id != slot => {
-                let _ = writeln!(self.out, " (its parent refers to #{})", slot.index());
-            }
-            NodeKind::Scalar(scalar) => {
-                let _ = writeln!(self.out, " {}", quote(&scalar.value));
-            }
-            NodeKind::Sequence(sequence) => {
-                self.out.push('\n');
-                for &item in self.document.items(sequence) {
-                    self.node(item, depth + 1);
+                _ if id != slot => {
+                    let _ = writeln!(self.out, " (its parent refers to #{})", slot.index());
                 }
-            }
-            NodeKind::Mapping(mapping) => {
-                self.out.push('\n');
-                for entry in self.document.entries(mapping) {
-                    self.node(entry.key, depth + 1);
-                    self.node(entry.value, depth + 1);
+                NodeKind::Scalar(scalar) => {
+                    let _ = writeln!(self.out, " {}", quote(&scalar.value));
+                }
+                NodeKind::Sequence(sequence) => {
+                    self.out.push('\n');
+                    let items = self.document.items(sequence).iter().rev();
+                    stack.extend(items.map(|&item| (item, depth + 1)));
+                }
+                NodeKind::Mapping(mapping) => {
+                    self.out.push('\n');
+                    for entry in self.document.entries(mapping).iter().rev() {
+                        stack.push((entry.value, depth + 1));
+                        stack.push((entry.key, depth + 1));
+                    }
                 }
             }
         }
@@ -187,6 +195,22 @@ mod tests {
                 "    alias 1:8 *a",
             ]),
         );
+    }
+
+    #[test]
+    fn a_tree_at_the_depth_limit_dumps_on_a_two_mebibyte_stack() {
+        // go-yaml accepts this depth and rejects one level more.
+        const MAX_DEPTH: usize = 10_000;
+        let text = format!("{}{}\n", "[".repeat(MAX_DEPTH), "]".repeat(MAX_DEPTH));
+        let out = std::thread::Builder::new()
+            .stack_size(2 * 1024 * 1024)
+            .spawn(move || dump(text.as_bytes()))
+            .unwrap()
+            .join()
+            .unwrap();
+        assert_eq!(out.lines().count(), MAX_DEPTH);
+        let innermost = format!("{}sequence 1:{MAX_DEPTH}", "  ".repeat(MAX_DEPTH - 1));
+        assert_eq!(out.lines().last(), Some(innermost.as_str()));
     }
 
     #[test]
