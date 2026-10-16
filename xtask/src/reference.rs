@@ -56,6 +56,11 @@ impl Layout {
         }
     }
 
+    /// The repository root.
+    pub(crate) fn root(&self) -> &Path {
+        &self.root
+    }
+
     /// The actionlint checkout, `.reference/actionlint`.
     pub(crate) fn checkout(&self) -> PathBuf {
         self.root.join(".reference").join("actionlint")
@@ -89,7 +94,7 @@ impl Layout {
     }
 
     /// `path` relative to the repository root, for messages.
-    fn display<'a>(&self, path: &'a Path) -> std::path::Display<'a> {
+    pub(crate) fn display<'a>(&self, path: &'a Path) -> std::path::Display<'a> {
         path.strip_prefix(&self.root).unwrap_or(path).display()
     }
 }
@@ -97,6 +102,26 @@ impl Layout {
 /// Step 1: makes `.reference/actionlint` a clean checkout of [`COMMIT`].
 pub(crate) fn ensure_checkout(layout: &Layout) -> Result<Outcome> {
     checkout::ensure(&layout.checkout(), REPOSITORY_URL, COMMIT)
+}
+
+/// The files in the checkout that git tracks under `pathspecs`, relative to
+/// the checkout and with `/` separators, in git's order. Call
+/// [`ensure_checkout`] first, so the files match the commit.
+pub(crate) fn tracked_files(layout: &Layout, pathspecs: &[&str]) -> Result<Vec<String>> {
+    checkout::tracked_files(&layout.checkout(), pathspecs)
+}
+
+/// Runs [`ensure_checkout`] and prints one line about it.
+pub(crate) fn report_checkout(layout: &Layout) -> Result<()> {
+    let short = &COMMIT[..7];
+    let checkout = layout.checkout();
+    let path = layout.display(&checkout);
+    match ensure_checkout(layout)? {
+        Outcome::Created => println!("checkout: cloned {path} at {short}"),
+        Outcome::Updated => println!("checkout: moved {path} to {short}"),
+        Outcome::UpToDate => println!("checkout: {path} is up to date at {short}"),
+    }
+    Ok(())
 }
 
 /// Step 2: builds `.reference/bin/actionlint` from the checkout with the
@@ -120,15 +145,7 @@ pub(crate) fn ensure_corpus(layout: &Layout) -> Result<(Outcome, usize)> {
 
 /// Runs the three steps and prints one line for each.
 pub(crate) fn run(layout: &Layout) -> Result<()> {
-    let short = &COMMIT[..7];
-
-    let checkout = layout.checkout();
-    let path = layout.display(&checkout);
-    match ensure_checkout(layout)? {
-        Outcome::Created => println!("checkout: cloned {path} at {short}"),
-        Outcome::Updated => println!("checkout: moved {path} to {short}"),
-        Outcome::UpToDate => println!("checkout: {path} is up to date at {short}"),
-    }
+    report_checkout(layout)?;
 
     let binary = layout.binary();
     let path = layout.display(&binary);

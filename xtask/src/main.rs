@@ -6,6 +6,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod reference;
+mod vendor_testdata;
 
 use clap::{CommandFactory, Parser, Subcommand};
 
@@ -23,6 +24,10 @@ enum Command {
     /// Recreate the actionlint checkout, reference binary, and corpus in
     /// `.reference/`. Needs git and the Go version in `.go-version`.
     Reference,
+    /// Copy the reference's test data from `.reference/actionlint` into
+    /// `tests/conformance/actionlint/`. Clones the checkout first if it is
+    /// missing.
+    VendorTestdata,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -30,6 +35,9 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         None => Cli::command().print_help()?,
         Some(Command::Reference) => reference::run(&reference::Layout::repository())?,
+        Some(Command::VendorTestdata) => {
+            vendor_testdata::run(&reference::Layout::repository())?;
+        }
     }
     Ok(())
 }
@@ -59,5 +67,11 @@ mod tests {
     fn reference_selects_the_reference_subcommand() {
         let cli = Cli::try_parse_from(["xtask", "reference"]).unwrap();
         assert!(matches!(cli.command, Some(Command::Reference)));
+    }
+
+    #[test]
+    fn vendor_testdata_selects_the_vendor_testdata_subcommand() {
+        let cli = Cli::try_parse_from(["xtask", "vendor-testdata"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::VendorTestdata)));
     }
 }
