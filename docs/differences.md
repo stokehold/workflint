@@ -282,6 +282,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M3.
 - Status: planned.
 
+<a id="object-merge-order"></a>
+### Merged object types do not depend on map order
+
+- Upstream: merging two object types adds each property that only the second one has to the element type of the result, in Go map order, which is random (`expr_type.go:343-351`). The merged element type depends on that order, so the result can vary between runs. A map of `number` merged with a strict object `{a: string; b: bool}` prints as `{string => string}` or as `object`.
+- workflint: the properties are added in byte order of their names, so that merge always gives `{string => string}`.
+- Why: output must not vary between runs (ADR 0013).
+- Upstream issue: none.
+- Milestone: M3.
+- Status: planned.
+
 <a id="matrix-include-expressions"></a>
 ### Expressions in `matrix.include` elements are checked
 
@@ -388,11 +398,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Escaped characters in branch and tag globs
 
 - Upstream: for `\[`, `\?` and `\*` in a branch or tag filter, the error reports the character after the escaped one (`glob.go:100`). `\[x` reports `'x'`, and `\[` at the end reports the end-of-input rune.
-- workflint: the error reports the escaped character, for example `'['`.
+- workflint: the error reports the escaped character, for example `'['`. The column is the same as upstream.
 - Why: the message names the wrong character.
 - Upstream issue: none.
-- Milestone: M4.
+- Milestone: M2.
 - Status: planned.
+- Fixtures: none. The `workflint-syntax` test `an_escaped_special_character_in_a_ref_glob_reports_that_character` covers it.
 
 <a id="branding-color-message"></a>
 ### Branding color message names `branding.color`

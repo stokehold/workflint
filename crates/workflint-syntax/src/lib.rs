@@ -71,6 +71,7 @@
 
 mod action_metadata;
 mod event;
+pub mod glob;
 mod job;
 mod keyed;
 mod leaf;
