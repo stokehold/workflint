@@ -9,7 +9,7 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0003](0003-actionlint-compatibility.md) | actionlint compatibility contract | accepted | [0023](0023-allow-list-scope.md) |
 | [0004](0004-parity-target-and-conformance-testing.md) | Parity target and conformance testing | accepted | |
 | [0005](0005-yaml-layer.md) | YAML layer | accepted | [0022](0022-yaml-layer-revisions.md) |
-| [0006](0006-workspace-and-crates.md) | Workspace and crate boundaries | accepted | [0025](0025-fuzz-workspace.md) |
+| [0006](0006-workspace-and-crates.md) | Workspace and crate boundaries | accepted | [0025](0025-fuzz-workspace.md), [0027](0027-expression-data-dependency.md) |
 | [0007](0007-diagnostic-model.md) | Diagnostic model | accepted | |
 | [0008](0008-rule-registry-and-defaults.md) | Rule registry and default rule set | accepted | [0024](0024-parse-stage-rules.md) |
 | [0009](0009-inline-ignore-comments.md) | Inline ignore comments | accepted | |
@@ -30,3 +30,4 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0024](0024-parse-stage-rules.md) | Parse-stage rules | accepted | |
 | [0025](0025-fuzz-workspace.md) | Fuzz workspace | accepted | |
 | [0026](0026-agent-sandbox.md) | Agent sandbox | accepted | |
+| [0027](0027-expression-data-dependency.md) | Expression data dependency | accepted | |

@@ -11,16 +11,16 @@ workflint                      binary: CLI, output formats
 ├── workflint-gotemplate       Go text/template subset for -format
 └── workflint-linter           discovery, config, parallel driver, caches, external tools
     └── workflint-rules        rule registry and rules
-        ├── workflint-data     generated GitHub platform data
         └── workflint-syntax   workflow and action.yml AST and parser
             ├── workflint-yaml YAML parser fork, span tree, comments, source maps
             └── workflint-expr ${{ }} lexer, parser, types, checker
+                └── workflint-data  GitHub platform data, also used by workflint-rules
 
 workflint-diagnostics          Diagnostic, Span, Severity, renderers; every crate except
                                workflint-data and workflint-gotemplate depends on it
 ```
 
-ADR 0006 has the full dependency table and the boundary rules. Only `workflint-linter` and `workflint` touch the file system, spawn processes, or read environment variables. Every other crate is a pure function of its inputs, so it compiles to WASM and needs no mocks in tests.
+ADR 0006 has the full dependency table and the boundary rules, and ADR 0027 adds the dependency of `workflint-expr` on `workflint-data`. Only `workflint-linter` and `workflint` touch the file system, spawn processes, or read environment variables. Every other crate is a pure function of its inputs, so it compiles to WASM and needs no mocks in tests.
 
 Parse-stage rules are an exception to "rules live in `workflint-rules`". `workflint-yaml`, and later `workflint-syntax` and `workflint-expr`, report diagnostics while parsing and define the `RuleMeta` of those rules themselves. The registry in `workflint-rules` lists them with its own rules (ADR 0024).
 
@@ -52,6 +52,7 @@ Parse-stage rules are an exception to "rules live in `workflint-rules`". `workfl
 | `yaml::Document` and `yaml::Node` | yaml | Arena-allocated span tree with tags, scalar styles, anchors, and comments. `Node::source_map` builds a scalar's source map on demand (ADR 0022). |
 | `Workflow`, `Job`, `Step`, `ActionMetadata` | syntax | Typed AST. Every field keeps its `Span`. Values that may be expressions are `Value<T>` (a literal `T` or an expression). |
 | `Expr`, `Ty` | expr | Expression AST and types. `Ty` is an immutable enum shared through `Arc`. |
+| `TypeDesc`, `GLOBAL_CONTEXTS` | data | Expression types as `static` platform data, and the types of the global contexts. `workflint-expr` converts a `TypeDesc` to a `Ty` (ADR 0027). |
 | `Rule` trait and `Registry` | rules | A rule declares its metadata and implements visitor callbacks for the nodes it cares about. |
 | `Project`, `Config`, `Linter` | linter | Project root, loaded config, caches, and the parallel driver. |
 
