@@ -1,23 +1,35 @@
 //! Builds the `workflint` binary from the workspace and runs it on a fixture.
 
+use std::fs::File;
+use std::hash::{DefaultHasher, Hasher};
+use std::io::{ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
+use std::time::Duration;
 
 use serde::Deserialize;
 
 use super::fixture::Invocation;
 
-/// The path of the `workflint` binary, built from the workspace.
+/// The path of a copy of the `workflint` binary, built from the workspace.
 ///
 /// `cargo test` does not build the binaries of other packages, so the runner
 /// runs `cargo build -p workflint` itself, once per process. Under nextest,
 /// which runs each test in its own process, every test runs it. When the
 /// binary is up to date, that takes about 50 milliseconds.
 ///
+/// Every `cargo build` deletes `target/debug/workflint` and hard-links it
+/// again, even when it rebuilds nothing. A test that starts that path while
+/// another process builds can fail with "No such file or directory". So the
+/// runner copies the binary to `target/conformance/workflint-<hash>`, where
+/// `<hash>` is a hash of its content, and returns the path of the copy. No
+/// build deletes the copy, and a change to `crates/workflint` gives a new
+/// hash and a new copy. `cargo clean` deletes the old copies.
+///
 /// # Panics
 ///
-/// Panics if the build fails.
+/// Panics if the build or the copy fails.
 pub fn workflint() -> &'static Path {
     static BINARY: OnceLock<PathBuf> = OnceLock::new();
     BINARY.get_or_init(|| build().unwrap_or_else(|error| panic!("{error}")))
@@ -57,9 +69,85 @@ fn build() -> Result<PathBuf, String> {
             output.status
         ));
     }
-    executable(&String::from_utf8_lossy(&output.stdout)).ok_or_else(|| {
+    let built = executable(&String::from_utf8_lossy(&output.stdout)).ok_or_else(|| {
         "cargo build --package workflint reported no workflint executable".to_owned()
-    })
+    })?;
+    // `built` is `<target>/<profile>/workflint`.
+    let target = built
+        .parent()
+        .and_then(Path::parent)
+        .ok_or_else(|| format!("{} has no target directory", built.display()))?;
+    stable_copy(&built, &target.join("conformance"))
+}
+
+/// Copies `source` into `directory` under a name that depends on its content
+/// and returns the path of the copy.
+///
+/// Another process's `cargo build` can delete `source` and hard-link it again
+/// at any time, so this function retries opening it while it is missing. It
+/// writes the copy to a temporary file and then renames that file, so no
+/// process sees a partial copy. If a copy with the same content exists, it
+/// returns that copy.
+fn stable_copy(source: &Path, directory: &Path) -> Result<PathBuf, String> {
+    let mut file = open_relinked(source)?;
+    let mut content = Vec::new();
+    file.read_to_end(&mut content)
+        .map_err(|error| format!("reading {}: {error}", source.display()))?;
+    let permissions = file
+        .metadata()
+        .map_err(|error| format!("reading the metadata of {}: {error}", source.display()))?
+        .permissions();
+
+    let mut hasher = DefaultHasher::new();
+    hasher.write(&content);
+    let mut name = format!("workflint-{:016x}", hasher.finish());
+    if let Some(extension) = source.extension() {
+        name.push('.');
+        name.push_str(&extension.to_string_lossy());
+    }
+    let copy = directory.join(name);
+    if copy.is_file() {
+        return Ok(copy);
+    }
+
+    std::fs::create_dir_all(directory)
+        .map_err(|error| format!("creating {}: {error}", directory.display()))?;
+    let mut temporary = tempfile::NamedTempFile::new_in(directory)
+        .map_err(|error| format!("creating a file in {}: {error}", directory.display()))?;
+    temporary
+        .write_all(&content)
+        .and_then(|()| temporary.as_file().set_permissions(permissions))
+        .map_err(|error| format!("writing {}: {error}", temporary.path().display()))?;
+    match temporary.persist_noclobber(&copy) {
+        Ok(_) => Ok(copy),
+        // Another test process made the same copy first.
+        Err(error) if error.error.kind() == ErrorKind::AlreadyExists => Ok(copy),
+        Err(error) => Err(format!(
+            "moving a copy to {}: {}",
+            copy.display(),
+            error.error
+        )),
+    }
+}
+
+/// Opens `path`, which `cargo build` may be deleting and linking again.
+///
+/// Cargo links the file again right after it deletes it, so this function
+/// retries every millisecond, for at most 100 milliseconds, while the file is
+/// missing.
+fn open_relinked(path: &Path) -> Result<File, String> {
+    let mut attempts = 0;
+    loop {
+        match File::open(path) {
+            Err(error) if error.kind() == ErrorKind::NotFound && attempts < 100 => {
+                attempts += 1;
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            result => {
+                return result.map_err(|error| format!("opening {}: {error}", path.display()));
+            }
+        }
+    }
 }
 
 /// Finds the `workflint` executable in the JSON messages of `cargo build`.
@@ -165,6 +253,45 @@ mod tests {
             executable(messages),
             Some(PathBuf::from(r"C:\target\debug\workflint.exe"))
         );
+    }
+
+    /// A fresh `cargo build` deletes the binary it reports and hard-links it
+    /// again from `deps/`. The copy that the runner starts must survive that.
+    #[cfg(unix)]
+    #[test]
+    fn the_copy_starts_while_cargo_relinks_the_binary() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let temp = tempfile::tempdir().unwrap();
+        let deps = temp.path().join("deps");
+        std::fs::create_dir(&deps).unwrap();
+        let original = deps.join("workflint-0123456789abcdef");
+        std::fs::copy("/usr/bin/true", &original).unwrap();
+        let uplifted = temp.path().join("workflint");
+        std::fs::hard_link(&original, &uplifted).unwrap();
+        let copies = temp.path().join("conformance");
+
+        let done = AtomicBool::new(false);
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                while !done.load(Ordering::Relaxed) {
+                    std::fs::remove_file(&uplifted).unwrap();
+                    std::fs::hard_link(&original, &uplifted).unwrap();
+                }
+            });
+            let result = (0..50).try_for_each(|_| {
+                let program = stable_copy(&uplifted, &copies)?;
+                let status = Command::new(&program)
+                    .status()
+                    .map_err(|error| format!("running {}: {error}", program.display()))?;
+                status
+                    .success()
+                    .then_some(())
+                    .ok_or_else(|| format!("{} exited with {status}", program.display()))
+            });
+            done.store(true, Ordering::Relaxed);
+            result.unwrap();
+        });
     }
 
     #[test]

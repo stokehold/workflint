@@ -47,6 +47,7 @@ Goal: the types and test infrastructure every later milestone builds on. Start w
 - M1.19 Scope CI credentials and verify tool installs [#53](https://github.com/stokehold/workflint/issues/53)
 - M1.20 Fix renderer columns and test Go quoting over every code point [#54](https://github.com/stokehold/workflint/issues/54)
 - M1.21 Update the docs and ADRs after the M1 review [#55](https://github.com/stokehold/workflint/issues/55)
+- M1.22 Stop conformance tests from racing on the workflint binary [#101](https://github.com/stokehold/workflint/issues/101)
 
 ## M2: workflow syntax
 
