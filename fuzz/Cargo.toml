@@ -1,0 +1,33 @@
+# The fuzz targets (ADR 0018). This is its own workspace, outside the main
+# one, because `cargo fuzz` needs a nightly toolchain. CONTRIBUTING.md says
+# how to run it.
+[package]
+name = "workflint-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+license = "MIT"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+workflint-diagnostics = { path = "../crates/workflint-diagnostics" }
+workflint-yaml = { path = "../crates/workflint-yaml" }
+
+[workspace]
+
+[[bin]]
+name = "yaml_events"
+path = "fuzz_targets/yaml_events.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "yaml_tree"
+path = "fuzz_targets/yaml_tree.rs"
+test = false
+doc = false
+bench = false

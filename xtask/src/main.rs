@@ -5,6 +5,7 @@
 // never on user input.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod fuzz_seeds;
 mod reference;
 mod vendor_testdata;
 
@@ -21,6 +22,10 @@ struct Cli {
 /// Each subcommand lives in its own module in `xtask/src/`.
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Write seed inputs for the fuzz targets into `fuzz/corpus/<target>/`:
+    /// the YAML files of the vendored test data, the corpus archive, the YAML
+    /// test suite, and the fuzz regression inputs.
+    FuzzSeeds,
     /// Recreate the actionlint checkout, reference binary, and corpus in
     /// `.reference/`. Needs git and the Go version in `.go-version`.
     Reference,
@@ -34,6 +39,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         None => Cli::command().print_help()?,
+        Some(Command::FuzzSeeds) => fuzz_seeds::run(reference::Layout::repository().root())?,
         Some(Command::Reference) => reference::run(&reference::Layout::repository())?,
         Some(Command::VendorTestdata) => {
             vendor_testdata::run(&reference::Layout::repository())?;
@@ -61,6 +67,12 @@ mod tests {
     fn help_flag_requests_help() {
         let error = Cli::try_parse_from(["xtask", "--help"]).unwrap_err();
         assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
+    }
+
+    #[test]
+    fn fuzz_seeds_selects_the_fuzz_seeds_subcommand() {
+        let cli = Cli::try_parse_from(["xtask", "fuzz-seeds"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::FuzzSeeds)));
     }
 
     #[test]

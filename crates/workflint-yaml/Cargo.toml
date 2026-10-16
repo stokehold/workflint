@@ -24,5 +24,9 @@ proptest = { version = "1.12.0", default-features = false, features = ["std"] }
 name = "yaml_test_suite"
 harness = false
 
+[[test]]
+name = "fuzz_regressions"
+harness = false
+
 [lints]
 workspace = true
