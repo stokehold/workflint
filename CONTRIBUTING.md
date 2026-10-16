@@ -35,6 +35,27 @@ The command checks the Go version before it builds. With another Go 1.21 or late
 
 The test suite does not need `.reference/`. It reads a copy of the reference's test data in `tests/conformance/actionlint/`, which is in git. `cargo xtask vendor-testdata` recreates that copy from the checkout, and the `README.md` there lists the files it holds.
 
+## Micro-benchmarks
+
+Hot paths have micro-benchmarks written with [divan](https://docs.rs/divan) (ADR 0019). They live in each crate's `benches/` directory:
+
+- `crates/workflint-yaml/benches/parse.rs` parses `minimal.yaml`, `small.yaml`, and `large.yaml` to events and to the span tree.
+- `crates/workflint-diagnostics/benches/source.rs` builds the line index of `large.yaml` and converts the offset of each of its characters to a line and column.
+
+The inputs are the reference's benchmark files in `tests/conformance/actionlint/testdata/bench/`. They sit outside the crates, so the published packages do not contain them (ADR 0006).
+
+Run them locally with `cargo bench`:
+
+```sh
+cargo bench -p workflint-yaml
+cargo bench -p workflint-diagnostics
+cargo bench -p workflint-yaml -- tree
+```
+
+The last command runs only the benchmarks whose name contains `tree`. Locally, divan measures wall time and prints a table.
+
+The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchmark imports `divan` as usual. In CI, the `CodSpeed` workflow builds the benchmarks with `cargo codspeed build` and runs them under CodSpeed, which counts instructions instead of measuring wall time. It runs on every pull request and on every push to `main`, and CodSpeed comments on the pull request with the change against `main`. To add a benchmark target, add a `[[bench]]` section with `harness = false` to the crate's `Cargo.toml`.
+
 ## Pull requests
 
 - One issue per pull request. Open it as a draft with `Closes #N` in the description as soon as you start, so others can see the task is taken.

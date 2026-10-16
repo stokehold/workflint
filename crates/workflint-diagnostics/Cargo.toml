@@ -9,6 +9,8 @@ repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
 readme = "README.md"
+# Keep the test fixtures and the benchmarks out of the published package (ADR 0006).
+include = ["/src", "/README.md"]
 
 [dependencies]
 thiserror = "2.0.21"
@@ -18,7 +20,13 @@ unicode-general-category = "=0.6.0"
 unicode-width = { version = "0.2.2", default-features = false }
 
 [dev-dependencies]
+# divan's API, measured by CodSpeed in CI and by divan on `cargo bench` (ADR 0019).
+divan = { package = "codspeed-divan-compat", version = "5.0.3" }
 insta = "1.49.0"
+
+[[bench]]
+name = "source"
+harness = false
 
 [lints]
 workspace = true
