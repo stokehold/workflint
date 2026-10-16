@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::fmt;
 
 /// Identifies one [`SourceFile`] within a lint run.
@@ -150,24 +149,15 @@ fn line_starts(text: &str) -> Vec<usize> {
 }
 
 /// The error [`SourceFile::new`] returns for text longer than `u32::MAX` bytes.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error(
+    "source text is {len} bytes, more than the limit of {} bytes",
+    u32::MAX
+)]
 pub struct SourceTooLarge {
     /// The length of the rejected text in bytes.
     pub len: usize,
 }
-
-impl fmt::Display for SourceTooLarge {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "source text is {} bytes, more than the limit of {} bytes",
-            self.len,
-            u32::MAX
-        )
-    }
-}
-
-impl Error for SourceTooLarge {}
 
 #[cfg(test)]
 mod tests {
@@ -266,6 +256,15 @@ mod tests {
             column: 14,
         };
         assert_eq!(pos.to_string(), "line:3,col:14");
+    }
+
+    #[test]
+    fn source_too_large_names_the_length_and_the_limit() {
+        let err = SourceTooLarge { len: 5_000_000_000 };
+        assert_eq!(
+            err.to_string(),
+            "source text is 5000000000 bytes, more than the limit of 4294967295 bytes"
+        );
     }
 
     #[test]
