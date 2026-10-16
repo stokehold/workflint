@@ -39,7 +39,7 @@ Add a fixture under `workflint/` when a checklist row says "none" in its fixture
 
 ## Command line
 
-This is the command line the runner uses. M5 builds the CLI to accept it, and the reference binary accepts it today.
+This is the command line the runner uses. The reference binary accepts it, and so does `workflint` from M2.0. From M2.0 the binary lints the files it is given: it reports the diagnostics of the YAML layer, and each later task adds its own. M5.6 replaces it with the full CLI.
 
 For each fixture, the runner creates a temporary directory and builds a project in `<temp>/project`:
 
@@ -97,7 +97,9 @@ A relative path is relative to the repository root. In this mode the runner does
 "ok/minimal.yaml" = "M5"
 ```
 
-The milestone is the latest one among the `docs/parity-checklist.md` rows that cite the fixture, or M5 if no row cites it. It is never earlier than M2, because no fixture can pass before M2.0 gives the binary the runner's command line.
+The milestone is the latest one among the `docs/parity-checklist.md` rows that cite the fixture, or M5 if no row cites it.
+
+The binary has linted for real since M2.0, so the file lists only fixtures that still fail. A task that makes a fixture fail again, and adds the fixture back to this file, introduces a regression. Fix the regression instead.
 
 - A listed fixture that fails passes its test and prints `expected failure until <milestone>` with the first line of the reason.
 - A listed fixture that passes fails its test, with a message that says to remove its line. The pull request that makes a fixture pass removes the line.

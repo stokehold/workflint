@@ -74,8 +74,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="yaml-error-positions"></a>
 ### YAML syntax error positions
 
-- Upstream: YAML syntax errors use go-yaml's position, which takes the line from libyaml's context mark when it has one and reports a 0-based column. `steps: -` is reported at `2:7`, although the problem is at `2:8`. A control character in the file gives `control characters are not allowed` at `0:0`, because libyaml's reader records only a byte offset.
-- workflint: the error is reported at the 1-based problem position, and a control character at its own position. The message text is unchanged.
+- Upstream: YAML syntax errors use go-yaml's position, which takes the line from libyaml's context mark when it has one and reports a 0-based column. `steps: -` is reported at `2:7`, although the problem is at `2:8`. A control character in the file gives `control characters are not allowed` at `0:0`, because libyaml's reader records only a byte offset. Bytes that do not decode as UTF-8, or as UTF-16 after a UTF-16 byte order mark, give an encoding error such as `invalid leading UTF-8 octet` at `0:0` too. go-yaml decodes the file in chunks while it parses, so when the bad bytes are in a later chunk than a syntax error, it reports the syntax error instead.
+- workflint: the error is reported at the 1-based problem position, a control character at its own position, and an encoding error at the first character that does not decode. workflint decodes the whole file before it parses, so it always reports the encoding error. The message text is unchanged.
 - Why: the upstream position is off by one column and sometimes on the wrong line.
 - Upstream issue: #519.
 - Milestone: M1.

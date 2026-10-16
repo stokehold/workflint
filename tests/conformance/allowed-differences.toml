@@ -7,3 +7,27 @@
 # fixture = "err/yaml_syntax_error"
 # upstream = "test.yaml:..."
 # workflint = "test.yaml:..."
+
+[[difference]]
+anchor = "yaml-error-positions"
+fixture = "err/yaml_syntax_error"
+upstream = "test.yaml:2:7: could not parse as YAML: block sequence entries are not allowed in this context [syntax-check]"
+workflint = "test.yaml:2:8: could not parse as YAML: block sequence entries are not allowed in this context [syntax-check]"
+
+[[difference]]
+anchor = "yaml-error-positions"
+fixture = "examples/broken_yaml"
+upstream = "test.yaml:6:16: could not parse as YAML: mapping values are not allowed in this context [syntax-check]"
+workflint = "test.yaml:6:17: could not parse as YAML: mapping values are not allowed in this context [syntax-check]"
+
+[[difference]]
+anchor = "unknown-anchor-position"
+fixture = "err/undefined_anchor"
+upstream = "test.yaml:0:0: could not parse as YAML: yaml: unknown anchor 'default_env' referenced [syntax-check]"
+workflint = "test.yaml:8:14: could not parse as YAML: unknown anchor 'default_env' referenced [syntax-check]"
+
+[[difference]]
+anchor = "unknown-anchor-position"
+fixture = "examples/dangling_alias"
+upstream = "test.yaml:0:0: could not parse as YAML: yaml: unknown anchor 'credentials' referenced [syntax-check]"
+workflint = "test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced [syntax-check]"

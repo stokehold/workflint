@@ -933,6 +933,10 @@ dependencies = [
 [[package]]
 name = "workflint"
 version = "0.0.1"
+dependencies = [
+ "workflint-diagnostics",
+ "workflint-yaml",
+]
 
 [[package]]
 name = "workflint-diagnostics"
