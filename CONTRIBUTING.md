@@ -98,7 +98,7 @@ cargo bench -p workflint-yaml -- tree
 
 The last command runs only the benchmarks whose name contains `tree`. Locally, divan measures wall time and prints a table.
 
-The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchmark imports `divan` as usual. In CI, the `CodSpeed` workflow builds the benchmarks with `cargo codspeed build` and runs them under CodSpeed, which counts instructions instead of measuring wall time. It runs on every pull request and on every push to `main`. The job reports results once the maintainer has added the CodSpeed action to the organization allowlist (#15). From then on, CodSpeed comments on each pull request with the change against `main`. To add a benchmark target, add a `[[bench]]` section with `harness = false` to the crate's `Cargo.toml`.
+The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchmark imports `divan` as usual. In CI, the `CodSpeed` workflow builds the benchmarks with `cargo codspeed build` and runs them under CodSpeed, which counts instructions instead of measuring wall time. It runs on every pull request and on every push to `main`, and a maintainer can start it by hand from the Actions tab. CodSpeed comments on each pull request with the change against `main`. To add a benchmark target, add a `[[bench]]` section with `harness = false` to the crate's `Cargo.toml`.
 
 ## Fuzzing
 
