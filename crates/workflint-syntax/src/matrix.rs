@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use workflint_diagnostics::Span;
 
-use crate::{Expr, Keyed, Str, Value};
+use crate::{Expr, Keyed, Template, Value};
 
 /// The mapping form of `strategy.matrix`.
 ///
@@ -63,7 +63,7 @@ pub enum MatrixCombination<'a> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum RawValue<'a> {
     /// A scalar, the reference's `RawYAMLString`.
-    Scalar(Str<'a>),
+    Scalar(Template<'a>),
     /// A sequence, the reference's `RawYAMLArray`.
     Sequence {
         /// The span of the sequence.

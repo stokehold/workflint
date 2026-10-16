@@ -14,8 +14,8 @@ use super::mapping::Key;
 use super::{KeySpec, Label, MapEntry, Parser, Section};
 use crate::rules::MISSING_REQUIRED_KEY;
 use crate::{
-    Concurrency, Defaults, DefaultsRun, Env, Environment, Field, Keyed, KeyedEntry, Permissions,
-    Str, Value,
+    Concurrency, Defaults, DefaultsRun, Env, EnvVar, Environment, Field, Keyed, KeyedEntry,
+    Permissions, Str, Value,
 };
 
 /// The keys of `defaults`.
@@ -40,11 +40,11 @@ impl Section for DefaultsRunSection {
 static DEFAULTS_RUN_KEYS: [KeySpec<DefaultsRunSection>; 2] = [
     KeySpec {
         name: "shell",
-        parse: |p, r, e| r.shell = p.parse_string(e.key.string, e.value, false),
+        parse: |p, r, e| r.shell = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "working-directory",
-        parse: |p, r, e| r.working_directory = p.parse_string(e.key.string, e.value, false),
+        parse: |p, r, e| r.working_directory = p.parse_template(e.key.string, e.value, false),
     },
 ];
 
@@ -58,7 +58,7 @@ impl Section for ConcurrencySection {
 static CONCURRENCY_KEYS: [KeySpec<ConcurrencySection>; 2] = [
     KeySpec {
         name: "group",
-        parse: |p, c, e| c.group = p.parse_string(e.key.string, e.value, false),
+        parse: |p, c, e| c.group = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "cancel-in-progress",
@@ -76,11 +76,11 @@ impl Section for EnvironmentSection {
 static ENVIRONMENT_KEYS: [KeySpec<EnvironmentSection>; 3] = [
     KeySpec {
         name: "name",
-        parse: |p, v, e| v.name = p.parse_string(e.key.string, e.value, false),
+        parse: |p, v, e| v.name = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "url",
-        parse: |p, v, e| v.url = p.parse_string(e.key.string, e.value, false),
+        parse: |p, v, e| v.url = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "deployment",
@@ -135,7 +135,7 @@ impl<'a> Parser<'a, '_> {
             };
         }
         let entries = self.parse_mapping(Label::Section("env"), node, false, false);
-        let vars = self.keyed_strings(entries, true);
+        let vars = self.env_vars(entries);
         match node.kind {
             NodeKind::Mapping(_) => Value::Literal {
                 key,
@@ -193,7 +193,7 @@ impl<'a> Parser<'a, '_> {
     ) -> Field<'a, Concurrency<'a>> {
         if let NodeKind::Scalar(_) = node.kind {
             let concurrency = Concurrency {
-                group: self.parse_string(None, node, false),
+                group: self.parse_template(None, node, false),
                 ..Concurrency::default()
             };
             return Field::Valid {
@@ -228,7 +228,7 @@ impl<'a> Parser<'a, '_> {
     ) -> Field<'a, Environment<'a>> {
         if let NodeKind::Scalar(_) = node.kind {
             let environment = Environment {
-                name: self.parse_string(None, node, false),
+                name: self.parse_template(None, node, false),
                 ..Environment::default()
             };
             return Field::Valid {
@@ -250,8 +250,28 @@ impl<'a> Parser<'a, '_> {
         mapping_field(key, node, environment)
     }
 
+    /// Collects the variables of `env`, a case-insensitive mapping of names
+    /// to strings that may be empty. See [`keyed_strings`](Self::keyed_strings).
+    fn env_vars(&mut self, entries: Vec<MapEntry<'a>>) -> Env<'a> {
+        let mut vars = Vec::with_capacity(entries.len());
+        for entry in entries {
+            let value = self
+                .check_string(entry.value, true)
+                .map(|value| self.template(value));
+            if let Some(key) = entry.key.string {
+                let name = self.template(key);
+                vars.push(KeyedEntry::new(
+                    key,
+                    entry.value.span,
+                    EnvVar { name, value },
+                ));
+            }
+        }
+        Keyed::new(vars)
+    }
+
     /// Collects the entries of a case-insensitive mapping of strings, such
-    /// as `env` or the scopes of `permissions`. A value that is not a
+    /// as the scopes of `permissions`. A value that is not a
     /// string, or is empty unless `allow_empty`, is reported and kept as
     /// `None`.
     ///
@@ -298,7 +318,7 @@ mod tests {
     use std::fmt::Debug;
 
     use super::*;
-    use crate::testing::parse_with;
+    use crate::testing::{Text, parse_with};
 
     /// Runs `production` on the first entry of the root mapping of `text`,
     /// and returns the diagnostics followed by the line it returns.
@@ -330,8 +350,8 @@ mod tests {
         }
     }
 
-    fn string(field: &Field<'_, Str<'_>>) -> String {
-        self::field(field, |value| format!("{:?}", value.value()))
+    fn string(field: &Field<'_, impl Text>) -> String {
+        self::field(field, |value| format!("{:?}", value.text()))
     }
 
     fn debug<T: Debug>(value: &T) -> String {
@@ -340,13 +360,10 @@ mod tests {
 
     /// Prints a keyed collection of strings as `key=value` pairs, with `-`
     /// for a value that is not a valid string.
-    fn strings(keyed: &Keyed<'_, Option<Str<'_>>>) -> String {
+    fn strings(keyed: &Keyed<'_, impl Text>) -> String {
         let pairs: Vec<String> = keyed
             .iter()
-            .map(|entry| {
-                let value = entry.value.map_or("-", |value| value.value());
-                format!("{}={value}", entry.key.value())
-            })
+            .map(|entry| format!("{}={}", entry.key.value(), entry.value.text()))
             .collect();
         format!("[{}]", pairs.join(", "))
     }

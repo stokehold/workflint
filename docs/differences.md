@@ -56,7 +56,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - workflint: errors are mapped through the scalar's source map (ADR 0005) to the exact line and column. The maps are exact in every scalar style, including escapes, `''`, line folding, and block indentation. A character that an escape produces maps to the escape's backslash.
 - Why: a position on the wrong line sends users to the wrong place.
 - Upstream issue: #330.
-- Milestone: M3, M4.
+- Milestone: M2, M3, M4. Expression syntax errors use the exact positions from M2.
 - Status: planned.
 - Fixtures: `.out` lines for errors inside multi-line or escaped strings.
 
@@ -359,21 +359,31 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Expressions in `matrix.include` elements are checked
 
 - Upstream: when an element of `include:` is a whole `${{ }}` expression, the rule checks `m.Include.Expression`, which is always nil on that path, instead of the element (`rule_expression.go:950`). `include: ["${{ undefined }}"]` gives no error, and the element's type is not merged into the matrix type, which causes false `property ... is not defined` errors later.
-- workflint: each element expression is checked, and its object type is merged into `matrix`.
+- workflint: each element expression is checked, and its object type is merged into `matrix`. A syntax error in an element expression is reported from M2.
 - Why: the upstream code reads the wrong variable.
 - Upstream issue: none.
-- Milestone: M4.
+- Milestone: M2, M4.
 - Status: planned.
 
 <a id="all-expressions-in-string"></a>
 ### Every `${{ }}` in a string is checked
 
 - Upstream: the first `${{ }}` with any error, including an untrusted-input error, stops checking the rest of the string (`rule_expression.go:755-757`). `echo ${{ foo }} ${{ bar }}` reports only `foo`.
-- workflint: every expression in the string is checked and reported.
+- workflint: every expression in the string is checked and reported. After a syntax error, the search for the next `${{` goes on after the `}}` that ends the broken expression, or after the character that the lexer rejects if it finds no `}}`. Syntax errors are reported from M2, and type and context errors from M4.
 - Why: users fix one error, rerun, and find the next one.
 - Upstream issue: none.
-- Milestone: M4.
+- Milestone: M2, M4.
 - Status: planned.
+
+<a id="invalid-if-condition"></a>
+### An empty or non-string `if`
+
+- Upstream: the parser keeps an `if` whose value is empty or not a scalar as an empty string after it reports the value (`parse.go:204-209`). The `expression` rule then parses that empty string as a condition and reports a second error at the same position: `unexpected end of input while parsing variable access, function call, null, bool, int, float or string. expecting "IDENT", "(", "INTEGER", "FLOAT", "STRING"`.
+- workflint: only the parser's error is reported, such as `string should not be empty`.
+- Why: the second error is about the empty string that upstream puts in place of the value, not about the file.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned. No fixture covers it.
 
 <a id="jobs-context-result"></a>
 ### `jobs.<job_id>.result` in reusable workflow outputs

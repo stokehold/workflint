@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use workflint_diagnostics::Span;
 
-use crate::{Event, Field, Job, Keyed, Str, Value, WorkflowCallEvent};
+use crate::{Event, Field, Job, Keyed, Str, Template, Value, WorkflowCallEvent};
 
 /// A workflow file.
 ///
@@ -18,9 +18,9 @@ pub struct Workflow<'a> {
     /// start.
     pub span: Span,
     /// `name`. It may be empty.
-    pub name: Field<'a, Str<'a>>,
+    pub name: Field<'a, Template<'a>>,
     /// `run-name`.
-    pub run_name: Field<'a, Str<'a>>,
+    pub run_name: Field<'a, Template<'a>>,
     /// `on`: the events that trigger the workflow, in source order.
     ///
     /// The list is empty when `on` is written but names no valid event,
@@ -57,10 +57,21 @@ impl<'a> Workflow<'a> {
 /// `env` of a workflow, job, step, or container: the variables keyed by
 /// name.
 ///
-/// A variable's value is `None` when it is not a scalar, which the parser
-/// reports. The reference's `EnvVar.Name` is the entry's key. Its
-/// `Env.Expression` is [`Value::Expression`] on the field.
-pub type Env<'a> = Keyed<'a, Option<Str<'a>>>;
+/// The reference's `Env.Expression` is [`Value::Expression`] on the field.
+pub type Env<'a> = Keyed<'a, EnvVar<'a>>;
+
+/// One variable of `env`.
+///
+/// GitHub evaluates the placeholders in both the name and the value, so
+/// both are [`Template`] values.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnvVar<'a> {
+    /// The name, the entry's key. The reference's `EnvVar.Name`.
+    pub name: Template<'a>,
+    /// The value, or `None` when it is not a scalar, which the parser
+    /// reports.
+    pub value: Option<Template<'a>>,
+}
 
 /// `permissions` of a workflow or job.
 #[derive(Debug, Clone, PartialEq)]
@@ -91,9 +102,9 @@ pub struct Defaults<'a> {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct DefaultsRun<'a> {
     /// `shell`.
-    pub shell: Field<'a, Str<'a>>,
+    pub shell: Field<'a, Template<'a>>,
     /// `working-directory`.
-    pub working_directory: Field<'a, Str<'a>>,
+    pub working_directory: Field<'a, Template<'a>>,
 }
 
 /// `concurrency` of a workflow or job.
@@ -101,7 +112,7 @@ pub struct DefaultsRun<'a> {
 pub struct Concurrency<'a> {
     /// `group`. In the string form, `concurrency: ci`, the whole value is
     /// the group and the field has no key.
-    pub group: Field<'a, Str<'a>>,
+    pub group: Field<'a, Template<'a>>,
     /// `cancel-in-progress`.
     pub cancel_in_progress: Value<'a, bool>,
 }
@@ -209,7 +220,7 @@ jobs:
                 run: valid(
                     document,
                     &["jobs", "Build", "steps", "0", "run"],
-                    str_at(document, &["jobs", "Build", "steps", "0", "run"]),
+                    Template::new(str_at(document, &["jobs", "Build", "steps", "0", "run"])),
                 ),
                 ..ExecRun::default()
             })),
@@ -224,7 +235,11 @@ jobs:
 
         let python = ["jobs", "test", "strategy", "matrix", "python"];
         let values: Arc<[RawValue<'_>]> = (0..2)
-            .map(|i| RawValue::Scalar(str_at(document, &[&python[..], &[&i.to_string()]].concat())))
+            .map(|i| {
+                let index = i.to_string();
+                let path = [&python[..], &[&index]].concat();
+                RawValue::Scalar(Template::new(str_at(document, &path)))
+            })
             .collect();
         let matrix = Matrix {
             rows: Keyed::new(vec![entry(document, &python, MatrixRow::Values(values))]),
@@ -323,7 +338,7 @@ jobs:
         let tags: Vec<_> = values
             .iter()
             .map(|value| match value {
-                RawValue::Scalar(scalar) => (scalar.value(), scalar.tag().as_str()),
+                RawValue::Scalar(scalar) => (scalar.value(), scalar.source.tag().as_str()),
                 _ => panic!("not a scalar"),
             })
             .collect();

@@ -2,8 +2,10 @@
 
 use workflint_diagnostics::{FileId, SourceFile};
 
-use crate::testing::render;
-use crate::{Field, Job, Keyed, Permissions, Str, Value, Workflow, WorkflowCallSecrets, parse};
+use crate::testing::{Text, render};
+use crate::{
+    Field, Job, Keyed, Permissions, Str, Template, Value, Workflow, WorkflowCallSecrets, parse,
+};
 
 /// Parses the workflow `text` and returns its diagnostics as
 /// [`render`] prints them.
@@ -31,17 +33,14 @@ fn job<'w, 'a>(workflow: &'w Workflow<'a>, id: &str) -> &'w Job<'a> {
     &jobs(workflow).get(id).unwrap().value
 }
 
-fn strings(strings: &[Str<'_>]) -> Vec<String> {
-    strings.iter().map(|s| s.value().to_owned()).collect()
+fn strings(strings: &[impl Text]) -> Vec<String> {
+    strings.iter().map(|s| s.text().to_owned()).collect()
 }
 
-fn keyed_strings(keyed: &Keyed<'_, Option<Str<'_>>>) -> Vec<String> {
+fn keyed_strings(keyed: &Keyed<'_, impl Text>) -> Vec<String> {
     keyed
         .iter()
-        .map(|entry| {
-            let value = entry.value.map_or("-", |value| value.value());
-            format!("{}={value}", entry.key.value())
-        })
+        .map(|entry| format!("{}={}", entry.key.value(), entry.value.text()))
         .collect()
 }
 
@@ -249,16 +248,16 @@ jobs:
 ";
     parsed(text, |workflow| {
         let test_job = job(workflow, "test");
-        assert_eq!(test_job.name.value().map(Str::value), Some(""));
+        assert_eq!(test_job.name.value().map(Template::value), Some(""));
         assert_eq!(
-            test_job.condition.value().map(Str::value),
+            test_job.condition.value().map(Template::value),
             Some("github.event_name == 'push'")
         );
         assert_eq!(strings(test_job.needs.value().unwrap()), ["build"]);
         assert_eq!(test_job.needs.key().map(Str::value), Some("needs"));
 
         let deploy = job(workflow, "deploy");
-        assert_eq!(deploy.name.value().map(Str::value), Some("Deploy"));
+        assert_eq!(deploy.name.value().map(Template::value), Some("Deploy"));
         assert_eq!(strings(deploy.needs.value().unwrap()), ["build", "test"]);
         assert!(!deploy.condition.is_present());
     });
@@ -354,7 +353,7 @@ jobs:
 
         let mapping = job(workflow, "mapping").runs_on.value().unwrap();
         assert_eq!(
-            mapping.group.value().map(Str::value),
+            mapping.group.value().map(Template::value),
             Some("ubuntu-runners")
         );
         assert_eq!(mapping.labels.key().map(Str::value), Some("labels"));
@@ -650,17 +649,20 @@ jobs:
             Some("permissions")
         );
         let environment = test_job.environment.value().unwrap();
-        assert_eq!(environment.name.value().map(Str::value), Some("production"));
+        assert_eq!(
+            environment.name.value().map(Template::value),
+            Some("production")
+        );
         assert_eq!(
             test_job.environment.key().map(Str::value),
             Some("environment")
         );
         let concurrency = test_job.concurrency.value().unwrap();
-        assert_eq!(concurrency.group.value().map(Str::value), Some("ci"));
+        assert_eq!(concurrency.group.value().map(Template::value), Some("ci"));
         assert_eq!(concurrency.cancel_in_progress.literal(), Some(&true));
         assert_eq!(keyed_strings(test_job.env.literal().unwrap()), ["CI=true"]);
         let run = test_job.defaults.value().unwrap().run.value().unwrap();
-        assert_eq!(run.shell.value().map(Str::value), Some("bash"));
+        assert_eq!(run.shell.value().map(Template::value), Some("bash"));
     });
 }
 
@@ -763,7 +765,7 @@ jobs:
         let call = job(workflow, "call");
         let workflow_call = call.workflow_call.as_ref().unwrap();
         assert_eq!(
-            workflow_call.uses.value().map(Str::value),
+            workflow_call.uses.value().map(Template::value),
             Some("octo-org/repo/.github/workflows/ci.yml@v1")
         );
         assert_eq!(workflow_call.uses.key().map(Str::value), Some("uses"));
@@ -1009,7 +1011,7 @@ jobs:
         assert_eq!(mapping.image_name.key().map(Str::value), Some("image-name"));
         assert_eq!(mapping.version.value().map(Str::value), Some("2.*"));
         assert_eq!(
-            mapping.condition.value().map(Str::value),
+            mapping.condition.value().map(Template::value),
             Some("${{ github.ref == 'refs/heads/main' }}")
         );
     });

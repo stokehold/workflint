@@ -43,6 +43,20 @@
 //! assert_eq!(token.key.value(), "GITHUB_TOKEN");
 //! ```
 //!
+//! # Expressions
+//!
+//! A string in a place where the reference's `expression` rule checks
+//! `${{ }}`, such as `run`, `name`, or an `env` value, is a [`Template`]:
+//! its [`Str`] and a [`Placeholder`] for each `${{ }}` in it, with the
+//! parsed expression or the parse error. Strings in other places, such as
+//! job IDs, are plain [`Str`] values. The [`Expr`] of a [`Value`] holds its
+//! placeholder too.
+//!
+//! Offsets in a placeholder are bytes in the string's decoded value, and
+//! [`Str::source_span`] turns them into a span in the file, exact in every
+//! scalar style. [`parse`] reports the parse errors of the placeholders that
+//! the workflow holds.
+//!
 //! # Local metadata
 //!
 //! [`ActionMetadata::decode`] and [`ReusableWorkflowMetadata::decode`] read
@@ -100,13 +114,13 @@ pub use event::{
     WorkflowCallEvent, WorkflowCallEventInput, WorkflowCallEventOutput, WorkflowCallEventSecret,
     WorkflowCallInputType, WorkflowDispatchEvent, WorkflowDispatchInput, WorkflowDispatchInputType,
 };
-pub use expression::{contains_expression, is_expression_assigned};
+pub use expression::{Placeholder, contains_expression, is_expression_assigned};
 pub use job::{
     Container, Credentials, Environment, Job, Runner, Services, Snapshot, Strategy, WorkflowCall,
     WorkflowCallSecrets,
 };
 pub use keyed::{Keyed, KeyedEntry};
-pub use leaf::{Expr, Str};
+pub use leaf::{Expr, Str, Template};
 pub use matrix::{Matrix, MatrixCombination, MatrixRow, RawValue};
 pub use parser::{Parsed, parse};
 pub use reusable_workflow::{
@@ -115,4 +129,4 @@ pub use reusable_workflow::{
 pub use step::{Exec, ExecAction, ExecRun, Step};
 pub use typed::MetadataError;
 pub use value::{Field, Value};
-pub use workflow::{Concurrency, Defaults, DefaultsRun, Env, Permissions, Workflow};
+pub use workflow::{Concurrency, Defaults, DefaultsRun, Env, EnvVar, Permissions, Workflow};

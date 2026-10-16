@@ -16,11 +16,11 @@ impl Section for Root {
 static ROOT_KEYS: [KeySpec<Root>; 8] = [
     KeySpec {
         name: "name",
-        parse: |p, w, e| w.name = p.parse_string(e.key.string, e.value, true),
+        parse: |p, w, e| w.name = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "run-name",
-        parse: |p, w, e| w.run_name = p.parse_string(e.key.string, e.value, false),
+        parse: |p, w, e| w.run_name = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "on",
@@ -124,7 +124,7 @@ mod tests {
     use workflint_diagnostics::{FileId, SourceFile};
 
     use crate::testing::{laughs, render};
-    use crate::{Permissions, Str, parse};
+    use crate::{Permissions, Str, Template, parse};
 
     fn check(text: &str) -> Vec<String> {
         let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
@@ -270,10 +270,10 @@ mod tests {
         let parsed = parse(&file, &document);
 
         let workflow = parsed.workflow;
-        assert_eq!(workflow.name.value().map(Str::value), Some("CI"));
+        assert_eq!(workflow.name.value().map(Template::value), Some("CI"));
         assert_eq!(workflow.name.key().map(Str::value), Some("name"));
         assert_eq!(
-            workflow.run_name.value().map(Str::value),
+            workflow.run_name.value().map(Template::value),
             Some("Deploy ${{ inputs.env }}")
         );
         assert!(workflow.on.is_present());
@@ -311,14 +311,14 @@ jobs: {test: {runs-on: x, steps: [{run: a}]}}
         let env = workflow.env.literal().unwrap();
         assert_eq!(
             env.get("ci")
-                .and_then(|var| var.value)
-                .map(|value| value.value()),
+                .and_then(|var| var.value.value.as_ref())
+                .map(Template::value),
             Some("true")
         );
         let run = workflow.defaults.value().unwrap().run.value().unwrap();
-        assert_eq!(run.shell.value().map(Str::value), Some("bash"));
+        assert_eq!(run.shell.value().map(Template::value), Some("bash"));
         let concurrency = workflow.concurrency.value().unwrap();
-        assert_eq!(concurrency.group.value().map(Str::value), Some("ci"));
+        assert_eq!(concurrency.group.value().map(Template::value), Some("ci"));
         assert_eq!(concurrency.group.key(), None);
     }
 

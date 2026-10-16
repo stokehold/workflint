@@ -168,6 +168,19 @@ impl<'a, T> Field<'a, T> {
     pub fn is_valid(&self) -> bool {
         matches!(self, Self::Valid { .. })
     }
+
+    /// Converts a valid value with `f`, and keeps the key and the span.
+    pub(crate) fn map<U>(self, f: impl FnOnce(T) -> U) -> Field<'a, U> {
+        match self {
+            Self::Absent => Field::Absent,
+            Self::Invalid { key, span } => Field::Invalid { key, span },
+            Self::Valid { key, span, value } => Field::Valid {
+                key,
+                span,
+                value: f(value),
+            },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -205,7 +218,7 @@ mod tests {
         };
         let field: Value<'_, f64> = Value::Expression {
             key: Some(key),
-            expr: Expr::new(value),
+            expr: Expr::new(value).unwrap(),
         };
 
         assert!(field.literal().is_none());

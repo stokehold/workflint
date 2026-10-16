@@ -21,7 +21,8 @@ use crate::rules::{
 };
 use crate::strconv::format_float;
 use crate::{
-    Field, Job, Keyed, KeyedEntry, Runner, Snapshot, Str, Value, WorkflowCall, WorkflowCallSecrets,
+    Field, Job, Keyed, KeyedEntry, Runner, Snapshot, Str, Template, Value, WorkflowCall,
+    WorkflowCallSecrets,
 };
 
 /// A job while its keys are parsed, with what the checks after the keys
@@ -55,13 +56,13 @@ impl Section for JobBody<'static> {
 static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     KeySpec {
         name: "name",
-        parse: |p, b, e| b.job.name = p.parse_string(e.key.string, e.value, true),
+        parse: |p, b, e| b.job.name = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "needs",
         parse: |p, b, e| {
             b.job.needs =
-                p.parse_string_or_string_sequence(e.key.string, "needs", e.value, false, false);
+                p.parse_template_or_template_sequence(e.key.string, "needs", e.value, false, false);
         },
     },
     KeySpec {
@@ -109,7 +110,7 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     },
     KeySpec {
         name: "if",
-        parse: |p, b, e| b.job.condition = p.parse_string(e.key.string, e.value, false),
+        parse: |p, b, e| b.job.condition = p.parse_condition(e.key.string, e.value),
     },
     KeySpec {
         name: "steps",
@@ -154,7 +155,7 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
         name: "uses",
         // TODO(#72): parse the typed `uses` value.
         parse: |p, b, e| {
-            b.call.uses = p.parse_string(e.key.string, e.value, false);
+            b.call.uses = p.parse_template(e.key.string, e.value, false);
             b.call_only.push(e.key);
         },
     },
@@ -186,7 +187,7 @@ static RUNS_ON_KEYS: [KeySpec<Runner<'static>>; 2] = [
     KeySpec {
         name: "labels",
         parse: |p, r, e| {
-            r.labels = match Parser::may_parse_expression(e.value) {
+            r.labels = match p.may_parse_expression(e.value) {
                 Some(expr) => Value::Expression {
                     key: e.key.string,
                     expr,
@@ -197,7 +198,7 @@ static RUNS_ON_KEYS: [KeySpec<Runner<'static>>; 2] = [
     },
     KeySpec {
         name: "group",
-        parse: |p, r, e| r.group = p.parse_string(e.key.string, e.value, false),
+        parse: |p, r, e| r.group = p.parse_template(e.key.string, e.value, false),
     },
 ];
 
@@ -216,7 +217,7 @@ static SNAPSHOT_KEYS: [KeySpec<Snapshot<'static>>; 3] = [
     },
     KeySpec {
         name: "if",
-        parse: |p, s, e| s.condition = p.parse_string(e.key.string, e.value, false),
+        parse: |p, s, e| s.condition = p.parse_condition(e.key.string, e.value),
     },
 ];
 
@@ -331,7 +332,7 @@ impl<'a> Parser<'a, '_> {
         let key = entry.key.string;
         let node = entry.value;
         let span = node.span;
-        if let Some(expr) = Self::may_parse_expression(node) {
+        if let Some(expr) = self.may_parse_expression(node) {
             let runner = Runner {
                 labels: Value::Expression { key: None, expr },
                 group: Field::Absent,
@@ -371,12 +372,12 @@ impl<'a> Parser<'a, '_> {
         key: Option<Str<'a>>,
         section: &str,
         node: &'a Node,
-    ) -> Value<'a, Arc<[Str<'a>]>> {
+    ) -> Value<'a, Arc<[Template<'a>]>> {
         let span = node.span;
         let mut labels = Vec::new();
         if let Some(label) = Str::new(node) {
             self.check_string(node, false);
-            labels.push(label);
+            labels.push(self.template(label));
         } else {
             let Some(items) = self.check_sequence(section, node, false) else {
                 return Value::Invalid { key, span };
@@ -386,7 +387,9 @@ impl<'a> Parser<'a, '_> {
                     continue;
                 };
                 self.check_string(item, false);
-                labels.extend(Str::new(item));
+                if let Some(label) = Str::new(item) {
+                    labels.push(self.template(label));
+                }
             }
         }
         Value::Literal {
@@ -403,7 +406,10 @@ impl<'a> Parser<'a, '_> {
     /// It must have entries. Without any, it reports `"outputs" section
     /// should not be empty` besides the error of the mapping walker, as the
     /// reference does.
-    fn parse_outputs(&mut self, entry: &MapEntry<'a>) -> Field<'a, Keyed<'a, Option<Str<'a>>>> {
+    fn parse_outputs(
+        &mut self,
+        entry: &MapEntry<'a>,
+    ) -> Field<'a, Keyed<'a, Option<Template<'a>>>> {
         let node = entry.value;
         let entries = self.parse_mapping(Label::Section("outputs"), node, false, false);
         if entries.is_empty() {
@@ -413,7 +419,7 @@ impl<'a> Parser<'a, '_> {
                 "\"outputs\" section should not be empty".to_owned(),
             );
         }
-        let outputs = self.keyed_strings(entries, true);
+        let outputs = self.keyed_templates(entries, true);
         mapping_field(entry.key, node, outputs)
     }
 
@@ -443,10 +449,13 @@ impl<'a> Parser<'a, '_> {
     /// Parses `with` of a job that calls a reusable workflow: a
     /// case-insensitive mapping of input names to strings that may be
     /// empty, and must have entries.
-    fn parse_call_inputs(&mut self, entry: &MapEntry<'a>) -> Field<'a, Keyed<'a, Option<Str<'a>>>> {
+    fn parse_call_inputs(
+        &mut self,
+        entry: &MapEntry<'a>,
+    ) -> Field<'a, Keyed<'a, Option<Template<'a>>>> {
         let node = entry.value;
         let entries = self.parse_mapping(Label::Section("with"), node, false, false);
-        let inputs = self.keyed_strings(entries, true);
+        let inputs = self.keyed_templates(entries, true);
         mapping_field(entry.key, node, inputs)
     }
 
@@ -460,7 +469,7 @@ impl<'a> Parser<'a, '_> {
         let node = entry.value;
         let Some(scalar) = Str::new(node) else {
             let entries = self.parse_mapping(Label::Section("secrets"), node, false, false);
-            let secrets = self.keyed_strings(entries, true);
+            let secrets = self.keyed_templates(entries, true);
             return mapping_field(entry.key, node, WorkflowCallSecrets::Map(secrets));
         };
         let key = entry.key.string;

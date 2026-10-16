@@ -22,7 +22,7 @@ impl Section for Container<'static> {
 /// `image`, a key of every container.
 const IMAGE: KeySpec<Container<'static>> = KeySpec {
     name: "image",
-    parse: |p, c, e| c.image = p.parse_string(e.key.string, e.value, false),
+    parse: |p, c, e| c.image = p.parse_template(e.key.string, e.value, false),
 };
 
 /// `credentials`, a key of every container.
@@ -41,7 +41,7 @@ const ENV: KeySpec<Container<'static>> = KeySpec {
 const PORTS: KeySpec<Container<'static>> = KeySpec {
     name: "ports",
     parse: |p, c, e| {
-        c.ports = p.parse_string_sequence(e.key.string, "ports", e.value, true, false);
+        c.ports = p.parse_template_sequence(e.key.string, "ports", e.value, true, false);
     },
 };
 
@@ -50,14 +50,14 @@ const PORTS: KeySpec<Container<'static>> = KeySpec {
 const VOLUMES: KeySpec<Container<'static>> = KeySpec {
     name: "volumes",
     parse: |p, c, e| {
-        c.volumes = p.parse_string_sequence(e.key.string, "volumes", e.value, true, false);
+        c.volumes = p.parse_template_sequence(e.key.string, "volumes", e.value, true, false);
     },
 };
 
 /// `options`, a key of every container.
 const OPTIONS: KeySpec<Container<'static>> = KeySpec {
     name: "options",
-    parse: |p, c, e| c.options = p.parse_string(e.key.string, e.value, true),
+    parse: |p, c, e| c.options = p.parse_template(e.key.string, e.value, true),
 };
 
 /// The keys of a job's `container`.
@@ -75,11 +75,11 @@ static SERVICE_KEYS: [KeySpec<Container<'static>>; 8] = [
     OPTIONS,
     KeySpec {
         name: "command",
-        parse: |p, c, e| c.command = p.parse_string(e.key.string, e.value, true),
+        parse: |p, c, e| c.command = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "entrypoint",
-        parse: |p, c, e| c.entrypoint = p.parse_string(e.key.string, e.value, true),
+        parse: |p, c, e| c.entrypoint = p.parse_template(e.key.string, e.value, true),
     },
 ];
 
@@ -90,11 +90,11 @@ impl Section for Credentials<'static> {
 static CREDENTIALS_KEYS: [KeySpec<Credentials<'static>>; 2] = [
     KeySpec {
         name: "username",
-        parse: |p, c, e| c.username = p.parse_string(e.key.string, e.value, false),
+        parse: |p, c, e| c.username = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "password",
-        parse: |p, c, e| c.password = p.parse_string(e.key.string, e.value, false),
+        parse: |p, c, e| c.password = p.parse_template(e.key.string, e.value, false),
     },
 ];
 
@@ -130,7 +130,7 @@ impl<'a> Parser<'a, '_> {
     pub(super) fn parse_services(&mut self, entry: &MapEntry<'a>) -> Value<'a, Services<'a>> {
         let key = entry.key.string;
         let node = entry.value;
-        if let Some(expr) = Self::may_parse_expression(node) {
+        if let Some(expr) = self.may_parse_expression(node) {
             return Value::Expression { key, expr };
         }
         let entries = self.parse_mapping(Label::Section("services"), node, false, false);
@@ -165,7 +165,7 @@ impl<'a> Parser<'a, '_> {
     fn parse_container(&mut self, service: bool, key: Key<'a>, node: &'a Node) -> Container<'a> {
         if let NodeKind::Scalar(_) = node.kind {
             return Container {
-                image: self.parse_string(None, node, false),
+                image: self.parse_template(None, node, false),
                 ..Container::default()
             };
         }
@@ -200,7 +200,7 @@ impl<'a> Parser<'a, '_> {
     fn parse_credentials(&mut self, entry: &MapEntry<'a>) -> Value<'a, Credentials<'a>> {
         let key = entry.key.string;
         let node = entry.value;
-        if let Some(expr) = Self::may_parse_expression(node) {
+        if let Some(expr) = self.may_parse_expression(node) {
             return Value::Expression { key, expr };
         }
         let mut credentials = Credentials::default();

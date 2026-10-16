@@ -224,7 +224,8 @@ impl<'a> Parser<'a, '_> {
         while let Some(step) = steps.pop() {
             match step {
                 RawStep::Enter(node) => match &node.kind {
-                    NodeKind::Scalar(_) => values.push(Str::new(node).map(RawValue::Scalar)),
+                    NodeKind::Scalar(_) => values
+                        .push(Str::new(node).map(|scalar| RawValue::Scalar(self.template(scalar)))),
                     NodeKind::Sequence(sequence) => {
                         let items: Vec<&'a Node> = self
                             .document

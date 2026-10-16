@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use workflint_diagnostics::{FileId, SourceFile, Span};
 
-use crate::testing::render;
-use crate::{Event, Field, Keyed, Str, Value, Workflow, WorkflowCallEvent, parse};
+use crate::testing::{Text, render};
+use crate::{Event, Field, Keyed, Value, Workflow, WorkflowCallEvent, parse};
 
 /// A job, so that the workflow has the `jobs` section.
 const JOBS: &str = "jobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n";
@@ -61,13 +61,13 @@ fn field<T>(field: &Field<'_, T>, valid: impl FnOnce(&T) -> String) -> Option<St
     }
 }
 
-fn string(value: &Field<'_, Str<'_>>) -> Option<String> {
-    field(value, |s| format!("{:?}", s.value()))
+fn string(value: &Field<'_, impl Text>) -> Option<String> {
+    field(value, |s| format!("{:?}", s.text()))
 }
 
-fn strings(value: &Field<'_, Arc<[Str<'_>]>>) -> Option<String> {
+fn strings(value: &Field<'_, Arc<[impl Text]>>) -> Option<String> {
     field(value, |list| {
-        let items: Vec<_> = list.iter().map(Str::value).collect();
+        let items: Vec<_> = list.iter().map(Text::text).collect();
         format!("[{}]", items.join(", "))
     })
 }
