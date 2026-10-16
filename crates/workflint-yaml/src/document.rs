@@ -83,6 +83,79 @@ impl Document {
         slice(&self.entries, &mapping.entries)
     }
 
+    /// Returns the items of the sequence `sequence` as written, with each
+    /// resolved alias kept as its alias node.
+    ///
+    /// Comments on an alias are attached to the alias node, which
+    /// [`items`](Self::items) replaces, so a walker reaches them through
+    /// this list. It is empty if `sequence` is not a sequence. The walk
+    /// takes time in proportion to the number of nodes written inside the
+    /// sequence.
+    #[must_use]
+    pub fn written_items(&self, sequence: NodeId) -> Vec<NodeId> {
+        match self.node(sequence).map(|node| &node.kind) {
+            Some(NodeKind::Sequence(_)) => self.written_children(sequence),
+            _ => Vec::new(),
+        }
+    }
+
+    /// Returns the entries of the mapping `mapping` as written, with each
+    /// resolved alias kept as its alias node.
+    ///
+    /// Comments on an alias are attached to the alias node, which
+    /// [`entries`](Self::entries) replaces, so a walker reaches them
+    /// through this list. It is empty if `mapping` is not a mapping. The
+    /// walk takes time in proportion to the number of nodes written inside
+    /// the mapping.
+    #[must_use]
+    pub fn written_entries(&self, mapping: NodeId) -> Vec<Entry> {
+        match self.node(mapping).map(|node| &node.kind) {
+            Some(NodeKind::Mapping(_)) => {
+                let children = self.written_children(mapping);
+                let (pairs, _) = children.as_chunks::<2>();
+                pairs
+                    .iter()
+                    .map(|&[key, value]| Entry { key, value })
+                    .collect()
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// Returns the children of the collection `id` as written, keys and
+    /// values in turn for a mapping.
+    ///
+    /// IDs follow the pre-order of the tree as written, where an alias has
+    /// no children. So the first child comes right after the collection,
+    /// and each later child comes right after the nodes written inside the
+    /// child before it.
+    fn written_children(&self, id: NodeId) -> Vec<NodeId> {
+        let Some(node) = self.node(id) else {
+            return Vec::new();
+        };
+        let count = written_len(node);
+        let mut children = Vec::with_capacity(count);
+        // The last node visited.
+        let mut last = id.0;
+        // The nodes still to visit in the current child's subtree.
+        let mut pending = 0usize;
+        while children.len() < count {
+            let Some((next, node)) = last
+                .checked_add(1)
+                .and_then(|next| Some((next, self.node(NodeId(next))?)))
+            else {
+                break;
+            };
+            if pending == 0 {
+                children.push(NodeId(next));
+                pending = 1;
+            }
+            last = next;
+            pending = pending - 1 + written_len(node);
+        }
+        children
+    }
+
     /// Returns every comment in the document in source order.
     #[must_use]
     pub fn comments(&self) -> &[Comment] {
@@ -90,6 +163,12 @@ impl Document {
     }
 
     /// Returns the comments attached to the node `id` in source order.
+    ///
+    /// [`Comment::node`] says which node a comment is attached to. A comment
+    /// on an alias is attached to the alias node, not to the anchored node,
+    /// because several aliases can refer to the anchored node.
+    /// [`written_items`](Self::written_items) and
+    /// [`written_entries`](Self::written_entries) return the alias nodes.
     pub fn node_comments(&self, id: NodeId) -> impl Iterator<Item = &Comment> {
         let range = self.node(id).map_or(0..0, |node| node.comments.clone());
         slice(&self.node_comments, &range)
@@ -101,8 +180,9 @@ impl Document {
     /// earlier entry under `comparison`.
     ///
     /// Each duplicate is paired with the first entry that has its key. Only
-    /// scalar keys are compared, by their decoded values. The result is in
-    /// source order of the duplicates.
+    /// scalar keys are compared, by their decoded values. A `<<` key is
+    /// never a duplicate, as in actionlint, which reports merge keys on
+    /// their own. The result is in source order of the duplicates.
     #[must_use]
     pub fn duplicate_keys(
         &self,
@@ -119,9 +199,12 @@ impl Document {
             else {
                 continue;
             };
+            if key.value == "<<" {
+                continue;
+            }
             let key = match comparison {
                 KeyComparison::Exact => key.value.clone(),
-                KeyComparison::AsciiCaseInsensitive => key.value.to_ascii_lowercase(),
+                KeyComparison::CaseInsensitive => simple_lowercase(&key.value),
             };
             match first.get(&key) {
                 Some(&first) => duplicates.push(DuplicateKey {
@@ -135,6 +218,37 @@ impl Document {
         }
         duplicates
     }
+}
+
+/// Returns the number of children that `node` has as written: none for an
+/// alias or a scalar, and a key and a value for each mapping entry.
+fn written_len(node: &Node) -> usize {
+    let len = |range: &Range<u32>| usize::try_from(range.end.saturating_sub(range.start));
+    match &node.kind {
+        NodeKind::Sequence(sequence) => len(&sequence.items).unwrap_or(0),
+        NodeKind::Mapping(mapping) => len(&mapping.entries).map_or(0, |n| n.saturating_mul(2)),
+        NodeKind::Scalar(_) | NodeKind::Alias(_) => 0,
+    }
+}
+
+/// Lowercases each character of `text` with its Unicode simple case
+/// mapping, as Go's `strings.ToLower` does.
+///
+/// The simple mapping takes one character to one character. Rust's
+/// lowercase differs from it only for U+0130, whose lowercase adds a
+/// combining dot after the `i`. [`KeyComparison::CaseInsensitive`] says
+/// where the Unicode versions of Rust and Go differ.
+fn simple_lowercase(text: &str) -> String {
+    text.chars()
+        .map(|ch| {
+            let mut lower = ch.to_lowercase();
+            match (lower.next(), lower.next()) {
+                (Some(lower), None) => lower,
+                _ if ch == '\u{130}' => 'i',
+                _ => ch,
+            }
+        })
+        .collect()
 }
 
 fn slice<'a, T>(items: &'a [T], range: &Range<u32>) -> &'a [T] {
@@ -273,8 +387,15 @@ pub struct DuplicateKey {
 pub enum KeyComparison {
     /// Keys must be equal byte for byte.
     Exact,
-    /// Keys are equal if they differ only in the case of ASCII letters.
-    AsciiCaseInsensitive,
+    /// Keys are equal if they are equal after lowercasing each character
+    /// with its Unicode simple case mapping, as actionlint does with Go's
+    /// `strings.ToLower`.
+    ///
+    /// The mapping comes from the Unicode version of the Rust toolchain.
+    /// Rust 1.99 has Unicode 17 and Go 1.26 has Unicode 15, so the 55
+    /// letters with a lowercase added in Unicode 16 and 17 are lowercased
+    /// here and kept by actionlint.
+    CaseInsensitive,
 }
 
 /// A node's anchor.
@@ -383,7 +504,12 @@ pub struct Comment {
     ///
     /// A trailing comment is attached to the last node that starts before
     /// it on its line. An own-line comment is attached to a node on the
-    /// line where the next node starts: the first mapping key or sequence
-    /// item that starts there, or else the first node that starts there.
+    /// next line that is not an own-line comment: the first mapping key or
+    /// sequence item that starts there, or else the first node that starts
+    /// there. If no node starts on that line, as when the line is empty or
+    /// holds only a closing bracket, the comment is attached to no node.
+    ///
+    /// A comment on an alias is attached to the alias node. See
+    /// [`Document::node_comments`].
     pub node: Option<NodeId>,
 }

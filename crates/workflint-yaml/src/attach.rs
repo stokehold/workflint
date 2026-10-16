@@ -12,6 +12,26 @@ pub(crate) enum Role {
     Item,
 }
 
+/// Returns, for each comment, the 0-based line after it that holds no
+/// own-line comment. Only own-line comments use it.
+fn next_code_lines(comments: &[Comment], comment_lines: &[u64]) -> Vec<u64> {
+    let mut next = vec![0; comments.len()];
+    // The line of the own-line comment after the current one, and its next
+    // code line.
+    let mut later: Option<(u64, u64)> = None;
+    for ((comment, &line), next) in comments.iter().zip(comment_lines).zip(&mut next).rev() {
+        if comment.kind != CommentKind::OwnLine {
+            continue;
+        }
+        *next = match later {
+            Some((later_line, later_next)) if later_line == line.saturating_add(1) => later_next,
+            _ => line.saturating_add(1),
+        };
+        later = Some((line, *next));
+    }
+    next
+}
+
 /// Sets `Comment::node` for each comment and `Node::comments` for each node,
 /// and returns the comment indexes grouped by node.
 ///
@@ -38,8 +58,13 @@ pub(crate) fn attach(
     let mut order: Vec<u32> = (0..u32::try_from(nodes.len()).unwrap_or(u32::MAX)).collect();
     order.sort_by_key(|&i| start(i));
 
+    let next_lines = next_code_lines(comments, comment_lines);
     let mut pairs: Vec<(u32, u32)> = Vec::new();
-    for ((index, comment), &comment_line) in (0u32..).zip(comments.iter_mut()).zip(comment_lines) {
+    for (((index, comment), &comment_line), next_line) in (0u32..)
+        .zip(comments.iter_mut())
+        .zip(comment_lines)
+        .zip(next_lines)
+    {
         let node = match comment.kind {
             CommentKind::Trailing => {
                 let before = order.partition_point(|&i| start(i) < comment.span.start);
@@ -50,18 +75,19 @@ pub(crate) fn attach(
                     .filter(|&i| line(i) == Some(comment_line))
             }
             CommentKind::OwnLine => {
-                let next = order.partition_point(|&i| start(i) < comment.span.end);
-                order.get(next).copied().map(|first| {
-                    let target_line = line(first);
-                    order
-                        .get(next..)
-                        .unwrap_or_default()
-                        .iter()
-                        .copied()
-                        .take_while(|&i| line(i) == target_line)
-                        .find(|&i| matches!(role(i), Some(Role::Key | Role::Item)))
-                        .unwrap_or(first)
-                })
+                // Start lines grow with start offsets, so `order` is sorted
+                // by line too.
+                let first = order.partition_point(|&i| line(i).is_none_or(|l| l < next_line));
+                let on_line = order
+                    .get(first..)
+                    .unwrap_or_default()
+                    .iter()
+                    .copied()
+                    .take_while(|&i| line(i) == Some(next_line));
+                on_line
+                    .clone()
+                    .find(|&i| matches!(role(i), Some(Role::Key | Role::Item)))
+                    .or_else(|| on_line.clone().next())
             }
         };
         comment.node = node.map(NodeId);

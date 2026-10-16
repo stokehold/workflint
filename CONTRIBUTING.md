@@ -58,7 +58,7 @@ The inputs are the vendored `err`, `examples`, `ok`, and `projects` fixtures and
 
 It prints a summary and a diff for each file that differs, and writes the same Markdown to `target/oracle/report.md`, with the summary alone in `target/oracle/summary.md`. It exits with an error if a difference is not in the allow-list. `--report-only` exits with success after writing the report.
 
-Pass fixture files, project directories, directories of fixtures, the corpus archive, or files in `.reference/realworld` to compare only those. CI runs the command with `--report-only` on pull requests that change `crates/`, `xtask/`, or `tests/conformance/`, and adds the summary to the run page. M5.9 removes `--report-only`, so that an unexplained difference fails the job. The job first runs the hidden `--self-check` flag, which runs the reference in place of workflint without the kind mapping or the allow-list and fails on any difference. That shows the runs are deterministic. It skips the three fixtures on which the reference's output varies between runs (`docs/differences.md#cached-metadata-errors`).
+Pass fixture files, project directories, directories of fixtures, the corpus archive, or files in `.reference/realworld` to compare only those. CI runs the command with `--report-only` on pull requests that change `crates/`, `xtask/`, or `tests/conformance/`, and adds the summary to the run page. M5.9 removes `--report-only`, so that an unexplained difference fails the job. The job first runs the hidden `--self-check` flag, which runs the reference in place of workflint without the kind mapping or the allow-list and fails on any difference. That shows the runs are deterministic, and the job log keeps its report. Then the job runs the conformance suite with the reference binary (`tests/conformance/README.md#running-the-reference`), which shows that the runner works. Every run of the command skips the three fixtures on which the reference's output varies between runs (`docs/differences.md#cached-metadata-errors`), and the report lists them.
 
 ## Benchmarks
 
@@ -102,10 +102,11 @@ The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchm
 
 | Target | What it checks |
 | --- | --- |
+| `render` | `workflint-diagnostics` builds a `SourceFile` from the input text and renders diagnostics with arbitrary spans in the default and one-line formats without panicking. The output is UTF-8, has one header per diagnostic and well-formed snippets, and differs between color on and off only in escape sequences. The comment at the top of `fuzz/fuzz_targets/render.rs` describes the input layout. |
 | `yaml_events` | The event parser of `workflint-yaml` reads the input up to the end of the stream or the first error without panicking. Every event's marks lie inside the input on character boundaries. |
 | `yaml_tree` | `workflint_yaml::parse` builds the tree without panicking. Every span lies inside the input on character boundaries and converts to a line and column, and every node ID in the tree refers to a node. Every scalar's source map is exact and maps each character inside the scalar's span. |
 
-Both targets replace invalid UTF-8 with U+FFFD and run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
+All three targets replace invalid UTF-8 with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
 
 ```sh
 cargo xtask fuzz-seeds
@@ -128,8 +129,17 @@ To turn a failing input into a regression test:
 - One issue per pull request. Open it as a draft with `Closes #N` in the description as soon as you start, so others can see the task is taken.
 - The pull request title follows Conventional Commits and names the task, for example `feat(expr): M3.2 Pratt parser`. It becomes the squash commit message.
 - Write the failing test before the fix or feature.
-- Before you open the pull request, run `cargo fmt --all`, `cargo clippy --workspace --all-targets`, `cargo nextest run --workspace`, and `cargo test --doc --workspace`.
-- If your change makes workflint differ from actionlint, add an entry to `docs/differences.md`.
+- Before you open the pull request, run the checks below. They are the checks in the "Done" list of `AGENTS.md`, and CI runs them too. Clippy must report no warnings, and `cargo nextest run --workspace` includes the conformance suite. Install cargo-deny with `cargo install --locked cargo-deny`.
+
+  ```sh
+  cargo fmt --all --check
+  cargo clippy --workspace --all-targets
+  cargo nextest run --workspace
+  cargo test --doc --workspace
+  cargo deny check
+  ```
+
+- If your change makes workflint differ from actionlint, add an entry to `docs/differences.md`. If the difference changes a fixture's output, also add records to `tests/conformance/allowed-differences.toml` (ADR 0023).
 - Say in the pull request how you verified the change.
 
 AI-assisted contributions are welcome. `AGENTS.md` has the instructions for coding agents, and the same rules apply to people.

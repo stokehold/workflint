@@ -1,24 +1,34 @@
-//! Decides whether a fixture's test passes, given what workflint printed, the
+//! Decides whether a fixture's test passes, given what the binary printed, the
 //! expected-failure list and the allow-list.
 
 use super::allow_list::{Entry, apply};
 use super::matcher::check_errors;
 use super::output::Diagnostic;
 
+/// Why a fixture is expected to fail.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Listing {
+    /// `expected-failures.toml` lists the fixture until this milestone.
+    Until(String),
+    /// The reference binary fails the fixture, for this reason. See
+    /// [`super::runner::REFERENCE_FAILURES`].
+    Reference(String),
+}
+
 /// How a fixture's test ends when it does not fail.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Verdict {
     /// The output matches.
     Passed,
-    /// The output does not match, and the expected-failure list says so.
-    ExpectedFailure { milestone: String, reason: String },
+    /// The output does not match, and a list of expected failures says so.
+    ExpectedFailure { listing: Listing, reason: String },
 }
 
 /// Judges one fixture.
 ///
-/// `actual` is workflint's output with kinds in the brackets, or the reason
-/// it could not be read. `listed` is the fixture's milestone in
-/// `expected-failures.toml`.
+/// `actual` is the binary's output with kinds in the brackets, or the reason
+/// it could not be read. `listed` says why the fixture is expected to fail,
+/// if it is.
 ///
 /// # Errors
 ///
@@ -35,7 +45,7 @@ pub fn judge(
     upstream: &[String],
     actual: Result<&[Diagnostic], &str>,
     entries: &[&Entry],
-    listed: Option<&str>,
+    listed: Option<&Listing>,
 ) -> Result<Verdict, String> {
     let expected = apply(upstream, entries)?;
     let result = actual
@@ -46,11 +56,14 @@ pub fn judge(
             check_entries_are_used(upstream, actual.unwrap_or_default(), entries)?;
             Ok(Verdict::Passed)
         }
-        (Ok(()), Some(milestone)) => Err(format!(
+        (Ok(()), Some(Listing::Until(milestone))) => Err(format!(
             "{fixture} passes, but tests/conformance/expected-failures.toml lists it as an expected failure until {milestone}. Remove its entry from that file."
         )),
-        (Err(reason), Some(milestone)) => Ok(Verdict::ExpectedFailure {
-            milestone: milestone.to_owned(),
+        (Ok(()), Some(Listing::Reference(_))) => Err(format!(
+            "{fixture} passes with the reference, but REFERENCE_FAILURES in xtask/src/conformance/runner.rs lists it as a known failure. Remove its entry from that list."
+        )),
+        (Err(reason), Some(listing)) => Ok(Verdict::ExpectedFailure {
+            listing: listing.clone(),
             reason,
         }),
         (Err(reason), None) => Err(reason),
@@ -95,6 +108,10 @@ mod tests {
         lines.iter().map(|line| (*line).to_owned()).collect()
     }
 
+    fn until(milestone: &str) -> Listing {
+        Listing::Until(milestone.to_owned())
+    }
+
     fn entry(upstream: Option<&str>, workflint: Option<&str>) -> Entry {
         Entry {
             anchor: "yaml-error-positions".into(),
@@ -135,12 +152,12 @@ mod tests {
             &lines(&["test.yaml:1:1: a [x]"]),
             Err("output line is not ..."),
             &[],
-            Some("M2"),
+            Some(&until("M2")),
         );
         assert_eq!(
             verdict,
             Ok(Verdict::ExpectedFailure {
-                milestone: "M2".into(),
+                listing: until("M2"),
                 reason: "output line is not ...".into(),
             })
         );
@@ -153,12 +170,26 @@ mod tests {
             &lines(&["test.yaml:1:1: a [x]"]),
             Ok(&diagnostics(&["test.yaml:1:1: a [x]"])),
             &[],
-            Some("M2"),
+            Some(&until("M2")),
         )
         .unwrap_err();
         assert!(error.contains("err/x passes"), "{error}");
         assert!(error.contains("until M2"), "{error}");
         assert!(error.contains("Remove its entry"), "{error}");
+    }
+
+    #[test]
+    fn a_known_failure_of_the_reference_that_passes_says_to_remove_it() {
+        let error = judge(
+            "projects/x",
+            &[],
+            Ok(&[]),
+            &[],
+            Some(&Listing::Reference("why".into())),
+        )
+        .unwrap_err();
+        assert!(error.contains("passes with the reference"), "{error}");
+        assert!(error.contains("REFERENCE_FAILURES"), "{error}");
     }
 
     #[test]
@@ -197,7 +228,7 @@ mod tests {
             &lines(&["test.yaml:1:1: a [x]"]),
             Ok(&diagnostics(&[])),
             &[&unused],
-            Some("M3"),
+            Some(&until("M3")),
         );
         assert!(matches!(verdict, Ok(Verdict::ExpectedFailure { .. })));
     }
@@ -210,7 +241,7 @@ mod tests {
             &lines(&["test.yaml:1:1: a [x]"]),
             Ok(&diagnostics(&[])),
             &[&stale],
-            Some("M3"),
+            Some(&until("M3")),
         );
         assert!(verdict.unwrap_err().contains("matches no line"));
     }

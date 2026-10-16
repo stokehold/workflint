@@ -1,6 +1,7 @@
 # Fixtures that do not pass yet, each with the milestone expected to make it
 # pass: the latest milestone of the docs/parity-checklist.md rows that cite the
-# fixture, or M5 if no row cites it. The conformance runner reports a listed
+# fixture, or M5 if no row cites it, and never earlier than M2, because M2.0
+# gives the binary the command line the runner uses. The runner reports a listed
 # fixture that fails as an expected failure, and fails the test of a listed
 # fixture that passes. The pull request that makes a fixture pass removes its
 # line. See tests/conformance/README.md.
@@ -152,7 +153,7 @@
 "examples/yaml_anchor_usage" = "M2"
 "examples/yaml_anchors" = "M4"
 "ok/allow_any_outputs.yaml" = "M4"
-"ok/anchors.yaml" = "M1"
+"ok/anchors.yaml" = "M2"
 "ok/bool_conversion.yaml" = "M2"
 "ok/container_syntax.yaml" = "M2"
 "ok/custom_images.yaml" = "M4"
@@ -264,5 +265,5 @@
 "projects/workflow_call_ok" = "M5"
 "projects/workflow_call_undefined" = "M4"
 "projects/workflow_call_upper_case" = "M4"
-"projects/yaml_anchor_in_action" = "M1"
+"projects/yaml_anchor_in_action" = "M2"
 "workflint/ok/minimal.yaml" = "M5"

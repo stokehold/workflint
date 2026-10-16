@@ -1,21 +1,218 @@
-//! Runs one fixture through the `workflint` binary and judges the result.
+//! Runs one fixture through a binary and judges the result.
+//!
+//! By default the binary is `workflint`, built from the workspace. With
+//! [`REFERENCE_VARIABLE`] set, it is the reference binary at that path,
+//! without the kind mapping, the expected failures or the allow-list, so that
+//! a runner that passes fixtures it should fail shows up.
 
+use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 use super::allow_list::{self, AllowList};
 use super::expected_failures::ExpectedFailures;
 use super::fixture::{self, Fixture, Tools};
 use super::rule_kinds;
-use super::verdict::{Verdict, judge};
+use super::verdict::{Listing, Verdict, judge};
 use super::{binary, conformance_dir, output, repository_root};
+
+/// The environment variable that names the reference binary to lint with in
+/// place of workflint. A relative path is relative to the repository root.
+pub const REFERENCE_VARIABLE: &str = "WORKFLINT_CONFORMANCE_REFERENCE";
+
+/// The fixtures that the reference binary fails when the runner lints them,
+/// each with the reason.
+pub const REFERENCE_FAILURES: [(&str, &str); 1] = [(
+    "projects/local_action_invalid",
+    "its .out file expects the relative path \"testdata/projects/local_action_invalid/...\", \
+     because the reference's Go test passes a relative project root, but the reference \
+     binary finds the project root itself and prints an absolute path",
+)];
 
 /// How a fixture's test ends when it does not fail.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Outcome {
     Judged(Verdict),
-    /// A tool that the fixture needs is not installed.
+    /// The runner did not lint the fixture, for this reason.
     Skipped(String),
+}
+
+/// The binary that lints the fixtures.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Program {
+    /// `workflint`, built from the workspace before the first fixture.
+    Workflint,
+    /// The reference binary at this path.
+    Reference(PathBuf),
+}
+
+impl Program {
+    fn path(&self) -> &Path {
+        match self {
+            Self::Workflint => binary::workflint(),
+            Self::Reference(path) => path,
+        }
+    }
+}
+
+/// What the runner lints with and how it judges the output.
+#[derive(Debug)]
+pub struct Setup {
+    pub program: Program,
+    /// Whether rule IDs in the output become actionlint kinds before the
+    /// comparison. The reference prints kinds already.
+    pub map_kinds: bool,
+    /// The fixtures expected to fail, by ID.
+    pub listings: BTreeMap<String, Listing>,
+    pub allow_list: AllowList,
+    /// The external tools on `PATH`.
+    pub installed: Tools,
+}
+
+impl Setup {
+    /// workflint, with the kind mapping, `expected-failures.toml`, and
+    /// `allowed-differences.toml`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a data file is missing or invalid.
+    #[must_use]
+    pub fn workflint() -> Self {
+        Self {
+            program: Program::Workflint,
+            map_kinds: true,
+            listings: EXPECTED_FAILURES
+                .fixtures
+                .iter()
+                .map(|(id, milestone)| (id.clone(), Listing::Until(milestone.clone())))
+                .collect(),
+            allow_list: AllowList {
+                entries: ALLOW_LIST.entries.clone(),
+            },
+            installed: Tools::installed(),
+        }
+    }
+
+    /// The reference binary at `binary`, without the kind mapping or the
+    /// allow-list, and with [`REFERENCE_FAILURES`] as the only expected
+    /// failures.
+    #[must_use]
+    pub fn reference(binary: PathBuf) -> Self {
+        Self {
+            program: Program::Reference(binary),
+            map_kinds: false,
+            listings: REFERENCE_FAILURES
+                .iter()
+                .map(|(id, reason)| ((*id).to_owned(), Listing::Reference((*reason).to_owned())))
+                .collect(),
+            allow_list: AllowList::default(),
+            installed: Tools::installed(),
+        }
+    }
+
+    /// [`Setup::reference`] if [`REFERENCE_VARIABLE`] is set and not empty,
+    /// and [`Setup::workflint`] otherwise.
+    #[must_use]
+    pub fn from_environment() -> Self {
+        match std::env::var_os(REFERENCE_VARIABLE) {
+            Some(path) if !path.is_empty() => Self::reference(repository_root().join(path)),
+            _ => Self::workflint(),
+        }
+    }
+
+    /// Why the runner does not lint `fixture`, if it does not.
+    #[must_use]
+    pub fn skip_reason(&self, fixture: &Fixture) -> Option<String> {
+        if let Some(tool) = fixture.missing_tool(&self.installed) {
+            return Some(format!("{tool:?} is not installed"));
+        }
+        match (&self.program, fixture.id.starts_with("workflint/")) {
+            (Program::Reference(_), true) => {
+                Some("the reference does not lint workflint's own fixtures".to_owned())
+            }
+            _ => None,
+        }
+    }
+
+    /// Lints `fixture` and judges the output.
+    ///
+    /// # Errors
+    ///
+    /// Returns the reason the fixture's test fails. See [`judge`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if workflint does not build.
+    pub fn run(&self, fixture: &Fixture) -> Result<Outcome, String> {
+        if let Some(reason) = self.skip_reason(fixture) {
+            return Ok(Outcome::Skipped(format!(
+                "skipped {} because {reason}",
+                fixture.id
+            )));
+        }
+        let tools = fixture.tools(&self.installed)?;
+        let invocation = fixture
+            .prepare(&tools)
+            .map_err(|error| format!("preparing {}: {error}", fixture.id))?;
+        let actual: Result<Vec<_>, String> = binary::run(self.program.path(), &invocation)
+            .and_then(|stdout| output::parse_output(&stdout))
+            .and_then(|diagnostics| {
+                if self.map_kinds {
+                    rule_kinds::to_kinds(diagnostics)
+                } else {
+                    Ok(diagnostics)
+                }
+            });
+        let entries = self.allow_list.entries_for(&fixture.id);
+        judge(
+            &fixture.id,
+            &fixture.expected_lines(),
+            actual.as_deref().map_err(String::as_str),
+            &entries,
+            self.listings.get(&fixture.id),
+        )
+        .map(Outcome::Judged)
+    }
+
+    /// How many of `fixtures` the runner skips and why, with one line per
+    /// skipped fixture.
+    #[must_use]
+    pub fn skip_summary(&self, fixtures: &[Fixture]) -> String {
+        let mut by_reason: BTreeMap<String, Vec<&str>> = BTreeMap::new();
+        for fixture in fixtures {
+            if let Some(reason) = self.skip_reason(fixture) {
+                by_reason.entry(reason).or_default().push(&fixture.id);
+            }
+        }
+        let skipped: usize = by_reason.values().map(Vec::len).sum();
+        let mut text = format!("skipped {skipped} of {} fixtures", fixtures.len());
+        if by_reason.is_empty() {
+            text.push('.');
+        } else {
+            let reasons: Vec<String> = by_reason
+                .iter()
+                .map(|(reason, ids)| format!("{} because {reason}", ids.len()))
+                .collect();
+            let _ = write!(text, ": {}.", reasons.join(", "));
+        }
+        for (tool, path) in [
+            ("shellcheck", &self.installed.shellcheck),
+            ("pyflakes", &self.installed.pyflakes),
+        ] {
+            let found = path
+                .as_ref()
+                .map_or_else(|| "not found".to_owned(), |path| path.display().to_string());
+            let _ = write!(text, "\n{tool}: {found}");
+        }
+        for (reason, ids) in &by_reason {
+            for id in ids {
+                let _ = write!(text, "\n  {id}: {reason}");
+            }
+        }
+        text
+    }
 }
 
 fn read(path: &str) -> String {
@@ -33,9 +230,10 @@ static ALLOW_LIST: LazyLock<AllowList> = LazyLock::new(|| {
         .unwrap_or_else(|error| panic!("tests/conformance/allowed-differences.toml: {error}"))
 });
 
-static INSTALLED: LazyLock<Tools> = LazyLock::new(Tools::installed);
+static SETUP: LazyLock<Setup> = LazyLock::new(Setup::from_environment);
 
-/// Lints `fixture` with workflint and judges the output.
+/// Lints `fixture` with the binary that [`Setup::from_environment`] picks and
+/// judges the output.
 ///
 /// # Errors
 ///
@@ -45,25 +243,16 @@ static INSTALLED: LazyLock<Tools> = LazyLock::new(Tools::installed);
 ///
 /// Panics if the binary does not build or a data file is missing or invalid.
 pub fn run_fixture(fixture: &Fixture) -> Result<Outcome, String> {
-    let tools = match fixture.tools(&INSTALLED) {
-        Ok(tools) => tools,
-        Err(skip) => return Ok(Outcome::Skipped(skip)),
-    };
-    let invocation = fixture
-        .prepare(&tools)
-        .map_err(|error| format!("preparing {}: {error}", fixture.id))?;
-    let actual: Result<Vec<_>, String> = binary::run(binary::workflint(), &invocation)
-        .and_then(|stdout| output::parse_output(&stdout))
-        .and_then(rule_kinds::to_kinds);
-    let entries = ALLOW_LIST.entries_for(&fixture.id);
-    judge(
-        &fixture.id,
-        &fixture.expected_lines(),
-        actual.as_deref().map_err(String::as_str),
-        &entries,
-        EXPECTED_FAILURES.milestone(&fixture.id),
-    )
-    .map(Outcome::Judged)
+    SETUP.run(fixture)
+}
+
+/// How many fixtures the runner skips and why. See [`Setup::skip_summary`].
+///
+/// # Errors
+///
+/// Returns a message if a fixture directory cannot be read.
+pub fn skip_summary() -> Result<String, String> {
+    Ok(SETUP.skip_summary(&fixture::all()?))
 }
 
 /// Checks `allowed-differences.toml`: every anchor exists in
@@ -75,11 +264,9 @@ pub fn run_fixture(fixture: &Fixture) -> Result<Outcome, String> {
 /// Returns one line per problem.
 pub fn check_allow_list() -> Result<(), String> {
     let anchors = allow_list::anchors(&read("docs/differences.md"));
-    ALLOW_LIST.validate(&anchors, &fixture::all_ids())?;
-    let fixtures = fixture::discover(fixture::Origin::Actionlint)
+    ALLOW_LIST.validate(&anchors, &fixture::all_ids()?)?;
+    let problems: Vec<String> = fixture::all()?
         .into_iter()
-        .chain(fixture::discover(fixture::Origin::Workflint));
-    let problems: Vec<String> = fixtures
         .filter_map(|fixture| {
             let entries = ALLOW_LIST.entries_for(&fixture.id);
             allow_list::apply(&fixture.expected_lines(), &entries).err()
@@ -92,13 +279,25 @@ pub fn check_allow_list() -> Result<(), String> {
     }
 }
 
-/// Checks that every fixture listed in `expected-failures.toml` exists.
+/// Checks that every fixture listed in `expected-failures.toml` and
+/// [`REFERENCE_FAILURES`] exists.
 ///
 /// # Errors
 ///
 /// Returns one line per unknown fixture.
 pub fn check_expected_failures() -> Result<(), String> {
-    EXPECTED_FAILURES.validate(&fixture::all_ids())
+    let ids = fixture::all_ids()?;
+    EXPECTED_FAILURES.validate(&ids)?;
+    let unknown: Vec<String> = REFERENCE_FAILURES
+        .iter()
+        .filter(|(id, _)| !ids.contains(*id))
+        .map(|(id, _)| format!("REFERENCE_FAILURES lists {id:?}, which does not exist"))
+        .collect();
+    if unknown.is_empty() {
+        Ok(())
+    } else {
+        Err(unknown.join("\n"))
+    }
 }
 
 /// Checks that `rule-kinds.toml` has exactly the rule IDs and kinds of the
@@ -139,5 +338,145 @@ pub fn check_rule_kinds() -> Result<(), String> {
         Ok(())
     } else {
         Err(problems.join("\n"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::conformance::fixture::Origin;
+
+    fn fixture(origin: Origin, path: &str) -> Fixture {
+        Fixture::new(origin, &origin.root().join(path))
+    }
+
+    fn setup(program: PathBuf) -> Setup {
+        Setup {
+            program: Program::Reference(program),
+            map_kinds: false,
+            listings: BTreeMap::new(),
+            allow_list: AllowList::default(),
+            installed: Tools::default(),
+        }
+    }
+
+    /// A shell script that runs `body`, standing in for a binary.
+    #[cfg(unix)]
+    fn fake_binary(dir: &Path, body: &str) -> PathBuf {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let script = dir.join("fake");
+        fs::write(&script, format!("#!/bin/sh\n{body}\n")).unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        script
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_binary_that_prints_to_stderr_and_exits_1_fails_an_ok_fixture() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = fake_binary(dir.path(), "echo 'cannot lint' >&2\nexit 1");
+        let ok = fixture(Origin::Actionlint, "ok/minimal.yaml");
+        let error = setup(fake).run(&ok).unwrap_err();
+        assert!(error.contains("printed none"), "{error}");
+        assert!(
+            error.contains("printed to standard error:\ncannot lint"),
+            "{error}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_binary_that_exits_0_with_output_fails_an_ok_fixture() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = fake_binary(dir.path(), "echo 'Hello, world!'\nexit 0");
+        let ok = fixture(Origin::Actionlint, "ok/minimal.yaml");
+        let error = setup(fake).run(&ok).unwrap_err();
+        assert!(error.contains("exited with code 0"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_binary_that_exits_with_another_code_fails_an_ok_fixture() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = fake_binary(dir.path(), "exit 2");
+        let ok = fixture(Origin::Actionlint, "ok/minimal.yaml");
+        let error = setup(fake).run(&ok).unwrap_err();
+        assert!(error.contains("exited with code 2"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_silent_binary_that_exits_0_passes_an_ok_fixture() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = fake_binary(dir.path(), "exit 0");
+        let ok = fixture(Origin::Actionlint, "ok/minimal.yaml");
+        assert_eq!(setup(fake).run(&ok), Ok(Outcome::Judged(Verdict::Passed)));
+    }
+
+    #[test]
+    fn a_fixture_that_names_a_missing_tool_is_skipped() {
+        let setup = setup(PathBuf::from("unused"));
+        let fixture = fixture(Origin::Actionlint, "ok/pyflakes_x.yaml");
+        assert_eq!(
+            setup.run(&fixture),
+            Ok(Outcome::Skipped(
+                "skipped ok/pyflakes_x.yaml because \"pyflakes\" is not installed".into()
+            ))
+        );
+    }
+
+    #[test]
+    fn the_reference_skips_workflints_own_fixtures() {
+        let setup = Setup::reference(PathBuf::from("unused"));
+        let own = fixture(Origin::Workflint, "ok/minimal.yaml");
+        assert_eq!(
+            setup.skip_reason(&own).as_deref(),
+            Some("the reference does not lint workflint's own fixtures")
+        );
+        assert_eq!(
+            setup.skip_reason(&fixture(Origin::Actionlint, "ok/a.yaml")),
+            None
+        );
+    }
+
+    #[test]
+    fn the_reference_runs_without_kinds_allow_list_or_expected_failures() {
+        let setup = Setup::reference(PathBuf::from("actionlint"));
+        assert!(!setup.map_kinds);
+        assert_eq!(setup.allow_list, AllowList::default());
+        let listed: Vec<&str> = setup.listings.keys().map(String::as_str).collect();
+        assert_eq!(listed, ["projects/local_action_invalid"]);
+    }
+
+    #[test]
+    fn the_skip_summary_counts_skips_by_reason() {
+        let mut setup = setup(PathBuf::from("unused"));
+        setup.installed.shellcheck = Some(PathBuf::from("/bin/shellcheck"));
+        let fixtures = [
+            fixture(Origin::Actionlint, "err/shellcheck_a.yaml"),
+            fixture(Origin::Actionlint, "err/pyflakes_a.yaml"),
+            fixture(Origin::Actionlint, "ok/pyflakes_b.yaml"),
+            fixture(Origin::Actionlint, "ok/plain.yaml"),
+        ];
+        let summary = setup.skip_summary(&fixtures);
+        assert_eq!(
+            summary,
+            "skipped 2 of 4 fixtures: 2 because \"pyflakes\" is not installed.\n\
+             shellcheck: /bin/shellcheck\n\
+             pyflakes: not found\n  \
+             err/pyflakes_a: \"pyflakes\" is not installed\n  \
+             ok/pyflakes_b.yaml: \"pyflakes\" is not installed"
+        );
+    }
+
+    #[test]
+    fn the_skip_summary_says_when_nothing_is_skipped() {
+        let summary = setup(PathBuf::from("unused"))
+            .skip_summary(&[fixture(Origin::Actionlint, "ok/plain.yaml")]);
+        assert!(
+            summary.starts_with("skipped 0 of 1 fixtures.\n"),
+            "{summary}"
+        );
     }
 }

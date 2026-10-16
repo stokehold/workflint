@@ -84,20 +84,14 @@ mod matcher_fixtures {
     fn color_output_matches_escape_txt_byte_for_byte() {
         let (file, diagnostic) = one_error();
         let out = default(&file, &[diagnostic], Color::On);
-        assert_eq!(
-            String::from_utf8_lossy(&out),
-            String::from_utf8_lossy(include_bytes!("actionlint/escape.txt"))
-        );
+        assert_eq!(out, include_bytes!("actionlint/escape.txt"));
     }
 
     #[test]
     fn plain_output_matches_no_escape_txt_byte_for_byte() {
         let (file, diagnostic) = one_error();
         let out = default(&file, &[diagnostic], Color::Off);
-        assert_eq!(
-            String::from_utf8_lossy(&out),
-            String::from_utf8_lossy(include_bytes!("actionlint/no_escape.txt"))
-        );
+        assert_eq!(out, include_bytes!("actionlint/no_escape.txt"));
     }
 }
 
@@ -263,6 +257,47 @@ fn a_position_at_the_end_of_the_file_after_a_newline_prints_only_the_header() {
     assert_eq!(
         default_plain(&file, &[d]),
         "test.yaml:2:1: msg [test-rule]\n"
+    );
+}
+
+#[test]
+fn a_span_on_the_line_feed_of_a_crlf_is_reported_at_the_carriage_return() {
+    let file = file("ab\r\ncd");
+    let d = span(3, 4, "msg");
+    assert_eq!(
+        default_plain(&file, &[d]),
+        "test.yaml:1:3: msg [test-rule]\n  |\n1 | ab\n  |   ^\n"
+    );
+}
+
+#[test]
+fn a_span_whose_start_is_after_its_end_renders_as_an_empty_span_at_its_start() {
+    let file = file("steps: run-this now\nnext: 1\n");
+    let start = file.text().find("run").unwrap();
+    for end in [0, start - 1] {
+        assert_eq!(
+            default_plain(&file, &[span(start, end, "msg")]),
+            default_plain(&file, &[span(start, start, "msg")]),
+            "end {end}"
+        );
+    }
+    let second_line = file.text().find("next").unwrap();
+    assert_eq!(
+        default_plain(&file, &[span(second_line, start, "msg")]),
+        default_plain(&file, &[span(second_line, second_line, "msg")])
+    );
+}
+
+// docs/differences.md#column-units describes where the indicator goes when a span starts or ends
+// with a tab.
+#[test]
+fn the_caret_skips_tabs_at_the_start_of_a_span_and_trailing_tabs_are_not_underlined() {
+    let file = file("k:\t\tab\t\n");
+    let start = file.text().find('\t').unwrap();
+    let d = span(start, file.text().len() - 1, "msg");
+    assert_eq!(
+        default_plain(&file, &[d]),
+        "test.yaml:1:3: msg [test-rule]\n  |\n1 | k:\t\tab\t\n  |   \t\t^~\n"
     );
 }
 

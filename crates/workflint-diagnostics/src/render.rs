@@ -17,7 +17,7 @@
 use std::fmt::Display;
 use std::io::{self, Write};
 
-use unicode_width::UnicodeWidthChar;
+use unicode_width::UnicodeWidthStr;
 
 use crate::{Diagnostic, SourceFile};
 
@@ -156,10 +156,14 @@ fn write_snippet<W: Write + ?Sized>(
 /// Builds the indicator for the byte range `start..end` of `line`: `^` under the first
 /// character, then `~` under the rest of the range.
 ///
-/// Every character before `start` becomes as many spaces as its display width, and every tab
-/// stays a tab, so the `^` lines up with the source line in any terminal. An empty range is
-/// widened to the run of characters up to the next space or tab, as actionlint does for every
-/// error.
+/// The text before `start` becomes spaces, as many as its display width, and every tab in it
+/// stays a tab, so the `^` lines up with the source line in any terminal. An empty range, or one
+/// whose `end` is before its `start`, is widened to the run of characters up to the next space
+/// or tab, as actionlint does for every error.
+///
+/// A tab at the start of the range is copied before the `^`, so the `^` sits under the first
+/// character after it. Tabs at the end of the range are dropped. `docs/differences.md#column-units`
+/// describes both.
 fn indicator(line: &str, start: usize, end: usize) -> String {
     let (before, rest) = line.split_at_checked(start).unwrap_or((line, ""));
     let underlined = if end > start {
@@ -169,23 +173,21 @@ fn indicator(line: &str, start: usize, end: usize) -> String {
     };
 
     let mut indicator = String::with_capacity(before.len() + underlined.len() + 1);
-    for c in before.chars() {
-        if c == '\t' {
+    for (run, tab) in runs(before) {
+        indicator.extend(std::iter::repeat_n(' ', run.width()));
+        if tab {
             indicator.push('\t');
-        } else {
-            indicator.extend(std::iter::repeat_n(' ', width(c)));
         }
     }
     let prefix_len = indicator.len();
     let mut caret_written = false;
-    for c in underlined.chars() {
-        if c == '\t' {
-            indicator.push('\t');
-            continue;
-        }
-        for _ in 0..width(c) {
+    for (run, tab) in runs(underlined) {
+        for _ in 0..run.width() {
             indicator.push(if caret_written { '~' } else { '^' });
             caret_written = true;
+        }
+        if tab {
+            indicator.push('\t');
         }
     }
     if caret_written {
@@ -198,12 +200,20 @@ fn indicator(line: &str, start: usize, end: usize) -> String {
     indicator
 }
 
-/// Returns the number of terminal cells `c` takes.
+/// Splits `text` at control characters. Each item is the run of text before a control character
+/// and whether that character is a tab. The last run ends at the end of `text` and reports no
+/// tab.
 ///
-/// East Asian ambiguous characters count as one cell, whatever the locale. Control characters
-/// count as none.
-fn width(c: char) -> usize {
-    c.width().unwrap_or(0)
+/// Measuring a whole run with [`UnicodeWidthStr::width`] gives an emoji sequence the two cells a
+/// terminal shows. The sum of its characters' widths is 1 for `❤` followed by U+FE0F, and 6 for
+/// three emoji joined with U+200D. East Asian ambiguous characters take one cell whatever the
+/// locale. Control characters take no cells, because they end a run and are not measured.
+fn runs(text: &str) -> impl Iterator<Item = (&str, bool)> {
+    text.split_inclusive(char::is_control)
+        .map(|piece| match piece.strip_suffix(char::is_control) {
+            Some(run) => (run, piece.ends_with('\t')),
+            None => (piece, false),
+        })
 }
 
 #[cfg(test)]
@@ -238,6 +248,35 @@ mod tests {
     fn indicator_counts_one_cell_for_an_ambiguous_character() {
         // U+00B1 PLUS-MINUS SIGN is East Asian ambiguous.
         assert_eq!(at("± x", "x"), "  ^");
+    }
+
+    #[test]
+    fn indicator_counts_two_cells_for_an_emoji_presentation_sequence() {
+        // U+2764 HEAVY BLACK HEART takes one cell alone and two with U+FE0F.
+        assert_eq!(at("❤\u{fe0f} x", "x"), "   ^");
+        assert_eq!(at("k: ❤\u{fe0f}", "❤\u{fe0f}"), "   ^~");
+    }
+
+    #[test]
+    fn indicator_counts_two_cells_for_a_zwj_sequence() {
+        let family = "\u{1f468}\u{200d}\u{1f469}\u{200d}\u{1f467}";
+        assert_eq!(at(&format!("{family} x"), "x"), "   ^");
+        assert_eq!(at(&format!("k: {family}"), family), "   ^~");
+    }
+
+    #[test]
+    fn indicator_measures_each_run_between_tabs() {
+        assert_eq!(at("❤\u{fe0f}\t❤\u{fe0f}\tx", "x"), "  \t  \t^");
+        assert_eq!(
+            at("k: ❤\u{fe0f}\t❤\u{fe0f}", "❤\u{fe0f}\t❤\u{fe0f}"),
+            "   ^~\t~~"
+        );
+    }
+
+    #[test]
+    fn indicator_counts_no_cells_for_control_characters() {
+        assert_eq!(at("\u{1}\u{7f}x", "x"), "^");
+        assert_eq!(at("k: a\u{1}b", "a\u{1}b"), "   ^~");
     }
 
     #[test]

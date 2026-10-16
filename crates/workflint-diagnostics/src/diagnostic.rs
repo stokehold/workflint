@@ -74,8 +74,10 @@ pub enum Applicability {
 ///
 /// The order is line, column, rule ID, then message. actionlint sorts by message after the
 /// column, so the order of diagnostics at the same position differs from actionlint
-/// (`docs/differences.md#sort-order`). A diagnostic is removed when an earlier one has the same
-/// line, column, and message, even if its rule ID differs, as in actionlint.
+/// (`docs/differences.md#sort-order`). Diagnostics with the same line, column, and message
+/// collapse into one even if their rule IDs differ, as in actionlint. The one kept has the
+/// highest severity and, among those, the smallest rule ID. When those are equal too, the first
+/// in `diagnostics` is kept.
 ///
 /// Every diagnostic's span must be in `file`.
 pub fn sort_and_dedup(file: &SourceFile, diagnostics: &mut Vec<Diagnostic>) {
@@ -83,31 +85,25 @@ pub fn sort_and_dedup(file: &SourceFile, diagnostics: &mut Vec<Diagnostic>) {
         .drain(..)
         .map(|d| (file.line_col(d.span.start), d))
         .collect();
+
+    // Group the duplicates, with the one to keep first in each group. The sort is stable, so
+    // the input order breaks the remaining ties.
+    keyed.sort_by(|(lhs_pos, lhs), (rhs_pos, rhs)| {
+        lhs_pos
+            .cmp(rhs_pos)
+            .then_with(|| lhs.message.cmp(&rhs.message))
+            .then_with(|| rhs.severity.cmp(&lhs.severity))
+            .then_with(|| lhs.rule.id.cmp(rhs.rule.id))
+    });
+    keyed.dedup_by(|(pos, d), (kept_pos, kept)| pos == kept_pos && d.message == kept.message);
+
     keyed.sort_by(|(lhs_pos, lhs), (rhs_pos, rhs)| {
         lhs_pos
             .cmp(rhs_pos)
             .then_with(|| lhs.rule.id.cmp(rhs.rule.id))
             .then_with(|| lhs.message.cmp(&rhs.message))
     });
-
-    // Duplicates can be separated by a diagnostic of another rule at the same position, so each
-    // diagnostic is compared with everything kept so far at its position.
-    let mut kept: Vec<(LineCol, Diagnostic)> = Vec::with_capacity(keyed.len());
-    let mut position_start = 0;
-    for (pos, diagnostic) in keyed {
-        if kept.last().is_some_and(|(last, _)| *last != pos) {
-            position_start = kept.len();
-        }
-        let duplicate = kept
-            .get(position_start..)
-            .unwrap_or_default()
-            .iter()
-            .any(|(_, k)| k.message == diagnostic.message);
-        if !duplicate {
-            kept.push((pos, diagnostic));
-        }
-    }
-    diagnostics.extend(kept.into_iter().map(|(_, d)| d));
+    diagnostics.extend(keyed.into_iter().map(|(_, d)| d));
 }
 
 #[cfg(test)]
@@ -267,6 +263,38 @@ mod tests {
         let mut diagnostics = vec![at(&RULE_A, 5, 7, "same"), at(&RULE_A, 5, 8, "same")];
         sort_and_dedup(&file, &mut diagnostics);
         assert_eq!(positions(&file, &diagnostics), [(5, 7), (5, 8)]);
+    }
+
+    #[test]
+    fn collapsed_duplicates_keep_the_highest_severity_then_the_smallest_rule_id() {
+        static WARNING_A: RuleMeta = RuleMeta {
+            default_severity: Severity::Warning,
+            ..rule("a-rule")
+        };
+        let file = file();
+        let mut diagnostics = vec![
+            at(&WARNING_A, 5, 7, "duplicate"),
+            at(&RULE_C, 5, 7, "duplicate"),
+            at(&RULE_B, 5, 7, "duplicate"),
+        ];
+        sort_and_dedup(&file, &mut diagnostics);
+        assert_eq!(summary(&diagnostics), [("b-rule", "duplicate")]);
+        assert_eq!(
+            diagnostics.first().map(|d| d.severity),
+            Some(Severity::Error)
+        );
+    }
+
+    #[test]
+    fn collapsing_compares_the_diagnostic_severity_not_the_rule_default() {
+        let file = file();
+        let mut info = at(&RULE_A, 5, 7, "duplicate");
+        info.severity = Severity::Info;
+        let mut warning = at(&RULE_B, 5, 7, "duplicate");
+        warning.severity = Severity::Warning;
+        let mut diagnostics = vec![info, warning];
+        sort_and_dedup(&file, &mut diagnostics);
+        assert_eq!(summary(&diagnostics), [("b-rule", "duplicate")]);
     }
 
     // The reference's `err/dedup_errors` fixture reports one error for a step that an alias

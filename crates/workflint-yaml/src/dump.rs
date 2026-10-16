@@ -24,9 +24,8 @@ impl Document {
     #[must_use]
     pub fn dump(&self, file: &SourceFile) -> String {
         let mut out = String::new();
-        let mut printed = vec![false; self.nodes.len()];
         match self.root {
-            Some(root) => self.dump_node(file, &mut out, &mut printed, "root", root, 0),
+            Some(root) => self.dump_tree(file, &mut out, root),
             None => out.push_str("no root\n"),
         }
 
@@ -74,42 +73,43 @@ impl Document {
         out
     }
 
-    fn dump_node(
-        &self,
-        file: &SourceFile,
-        out: &mut String,
-        printed: &mut [bool],
-        role: &str,
-        id: NodeId,
-        depth: usize,
-    ) {
-        let indent = "  ".repeat(depth);
-        let Some(node) = self.node(id) else {
-            let _ = writeln!(out, "{indent}{role} #{} missing", id.0);
-            return;
-        };
-        let Some(seen) = usize::try_from(id.0).ok().and_then(|i| printed.get_mut(i)) else {
-            return;
-        };
-        if *seen {
-            let _ = writeln!(out, "{indent}{role} #{} (printed above)", id.0);
-            return;
-        }
-        *seen = true;
-        let _ = writeln!(out, "{indent}{role} #{} {}", id.0, describe(file, node));
-        match &node.kind {
-            NodeKind::Sequence(sequence) => {
-                for &item in self.items(sequence) {
-                    self.dump_node(file, out, printed, "item", item, depth + 1);
-                }
+    /// Prints the tree under `root` in pre-order. The walk keeps the nodes
+    /// still to print on a heap stack, so a deep tree cannot overflow the
+    /// thread's stack.
+    fn dump_tree(&self, file: &SourceFile, out: &mut String, root: NodeId) {
+        let mut printed = vec![false; self.nodes.len()];
+        // The role, ID, and depth of each node still to print, the next one
+        // last.
+        let mut stack: Vec<(&str, NodeId, usize)> = vec![("root", root, 0)];
+        while let Some((role, id, depth)) = stack.pop() {
+            let indent = "  ".repeat(depth);
+            let Some(node) = self.node(id) else {
+                let _ = writeln!(out, "{indent}{role} #{} missing", id.0);
+                continue;
+            };
+            let Some(seen) = usize::try_from(id.0).ok().and_then(|i| printed.get_mut(i)) else {
+                continue;
+            };
+            if *seen {
+                let _ = writeln!(out, "{indent}{role} #{} (printed above)", id.0);
+                continue;
             }
-            NodeKind::Mapping(mapping) => {
-                for entry in self.entries(mapping) {
-                    self.dump_node(file, out, printed, "key", entry.key, depth + 1);
-                    self.dump_node(file, out, printed, "value", entry.value, depth + 1);
+            *seen = true;
+            let _ = writeln!(out, "{indent}{role} #{} {}", id.0, describe(file, node));
+            let depth = depth + 1;
+            match &node.kind {
+                NodeKind::Sequence(sequence) => {
+                    let items = self.items(sequence).iter().rev();
+                    stack.extend(items.map(|&item| ("item", item, depth)));
                 }
+                NodeKind::Mapping(mapping) => {
+                    for entry in self.entries(mapping).iter().rev() {
+                        stack.push(("value", entry.value, depth));
+                        stack.push(("key", entry.key, depth));
+                    }
+                }
+                NodeKind::Scalar(_) | NodeKind::Alias(_) => {}
             }
-            NodeKind::Scalar(_) | NodeKind::Alias(_) => {}
         }
     }
 }

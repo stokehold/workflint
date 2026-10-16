@@ -128,7 +128,7 @@ mod tests {
         let corpus = corpus();
         select(
             Places {
-                fixtures: discover(Origin::Actionlint),
+                fixtures: discover(Origin::Actionlint).unwrap(),
                 archive: &archive,
                 corpus: &corpus,
             },

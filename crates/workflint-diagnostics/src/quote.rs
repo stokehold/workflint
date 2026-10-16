@@ -288,6 +288,42 @@ mod tests {
         }
     }
 
+    /// Feeds `quoted(c)` and a newline into a 64-bit FNV-1a hash for every Unicode scalar value,
+    /// in order.
+    fn hash_every_scalar_value(quoted: impl Fn(char) -> String) -> u64 {
+        const OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
+        const PRIME: u64 = 0x0000_0100_0000_01b3;
+        let mut hash = OFFSET_BASIS;
+        for c in (0..=u32::from(char::MAX)).filter_map(char::from_u32) {
+            for byte in quoted(c).bytes().chain(*b"\n") {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(PRIME);
+            }
+        }
+        hash
+    }
+
+    // The expected hashes in the next two tests come from `xtask/go-quote-hash`, which hashes the
+    // output of Go 1.26.4's `strconv.QuoteRune` and `strconv.Quote` in the same way. When a test
+    // fails, run that program and compare single characters to find the difference.
+    #[test]
+    fn quote_rune_matches_go_for_every_scalar_value() {
+        assert_eq!(
+            format!("{:016x}", hash_every_scalar_value(quote_rune)),
+            "46cb9060b23540ac"
+        );
+    }
+
+    #[test]
+    fn quote_matches_go_for_every_scalar_value() {
+        assert_eq!(
+            format!(
+                "{:016x}",
+                hash_every_scalar_value(|c| quote(c.encode_utf8(&mut [0; 4])))
+            ),
+            "0ef8bb58c3edfdd0"
+        );
+    }
+
     #[test]
     fn unicode_version_matches_the_one_go_uses() {
         assert_eq!(
