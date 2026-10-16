@@ -27,7 +27,7 @@ The maintainer reviews and merges. Leave merging and auto-merge to the maintaine
 
 A task is done when all of these hold:
 
-- `cargo fmt --all --check`, `cargo clippy --workspace --all-targets` with zero warnings, `cargo nextest run --workspace`, `cargo test --doc --workspace`, and `cargo deny check` pass.
+- `cargo fmt --all --check`, `cargo clippy --workspace --all-targets` with zero warnings, `cargo nextest run --workspace`, `cargo test --doc --workspace`, and `cargo deny check` for the root and the `fuzz/` workspace pass.
 - The conformance suite passes. `cargo nextest run --workspace` runs it. Every new difference from the reference has an entry in `docs/differences.md`. A difference that changes a fixture's or the corpus's output also has records in `tests/conformance/allowed-differences.toml` (ADR 0023).
 - Docs touched by the change are updated in the same pull request.
 - The pull request title follows Conventional Commits (it becomes the squash commit). The description opens with a summary of what the pull request implements and why, and says how you verified the change.
