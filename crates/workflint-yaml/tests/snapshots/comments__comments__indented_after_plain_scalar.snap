@@ -1,0 +1,6 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "a: b\n   # indented\nc: d\n"
+---
+1:3@8..1:13@18 OwnLine "# indented"

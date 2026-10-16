@@ -1,0 +1,6 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "run: >-2 # note\n   echo hi\nnext: 1\n"
+---
+0:9@9..0:15@15 Trailing "# note"

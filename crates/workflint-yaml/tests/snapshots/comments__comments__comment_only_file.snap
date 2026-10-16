@@ -1,0 +1,7 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "# one\n# two\n"
+---
+0:0@0..0:5@5 OwnLine "# one"
+1:0@6..1:5@11 OwnLine "# two"

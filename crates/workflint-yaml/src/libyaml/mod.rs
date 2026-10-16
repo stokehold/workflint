@@ -70,6 +70,16 @@ pub enum Encoding {
     Utf8 = 1,
 }
 
+/// Where a comment sits on its line.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum CommentKind {
+    /// Code precedes the comment on its line, as in `a: 1 # note`.
+    Trailing,
+    /// Only spaces, tabs, or a byte order mark precede the comment on its
+    /// line.
+    OwnLine,
+}
+
 /// Scalar styles.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[non_exhaustive]

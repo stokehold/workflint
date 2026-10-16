@@ -10,7 +10,8 @@
 //! Each case also has a snapshot of its full event stream, with marks, in
 //! `tests/snapshots/yaml-test-suite/`. The snapshots were recorded before the
 //! scanner reported comments and leave comment events out, so they show that
-//! comments change no other event.
+//! comments change no other event. The same test checks the comment events
+//! of every case, which have comments in most places the grammar allows.
 
 mod support;
 
@@ -79,6 +80,8 @@ fn render_events(input: &str) -> Result<String, workflint_yaml::Error> {
                 out.push('\n');
             }
             EventData::MappingEnd => out.push_str("-MAP\n"),
+            // The test suite's event format has no comments.
+            EventData::Comment { .. } => {}
         }
     }
     Ok(out)
@@ -156,6 +159,7 @@ fn event_snapshot(path: &Utf8Path, input: String) -> datatest_stable::Result<()>
     settings.bind(|| {
         insta::assert_snapshot!(format!("events__{id}"), support::dump_events(&input));
     });
+    support::dump_comments(&input);
     Ok(())
 }
 

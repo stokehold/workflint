@@ -1,0 +1,7 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "a: \"x\n  y\" # after quoted\nb: x\n  y # after plain\nc: 1\n"
+---
+1:5@11..1:19@25 Trailing "# after quoted"
+3:4@35..3:17@48 Trailing "# after plain"

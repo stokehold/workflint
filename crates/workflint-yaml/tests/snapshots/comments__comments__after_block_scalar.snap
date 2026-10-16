@@ -1,0 +1,7 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "a: |\n  x\n # dedented\nb: |\n  y\n\n# after an empty line\nc: 1\n"
+---
+2:1@10..2:11@20 OwnLine "# dedented"
+6:0@31..6:21@52 OwnLine "# after an empty line"

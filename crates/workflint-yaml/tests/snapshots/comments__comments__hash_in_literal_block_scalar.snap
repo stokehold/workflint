@@ -1,0 +1,6 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "run: |\n  # shell comment\n  echo hi # shell trailing\n"
+---
+

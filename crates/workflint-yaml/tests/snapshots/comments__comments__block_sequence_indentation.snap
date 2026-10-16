@@ -1,0 +1,11 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "steps:\n  # before the first item\n  - run: a\n    # inside the item\n    name: b\n# column 0 between items\n  - uses: c\n      # deeper than the item\n  -\n    # in an item that starts empty\n    d\n  - # after the dash\n    e\n"
+---
+1:2@9..1:25@32 OwnLine "# before the first item"
+3:4@48..3:21@65 OwnLine "# inside the item"
+5:0@78..5:24@102 OwnLine "# column 0 between items"
+7:6@121..7:28@143 OwnLine "# deeper than the item"
+9:4@152..9:34@182 OwnLine "# in an item that starts empty"
+11:4@193..11:20@209 Trailing "# after the dash"

@@ -1,14 +1,15 @@
 //! Comments in every position the YAML grammar allows them.
 //!
-//! Each test records two snapshots. `events__<case>` holds the event stream
-//! without comment events. It was recorded before the scanner reported
-//! comments, so it shows that comments change no other event.
-//! `comments__<case>` lists the comments with their spans and kinds.
+//! Each test checks two snapshots. `comments__<case>` lists the comment
+//! events with their marks, kinds, and text. `events__<case>` holds the other
+//! events. It was recorded before the scanner reported comments, so it shows
+//! that comments change no other event.
 
 mod support;
 
 use insta::assert_snapshot;
-use support::dump_events;
+use support::{dump_comments, dump_events};
+use workflint_yaml::EventData;
 
 /// Checks the snapshots of the case `name`.
 fn check(name: &str, input: &str) {
@@ -16,8 +17,16 @@ fn check(name: &str, input: &str) {
     settings.set_description(input);
     settings.set_omit_expression(true);
     settings.bind(|| {
+        assert_snapshot!(format!("comments__{name}"), dump_comments(input));
         assert_snapshot!(format!("events__{name}"), dump_events(input));
     });
+}
+
+/// Checks the snapshots of the case `name`, whose input has a `#` that does
+/// not start a comment, and that the parser reports no comment.
+fn check_without_comments(name: &str, input: &str) {
+    assert_eq!(dump_comments(input), "");
+    check(name, input);
 }
 
 #[test]
@@ -199,7 +208,7 @@ fn comment_text_with_hashes_and_non_ascii_characters() {
 
 #[test]
 fn hash_inside_literal_block_scalar_is_not_a_comment() {
-    check(
+    check_without_comments(
         "hash_in_literal_block_scalar",
         "run: |\n  # shell comment\n  echo hi # shell trailing\n",
     );
@@ -207,12 +216,12 @@ fn hash_inside_literal_block_scalar_is_not_a_comment() {
 
 #[test]
 fn hash_inside_folded_block_scalar_is_not_a_comment() {
-    check("hash_in_folded_block_scalar", "run: >\n  # not a comment\n");
+    check_without_comments("hash_in_folded_block_scalar", "run: >\n  # not a comment\n");
 }
 
 #[test]
 fn hash_inside_quoted_scalars_is_not_a_comment() {
-    check(
+    check_without_comments(
         "hash_in_quoted_scalars",
         "a: 'x # y'\nb: \"x # y\"\nc: \"x\n  # y\"\n",
     );
@@ -220,8 +229,46 @@ fn hash_inside_quoted_scalars_is_not_a_comment() {
 
 #[test]
 fn hash_in_plain_scalar_without_preceding_whitespace_is_not_a_comment() {
-    check(
+    check_without_comments(
         "hash_in_plain_scalar",
         "a: a#b\nc#d: e\nurl: https://example.com/#frag\nf: [g#h]\n",
+    );
+}
+
+#[test]
+fn comment_events_come_before_the_first_event_that_starts_after_them() {
+    let kinds: Vec<String> = workflint_yaml::EventParser::new("a: # c\n  b: 1 # d\n# e\n")
+        .map(|event| {
+            let event = event.map_err(|err| err.to_string());
+            match event.map(|event| event.data) {
+                Ok(EventData::Scalar { value, .. }) => format!("Scalar {value}"),
+                Ok(EventData::Comment { kind }) => format!("Comment {kind:?}"),
+                Ok(data) => format!("{data:?}")
+                    .split([' ', '{'])
+                    .next()
+                    .unwrap_or_default()
+                    .to_owned(),
+                Err(err) => err,
+            }
+        })
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            "StreamStart",
+            "DocumentStart",
+            "MappingStart",
+            "Scalar a",
+            "Comment Trailing",
+            "MappingStart",
+            "Scalar b",
+            "Scalar 1",
+            "Comment Trailing",
+            "Comment OwnLine",
+            "MappingEnd",
+            "MappingEnd",
+            "DocumentEnd",
+            "StreamEnd",
+        ]
     );
 }

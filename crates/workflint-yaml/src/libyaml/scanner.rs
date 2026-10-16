@@ -4,15 +4,28 @@ use super::macros::{is_blankz, is_break};
 use super::parser::SimpleKey;
 use super::reader::yaml_parser_update_buffer;
 use super::token::{Token, TokenData};
-use super::{Encoding, Error, INPUT_BUFFER_SIZE, Mark, Result, ScalarStyle};
+use super::{CommentKind, Encoding, Error, INPUT_BUFFER_SIZE, Mark, Result, ScalarStyle};
 
 const MAX_NUMBER_LENGTH: u64 = 9_u64;
+
+/// A comment the scanner skipped, a workflint addition.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Comment {
+    /// Whether code precedes the comment on its line.
+    pub(crate) kind: CommentKind,
+    /// The position of the `#`.
+    pub(crate) start_mark: Mark,
+    /// The end of the comment's line, before the line break.
+    pub(crate) end_mark: Mark,
+}
 
 /// Given an input string, produce a stream of [`Token`]s.
 ///
 /// This is used internally by the parser, and may also be used standalone as a
 /// replacement for the libyaml `yaml_parser_scan()` function.
 pub(crate) struct Scanner<'input> {
+    /// The whole input, for looking back at the line before a comment.
+    source: &'input str,
     /// The characters not yet moved into `buffer`.
     pub(crate) input: core::str::Chars<'input>,
     /// The working buffer.
@@ -45,12 +58,15 @@ pub(crate) struct Scanner<'input> {
     pub(crate) simple_key_allowed: bool,
     /// The stack of simple keys.
     pub(crate) simple_keys: Vec<SimpleKey>,
+    /// The comments scanned and not yet taken by the parser, in source order.
+    pub(crate) comments: VecDeque<Comment>,
 }
 
 impl<'input> Scanner<'input> {
     /// Create a scanner over `input`.
     pub(crate) fn new(input: &'input str) -> Scanner<'input> {
         Self {
+            source: input,
             input: input.chars(),
             buffer: VecDeque::with_capacity(INPUT_BUFFER_SIZE),
             encoding: Encoding::Any,
@@ -66,6 +82,7 @@ impl<'input> Scanner<'input> {
             indent: 0,
             simple_key_allowed: false,
             simple_keys: Vec::with_capacity(16),
+            comments: VecDeque::new(),
         }
     }
 
@@ -764,10 +781,7 @@ impl<'input> Scanner<'input> {
                 self.cache(1)?;
             }
             if CHECK!(self.buffer, '#') {
-                while !IS_BREAKZ!(self.buffer) {
-                    self.skip_char();
-                    self.cache(1)?;
-                }
+                self.scan_comment()?;
             }
             if !IS_BREAK!(self.buffer) {
                 break;
@@ -779,6 +793,52 @@ impl<'input> Scanner<'input> {
             }
         }
         Ok(())
+    }
+
+    /// Skips the comment that starts at the current `#` and records it, a
+    /// workflint addition. libyaml skips comments without recording them.
+    ///
+    /// The comment ends before the line break or at the end of the input.
+    /// The callers are the places where go-yaml's scanner reads comments:
+    /// between tokens (`scanComments`) and after a block scalar header
+    /// (`scanLineComment`). go-yaml drops the comment after a directive, and
+    /// workflint records it too.
+    fn scan_comment(&mut self) -> Result<()> {
+        let start_mark = self.mark;
+        while !IS_BREAKZ!(self.buffer) {
+            self.skip_char();
+            self.cache(1)?;
+        }
+        let kind = self.comment_kind(start_mark)?;
+        self.comments.push_back(Comment {
+            kind,
+            start_mark,
+            end_mark: self.mark,
+        });
+        Ok(())
+    }
+
+    /// Finds whether code precedes the comment at `start_mark` on its line.
+    /// Spaces, tabs, and a byte order mark are not code.
+    ///
+    /// This reads the source because the scanner's state cannot tell: a plain
+    /// scalar consumes the line breaks and indentation after it, so the
+    /// scanner can reach a `#` at the start of a line right after a token.
+    fn comment_kind(&self, start_mark: Mark) -> Result<CommentKind> {
+        let before = usize::try_from(start_mark.index)
+            .ok()
+            .and_then(|index| self.source.get(..index))
+            .ok_or_else(|| Error::internal(start_mark))?;
+        let code_precedes = before
+            .chars()
+            .rev()
+            .take_while(|&ch| !is_break(ch))
+            .any(|ch| !matches!(ch, ' ' | '\t' | '\u{feff}'));
+        Ok(if code_precedes {
+            CommentKind::Trailing
+        } else {
+            CommentKind::OwnLine
+        })
     }
 
     fn scan_directive(&mut self) -> Result<Token> {
@@ -822,13 +882,7 @@ impl<'input> Scanner<'input> {
         }
 
         if CHECK!(self.buffer, '#') {
-            loop {
-                if IS_BREAKZ!(self.buffer) {
-                    break;
-                }
-                self.skip_char();
-                self.cache(1)?;
-            }
+            self.scan_comment()?;
         }
 
         if IS_BREAKZ!(self.buffer) {
@@ -1296,13 +1350,7 @@ impl<'input> Scanner<'input> {
         }
 
         if CHECK!(self.buffer, '#') {
-            loop {
-                if IS_BREAKZ!(self.buffer) {
-                    break;
-                }
-                self.skip_char();
-                self.cache(1)?;
-            }
+            self.scan_comment()?;
         }
 
         if !IS_BREAKZ!(self.buffer) {
