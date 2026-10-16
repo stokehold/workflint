@@ -15,6 +15,10 @@ pub(crate) struct Results {
     pub(crate) schema_version: u32,
     /// When the run started, in UTC, for example `2026-10-16T03:17:00Z`.
     pub(crate) date: String,
+    /// The GitHub Actions event that started the run, for example `schedule`
+    /// or `workflow_dispatch`. `None` outside GitHub Actions. The history
+    /// compares each run with the latest `schedule` run.
+    pub(crate) event: Option<String>,
     pub(crate) workflint: Build,
     pub(crate) reference: Build,
     pub(crate) tools: Tools,
@@ -358,7 +362,7 @@ fn format_bytes(bytes: u64) -> String {
     format!("{:.1} MiB", bytes as f64 / 1_048_576.0)
 }
 
-/// Formats a ratio with three significant decimals.
+/// Formats a ratio with three decimal places.
 fn format_number(value: f64) -> String {
     format!("{value:.3}")
 }
@@ -374,6 +378,7 @@ pub(crate) mod tests {
         Results {
             schema_version: SCHEMA_VERSION,
             date: "2026-10-16T03:17:00Z".to_owned(),
+            event: Some("schedule".to_owned()),
             workflint: Build {
                 version: "0.0.1".to_owned(),
                 commit: Some("0123456789abcdef0123456789abcdef01234567".to_owned()),
@@ -449,6 +454,14 @@ pub(crate) mod tests {
         });
         let json = serde_json::to_string(&results).unwrap();
         assert_eq!(serde_json::from_str::<Results>(&json).unwrap(), results);
+    }
+
+    #[test]
+    fn results_without_an_event_read_as_a_run_outside_github_actions() {
+        let mut json = serde_json::to_value(sample(0.1, 0.3)).unwrap();
+        json.as_object_mut().unwrap().remove("event");
+        let results: Results = serde_json::from_value(json).unwrap();
+        assert_eq!(results.event, None);
     }
 
     #[test]

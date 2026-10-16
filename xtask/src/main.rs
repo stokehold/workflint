@@ -38,7 +38,7 @@ enum Command {
         timeout: Option<Duration>,
     },
     /// Append a benchmark result to a history file and compare it with the
-    /// previous entry. The nightly benchmark job runs it.
+    /// latest scheduled run in it. The nightly benchmark job runs it.
     BenchHistory {
         /// The history file, with one result per line. It is created if
         /// missing.
@@ -47,8 +47,9 @@ enum Command {
         /// The result to append [default: target/bench/results.json].
         #[arg(long, value_name = "FILE")]
         results: Option<PathBuf>,
-        /// Where to write the body of a `performance` issue when the result
-        /// regressed or, from 0.1.0, missed a target. Removed otherwise.
+        /// Where to write the body of a `performance` issue when a
+        /// measurement failed, the result regressed, or, from 0.1.0, it
+        /// missed a target. Removed otherwise.
         #[arg(long, value_name = "FILE")]
         issue_body: Option<PathBuf>,
     },

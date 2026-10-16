@@ -12,11 +12,19 @@ use zip::ZipArchive;
 use super::Outcome;
 
 /// Files by their path relative to the corpus, with `/` separators, mapped to
-/// their sizes.
-type Listing = BTreeMap<String, u64>;
+/// their size and the CRC-32 of their content.
+type Listing = BTreeMap<String, Fingerprint>;
+
+/// The size and CRC-32 of a file. The archive stores both for each entry, so
+/// comparing them needs no unpacking.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Fingerprint {
+    size: u64,
+    crc32: u32,
+}
 
 /// Unpacks `archive` into `target`, unless `target` already holds exactly the
-/// archive's files with the same sizes.
+/// archive's files with the same content.
 ///
 /// The files go into a sibling directory first, which is then renamed to
 /// `target`, so an interrupted run leaves no partial corpus. An existing
@@ -81,7 +89,13 @@ fn archive_listing(zip: &mut ZipArchive<File>) -> Result<Listing> {
         if entry.is_symlink() {
             bail!("entry {} is a symbolic link", entry.name()?);
         }
-        listing.insert(key(&path), entry.size());
+        listing.insert(
+            key(&path),
+            Fingerprint {
+                size: entry.size(),
+                crc32: entry.crc32(),
+            },
+        );
     }
     Ok(listing)
 }
@@ -139,11 +153,30 @@ fn directory_listing(dir: &Path) -> Result<Listing> {
             if metadata.is_dir() {
                 pending.push(path);
             } else {
-                listing.insert(key(&path), metadata.len());
+                let fingerprint = if metadata.is_file() {
+                    file_fingerprint(&entry.path())?
+                } else {
+                    // A symbolic link or another special file never matches
+                    // an archive entry.
+                    Fingerprint {
+                        size: metadata.len(),
+                        crc32: 0,
+                    }
+                };
+                listing.insert(key(&path), fingerprint);
             }
         }
     }
     Ok(listing)
+}
+
+/// The size and CRC-32 of the file at `path`.
+fn file_fingerprint(path: &Path) -> Result<Fingerprint> {
+    let content = fs::read(path).with_context(|| format!("cannot read {}", path.display()))?;
+    Ok(Fingerprint {
+        size: u64::try_from(content.len())?,
+        crc32: crc32fast::hash(&content),
+    })
 }
 
 fn key(path: &Path) -> String {
@@ -160,13 +193,13 @@ fn differences(expected: &Listing, found: &Listing) -> String {
     let extra = found.keys().filter(|path| !expected.contains_key(*path));
     let changed = expected
         .iter()
-        .filter(|(path, size)| found.get(*path).is_some_and(|found| found != *size))
+        .filter(|(path, expected)| found.get(*path).is_some_and(|found| found != *expected))
         .map(|(path, _)| path);
     let mut text = String::new();
     for (label, paths) in [
         ("missing", missing.collect::<Vec<_>>()),
         ("not in the archive", extra.collect()),
-        ("different size", changed.collect()),
+        ("different content", changed.collect()),
     ] {
         for path in paths.iter().take(5) {
             let _ = write!(text, "\n  {label}: {path}");
@@ -303,6 +336,24 @@ mod tests {
         .unwrap();
 
         assert!(ensure(&fixture.archive, &fixture.target).is_err());
+    }
+
+    #[test]
+    fn corpus_with_changed_content_of_the_same_size_is_an_error_that_names_the_file() {
+        let fixture = fixture(FILES);
+        ensure(&fixture.archive, &fixture.target).unwrap();
+        fs::write(
+            fixture.target.join("a_b_.github_workflows_ci.yml"),
+            "on: pull\n",
+        )
+        .unwrap();
+
+        let error = ensure(&fixture.archive, &fixture.target).unwrap_err();
+
+        assert!(
+            format!("{error:#}").contains("different content: a_b_.github_workflows_ci.yml"),
+            "{error:#}"
+        );
     }
 
     #[test]

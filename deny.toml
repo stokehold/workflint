@@ -1,3 +1,7 @@
+# The policy for both workspaces: the root and fuzz/. CI runs
+# `cargo deny check` and `cargo deny --manifest-path fuzz/Cargo.toml check`,
+# and both find this file.
+
 [graph]
 all-features = true
 
@@ -17,9 +21,17 @@ allow = [
     "Zlib",
 ]
 
+# libfuzzer-sys bundles LLVM's libFuzzer, which is under NCSA. Only the fuzz
+# workspace uses it, and no published crate depends on it (ADR 0025).
+[[licenses.exceptions]]
+crate = "libfuzzer-sys"
+allow = ["NCSA"]
+
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# The fuzz crate is not published, so its path dependencies need no version.
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"

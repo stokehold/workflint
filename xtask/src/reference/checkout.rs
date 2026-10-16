@@ -11,8 +11,10 @@ use super::Outcome;
 /// Makes `dir` a checkout of `url` at `commit`.
 ///
 /// A missing `dir` becomes a shallow clone. An existing clean checkout at
-/// another commit moves to `commit`. A checkout with modified tracked files is
-/// an error that lists them, and nothing changes. Untracked files stay.
+/// another commit moves to `commit`. A checkout with modified tracked files or
+/// untracked files is an error that lists them, and nothing changes, because
+/// an untracked Go file would change the reference binary. Files that the
+/// checkout's `.gitignore` ignores do not count.
 pub(crate) fn ensure(dir: &Path, url: &str, commit: &str) -> Result<Outcome> {
     if !dir.exists() {
         create(dir, url, commit)?;
@@ -25,11 +27,14 @@ pub(crate) fn ensure(dir: &Path, url: &str, commit: &str) -> Result<Outcome> {
             dir.display()
         );
     }
-    let changed = changed_tracked_files(dir)?;
+    // Set before the status check, so that files that git converted on
+    // checkout show up as changed.
+    keep_line_endings(dir)?;
+    let changed = changed_files(dir)?;
     if !changed.is_empty() {
         bail!(
-            "{} has local changes to tracked files, so it was left as it is. \
-             Commit, stash, or revert them and run the command again:\n  {}",
+            "{} has local changes or untracked files, so it was left as it is. \
+             Remove, stash, or revert them and run the command again:\n  {}",
             dir.display(),
             changed.join("\n  ")
         );
@@ -57,9 +62,7 @@ fn create(dir: &Path, url: &str, commit: &str) -> Result<()> {
     fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
     let result = (|| {
         git(dir, &["init", "--quiet"])?;
-        // Keep the files byte for byte as upstream has them, also where git
-        // converts line endings by default, as on Windows.
-        git(dir, &["config", "core.autocrlf", "false"])?;
+        keep_line_endings(dir)?;
         git(dir, &["remote", "add", "origin", url])?;
         git(dir, &["fetch", "--quiet", "--depth", "1", "origin", commit])?;
         git(dir, &["checkout", "--quiet", "--detach", "FETCH_HEAD"])?;
@@ -101,11 +104,19 @@ pub(crate) fn tracked_files(dir: &Path, pathspecs: &[&str]) -> Result<Vec<String
     Ok(files)
 }
 
-/// The tracked files that differ from `HEAD` or the index.
-fn changed_tracked_files(dir: &Path) -> Result<Vec<String>> {
+/// Keeps the files byte for byte as upstream has them, also where git
+/// converts line endings by default, as on Windows.
+fn keep_line_endings(dir: &Path) -> Result<()> {
+    git(dir, &["config", "core.autocrlf", "false"])?;
+    Ok(())
+}
+
+/// The tracked files that differ from `HEAD` or the index, and the untracked
+/// files that are not ignored.
+fn changed_files(dir: &Path) -> Result<Vec<String>> {
     let status = git_untrimmed(
         dir,
-        &["status", "--porcelain=v1", "-z", "--untracked-files=no"],
+        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
     )?;
     // Each entry is `XY path`. A rename or copy is followed by its source path.
     let mut entries = status.split('\0').filter(|entry| !entry.is_empty());
@@ -266,17 +277,36 @@ mod tests {
     }
 
     #[test]
-    fn untracked_files_do_not_block_the_checkout() {
+    fn untracked_file_is_an_error_that_names_it_and_stays() {
         let upstream = upstream();
         let parent = tempfile::tempdir().unwrap();
         let dir = checkout_path(&parent);
         ensure(&dir, &upstream.url, &upstream.first).unwrap();
-        fs::write(dir.join("notes.txt"), "mine\n").unwrap();
+        fs::create_dir(dir.join("cmd")).unwrap();
+        fs::write(dir.join("cmd").join("extra.go"), "package main\n").unwrap();
+
+        let error = ensure(&dir, &upstream.url, &upstream.second).unwrap_err();
+
+        assert!(format!("{error:#}").contains("cmd/extra.go"), "{error:#}");
+        assert_eq!(git(&dir, &["rev-parse", "HEAD"]), upstream.first);
+        assert_eq!(
+            fs::read_to_string(dir.join("cmd").join("extra.go")).unwrap(),
+            "package main\n"
+        );
+    }
+
+    #[test]
+    fn existing_checkout_gets_line_ending_conversion_turned_off() {
+        let upstream = upstream();
+        let parent = tempfile::tempdir().unwrap();
+        let dir = checkout_path(&parent);
+        ensure(&dir, &upstream.url, &upstream.first).unwrap();
+        git(&dir, &["config", "core.autocrlf", "true"]);
 
         let outcome = ensure(&dir, &upstream.url, &upstream.first).unwrap();
 
         assert_eq!(outcome, Outcome::UpToDate);
-        assert_eq!(fs::read_to_string(dir.join("notes.txt")).unwrap(), "mine\n");
+        assert_eq!(git(&dir, &["config", "core.autocrlf"]), "false");
     }
 
     #[test]

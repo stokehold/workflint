@@ -34,6 +34,7 @@ pub const REFERENCE_FAILURES: [(&str, &str); 1] = [(
 /// How a fixture's test ends when it does not fail.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Outcome {
+    /// The fixture ran, and its output was compared.
     Judged(Verdict),
     /// The runner did not lint the fixture, for this reason.
     Skipped(String),
@@ -60,12 +61,14 @@ impl Program {
 /// What the runner lints with and how it judges the output.
 #[derive(Debug)]
 pub struct Setup {
+    /// The binary that lints the fixtures.
     pub program: Program,
     /// Whether rule IDs in the output become actionlint kinds before the
     /// comparison. The reference prints kinds already.
     pub map_kinds: bool,
     /// The fixtures expected to fail, by ID.
     pub listings: BTreeMap<String, Listing>,
+    /// The differences from the reference that the comparison accepts.
     pub allow_list: AllowList,
     /// The external tools on `PATH`.
     pub installed: Tools,
