@@ -25,7 +25,7 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 9:19@214..9:20@215 Scalar { anchor: None, tag: None, value: "y", plain_implicit: true, quoted_implicit: false, style: Plain }
 9:22@217..9:25@220 Scalar { anchor: None, tag: None, value: "102", plain_implicit: true, quoted_implicit: false, style: Plain }
 9:26@221..9:27@222 MappingEnd
-10:0@223..10:0@223 MappingEnd
+9:27@222..9:27@222 MappingEnd
 10:2@225..11:2@234 MappingStart { anchor: None, tag: Some("tag:clarkevans.com,2002:label"), implicit: false, style: Block }
 11:2@234..11:7@239 Scalar { anchor: None, tag: None, value: "start", plain_implicit: true, quoted_implicit: false, style: Plain }
 11:9@241..11:16@248 Alias { anchor: "ORIGIN" }

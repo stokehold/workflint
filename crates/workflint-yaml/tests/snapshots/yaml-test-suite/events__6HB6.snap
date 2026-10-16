@@ -14,7 +14,7 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 9:2@206..9:13@217 Scalar { anchor: None, tag: None, value: "Also by two", plain_implicit: true, quoted_implicit: false, style: Plain }
 10:3@239..10:15@251 Scalar { anchor: None, tag: None, value: "Still by two", plain_implicit: true, quoted_implicit: false, style: Plain }
 11:4@272..11:5@273 SequenceEnd
-12:0@301..12:0@301 MappingEnd
+11:32@300..11:32@300 MappingEnd
 12:0@301..12:0@301 MappingEnd
 12:0@301..12:0@301 DocumentEnd { implicit: true }
 12:0@301..12:0@301 StreamEnd

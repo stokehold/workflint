@@ -1,12 +1,39 @@
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 
-use super::macros::{is_blankz, is_break};
+use super::macros::{is_blank, is_blankz, is_break};
 use super::parser::SimpleKey;
-use super::reader::yaml_parser_update_buffer;
+use super::reader::{ReaderState, yaml_parser_update_buffer};
 use super::token::{Token, TokenData};
-use super::{CommentKind, Encoding, Error, INPUT_BUFFER_SIZE, Mark, Result, ScalarStyle};
+use super::{
+    CommentKind, Encoding, Error, ErrorKind, INPUT_BUFFER_SIZE, Mark, Result, ScalarStyle,
+};
 
-const MAX_NUMBER_LENGTH: u64 = 9_u64;
+/// The most digits of a `%YAML` version number, go-yaml's
+/// `max_number_length`.
+const MAX_NUMBER_LENGTH: u64 = 2;
+
+/// The deepest flow nesting, go-yaml's `max_flow_level`.
+const MAX_FLOW_LEVEL: i32 = 10_000;
+
+/// The deepest stack of block indentation levels, go-yaml's `max_indents`.
+const MAX_INDENTS: usize = 10_000;
+
+/// How many characters after its start a simple key may end, as YAML 1.2
+/// and go-yaml's `simpleKeyIsValid` require.
+const MAX_SIMPLE_KEY_LENGTH: u64 = 1024;
+
+/// How far go-yaml's comment scanners look ahead, in bytes.
+const COMMENT_PEEK_LIMIT: usize = 512;
+
+/// The context of an error in a tag or a `%TAG` directive, as go-yaml's
+/// `setScannerTagError`.
+fn tag_context(directive: bool) -> &'static str {
+    if directive {
+        "while parsing a %TAG directive"
+    } else {
+        "while parsing a tag"
+    }
+}
 
 /// A comment the scanner skipped, a workflint addition.
 #[derive(Debug, PartialEq)]
@@ -19,25 +46,117 @@ pub(crate) struct Comment {
     pub(crate) end_mark: Mark,
 }
 
+/// A position as go-yaml records it: the mark and go-yaml's `Mark.Index`,
+/// which counts characters, where `Mark::index` counts bytes.
+#[derive(Clone, Copy)]
+struct Position {
+    mark: Mark,
+    chars: u64,
+}
+
+/// A block of comment lines that go-yaml's `scanComments` records as one
+/// head or foot comment. `unroll_indent` moves a block end to the start of
+/// such a block, so the scanner keeps the blocks that the current
+/// `scan_to_next_token` call found. Older blocks end before that scan
+/// started, so go-yaml's search never reaches them.
+struct CommentBlock {
+    /// Where go-yaml started to scan for this block, as a character index.
+    scan: i64,
+    /// The character index of the block's first `#`.
+    start: i64,
+    /// Where the block ends, as a character index.
+    end: i64,
+    /// go-yaml's 1-based column of the block's first `#`.
+    column: i64,
+    /// The mark go-yaml gives a block end that moves to this block. Its line
+    /// and column are go-yaml's, which counts the column from 1 here and can
+    /// count one line too few. The index is one byte after the `#`.
+    mark: Mark,
+}
+
+/// The kinds of token that go-yaml's comment scanner looks at.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TailKind {
+    FlowEntry,
+    Value,
+    BlockEntry,
+    Other,
+}
+
+impl TailKind {
+    fn of(data: &TokenData) -> Self {
+        match data {
+            TokenData::FlowEntry => Self::FlowEntry,
+            TokenData::Value => Self::Value,
+            TokenData::BlockEntry => Self::BlockEntry,
+            _ => Self::Other,
+        }
+    }
+}
+
+/// Reads the scanner's buffer one UTF-8 byte at a time, as go-yaml's comment
+/// scanner reads `parser.buffer[parser.buffer_pos+peek]`.
+#[derive(Clone, Copy, Default)]
+struct BytePeek {
+    /// The character in the buffer.
+    index: usize,
+    /// The byte inside that character.
+    byte: usize,
+}
+
+impl BytePeek {
+    fn get(self, buffer: &VecDeque<char>) -> Option<(char, u8)> {
+        let ch = *buffer.get(self.index)?;
+        let mut bytes = [0; 4];
+        let byte = *ch.encode_utf8(&mut bytes).as_bytes().get(self.byte)?;
+        Some((ch, byte))
+    }
+
+    /// The byte here, or NUL past the end of the buffer as in go-yaml.
+    fn byte(self, buffer: &VecDeque<char>) -> u8 {
+        self.get(buffer).map_or(0, |(_, byte)| byte)
+    }
+
+    /// Whether a line break starts here, as go-yaml's `isLineBreak`.
+    fn is_line_break(self, buffer: &VecDeque<char>) -> bool {
+        self.byte == 0 && self.get(buffer).is_some_and(|(ch, _)| is_break(ch))
+    }
+
+    fn advance(&mut self, buffer: &VecDeque<char>) {
+        let width = buffer.get(self.index).map_or(1, |ch| ch.len_utf8());
+        if self.byte + 1 < width {
+            self.byte += 1;
+        } else {
+            self.index += 1;
+            self.byte = 0;
+        }
+    }
+}
+
 /// Given an input string, produce a stream of [`Token`]s.
 ///
-/// This is used internally by the parser, and may also be used standalone as a
-/// replacement for the libyaml `yaml_parser_scan()` function.
+/// The parser takes the tokens with `peek` and `skip_token`.
 pub(crate) struct Scanner<'input> {
-    /// The whole input, for looking back at the line before a comment.
-    source: &'input str,
-    /// The characters not yet moved into `buffer`.
-    pub(crate) input: core::str::Chars<'input>,
+    /// The whole input, for the reader and for looking back at the line
+    /// before a comment.
+    pub(crate) source: &'input str,
+    /// Where the reader is in `source`.
+    pub(crate) reader: ReaderState,
     /// The working buffer.
     ///
     /// This always contains valid UTF-8.
     pub(crate) buffer: VecDeque<char>,
-    /// The input encoding.
-    pub(crate) encoding: Encoding,
-    /// The offset of the current position (in bytes).
-    pub(crate) offset: usize,
+    /// Whether go-yaml's buffer starts with a byte order mark, which its
+    /// `isBOM` checks instead of the current character.
+    pub(crate) buffer_starts_with_bom: bool,
     /// The mark of the current position.
     pub(crate) mark: Mark,
+    /// go-yaml's `Mark.Index` of the current position, which counts
+    /// characters.
+    chars: u64,
+    /// The line breaks skipped since the last character that is not a blank,
+    /// go-yaml's `newlines`.
+    newlines: u64,
     /// Have we started to scan the input stream?
     pub(crate) stream_start_produced: bool,
     /// Have we reached the end of the input stream?
@@ -50,16 +169,24 @@ pub(crate) struct Scanner<'input> {
     pub(crate) tokens_parsed: usize,
     /// Does the tokens queue contain a token ready for dequeueing.
     pub(crate) token_available: bool,
+    /// The kinds of the last and the second-to-last token in queue order,
+    /// counting tokens the parser has taken.
+    tail: [TailKind; 2],
     /// The indentation levels stack.
-    pub(crate) indents: Vec<i32>,
+    pub(crate) indents: Vec<i64>,
     /// The current indentation level.
-    pub(crate) indent: i32,
+    pub(crate) indent: i64,
     /// May a simple key occur at the current position?
     pub(crate) simple_key_allowed: bool,
     /// The stack of simple keys.
     pub(crate) simple_keys: Vec<SimpleKey>,
+    /// The index in `simple_keys` of the simple key that starts at each
+    /// token number, go-yaml's `simple_keys_by_tok`.
+    simple_keys_by_token: BTreeMap<usize, usize>,
     /// The comments scanned and not yet taken by the parser, in source order.
     pub(crate) comments: VecDeque<Comment>,
+    /// The comment blocks of the current `scan_to_next_token` call.
+    comment_blocks: Vec<CommentBlock>,
 }
 
 impl<'input> Scanner<'input> {
@@ -67,30 +194,41 @@ impl<'input> Scanner<'input> {
     pub(crate) fn new(input: &'input str) -> Scanner<'input> {
         Self {
             source: input,
-            input: input.chars(),
+            reader: ReaderState::default(),
             buffer: VecDeque::with_capacity(INPUT_BUFFER_SIZE),
-            encoding: Encoding::Any,
-            offset: 0,
+            buffer_starts_with_bom: false,
             mark: Mark::default(),
+            chars: 0,
+            newlines: 0,
             stream_start_produced: false,
             stream_end_produced: false,
             flow_level: 0,
             tokens: VecDeque::with_capacity(16),
             tokens_parsed: 0,
             token_available: false,
+            tail: [TailKind::Other; 2],
             indents: Vec::with_capacity(16),
             indent: 0,
             simple_key_allowed: false,
             simple_keys: Vec::with_capacity(16),
+            simple_keys_by_token: BTreeMap::new(),
             comments: VecDeque::new(),
+            comment_blocks: Vec::new(),
         }
     }
 
     fn cache(&mut self, length: usize) -> Result<()> {
-        if self.buffer.len() >= length {
+        if self.unread() >= length {
             Ok(())
         } else {
             yaml_parser_update_buffer(self, length)
+        }
+    }
+
+    fn position(&self) -> Position {
+        Position {
+            mark: self.mark,
+            chars: self.chars,
         }
     }
 
@@ -99,9 +237,13 @@ impl<'input> Scanner<'input> {
     /// Does nothing at the end of the input.
     fn skip_char(&mut self) {
         if let Some(popped) = self.buffer.pop_front() {
+            if !is_blank(popped) {
+                self.newlines = 0;
+            }
             let width = popped.len_utf8();
             self.mark.index += width as u64;
             self.mark.column += 1;
+            self.chars += 1;
         }
     }
 
@@ -112,12 +254,16 @@ impl<'input> Scanner<'input> {
                 self.mark.index += 2;
                 self.mark.column = 0;
                 self.mark.line += 1;
+                self.chars += 2;
+                self.newlines += 1;
                 self.buffer.drain(0..2);
             } else if is_break(front) {
                 let width = front.len_utf8();
                 self.mark.index += width as u64;
                 self.mark.column = 0;
                 self.mark.line += 1;
+                self.chars += 1;
+                self.newlines += 1;
                 self.buffer.pop_front();
             }
         }
@@ -128,9 +274,13 @@ impl<'input> Scanner<'input> {
     /// Does nothing at the end of the input.
     fn read_char(&mut self, string: &mut String) {
         if let Some(popped) = self.buffer.pop_front() {
+            if !is_blank(popped) {
+                self.newlines = 0;
+            }
             string.push(popped);
             self.mark.index += popped.len_utf8() as u64;
             self.mark.column += 1;
+            self.chars += 1;
         }
     }
 
@@ -151,6 +301,8 @@ impl<'input> Scanner<'input> {
             self.mark.index += 2;
             self.mark.column = 0;
             self.mark.line += 1;
+            self.chars += 2;
+            self.newlines += 1;
         } else if is_break(front) {
             self.buffer.pop_front();
             let char_len = front.len_utf8();
@@ -163,35 +315,8 @@ impl<'input> Scanner<'input> {
             self.mark.index += char_len as u64;
             self.mark.column = 0;
             self.mark.line += 1;
-        }
-    }
-
-    /// Scan the input stream and produce the next token.
-    ///
-    /// Call the function subsequently to produce a sequence of tokens
-    /// corresponding to the input stream. The initial token has the type
-    /// [`TokenData::StreamStart`] while the ending token has the type
-    /// [`TokenData::StreamEnd`].
-    pub(crate) fn scan(&mut self) -> Result<Token> {
-        if self.stream_end_produced {
-            return Ok(Token {
-                data: TokenData::StreamEnd,
-                start_mark: Mark::default(),
-                end_mark: Mark::default(),
-            });
-        }
-        if !self.token_available {
-            self.fetch_more_tokens()?;
-        }
-        if let Some(token) = self.tokens.pop_front() {
-            self.token_available = false;
-            self.tokens_parsed += 1;
-            if let TokenData::StreamEnd = &token.data {
-                self.stream_end_produced = true;
-            }
-            Ok(token)
-        } else {
-            Err(Error::internal(self.mark))
+            self.chars += 1;
+            self.newlines += 1;
         }
     }
 
@@ -206,7 +331,9 @@ impl<'input> Scanner<'input> {
             self.fetch_more_tokens()?;
         }
         let mark = self.mark;
-        self.tokens.front_mut().ok_or_else(|| Error::internal(mark))
+        self.tokens
+            .front_mut()
+            .ok_or_else(|| Error::internal(ErrorKind::Scanner, mark))
     }
 
     /// Equivalent of the libyaml `SKIP_TOKEN` macro, used by the parser.
@@ -222,13 +349,46 @@ impl<'input> Scanner<'input> {
         );
     }
 
+    /// Adds `token` to the queue at `position`, counted from the first token
+    /// the parser has not taken, or at the end for `None`, as go-yaml's
+    /// `insertToken` does.
+    ///
+    /// A position past the end of the queue is an internal error. The
+    /// callers compute positions from token numbers that a simple key
+    /// recorded while its token was still in the queue, and go-yaml's
+    /// `fetchMoreTokens` keeps a possible simple key's token in the queue.
+    fn insert_token(&mut self, position: Option<usize>, token: Token) -> Result<()> {
+        let kind = TailKind::of(&token.data);
+        let len = self.tokens.len();
+        match position {
+            None => self.tokens.push_back(token),
+            Some(position) if position <= len => self.tokens.insert(position, token),
+            Some(_) => return Err(Error::internal(ErrorKind::Scanner, self.mark)),
+        }
+        match position {
+            Some(position) if position + 1 < len => {}
+            Some(position) if position + 1 == len => self.tail[1] = kind,
+            _ => self.tail = [kind, self.tail[0]],
+        }
+        Ok(())
+    }
+
+    /// The position in the queue of the token with number `token_number`.
+    fn queue_position(&self, token_number: usize) -> Result<usize> {
+        token_number
+            .checked_sub(self.tokens_parsed)
+            .ok_or_else(|| Error::internal(ErrorKind::Scanner, self.mark))
+    }
+
     /// The top of the simple key stack, which `fetch_stream_start` creates and
     /// only the end of a flow collection pops.
-    fn last_simple_key(&mut self) -> Result<&mut SimpleKey> {
+    fn last_simple_key(&mut self) -> Result<(usize, &mut SimpleKey)> {
         let mark = self.mark;
+        let index = self.simple_keys.len().wrapping_sub(1);
         self.simple_keys
             .last_mut()
-            .ok_or_else(|| Error::internal(mark))
+            .map(|key| (index, key))
+            .ok_or_else(|| Error::internal(ErrorKind::Scanner, mark))
     }
 
     fn set_scanner_error<T>(
@@ -240,23 +400,19 @@ impl<'input> Scanner<'input> {
         Err(Error::scanner(context, context_mark, problem, self.mark))
     }
 
+    /// Fetches tokens until the parser may take the first one, as go-yaml's
+    /// `fetchMoreTokens` does: the queue holds at least three tokens, and the
+    /// first one cannot become a simple key any more. This lookahead is why
+    /// an error in a later token can come before the event of an earlier one.
     pub(crate) fn fetch_more_tokens(&mut self) -> Result<()> {
-        let mut need_more_tokens;
         loop {
-            need_more_tokens = false;
-            if self.tokens.is_empty() {
-                need_more_tokens = true;
-            } else {
-                self.stale_simple_keys()?;
-                for simple_key in &self.simple_keys {
-                    if simple_key.possible && simple_key.token_number == self.tokens_parsed {
-                        need_more_tokens = true;
-                        break;
-                    }
+            if self.tokens.len() > 2 {
+                let Some(&index) = self.simple_keys_by_token.get(&self.tokens_parsed) else {
+                    break;
+                };
+                if !self.simple_key_is_valid(index)? {
+                    break;
                 }
-            }
-            if !need_more_tokens {
-                break;
             }
             self.fetch_next_token()?;
         }
@@ -267,12 +423,11 @@ impl<'input> Scanner<'input> {
     fn fetch_next_token(&mut self) -> Result<()> {
         self.cache(1)?;
         if !self.stream_start_produced {
-            self.fetch_stream_start();
-            return Ok(());
+            return self.fetch_stream_start();
         }
+        let scan_mark = self.position();
         self.scan_to_next_token()?;
-        self.stale_simple_keys()?;
-        self.unroll_indent(self.mark.column as i64);
+        self.unroll_indent(self.mark.column as i64, scan_mark)?;
         self.cache(4)?;
         if IS_Z!(self.buffer) {
             return self.fetch_stream_end();
@@ -296,6 +451,18 @@ impl<'input> Scanner<'input> {
         {
             return self.fetch_document_indicator(TokenData::DocumentEnd);
         }
+        self.fetch_content_token()?;
+        // go-yaml reads a comment on the rest of the line right after each
+        // token, except after a `-`.
+        if self.tail[0] != TailKind::BlockEntry {
+            self.scan_line_comment()?;
+        }
+        Ok(())
+    }
+
+    /// Fetches a token that is neither a directive, a document indicator, nor
+    /// the end of the stream.
+    fn fetch_content_token(&mut self) -> Result<()> {
         if CHECK!(self.buffer, '[') {
             return self.fetch_flow_collection_start(TokenData::FlowSequenceStart);
         }
@@ -314,7 +481,7 @@ impl<'input> Scanner<'input> {
         if CHECK!(self.buffer, '-') && IS_BLANKZ_AT!(self.buffer, 1) {
             return self.fetch_block_entry();
         }
-        if CHECK!(self.buffer, '?') && (self.flow_level != 0 || IS_BLANKZ_AT!(self.buffer, 1)) {
+        if CHECK!(self.buffer, '?') && IS_BLANKZ_AT!(self.buffer, 1) {
             return self.fetch_key();
         }
         if CHECK!(self.buffer, ':') && (self.flow_level != 0 || IS_BLANKZ_AT!(self.buffer, 1)) {
@@ -362,8 +529,7 @@ impl<'input> Scanner<'input> {
             || CHECK!(self.buffer, '@')
             || CHECK!(self.buffer, '`'))
             || CHECK!(self.buffer, '-') && !IS_BLANK_AT!(self.buffer, 1)
-            || self.flow_level == 0
-                && (CHECK!(self.buffer, '?') || CHECK!(self.buffer, ':'))
+            || (CHECK!(self.buffer, '?') || CHECK!(self.buffer, ':'))
                 && !IS_BLANKZ_AT!(self.buffer, 1)
         {
             return self.fetch_plain_scalar();
@@ -375,28 +541,37 @@ impl<'input> Scanner<'input> {
         )
     }
 
-    fn stale_simple_keys(&mut self) -> Result<()> {
-        for simple_key in &mut self.simple_keys {
-            let mark = simple_key.mark;
-            if simple_key.possible
-                && (mark.line < self.mark.line || mark.index + 1024 < self.mark.index)
-            {
-                if simple_key.required {
-                    return self.set_scanner_error(
-                        "while scanning a simple key",
-                        mark,
-                        "could not find expected ':'",
-                    );
-                }
-                simple_key.possible = false;
-            }
+    /// Whether the simple key at `index` in the stack can still be a key, as
+    /// go-yaml's `simpleKeyIsValid`. A key that is too far behind is no
+    /// longer possible, and an error if it was required.
+    ///
+    /// go-yaml compares character indexes. A key is valid only on the line
+    /// where it starts, so the columns give the same distance.
+    fn simple_key_is_valid(&mut self, index: usize) -> Result<bool> {
+        let mark = self.mark;
+        let Some(key) = self.simple_keys.get_mut(index) else {
+            return Ok(false);
+        };
+        if !key.possible {
+            return Ok(false);
         }
-
-        Ok(())
+        if key.mark.line < mark.line || key.mark.column + MAX_SIMPLE_KEY_LENGTH < mark.column {
+            if key.required {
+                let key_mark = key.mark;
+                return self.set_scanner_error(
+                    "while scanning a simple key",
+                    key_mark,
+                    "could not find expected ':'",
+                );
+            }
+            key.possible = false;
+            return Ok(false);
+        }
+        Ok(true)
     }
 
     fn save_simple_key(&mut self) -> Result<()> {
-        let required = self.flow_level == 0 && self.indent as u64 == self.mark.column;
+        let required = self.flow_level == 0 && self.indent == self.mark.column as i64;
         if self.simple_key_allowed {
             let simple_key = SimpleKey {
                 possible: true,
@@ -405,13 +580,16 @@ impl<'input> Scanner<'input> {
                 mark: self.mark,
             };
             self.remove_simple_key()?;
-            *self.last_simple_key()? = simple_key;
+            let (index, key) = self.last_simple_key()?;
+            *key = simple_key;
+            self.simple_keys_by_token
+                .insert(simple_key.token_number, index);
         }
         Ok(())
     }
 
     fn remove_simple_key(&mut self) -> Result<()> {
-        let simple_key: &mut SimpleKey = self.last_simple_key()?;
+        let (_, simple_key) = self.last_simple_key()?;
         if simple_key.possible {
             let mark = simple_key.mark;
             if simple_key.required {
@@ -421,8 +599,10 @@ impl<'input> Scanner<'input> {
                     "could not find expected ':'",
                 );
             }
+            simple_key.possible = false;
+            let token_number = simple_key.token_number;
+            self.simple_keys_by_token.remove(&token_number);
         }
-        simple_key.possible = false;
         Ok(())
     }
 
@@ -430,64 +610,100 @@ impl<'input> Scanner<'input> {
         let empty_simple_key = SimpleKey {
             possible: false,
             required: false,
-            token_number: 0,
-            mark: Mark {
-                index: 0_u64,
-                line: 0_u64,
-                column: 0_u64,
-            },
+            token_number: self.tokens_parsed + self.tokens.len(),
+            mark: self.mark,
         };
         self.simple_keys.push(empty_simple_key);
-        if self.flow_level == i32::MAX {
-            return Err(Error::internal(self.mark));
-        }
         self.flow_level += 1;
+        if self.flow_level > MAX_FLOW_LEVEL {
+            return self.set_scanner_error(
+                "while increasing flow level",
+                empty_simple_key.mark,
+                "exceeded max depth of 10000",
+            );
+        }
         Ok(())
     }
 
     fn decrease_flow_level(&mut self) {
         if self.flow_level != 0 {
             self.flow_level -= 1;
-            let _ = self.simple_keys.pop();
+            // go-yaml forgets the token number of the popped level's key,
+            // even when that key is no longer possible.
+            if let Some(key) = self.simple_keys.pop() {
+                self.simple_keys_by_token.remove(&key.token_number);
+            }
         }
     }
 
-    fn roll_indent(&mut self, column: i64, number: i64, data: TokenData, mark: Mark) -> Result<()> {
+    /// Pushes a block indentation level and inserts `data` at the token
+    /// `number`, or at the end for `None`.
+    fn roll_indent(
+        &mut self,
+        column: i64,
+        number: Option<usize>,
+        data: TokenData,
+        mark: Mark,
+    ) -> Result<()> {
         if self.flow_level != 0 {
             return Ok(());
         }
-        if self.indent < column as i32 {
-            if column > i32::MAX as i64 {
-                return Err(Error::internal(self.mark));
-            }
+        if self.indent < column {
             self.indents.push(self.indent);
-            self.indent = column as i32;
+            self.indent = column;
+            if self.indents.len() > MAX_INDENTS {
+                let (_, key) = self.last_simple_key()?;
+                let key_mark = key.mark;
+                return self.set_scanner_error(
+                    "while increasing indent level",
+                    key_mark,
+                    "exceeded max depth of 10000",
+                );
+            }
             let token = Token {
                 data,
                 start_mark: mark,
                 end_mark: mark,
             };
-            if number == -1_i64 {
-                self.tokens.push_back(token);
-            } else {
-                self.tokens
-                    .insert((number as usize).wrapping_sub(self.tokens_parsed), token);
-            }
+            let position = number
+                .map(|number| self.queue_position(number))
+                .transpose()?;
+            self.insert_token(position, token)?;
         }
         Ok(())
     }
 
-    fn unroll_indent(&mut self, column: i64) {
+    /// Pops the indentation levels above `column` and adds a block end for
+    /// each, as go-yaml's `unrollIndent` does.
+    ///
+    /// A block end is where scanning for the current token started, which is
+    /// the end of the previous token. If a comment block that go-yaml would
+    /// treat as a foot comment of the closing block starts at its
+    /// indentation, the block end moves to that comment.
+    fn unroll_indent(&mut self, column: i64, scan_mark: Position) -> Result<()> {
         if self.flow_level != 0 {
-            return;
+            return Ok(());
         }
-        while self.indent as i64 > column {
+        let mut block_mark = scan_mark.mark;
+        let mut block_index = scan_mark.chars as i64 - 1;
+        while self.indent > column {
+            let mut stop_index = block_index;
+            for block in self.comment_blocks.iter().rev() {
+                if block.end < stop_index {
+                    break;
+                }
+                if block.column == self.indent + 1 {
+                    block_mark = block.mark;
+                    block_index = block.start;
+                }
+                stop_index = block.scan;
+            }
             let token = Token {
                 data: TokenData::BlockEnd,
-                start_mark: self.mark,
-                end_mark: self.mark,
+                start_mark: block_mark,
+                end_mark: block_mark,
             };
-            self.tokens.push_back(token);
+            self.insert_token(None, token)?;
             // `roll_indent` pushes an entry for every indentation level above
             // -1, so the stack is empty only once `indent` is back at -1.
             let Some(indent) = self.indents.pop() else {
@@ -495,9 +711,10 @@ impl<'input> Scanner<'input> {
             };
             self.indent = indent;
         }
+        Ok(())
     }
 
-    fn fetch_stream_start(&mut self) {
+    fn fetch_stream_start(&mut self) -> Result<()> {
         let simple_key = SimpleKey {
             possible: false,
             required: false,
@@ -514,12 +731,12 @@ impl<'input> Scanner<'input> {
         self.stream_start_produced = true;
         let token = Token {
             data: TokenData::StreamStart {
-                encoding: self.encoding,
+                encoding: Encoding::Utf8,
             },
             start_mark: self.mark,
             end_mark: self.mark,
         };
-        self.tokens.push_back(token);
+        self.insert_token(None, token)
     }
 
     fn fetch_stream_end(&mut self) -> Result<()> {
@@ -527,7 +744,7 @@ impl<'input> Scanner<'input> {
             self.mark.column = 0_u64;
             self.mark.line += 1;
         }
-        self.unroll_indent(-1_i64);
+        self.unroll_indent(-1_i64, self.position())?;
         self.remove_simple_key()?;
         self.simple_key_allowed = false;
         let token = Token {
@@ -535,21 +752,19 @@ impl<'input> Scanner<'input> {
             start_mark: self.mark,
             end_mark: self.mark,
         };
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_directive(&mut self) -> Result<()> {
-        self.unroll_indent(-1_i64);
+        self.unroll_indent(-1_i64, self.position())?;
         self.remove_simple_key()?;
         self.simple_key_allowed = false;
         let token = self.scan_directive()?;
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_document_indicator(&mut self, data: TokenData) -> Result<()> {
-        self.unroll_indent(-1_i64);
+        self.unroll_indent(-1_i64, self.position())?;
         self.remove_simple_key()?;
         self.simple_key_allowed = false;
         let start_mark: Mark = self.mark;
@@ -563,8 +778,7 @@ impl<'input> Scanner<'input> {
             start_mark,
             end_mark,
         };
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_flow_collection_start(&mut self, data: TokenData) -> Result<()> {
@@ -579,8 +793,7 @@ impl<'input> Scanner<'input> {
             start_mark,
             end_mark,
         };
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_flow_collection_end(&mut self, data: TokenData) -> Result<()> {
@@ -595,8 +808,7 @@ impl<'input> Scanner<'input> {
             start_mark,
             end_mark,
         };
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_flow_entry(&mut self) -> Result<()> {
@@ -610,8 +822,7 @@ impl<'input> Scanner<'input> {
             start_mark,
             end_mark,
         };
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_block_entry(&mut self) -> Result<()> {
@@ -624,8 +835,8 @@ impl<'input> Scanner<'input> {
                 );
             }
             self.roll_indent(
-                self.mark.column as _,
-                -1_i64,
+                self.mark.column as i64,
+                None,
                 TokenData::BlockSequenceStart,
                 self.mark,
             )?;
@@ -640,8 +851,7 @@ impl<'input> Scanner<'input> {
             start_mark,
             end_mark,
         };
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_key(&mut self) -> Result<()> {
@@ -654,8 +864,8 @@ impl<'input> Scanner<'input> {
                 );
             }
             self.roll_indent(
-                self.mark.column as _,
-                -1_i64,
+                self.mark.column as i64,
+                None,
                 TokenData::BlockMappingStart,
                 self.mark,
             )?;
@@ -670,32 +880,44 @@ impl<'input> Scanner<'input> {
             start_mark,
             end_mark,
         };
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_value(&mut self) -> Result<()> {
-        let simple_key: SimpleKey = *self.last_simple_key()?;
-        if simple_key.possible {
+        let (index, simple_key) = self.last_simple_key()?;
+        let simple_key = *simple_key;
+        if self.simple_key_is_valid(index)? {
             let token = Token {
                 data: TokenData::Key,
                 start_mark: simple_key.mark,
                 end_mark: simple_key.mark,
             };
-            self.tokens.insert(
-                simple_key.token_number.wrapping_sub(self.tokens_parsed),
-                token,
-            );
-            let mark_column = simple_key.mark.column as _;
-            let token_number = simple_key.token_number as _;
-            let mark = simple_key.mark;
-            self.last_simple_key()?.possible = false;
+            // The parser can already have taken the key's first token when
+            // an empty flow collection starts the key: closing it forgets the
+            // key's token number, as in go-yaml's `decreaseFlowLevel`, so
+            // `fetch_more_tokens` stops waiting for the `:`. Tokens then
+            // follow the collection before the `:`, so the input is not valid
+            // YAML. go-yaml writes the KEY token into the part of its queue
+            // that the parser has read, which garbles the queue.
+            if simple_key.token_number < self.tokens_parsed {
+                return self.set_scanner_error(
+                    "while scanning a simple key",
+                    simple_key.mark,
+                    "could not find expected ':'",
+                );
+            }
+            let position = self.queue_position(simple_key.token_number)?;
+            self.insert_token(Some(position), token)?;
             self.roll_indent(
-                mark_column,
-                token_number,
+                simple_key.mark.column as i64,
+                Some(simple_key.token_number),
                 TokenData::BlockMappingStart,
-                mark,
+                simple_key.mark,
             )?;
+            if let Some(key) = self.simple_keys.get_mut(index) {
+                key.possible = false;
+            }
+            self.simple_keys_by_token.remove(&simple_key.token_number);
             self.simple_key_allowed = false;
         } else {
             if self.flow_level == 0 {
@@ -707,8 +929,8 @@ impl<'input> Scanner<'input> {
                     );
                 }
                 self.roll_indent(
-                    self.mark.column as _,
-                    -1_i64,
+                    self.mark.column as i64,
+                    None,
                     TokenData::BlockMappingStart,
                     self.mark,
                 )?;
@@ -723,54 +945,50 @@ impl<'input> Scanner<'input> {
             start_mark,
             end_mark,
         };
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_anchor(&mut self, fetch_alias_instead_of_anchor: bool) -> Result<()> {
         self.save_simple_key()?;
         self.simple_key_allowed = false;
         let token = self.scan_anchor(fetch_alias_instead_of_anchor)?;
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_tag(&mut self) -> Result<()> {
         self.save_simple_key()?;
         self.simple_key_allowed = false;
         let token = self.scan_tag()?;
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_block_scalar(&mut self, literal: bool) -> Result<()> {
         self.remove_simple_key()?;
         self.simple_key_allowed = true;
         let token = self.scan_block_scalar(literal)?;
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_flow_scalar(&mut self, single: bool) -> Result<()> {
         self.save_simple_key()?;
         self.simple_key_allowed = false;
         let token = self.scan_flow_scalar(single)?;
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn fetch_plain_scalar(&mut self) -> Result<()> {
         self.save_simple_key()?;
         self.simple_key_allowed = false;
         let token = self.scan_plain_scalar()?;
-        self.tokens.push_back(token);
-        Ok(())
+        self.insert_token(None, token)
     }
 
     fn scan_to_next_token(&mut self) -> Result<()> {
+        let scan_mark = self.position();
+        self.comment_blocks.clear();
         loop {
             self.cache(1)?;
-            if self.mark.column == 0 && IS_BOM!(self.buffer) {
+            if self.mark.column == 0 && self.buffer_starts_with_bom {
                 self.skip_char();
             }
             self.cache(1)?;
@@ -781,7 +999,7 @@ impl<'input> Scanner<'input> {
                 self.cache(1)?;
             }
             if CHECK!(self.buffer, '#') {
-                self.scan_comment()?;
+                self.scan_comments(scan_mark)?;
             }
             if !IS_BREAK!(self.buffer) {
                 break;
@@ -795,20 +1013,193 @@ impl<'input> Scanner<'input> {
         Ok(())
     }
 
-    /// Skips the comment that starts at the current `#` and records it, a
-    /// workflint addition. libyaml skips comments without recording them.
-    ///
-    /// The comment ends before the line break or at the end of the input.
-    /// The callers are the places where go-yaml's scanner reads comments:
-    /// between tokens (`scanComments`) and after a block scalar header
-    /// (`scanLineComment`). go-yaml drops the comment after a directive, and
-    /// workflint records it too.
-    fn scan_comment(&mut self) -> Result<()> {
-        let start_mark = self.mark;
-        while !IS_BREAKZ!(self.buffer) {
-            self.skip_char();
+    /// Skips the comment whose `#` is `seen` characters ahead, and the blanks
+    /// and line breaks before it, and records the comment. This is the
+    /// consuming loop of go-yaml's comment scanners.
+    fn skip_to_comment_end(&mut self, seen: u64) -> Result<Mark> {
+        let mut start = None;
+        loop {
             self.cache(1)?;
+            if IS_Z!(self.buffer) {
+                break;
+            }
+            if IS_BREAK!(self.buffer) {
+                if self.chars >= seen {
+                    break;
+                }
+                self.cache(2)?;
+                self.skip_line_break();
+            } else {
+                if self.chars >= seen && start.is_none() {
+                    start = Some(self.mark);
+                }
+                self.skip_char();
+            }
         }
+        let start_mark = start.unwrap_or(self.mark);
+        self.record_comment(start_mark)?;
+        Ok(start_mark)
+    }
+
+    /// Reads the comment on the rest of the line after a token, as go-yaml's
+    /// `scanLineComment`. Unlike the scan between tokens, this skips tabs
+    /// before the `#` in every context.
+    fn scan_line_comment(&mut self) -> Result<()> {
+        if self.newlines > 0 {
+            return Ok(());
+        }
+        for peek in 0..COMMENT_PEEK_LIMIT {
+            self.cache(peek + 1)?;
+            let ch = self.buffer.get(peek).copied();
+            if is_blank(ch) {
+                continue;
+            }
+            if ch == Some('#') {
+                self.skip_to_comment_end(self.chars + peek as u64)?;
+            }
+            break;
+        }
+        Ok(())
+    }
+
+    /// Reads the comments that start at the current `#`, as go-yaml's
+    /// `scanComments`.
+    ///
+    /// go-yaml looks ahead over blanks and line breaks for the next `#`, and
+    /// takes every comment it finds, with the blanks before it. So a tab may
+    /// come before a comment on a later line, which the scan between tokens
+    /// does not allow.
+    ///
+    /// The function also records the comment blocks that go-yaml splits the
+    /// comments into, which `unroll_indent` needs. The splitting follows
+    /// go-yaml byte for byte, including its line count, which misses the
+    /// line break right after a comment unless it is a `\r\n`.
+    fn scan_comments(&mut self, scan_mark: Position) -> Result<()> {
+        let token_kind = match self.tail {
+            [TailKind::FlowEntry, before] if self.tokens_parsed + self.tokens.len() > 1 => before,
+            [last, _] => last,
+        };
+        let indent = |scanner: &Self| scanner.indent.max(0);
+        let mut next_indent = indent(self);
+        let mut recent_empty = false;
+        let mut first_empty = self.newlines <= 1;
+        let mut line = self.mark.line as i64;
+        let mut column = self.mark.column as i64;
+        // go-yaml's comment text. Only whether it is empty matters here.
+        let mut text = false;
+        // go-yaml's `start_mark` of the current block: the character index,
+        // the line, and the 1-based column of its first `#`.
+        let mut start: (i64, i64, i64) = (0, 0, 0);
+        let mut start_mark = self.mark;
+        let mut scan = scan_mark.chars as i64;
+
+        let newlines = self.newlines as i64;
+        let mut foot_line = -1;
+        if scan_mark.mark.line > 0 {
+            foot_line = self.mark.line as i64 - newlines + 1;
+            if newlines == 0 && self.mark.column > 1 {
+                foot_line += 1;
+            }
+        }
+
+        let mut peek = 0;
+        let mut at = BytePeek::default();
+        while peek < COMMENT_PEEK_LIMIT {
+            self.cache(peek + 1)?;
+            let here = self.chars as i64 + peek as i64;
+            column += 1;
+            let byte = at.byte(&self.buffer);
+            if byte == b' ' || byte == b'\t' {
+                peek += 1;
+                at.advance(&self.buffer);
+                continue;
+            }
+            let close_flow = self.flow_level > 0 && (byte == b']' || byte == b'}');
+            let line_break = at.is_line_break(&self.buffer);
+            if close_flow || line_break || byte == 0 {
+                if (close_flow || !recent_empty)
+                    && (close_flow
+                        || first_empty
+                            && (start.1 == foot_line && token_kind != TailKind::Value
+                                || start.2 - 1 < next_indent))
+                    && text
+                {
+                    self.comment_blocks.push(CommentBlock {
+                        scan,
+                        start: start.0,
+                        end: here,
+                        column: start.2,
+                        mark: start_mark,
+                    });
+                    scan = here;
+                    text = false;
+                }
+                if !line_break {
+                    break;
+                }
+                first_empty = false;
+                recent_empty = true;
+                column = 0;
+                line += 1;
+                peek += 1;
+                at.advance(&self.buffer);
+                continue;
+            }
+            if text && column - 1 < next_indent && column != start.2 {
+                self.comment_blocks.push(CommentBlock {
+                    scan,
+                    start: start.0,
+                    end: here,
+                    column: start.2,
+                    mark: start_mark,
+                });
+                scan = here;
+                text = false;
+            }
+            if byte != b'#' {
+                break;
+            }
+            let new_block = !text;
+            if new_block {
+                start = (here, line, column);
+            }
+            text = true;
+            recent_empty = false;
+
+            let hash = self.skip_to_comment_end(self.chars + peek as u64)?;
+            if new_block {
+                start_mark = Mark {
+                    index: hash.index + 1,
+                    line: u64::try_from(start.1).unwrap_or(hash.line),
+                    column: u64::try_from(start.2).unwrap_or(hash.column),
+                };
+            }
+
+            // go-yaml resets `peek` to 0 here and its loop then adds 1, so it
+            // skips the line break after the comment without counting it.
+            peek = 1;
+            at = BytePeek { index: 1, byte: 0 };
+            column = 0;
+            line = self.mark.line as i64;
+            next_indent = indent(self);
+        }
+        if text {
+            let here = self.chars as i64 + peek as i64;
+            self.comment_blocks.push(CommentBlock {
+                scan,
+                start: start.0,
+                end: here - 1,
+                column: start.2,
+                mark: start_mark,
+            });
+        }
+        Ok(())
+    }
+
+    /// Records the comment from `start_mark`, at its `#`, to the current
+    /// position, the end of its line. A workflint addition: libyaml skips
+    /// comments without recording them.
+    fn record_comment(&mut self, start_mark: Mark) -> Result<()> {
         let kind = self.comment_kind(start_mark)?;
         self.comments.push_back(Comment {
             kind,
@@ -816,6 +1207,20 @@ impl<'input> Scanner<'input> {
             end_mark: self.mark,
         });
         Ok(())
+    }
+
+    /// Skips the comment that starts at the current `#` and records it, a
+    /// workflint addition. go-yaml drops the comment after a directive, and
+    /// workflint records it too.
+    ///
+    /// The comment ends before the line break or at the end of the input.
+    fn scan_comment(&mut self) -> Result<()> {
+        let start_mark = self.mark;
+        while !IS_BREAKZ!(self.buffer) {
+            self.skip_char();
+            self.cache(1)?;
+        }
+        self.record_comment(start_mark)
     }
 
     /// Finds whether code precedes the comment at `start_mark` on its line.
@@ -828,7 +1233,7 @@ impl<'input> Scanner<'input> {
         let before = usize::try_from(start_mark.index)
             .ok()
             .and_then(|index| self.source.get(..index))
-            .ok_or_else(|| Error::internal(start_mark))?;
+            .ok_or_else(|| Error::internal(ErrorKind::Scanner, start_mark))?;
         let code_precedes = before
             .chars()
             .rev()
@@ -1021,24 +1426,29 @@ impl<'input> Scanner<'input> {
         }
     }
 
-    fn scan_anchor(&mut self, scan_alias_instead_of_anchor: bool) -> Result<Token> {
-        let mut length: i32 = 0;
+    /// Whether the current character may be part of an anchor or alias
+    /// name, as go-yaml's `isAnchorChar`: a printable ASCII character that is
+    /// not a blank, a flow indicator, or `:`. go-yaml's `isBOM` looks at the
+    /// start of its buffer, so no character qualifies while the buffer
+    /// starts with a byte order mark.
+    fn is_anchor_char(&self) -> bool {
+        self.buffer.front().is_some_and(|&ch| {
+            ch.is_ascii_graphic() && !matches!(ch, '[' | ']' | '{' | '}' | ',' | ':')
+        }) && !self.buffer_starts_with_bom
+    }
 
+    fn scan_anchor(&mut self, scan_alias_instead_of_anchor: bool) -> Result<Token> {
         let mut string = String::new();
         let start_mark: Mark = self.mark;
         self.skip_char();
         self.cache(1)?;
 
-        loop {
-            if !IS_ALPHA!(self.buffer) {
-                break;
-            }
+        while self.is_anchor_char() {
             self.read_char(&mut string);
             self.cache(1)?;
-            length += 1;
         }
         let end_mark: Mark = self.mark;
-        if length == 0
+        if string.is_empty()
             || !(IS_BLANKZ!(self.buffer)
                 || CHECK!(self.buffer, '?')
                 || CHECK!(self.buffer, ':')
@@ -1131,11 +1541,7 @@ impl<'input> Scanner<'input> {
 
         if !CHECK!(self.buffer, '!') {
             return self.set_scanner_error(
-                if directive {
-                    "while scanning a tag directive"
-                } else {
-                    "while scanning a tag"
-                },
+                tag_context(directive),
                 start_mark,
                 "did not find expected '!'",
             );
@@ -1154,7 +1560,7 @@ impl<'input> Scanner<'input> {
             self.read_char(&mut string);
         } else if directive && string != "!" {
             return self.set_scanner_error(
-                "while parsing a tag directive",
+                tag_context(directive),
                 start_mark,
                 "did not find expected '!'",
             );
@@ -1196,7 +1602,10 @@ impl<'input> Scanner<'input> {
             || CHECK!(self.buffer, '\'')
             || CHECK!(self.buffer, '(')
             || CHECK!(self.buffer, ')')
-            || uri_char
+            // go-yaml takes `,`, `[`, and `]` in every tag. In a flow
+            // collection, a tag ends before them, as in libyaml
+            // (docs/differences.md#tag-before-flow-comma).
+            || (uri_char || self.flow_level == 0)
                 && (CHECK!(self.buffer, ',')
                     || CHECK!(self.buffer, '[')
                     || CHECK!(self.buffer, ']'))
@@ -1211,11 +1620,7 @@ impl<'input> Scanner<'input> {
         }
         if length == 0 {
             self.set_scanner_error(
-                if directive {
-                    "while parsing a %TAG directive"
-                } else {
-                    "while parsing a tag"
-                },
+                tag_context(directive),
                 start_mark,
                 "did not find expected tag URI",
             )
@@ -1231,6 +1636,7 @@ impl<'input> Scanner<'input> {
         string: &mut String,
     ) -> Result<()> {
         let mut width: i32 = 0;
+        let mut octets = Vec::with_capacity(4);
         loop {
             self.cache(3)?;
             if !(CHECK!(self.buffer, '%')
@@ -1238,11 +1644,7 @@ impl<'input> Scanner<'input> {
                 && IS_HEX_AT!(self.buffer, 2))
             {
                 return self.set_scanner_error(
-                    if directive {
-                        "while parsing a %TAG directive"
-                    } else {
-                        "while parsing a tag"
-                    },
+                    tag_context(directive),
                     start_mark,
                     "did not find URI escaped octet",
                 );
@@ -1262,27 +1664,19 @@ impl<'input> Scanner<'input> {
                 };
                 if width == 0 {
                     return self.set_scanner_error(
-                        if directive {
-                            "while parsing a %TAG directive"
-                        } else {
-                            "while parsing a tag"
-                        },
+                        tag_context(directive),
                         start_mark,
                         "found an incorrect leading UTF-8 octet",
                     );
                 }
             } else if octet & 0xC0 != 0x80 {
                 return self.set_scanner_error(
-                    if directive {
-                        "while parsing a %TAG directive"
-                    } else {
-                        "while parsing a tag"
-                    },
+                    tag_context(directive),
                     start_mark,
                     "found an incorrect trailing UTF-8 octet",
                 );
             }
-            string.push(char::from(octet));
+            octets.push(octet);
             self.skip_char();
             self.skip_char();
             self.skip_char();
@@ -1291,6 +1685,10 @@ impl<'input> Scanner<'input> {
                 break;
             }
         }
+        // The octets are one UTF-8 character. go-yaml checks only the lead
+        // and continuation bits, so an overlong or surrogate sequence passes
+        // there and becomes U+FFFD here.
+        string.push_str(&String::from_utf8_lossy(&octets));
         Ok(())
     }
 
@@ -1299,11 +1697,11 @@ impl<'input> Scanner<'input> {
         let mut string = String::new();
         let mut leading_break = String::new();
         let mut trailing_breaks = String::new();
-        let mut chomping: i32 = 0;
-        let mut increment: i32 = 0;
-        let mut indent: i32 = 0;
-        let mut leading_blank: i32 = 0;
-        let mut trailing_blank: i32;
+        let mut chomping: i8 = 0;
+        let mut increment: i64 = 0;
+        let mut indent: i64 = 0;
+        let mut leading_blank = false;
+        let mut trailing_blank;
         let start_mark: Mark = self.mark;
         self.skip_char();
         self.cache(1)?;
@@ -1320,7 +1718,7 @@ impl<'input> Scanner<'input> {
                         "found an indentation indicator equal to 0",
                     );
                 }
-                increment = AS_DIGIT!(self.buffer) as i32;
+                increment = i64::from(AS_DIGIT!(self.buffer));
                 self.skip_char();
             }
         } else if IS_DIGIT!(self.buffer) {
@@ -1331,7 +1729,7 @@ impl<'input> Scanner<'input> {
                     "found an indentation indicator equal to 0",
                 );
             }
-            increment = AS_DIGIT!(self.buffer) as i32;
+            increment = i64::from(AS_DIGIT!(self.buffer));
             self.skip_char();
             self.cache(1)?;
             if CHECK!(self.buffer, '+') || CHECK!(self.buffer, '-') {
@@ -1350,7 +1748,11 @@ impl<'input> Scanner<'input> {
         }
 
         if CHECK!(self.buffer, '#') {
-            self.scan_comment()?;
+            self.scan_line_comment()?;
+            while !IS_BREAKZ!(self.buffer) {
+                self.skip_char();
+                self.cache(1)?;
+            }
         }
 
         if !IS_BREAKZ!(self.buffer) {
@@ -1384,15 +1786,11 @@ impl<'input> Scanner<'input> {
         self.cache(1)?;
 
         loop {
-            if self.mark.column as i32 != indent || IS_Z!(self.buffer) {
+            if self.mark.column as i64 != indent || IS_Z!(self.buffer) {
                 break;
             }
-            trailing_blank = IS_BLANK!(self.buffer) as i32;
-            if !literal
-                && leading_break.starts_with('\n')
-                && leading_blank == 0
-                && trailing_blank == 0
-            {
+            trailing_blank = IS_BLANK!(self.buffer);
+            if !literal && leading_break.starts_with('\n') && !leading_blank && !trailing_blank {
                 if trailing_breaks.is_empty() {
                     string.push(' ');
                 }
@@ -1403,7 +1801,7 @@ impl<'input> Scanner<'input> {
             }
             string.push_str(&trailing_breaks);
             trailing_breaks.clear();
-            leading_blank = IS_BLANK!(self.buffer) as i32;
+            leading_blank = IS_BLANK!(self.buffer);
             while !IS_BREAKZ!(self.buffer) {
                 self.read_char(&mut string);
                 self.cache(1)?;
@@ -1442,23 +1840,23 @@ impl<'input> Scanner<'input> {
 
     fn scan_block_scalar_breaks(
         &mut self,
-        indent: &mut i32,
+        indent: &mut i64,
         breaks: &mut String,
         start_mark: Mark,
         end_mark: &mut Mark,
     ) -> Result<()> {
-        let mut max_indent: i32 = 0;
+        let mut max_indent: i64 = 0;
         *end_mark = self.mark;
         loop {
             self.cache(1)?;
-            while (*indent == 0 || (self.mark.column as i32) < *indent) && IS_SPACE!(self.buffer) {
+            while (*indent == 0 || (self.mark.column as i64) < *indent) && IS_SPACE!(self.buffer) {
                 self.skip_char();
                 self.cache(1)?;
             }
-            if self.mark.column as i32 > max_indent {
-                max_indent = self.mark.column as i32;
+            if self.mark.column as i64 > max_indent {
+                max_indent = self.mark.column as i64;
             }
-            if (*indent == 0 || (self.mark.column as i32) < *indent) && IS_TAB!(self.buffer) {
+            if (*indent == 0 || (self.mark.column as i64) < *indent) && IS_TAB!(self.buffer) {
                 return self.set_scanner_error(
                     "while scanning a block scalar",
                     start_mark,
@@ -1573,6 +1971,11 @@ impl<'input> Scanner<'input> {
                             '"' => {
                                 string.push('"');
                             }
+                            '\'' => {
+                                string.push('\'');
+                            }
+                            // go-yaml rejects `\/`, which YAML 1.2 allows
+                            // (docs/differences.md#yaml-solidus-escape).
                             '/' => {
                                 string.push('/');
                             }
@@ -1586,22 +1989,14 @@ impl<'input> Scanner<'input> {
                             // #xA0
                             '_' => {
                                 string.push('\u{00a0}');
-                                // string.push('\xC2');
-                                // string.push('\xA0');
                             }
                             // LS (#x2028)
                             'L' => {
                                 string.push('\u{2028}');
-                                // string.push('\xE2');
-                                // string.push('\x80');
-                                // string.push('\xA8');
                             }
                             // PS (#x2029)
                             'P' => {
                                 string.push('\u{2029}');
-                                // string.push('\xE2');
-                                // string.push('\x80');
-                                // string.push('\xA9');
                             }
                             'x' => {
                                 code_length = 2;
@@ -1631,7 +2026,7 @@ impl<'input> Scanner<'input> {
                                     return self.set_scanner_error(
                                         "while parsing a quoted scalar",
                                         start_mark,
-                                        "did not find expected hexdecimal number",
+                                        "did not find expected hexadecimal number",
                                     );
                                 }
                                 value = (value << 4) + AS_HEX_AT!(self.buffer, k);
@@ -1727,7 +2122,7 @@ impl<'input> Scanner<'input> {
         let mut trailing_breaks = String::new();
         let mut whitespaces = String::new();
         let mut leading_blanks = false;
-        let indent: i32 = self.indent + 1;
+        let indent: i64 = self.indent + 1;
         end_mark = self.mark;
         let start_mark: Mark = end_mark;
         loop {
@@ -1747,25 +2142,13 @@ impl<'input> Scanner<'input> {
                 break;
             }
             while !IS_BLANKZ!(self.buffer) {
-                if self.flow_level != 0
-                    && CHECK!(self.buffer, ':')
-                    && (CHECK_AT!(self.buffer, ',', 1)
-                        || CHECK_AT!(self.buffer, '?', 1)
-                        || CHECK_AT!(self.buffer, '[', 1)
-                        || CHECK_AT!(self.buffer, ']', 1)
-                        || CHECK_AT!(self.buffer, '{', 1)
-                        || CHECK_AT!(self.buffer, '}', 1))
-                {
-                    return self.set_scanner_error(
-                        "while scanning a plain scalar",
-                        start_mark,
-                        "found unexpected ':'",
-                    );
-                }
-
+                // A `:` that no blank follows is part of the scalar, also in
+                // a flow collection, as in go-yaml. libyaml rejects it before
+                // a flow indicator.
                 if CHECK!(self.buffer, ':') && IS_BLANKZ_AT!(self.buffer, 1)
                     || self.flow_level != 0
                         && (CHECK!(self.buffer, ',')
+                            || CHECK!(self.buffer, '?') && IS_BLANKZ_AT!(self.buffer, 1)
                             || CHECK!(self.buffer, '[')
                             || CHECK!(self.buffer, ']')
                             || CHECK!(self.buffer, '{')
@@ -1806,7 +2189,7 @@ impl<'input> Scanner<'input> {
 
             while IS_BLANK!(self.buffer) || IS_BREAK!(self.buffer) {
                 if IS_BLANK!(self.buffer) {
-                    if leading_blanks && (self.mark.column as i32) < indent && IS_TAB!(self.buffer)
+                    if leading_blanks && (self.mark.column as i64) < indent && IS_TAB!(self.buffer)
                     {
                         return self.set_scanner_error(
                             "while scanning a plain scalar",
@@ -1831,7 +2214,7 @@ impl<'input> Scanner<'input> {
                 }
                 self.cache(1)?;
             }
-            if self.flow_level == 0 && (self.mark.column as i32) < indent {
+            if self.flow_level == 0 && (self.mark.column as i64) < indent {
                 break;
             }
         }
@@ -1850,17 +2233,3 @@ impl<'input> Scanner<'input> {
         })
     }
 }
-
-impl Iterator for Scanner<'_> {
-    type Item = Result<Token>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.stream_end_produced {
-            None
-        } else {
-            Some(self.scan())
-        }
-    }
-}
-
-impl core::iter::FusedIterator for Scanner<'_> {}

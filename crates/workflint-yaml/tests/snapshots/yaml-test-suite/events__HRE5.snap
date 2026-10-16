@@ -5,4 +5,7 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
 1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
 1:0@4..1:6@10 Scalar { anchor: None, tag: None, value: "double", plain_implicit: true, quoted_implicit: false, style: Plain }
-error: Scanner error: line 2 column 17: found unknown escape character while parsing a quoted scalar (line 2 column 9)
+1:8@12..1:26@30 Scalar { anchor: None, tag: None, value: "quoted ' scalar", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+2:0@31..2:0@31 MappingEnd
+2:0@31..2:0@31 DocumentEnd { implicit: true }
+2:0@31..2:0@31 StreamEnd

@@ -1,5 +1,4 @@
 ---
 source: crates/workflint-yaml/tests/yaml_test_suite.rs
 ---
-0:0@0..0:0@0 StreamStart { encoding: Utf8 }
 error: Scanner error: line 1 column 1: found character that cannot start any token while scanning for the next token (line 1 column 1)

@@ -1,6 +1,4 @@
 ---
 source: crates/workflint-yaml/tests/yaml_test_suite.rs
 ---
-0:0@0..0:0@0 StreamStart { encoding: Utf8 }
-0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
 error: Scanner error: line 2 column 9: did not find expected whitespace or line break while scanning a tag (line 2 column 1)

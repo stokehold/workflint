@@ -3,9 +3,11 @@
 //! `ORIGIN.md` in this directory records the upstream version and every
 //! change workflint made.
 
-// Style lints from the pedantic group are allowed here so that the diff
-// against upstream stays readable (ADR 0018). The list matches the one
-// upstream allows in its own `lib.rs`.
+// These lints from the pedantic group are allowed here so that the diff
+// against upstream stays readable (ADR 0018). The cast lints flag the integer
+// conversions between mark fields, indentation levels, and character codes
+// that upstream writes with `as`. The others are style lints. The list matches
+// the one upstream allows in its own `lib.rs`.
 #![allow(
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
@@ -60,13 +62,12 @@ pub struct TagDirective {
 /// The stream encoding.
 ///
 /// The parser reads Rust strings, so the encoding is always UTF-8.
+/// [`decode`](crate::decode) turns UTF-16 input into a string first.
 #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[non_exhaustive]
 pub enum Encoding {
-    /// The encoding is not known yet.
-    #[default]
-    Any = 0,
     /// The UTF-8 encoding.
+    #[default]
     Utf8 = 1,
 }
 
@@ -127,8 +128,21 @@ mod tests {
     fn scanner_marks() {
         const INPUT: &str = "b:
 c: true";
-        let scanner = Scanner::new(INPUT);
-        let events = scanner.collect::<Result<Vec<_>, _>>().unwrap();
+        let mut scanner = Scanner::new(INPUT);
+        let mut events = Vec::new();
+        loop {
+            let token = scanner.peek_mut().unwrap();
+            let token = Token {
+                data: core::mem::replace(&mut token.data, TokenData::StreamEnd),
+                ..*token
+            };
+            let end = token.data == TokenData::StreamEnd;
+            events.push(token);
+            scanner.skip_token();
+            if end {
+                break;
+            }
+        }
         let expected = &[
             Token {
                 data: TokenData::StreamStart {

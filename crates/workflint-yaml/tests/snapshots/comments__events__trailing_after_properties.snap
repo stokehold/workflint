@@ -14,7 +14,7 @@ description: "a: &x # after anchor\n  b: 1\nc: !!map # after tag\n  d: *x # afte
 2:3@31..3:2@51 MappingStart { anchor: None, tag: Some("tag:yaml.org,2002:map"), implicit: false, style: Block }
 3:2@51..3:3@52 Scalar { anchor: None, tag: None, value: "d", plain_implicit: true, quoted_implicit: false, style: Plain }
 3:5@54..3:7@56 Alias { anchor: "x" }
-4:0@71..4:0@71 MappingEnd
+3:21@70..3:21@70 MappingEnd
 4:0@71..4:0@71 MappingEnd
 4:0@71..4:0@71 DocumentEnd { implicit: true }
 4:0@71..4:0@71 StreamEnd

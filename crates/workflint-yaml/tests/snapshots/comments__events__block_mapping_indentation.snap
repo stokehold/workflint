@@ -14,11 +14,11 @@ description: "jobs:\n  # indent 2\n  build:\n        # deeper than the next key\
 6:4@119..6:9@124 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
 6:11@126..6:12@127 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
 6:12@127..6:13@128 SequenceEnd
-8:2@156..8:2@156 MappingEnd
+7:5@134..7:5@134 MappingEnd
 8:2@156..8:6@160 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
 8:8@162..8:9@163 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
 8:9@163..8:10@164 MappingEnd
-9:0@165..9:0@165 MappingEnd
+8:10@164..8:10@164 MappingEnd
 9:0@165..9:0@165 MappingEnd
 9:0@165..9:0@165 DocumentEnd { implicit: true }
 9:0@165..9:0@165 StreamEnd

@@ -2,16 +2,20 @@
 //! does in `tests/test_parser.rs` and `tests/test_parser_error.rs`.
 //!
 //! A case without an `error` file must produce the events in its
-//! `test.event` file. A case with one must fail to parse. The ignore lists are
-//! upstream's: they name the cases where libyaml itself disagrees with the
-//! suite. Those cases must still disagree, so that a fix shows up as a test
-//! failure and the list stays accurate.
+//! `test.event` file. A case with one must fail to parse. The ignore lists
+//! name the cases where the parser disagrees with the suite. They started as
+//! upstream's lists of the cases where libyaml disagrees. HRE5 joined
+//! `libyaml-parser-error` because go-yaml accepts the escape `\'`, and the
+//! parser follows go-yaml (ADR 0022). The listed cases must still disagree, so
+//! that a fix shows up as a test failure and the lists stay accurate.
 //!
 //! Each case also has a snapshot of its full event stream, with marks, in
-//! `tests/snapshots/yaml-test-suite/`. The snapshots were recorded before the
-//! scanner reported comments and leave comment events out, so they show that
-//! comments change no other event. The same test checks the comment events
-//! of every case, which have comments in most places the grammar allows.
+//! `tests/snapshots/yaml-test-suite/`. The snapshots leave comment events
+//! out, so they show that comments change no other event. Apart from the
+//! cases in `docs/differences.md`, the events and their lines and columns are
+//! go-yaml's. The
+//! same test checks the comment events of every case, which have comments in
+//! most places the grammar allows.
 
 mod support;
 

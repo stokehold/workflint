@@ -19,7 +19,10 @@ impl std::fmt::Display for Mark {
 }
 
 #[derive(Debug)]
-#[allow(clippy::struct_field_names)]
+#[allow(
+    clippy::struct_field_names,
+    reason = "the field names are libyaml's `problem` and `context` pairs"
+)]
 struct Problem {
     pub problem: &'static str,
     pub problem_mark: Mark,
@@ -91,10 +94,23 @@ impl Error {
         })))
     }
 
-    /// An error for a broken invariant of the scanner or parser, returned
-    /// where upstream panicked. No input is known to cause it.
-    pub(crate) fn internal(mark: Mark) -> Self {
-        Self::scanner("", Mark::default(), "found an internal parser error", mark)
+    /// An error for a broken invariant of the `stage` that returns it, where
+    /// upstream panicked. [`Error::kind`] returns `stage`, and the problem
+    /// names it. No input is known to cause it.
+    pub(crate) fn internal(stage: ErrorKind, mark: Mark) -> Self {
+        match stage {
+            ErrorKind::Reader => Self::reader(
+                "found an internal reader error",
+                usize::try_from(mark.index).unwrap_or(usize::MAX),
+                -1,
+            ),
+            ErrorKind::Scanner => {
+                Self::scanner("", Mark::default(), "found an internal scanner error", mark)
+            }
+            ErrorKind::Parser => {
+                Self::parser("", Mark::default(), "found an internal parser error", mark)
+            }
+        }
     }
 
     /// The stage of the parser that reported the error.

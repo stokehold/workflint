@@ -13,7 +13,7 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 6:0@73..6:0@73 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
 6:0@73..6:6@79 Scalar { anchor: None, tag: None, value: "single", plain_implicit: true, quoted_implicit: false, style: Plain }
 6:8@81..6:12@85 Scalar { anchor: None, tag: None, value: "pair", plain_implicit: true, quoted_implicit: false, style: Plain }
-6:12@85..6:13@86 MappingEnd
+6:12@85..6:12@85 MappingEnd
 7:0@87..7:1@88 SequenceEnd
 8:0@89..8:0@89 DocumentEnd { implicit: true }
 8:0@89..8:0@89 StreamEnd

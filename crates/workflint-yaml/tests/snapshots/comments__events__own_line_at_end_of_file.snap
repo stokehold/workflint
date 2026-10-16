@@ -7,6 +7,6 @@ description: "a: 1\n# last"
 0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
 0:0@0..0:1@1 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
 0:3@3..0:4@4 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
-2:0@11..2:0@11 MappingEnd
+1:1@6..1:1@6 MappingEnd
 2:0@11..2:0@11 DocumentEnd { implicit: true }
 2:0@11..2:0@11 StreamEnd

@@ -32,7 +32,9 @@ pub struct Parsed {
 /// A YAML syntax error or an alias to an unknown anchor gives exactly one
 /// diagnostic and no tree, as in actionlint. Otherwise the tree comes with a
 /// diagnostic for each recursive alias and each unused anchor. Later
-/// documents in the stream are not parsed, so their errors are not reported.
+/// documents are not parsed, as in go-yaml. go-yaml's scanner reads a few
+/// tokens past the end of the first document, so a syntax error in those
+/// tokens is reported, as in `a: 1\n--- @\n`, and one further on is not.
 #[must_use]
 pub fn parse(file: &SourceFile) -> Parsed {
     match Builder::new(file).run() {
@@ -119,9 +121,11 @@ impl<'a> Builder<'a> {
     }
 
     fn run(mut self) -> Result<(Document, Vec<Diagnostic>), Diagnostic> {
-        // go-yaml stops reading at the end of the first document, so errors
-        // after it are not reported. The loop reads on only to collect the
-        // comments right after the first document.
+        // go-yaml stops reading events after the end of the first document.
+        // The scanner's lookahead raises an error in the tokens right after
+        // it before that end event, so the error is reported. Errors that
+        // come later are not. The loop reads on only to collect the comments
+        // right after the first document.
         let mut first_document_done = false;
         for event in Parser::new(self.text) {
             let event = match event {

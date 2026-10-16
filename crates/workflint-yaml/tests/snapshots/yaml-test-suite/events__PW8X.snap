@@ -11,19 +11,19 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 3:7@18..3:8@19 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
 4:2@22..4:3@23 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
 4:5@25..4:7@27 Scalar { anchor: Some("b"), tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
-5:0@28..5:0@28 MappingEnd
+4:7@27..4:7@27 MappingEnd
 6:2@32..6:2@32 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
 6:2@32..6:4@34 Scalar { anchor: Some("c"), tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
 6:7@37..6:9@39 Scalar { anchor: Some("a"), tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
-7:0@40..7:0@40 MappingEnd
+6:9@39..6:9@39 MappingEnd
 8:2@44..8:2@44 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
 8:4@46..8:6@48 Scalar { anchor: Some("d"), tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
-9:0@49..9:0@49 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
-9:0@49..9:0@49 MappingEnd
+8:6@48..8:6@48 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@48..8:6@48 MappingEnd
 10:2@53..10:2@53 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
 10:4@55..10:6@57 Scalar { anchor: Some("e"), tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
 11:4@62..11:6@64 Scalar { anchor: Some("a"), tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
-12:0@65..12:0@65 MappingEnd
+11:6@64..11:6@64 MappingEnd
 12:0@65..12:0@65 SequenceEnd
 12:0@65..12:0@65 DocumentEnd { implicit: true }
 12:0@65..12:0@65 StreamEnd

@@ -4,5 +4,4 @@ source: crates/workflint-yaml/tests/yaml_test_suite.rs
 0:0@0..0:0@0 StreamStart { encoding: Utf8 }
 0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
 1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
-1:0@4..1:1@5 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
 error: Scanner error: line 3 column 1: found character that cannot start any token while scanning for the next token (line 3 column 1)
