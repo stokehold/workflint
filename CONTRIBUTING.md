@@ -83,7 +83,7 @@ The `Benchmarks` workflow runs the command every night on Linux and appends the 
 
 Hot paths have micro-benchmarks written with [divan](https://docs.rs/divan) (ADR 0019). They live in each crate's `benches/` directory:
 
-- `crates/workflint-yaml/benches/parse.rs` parses `minimal.yaml`, `small.yaml`, and `large.yaml` to events and to the span tree.
+- `crates/workflint-yaml/benches/parse.rs` parses `minimal.yaml`, `small.yaml`, `large.yaml`, and `many_scripts.yaml` to events and to the span tree.
 - `crates/workflint-diagnostics/benches/source.rs` builds the line index of `large.yaml` and converts the offset of each of its characters to a line and column.
 
 The inputs are the reference's benchmark files in `tests/conformance/actionlint/testdata/bench/`. They sit outside the crates, so the published packages do not contain them (ADR 0006).

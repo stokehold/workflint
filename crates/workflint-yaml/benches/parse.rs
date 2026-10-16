@@ -42,6 +42,12 @@ const INPUTS: &[Input] = &[
         name: "large.yaml",
         text: include_str!("../../../tests/conformance/actionlint/testdata/bench/large.yaml"),
     },
+    Input {
+        name: "many_scripts.yaml",
+        text: include_str!(
+            "../../../tests/conformance/actionlint/testdata/bench/many_scripts.yaml"
+        ),
+    },
 ];
 
 /// Runs the event parser over the whole input.

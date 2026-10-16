@@ -1,5 +1,7 @@
 # workflint
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/stokehold/workflint?utm_source=badge)
+
 workflint is a linter for GitHub Actions workflows and action metadata files, written in Rust. It is a compatible rewrite of [actionlint](https://github.com/rhysd/actionlint). It accepts actionlint's flags and config file, prints the same output layout, and fixes actionlint's known bugs.
 
 workflint is in development and has no usable release yet. `docs/roadmap.md` shows what is being built and in which order.

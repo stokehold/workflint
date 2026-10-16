@@ -7,7 +7,7 @@ use workflint_diagnostics::{FileId, SourceFile};
 use workflint_yaml::event::EventParser;
 use workflint_yaml::parse;
 
-const INPUTS: [(&str, &str); 3] = [
+const INPUTS: [(&str, &str); 4] = [
     (
         "minimal.yaml",
         include_str!("../../../tests/conformance/actionlint/testdata/bench/minimal.yaml"),
@@ -19,6 +19,10 @@ const INPUTS: [(&str, &str); 3] = [
     (
         "large.yaml",
         include_str!("../../../tests/conformance/actionlint/testdata/bench/large.yaml"),
+    ),
+    (
+        "many_scripts.yaml",
+        include_str!("../../../tests/conformance/actionlint/testdata/bench/many_scripts.yaml"),
     ),
 ];
 
