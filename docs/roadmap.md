@@ -10,7 +10,7 @@ M0 ─ M1 ─┬─ M2 ─┬─ M4 ─ M5 ═ 0.1.0 ─ M7 ─ M8 ─ M9 ═ 1.
 M6 (release pipeline) runs in parallel from M1 and is required for 0.1.0
 ```
 
-Issues exist for M1, M2, M6, and M5.11. Issues for each later milestone are created when the milestone before it is nearly done, so that they reflect what the earlier work taught. Until then, the task lists below are the plan. Dependencies between tasks are recorded on the issues as "blocked by" links.
+Issues exist for M1, M2, M3, M6, and M5.11. Issues for each later milestone are created when the milestone before it is nearly done, so that they reflect what the earlier work taught. Until then, the task lists below are the plan. Dependencies between tasks are recorded on the issues as "blocked by" links.
 
 ## M0: planning and skeleton
 
@@ -70,16 +70,18 @@ Goal: every `syntax-check` diagnostic of the reference, on a typed AST. Start wi
 
 ## M3: expressions
 
-Goal: the expression language with the reference's type checking, without its bugs.
+Goal: the expression language with the reference's type checking, without its bugs. Start with M3.0 and M3.1, which can run in parallel.
 
-- M3.1 Lexer with byte offsets and code-point columns; JSON number grammar (exponent sign, large integers).
-- M3.2 Pratt parser with GitHub's operator precedence. Confirm the precedence table against the expression parser in `actions/languageservices` first, and record the result in `docs/differences.md#comparison-precedence`.
-- M3.3 Type system: `Ty` enum, object and array types, assignability, merging, `*` filters without shared mutation.
-- M3.4 Built-in functions with overloads and format string checks.
-- M3.5 Context types: `github`, `env`, `vars`, `job`, `jobs`, `steps`, `runner`, `secrets`, `strategy`, `matrix`, `needs`, `inputs`, with case-insensitive property lookup.
-- M3.6 Context availability per workflow key, ported from the reference's table.
-- M3.7 Untrusted input detection for script sinks.
-- M3.8 Fuzz targets for the lexer and parser.
+- M3.0 Create workflint-data with the global context types [#81](https://github.com/stokehold/workflint/issues/81)
+- M3.1 Add the expression lexer to workflint-expr [#82](https://github.com/stokehold/workflint/issues/82)
+- M3.2 Add the expression parser with GitHub's operator precedence [#83](https://github.com/stokehold/workflint/issues/83)
+- M3.3 Add the expression type system [#84](https://github.com/stokehold/workflint/issues/84)
+- M3.4 Check calls to built-in functions [#85](https://github.com/stokehold/workflint/issues/85)
+- M3.5 Type-check expressions against context types [#86](https://github.com/stokehold/workflint/issues/86)
+- M3.6 Check context and special function availability [#87](https://github.com/stokehold/workflint/issues/87)
+- M3.7 Detect untrusted input in script expressions [#88](https://github.com/stokehold/workflint/issues/88)
+- M3.8 Fuzz and benchmark the expression engine [#89](https://github.com/stokehold/workflint/issues/89)
+- M3.9 Type fromJSON literals and report Go's JSON errors [#90](https://github.com/stokehold/workflint/issues/90)
 
 ## M4: rules and data
 
