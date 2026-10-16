@@ -1,0 +1,8 @@
+---
+source: crates/workflint-diagnostics/tests/render.rs
+expression: "default_plain(&file, &[d])"
+---
+test.yaml:1:5: value is missing [test-rule]
+  |
+1 | key:
+  |     ^

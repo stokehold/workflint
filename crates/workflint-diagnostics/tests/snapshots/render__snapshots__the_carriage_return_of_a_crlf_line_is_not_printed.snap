@@ -1,0 +1,8 @@
+---
+source: crates/workflint-diagnostics/tests/render.rs
+expression: out
+---
+test.yaml:3:3: job has no steps [test-rule]
+  |
+3 |   test: {}
+  |   ^~~~

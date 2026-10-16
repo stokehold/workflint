@@ -4,17 +4,20 @@
 //! range in a [`SourceFile`]. The source file's line index turns byte offsets into the 1-based
 //! lines and code-point columns that output shows. [`sort_and_dedup`] puts the diagnostics of
 //! one file in output order, and the [`quote`](mod@quote) module formats values the way
-//! actionlint's messages do.
+//! actionlint's messages do. [`render_default`] and [`render_oneline`] write diagnostics in
+//! actionlint's default and `-oneline` output formats.
 //!
 //! This is an internal crate with no stability promise.
 
 mod diagnostic;
 pub mod quote;
+mod render;
 mod rule;
 mod source;
 mod span;
 
 pub use diagnostic::{Applicability, Diagnostic, Fix, Label, TextEdit, sort_and_dedup};
+pub use render::{Color, render_default, render_oneline};
 pub use rule::{Category, RuleMeta, Severity};
 pub use source::{FileId, LineCol, SourceFile, SourceTooLarge};
 pub use span::Span;
