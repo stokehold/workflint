@@ -1,0 +1,12 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "--- # after start\na: 1\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@18..1:0@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@18..1:1@19 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:3@21..1:4@22 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@23..2:0@23 MappingEnd
+2:0@23..2:0@23 DocumentEnd { implicit: true }
+2:0@23..2:0@23 StreamEnd

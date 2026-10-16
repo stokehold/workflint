@@ -1,0 +1,24 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "jobs:\n  # indent 2\n  build:\n        # deeper than the next key\n    runs-on: x\n# column 0 inside the nested mapping\n    steps: []\n    # after the last key\n  test: {}\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "jobs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@21..2:2@21 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@21..2:7@26 Scalar { anchor: None, tag: None, value: "build", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@67..4:4@67 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:4@67..4:11@74 Scalar { anchor: None, tag: None, value: "runs-on", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@76..4:14@77 Scalar { anchor: None, tag: None, value: "x", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@119..6:9@124 Scalar { anchor: None, tag: None, value: "steps", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:11@126..6:12@127 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+6:12@127..6:13@128 SequenceEnd
+8:2@156..8:2@156 MappingEnd
+8:2@156..8:6@160 Scalar { anchor: None, tag: None, value: "test", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@162..8:9@163 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+8:9@163..8:10@164 MappingEnd
+9:0@165..9:0@165 MappingEnd
+9:0@165..9:0@165 MappingEnd
+9:0@165..9:0@165 DocumentEnd { implicit: true }
+9:0@165..9:0@165 StreamEnd

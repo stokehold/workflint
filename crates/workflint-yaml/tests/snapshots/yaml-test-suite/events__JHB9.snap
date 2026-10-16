@@ -1,0 +1,18 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+1:0@28..1:3@31 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+2:0@32..2:0@32 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@34..2:14@46 Scalar { anchor: None, tag: None, value: "Mark McGwire", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@49..3:12@59 Scalar { anchor: None, tag: None, value: "Sammy Sosa", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@62..4:13@73 Scalar { anchor: None, tag: None, value: "Ken Griffey", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@90..7:0@90 SequenceEnd
+7:0@90..7:0@90 DocumentEnd { implicit: true }
+7:0@90..7:3@93 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+8:0@94..8:0@94 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+8:2@96..8:14@108 Scalar { anchor: None, tag: None, value: "Chicago Cubs", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@111..9:20@129 Scalar { anchor: None, tag: None, value: "St Louis Cardinals", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:0@130..10:0@130 SequenceEnd
+10:0@130..10:0@130 DocumentEnd { implicit: true }
+10:0@130..10:0@130 StreamEnd

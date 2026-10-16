@@ -1,0 +1,7 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:1@5 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+error: Parser error: line 2 column 3: did not find expected node content while parsing a flow node (line 2 column 3)

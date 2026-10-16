@@ -1,0 +1,20 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "a: a#b\nc#d: e\nurl: https://example.com/#frag\nf: [g#h]\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:1@1 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:3@3..0:6@6 Scalar { anchor: None, tag: None, value: "a#b", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@7..1:3@10 Scalar { anchor: None, tag: None, value: "c#d", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:5@12..1:6@13 Scalar { anchor: None, tag: None, value: "e", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@14..2:3@17 Scalar { anchor: None, tag: None, value: "url", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:5@19..2:30@44 Scalar { anchor: None, tag: None, value: "https://example.com/#frag", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@45..3:1@46 Scalar { anchor: None, tag: None, value: "f", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:3@48..3:4@49 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+3:4@49..3:7@52 Scalar { anchor: None, tag: None, value: "g#h", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:7@52..3:8@53 SequenceEnd
+4:0@54..4:0@54 MappingEnd
+4:0@54..4:0@54 DocumentEnd { implicit: true }
+4:0@54..4:0@54 StreamEnd

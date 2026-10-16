@@ -1,0 +1,13 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+0:2@2..0:2@2 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:2@2..0:5@5 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:8@8..0:11@11 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@12..1:0@12 MappingEnd
+1:2@14..1:2@14 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+1:4@16..1:7@19 Scalar { anchor: None, tag: None, value: "baz", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Scanner error: line 3 column 4: found character that cannot start any token while scanning for the next token (line 3 column 4)

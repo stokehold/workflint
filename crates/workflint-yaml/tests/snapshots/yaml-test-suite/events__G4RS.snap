@@ -1,0 +1,21 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:7@7 Scalar { anchor: None, tag: None, value: "unicode", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:9@9..0:31@31 Scalar { anchor: None, tag: None, value: "Sosa did fine.☺", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+1:0@32..1:7@39 Scalar { anchor: None, tag: None, value: "control", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:9@41..1:31@63 Scalar { anchor: None, tag: None, value: "\u{8}1998\t1999\t2000\n", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+2:0@64..2:7@71 Scalar { anchor: None, tag: None, value: "hex esc", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:9@73..2:27@91 Scalar { anchor: None, tag: None, value: "\r\n is \r\n", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+4:0@93..4:6@99 Scalar { anchor: None, tag: None, value: "single", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@101..4:28@121 Scalar { anchor: None, tag: None, value: "\"Howdy!\" he cried.", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+5:0@122..5:6@128 Scalar { anchor: None, tag: None, value: "quoted", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@130..5:31@153 Scalar { anchor: None, tag: None, value: " # Not a 'comment'.", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+6:0@154..6:11@165 Scalar { anchor: None, tag: None, value: "tie-fighter", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:13@167..6:22@176 Scalar { anchor: None, tag: None, value: "|\\-*-/|", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+7:0@177..7:0@177 MappingEnd
+7:0@177..7:0@177 DocumentEnd { implicit: true }
+7:0@177..7:0@177 StreamEnd

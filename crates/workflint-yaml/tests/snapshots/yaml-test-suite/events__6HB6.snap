@@ -1,0 +1,20 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+3:0@79..3:0@79 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+3:0@79..3:0@79 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:0@79..3:12@91 Scalar { anchor: None, tag: None, value: "Not indented", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:1@94..4:1@94 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:1@94..4:13@106 Scalar { anchor: None, tag: None, value: "By one space", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:15@108..7:0@135 Scalar { anchor: None, tag: None, value: "By four\n  spaces\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+7:1@136..7:11@146 Scalar { anchor: None, tag: None, value: "Flow style", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:13@148..7:14@149 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+8:3@173..8:9@179 Scalar { anchor: None, tag: None, value: "By two", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:2@206..9:13@217 Scalar { anchor: None, tag: None, value: "Also by two", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:3@239..10:15@251 Scalar { anchor: None, tag: None, value: "Still by two", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:4@272..11:5@273 SequenceEnd
+12:0@301..12:0@301 MappingEnd
+12:0@301..12:0@301 MappingEnd
+12:0@301..12:0@301 DocumentEnd { implicit: true }
+12:0@301..12:0@301 StreamEnd

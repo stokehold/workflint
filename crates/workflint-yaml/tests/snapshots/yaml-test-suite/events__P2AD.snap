@@ -1,0 +1,13 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+0:2@2..2:0@31 Scalar { anchor: None, tag: None, value: "literal\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+2:2@33..4:0@72 Scalar { anchor: None, tag: None, value: " folded\n", plain_implicit: false, quoted_implicit: true, style: Folded }
+4:2@74..7:0@108 Scalar { anchor: None, tag: None, value: "keep\n\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+7:2@110..9:0@143 Scalar { anchor: None, tag: None, value: " strip", plain_implicit: false, quoted_implicit: true, style: Folded }
+9:0@143..9:0@143 SequenceEnd
+9:0@143..9:0@143 DocumentEnd { implicit: true }
+9:0@143..9:0@143 StreamEnd

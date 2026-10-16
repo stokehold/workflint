@@ -1,0 +1,54 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@4..1:4@8 Scalar { anchor: None, tag: None, value: "Time", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:6@10..1:28@32 Scalar { anchor: None, tag: None, value: "2001-11-23 15:01:42 -5", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@33..2:4@37 Scalar { anchor: None, tag: None, value: "User", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:6@39..2:8@41 Scalar { anchor: None, tag: None, value: "ed", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@42..3:7@49 Scalar { anchor: None, tag: None, value: "Warning", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@53..5:18@96 Scalar { anchor: None, tag: None, value: "This is an error message for the log file", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@97..6:0@97 MappingEnd
+6:0@97..6:0@97 DocumentEnd { implicit: true }
+6:0@97..6:3@100 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+7:0@101..7:0@101 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:0@101..7:4@105 Scalar { anchor: None, tag: None, value: "Time", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@107..7:28@129 Scalar { anchor: None, tag: None, value: "2001-11-23 15:02:31 -5", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@130..8:4@134 Scalar { anchor: None, tag: None, value: "User", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:6@136..8:8@138 Scalar { anchor: None, tag: None, value: "ed", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:0@139..9:7@146 Scalar { anchor: None, tag: None, value: "Warning", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@150..11:10@187 Scalar { anchor: None, tag: None, value: "A slightly different error message.", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:0@188..12:0@188 MappingEnd
+12:0@188..12:0@188 DocumentEnd { implicit: true }
+12:0@188..12:3@191 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+13:0@192..13:0@192 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+13:0@192..13:4@196 Scalar { anchor: None, tag: None, value: "Date", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:6@198..13:28@220 Scalar { anchor: None, tag: None, value: "2001-11-23 15:03:17 -5", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@221..14:4@225 Scalar { anchor: None, tag: None, value: "User", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:6@227..14:8@229 Scalar { anchor: None, tag: None, value: "ed", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@230..15:5@235 Scalar { anchor: None, tag: None, value: "Fatal", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:2@239..16:24@261 Scalar { anchor: None, tag: None, value: "Unknown variable \"bar\"", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:0@262..17:5@267 Scalar { anchor: None, tag: None, value: "Stack", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:2@271..18:2@271 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+18:4@273..18:4@273 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+18:4@273..18:8@277 Scalar { anchor: None, tag: None, value: "file", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:10@279..18:21@290 Scalar { anchor: None, tag: None, value: "TopClass.py", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@295..19:8@299 Scalar { anchor: None, tag: None, value: "line", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:10@301..19:12@303 Scalar { anchor: None, tag: None, value: "23", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:4@308..20:8@312 Scalar { anchor: None, tag: None, value: "code", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:10@314..22:0@346 Scalar { anchor: None, tag: None, value: "x = MoreObject(\"345\\n\")\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+22:2@348..22:2@348 MappingEnd
+22:4@350..22:4@350 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+22:4@350..22:8@354 Scalar { anchor: None, tag: None, value: "file", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:10@356..22:22@368 Scalar { anchor: None, tag: None, value: "MoreClass.py", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:4@373..23:8@377 Scalar { anchor: None, tag: None, value: "line", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:10@379..23:12@381 Scalar { anchor: None, tag: None, value: "58", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:4@386..24:8@390 Scalar { anchor: None, tag: None, value: "code", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:10@392..26:0@411 Scalar { anchor: None, tag: None, value: "foo = bar", plain_implicit: false, quoted_implicit: true, style: Literal }
+26:0@411..26:0@411 MappingEnd
+26:0@411..26:0@411 SequenceEnd
+26:0@411..26:0@411 MappingEnd
+26:0@411..26:0@411 DocumentEnd { implicit: true }
+26:0@411..26:0@411 StreamEnd

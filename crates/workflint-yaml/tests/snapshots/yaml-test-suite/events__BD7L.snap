@@ -1,0 +1,9 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+0:2@2..0:7@7 Scalar { anchor: None, tag: None, value: "item1", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@10..1:7@15 Scalar { anchor: None, tag: None, value: "item2", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Parser error: line 3 column 1: did not find expected '-' indicator while parsing a block collection (line 1 column 1)

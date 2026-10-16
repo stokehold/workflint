@@ -1,0 +1,14 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "a: 1 # after\r\n# own line\r\nb: 2\r\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:1@1 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:3@3..0:4@4 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@26..2:1@27 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:3@29..2:4@30 Scalar { anchor: None, tag: None, value: "2", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@32..3:0@32 MappingEnd
+3:0@32..3:0@32 DocumentEnd { implicit: true }
+3:0@32..3:0@32 StreamEnd

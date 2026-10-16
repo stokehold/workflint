@@ -1,0 +1,13 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+1:0@27..1:0@27 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+1:0@27..1:0@27 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@29..1:10@37 Scalar { anchor: None, tag: None, value: "::vector", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@40..2:10@48 Scalar { anchor: None, tag: None, value: ": - ()", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+3:2@51..3:19@68 Scalar { anchor: None, tag: None, value: "Up, up, and away!", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@71..4:6@75 Scalar { anchor: None, tag: None, value: "-123", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@78..5:28@104 Scalar { anchor: None, tag: None, value: "http://example.com/foo#bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@133..7:3@134 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+error: Parser error: line 8 column 5: did not find expected node content while parsing a flow node (line 8 column 5)

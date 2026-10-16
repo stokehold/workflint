@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..8:0@120 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..8:0@120 Scalar { anchor: None, tag: None, value: "Sammy Sosa completed another fine season with great stats.\n\n  63 Home Runs\n  0.288 Batting Average\n\nWhat a year!\n", plain_implicit: false, quoted_implicit: true, style: Folded }
+8:0@120..8:0@120 DocumentEnd { implicit: true }
+8:0@120..8:0@120 StreamEnd

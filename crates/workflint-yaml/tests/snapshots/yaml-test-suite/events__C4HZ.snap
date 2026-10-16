@@ -1,0 +1,39 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..1:3@35 DocumentStart { version_directive: None, tag_directives: [TagDirective { handle: "!", prefix: "tag:clarkevans.com,2002:" }], implicit: false }
+1:4@36..4:0@114 SequenceStart { anchor: None, tag: Some("tag:clarkevans.com,2002:shape"), implicit: false, style: Block }
+4:2@116..5:2@126 MappingStart { anchor: None, tag: Some("tag:clarkevans.com,2002:circle"), implicit: false, style: Block }
+5:2@126..5:8@132 Scalar { anchor: None, tag: None, value: "center", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:10@134..5:19@143 MappingStart { anchor: Some("ORIGIN"), tag: None, implicit: true, style: Flow }
+5:19@143..5:20@144 Scalar { anchor: None, tag: None, value: "x", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:22@146..5:24@148 Scalar { anchor: None, tag: None, value: "73", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:26@150..5:27@151 Scalar { anchor: None, tag: None, value: "y", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:29@153..5:32@156 Scalar { anchor: None, tag: None, value: "129", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:32@156..5:33@157 MappingEnd
+6:2@160..6:8@166 Scalar { anchor: None, tag: None, value: "radius", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:10@168..6:11@169 Scalar { anchor: None, tag: None, value: "7", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@170..7:0@170 MappingEnd
+7:2@172..8:2@180 MappingStart { anchor: None, tag: Some("tag:clarkevans.com,2002:line"), implicit: false, style: Block }
+8:2@180..8:7@185 Scalar { anchor: None, tag: None, value: "start", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:9@187..8:16@194 Alias { anchor: "ORIGIN" }
+9:2@197..9:8@203 Scalar { anchor: None, tag: None, value: "finish", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:10@205..9:11@206 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+9:12@207..9:13@208 Scalar { anchor: None, tag: None, value: "x", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:15@210..9:17@212 Scalar { anchor: None, tag: None, value: "89", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:19@214..9:20@215 Scalar { anchor: None, tag: None, value: "y", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:22@217..9:25@220 Scalar { anchor: None, tag: None, value: "102", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:26@221..9:27@222 MappingEnd
+10:0@223..10:0@223 MappingEnd
+10:2@225..11:2@234 MappingStart { anchor: None, tag: Some("tag:clarkevans.com,2002:label"), implicit: false, style: Block }
+11:2@234..11:7@239 Scalar { anchor: None, tag: None, value: "start", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:9@241..11:16@248 Alias { anchor: "ORIGIN" }
+12:2@251..12:7@256 Scalar { anchor: None, tag: None, value: "color", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:9@258..12:17@266 Scalar { anchor: None, tag: None, value: "0xFFEEBB", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:2@269..13:6@273 Scalar { anchor: None, tag: None, value: "text", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:8@275..13:30@297 Scalar { anchor: None, tag: None, value: "Pretty vector drawing.", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@298..14:0@298 MappingEnd
+14:0@298..14:0@298 SequenceEnd
+14:0@298..14:0@298 DocumentEnd { implicit: true }
+14:0@298..14:0@298 StreamEnd

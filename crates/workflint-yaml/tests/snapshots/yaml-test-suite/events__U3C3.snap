@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..1:3@34 DocumentStart { version_directive: None, tag_directives: [TagDirective { handle: "!yaml!", prefix: "tag:yaml.org,2002:" }], implicit: false }
+2:0@35..2:15@50 Scalar { anchor: None, tag: Some("tag:yaml.org,2002:str"), value: "foo", plain_implicit: false, quoted_implicit: false, style: DoubleQuoted }
+3:0@51..3:0@51 DocumentEnd { implicit: true }
+3:0@51..3:0@51 StreamEnd

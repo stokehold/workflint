@@ -1,0 +1,16 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:3@3 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@7..1:2@7 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@7..1:5@10 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:7@12..1:8@13 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@14..2:0@14 MappingEnd
+2:0@14..2:3@17 Scalar { anchor: None, tag: None, value: "baz", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:5@19..2:6@20 Scalar { anchor: None, tag: None, value: "2", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@21..3:0@21 MappingEnd
+3:0@21..3:0@21 DocumentEnd { implicit: true }
+3:0@21..3:0@21 StreamEnd

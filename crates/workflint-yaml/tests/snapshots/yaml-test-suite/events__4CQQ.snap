@@ -1,0 +1,13 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:5@5 Scalar { anchor: None, tag: None, value: "plain", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@9..2:19@49 Scalar { anchor: None, tag: None, value: "This unquoted scalar spans many lines.", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@51..4:6@57 Scalar { anchor: None, tag: None, value: "quoted", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@59..5:19@92 Scalar { anchor: None, tag: None, value: "So does this quoted scalar.\n", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+6:0@93..6:0@93 MappingEnd
+6:0@93..6:0@93 DocumentEnd { implicit: true }
+6:0@93..6:0@93 StreamEnd

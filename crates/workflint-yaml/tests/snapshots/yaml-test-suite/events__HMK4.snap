@@ -1,0 +1,15 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:18@18 Scalar { anchor: None, tag: None, value: "Mark McGwire", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@19..1:14@33 Scalar { anchor: None, tag: None, value: "accomplishment", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:16@35..4:0@90 Scalar { anchor: None, tag: None, value: "Mark set a major league home run record in 1998.\n", plain_implicit: false, quoted_implicit: true, style: Folded }
+4:0@90..4:5@95 Scalar { anchor: None, tag: None, value: "stats", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:7@97..7:0@138 Scalar { anchor: None, tag: None, value: "65 Home Runs\n0.278 Batting Average\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+7:0@138..7:0@138 MappingEnd
+7:0@138..7:0@138 DocumentEnd { implicit: true }
+7:0@138..7:0@138 StreamEnd

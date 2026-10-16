@@ -1,0 +1,10 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:1@5 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:0@6..2:13@19 Scalar { anchor: None, tag: None, value: "sequence item", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@20..3:1@21 SequenceEnd
+4:0@22..4:0@22 DocumentEnd { implicit: true }
+error: Parser error: line 5 column 1: did not find expected <document start>

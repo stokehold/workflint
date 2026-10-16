@@ -1,0 +1,11 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+1:0@10..1:3@13 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+2:0@14..2:10@24 Scalar { anchor: None, tag: Some("!foo"), value: "bar", plain_implicit: false, quoted_implicit: false, style: DoubleQuoted }
+3:0@25..3:3@28 DocumentEnd { implicit: false }
+5:0@38..6:3@74 DocumentStart { version_directive: None, tag_directives: [TagDirective { handle: "!", prefix: "tag:example.com,2000:app/" }], implicit: false }
+7:0@75..7:10@85 Scalar { anchor: None, tag: Some("tag:example.com,2000:app/foo"), value: "bar", plain_implicit: false, quoted_implicit: false, style: DoubleQuoted }
+8:0@86..8:0@86 DocumentEnd { implicit: true }
+8:0@86..8:0@86 StreamEnd

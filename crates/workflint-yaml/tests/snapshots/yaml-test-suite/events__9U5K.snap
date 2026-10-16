@@ -1,0 +1,27 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+2:0@25..2:0@25 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@27..2:2@27 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@27..2:6@31 Scalar { anchor: None, tag: None, value: "item", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:12@37..2:22@47 Scalar { anchor: None, tag: None, value: "Super Hoop", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@50..3:10@58 Scalar { anchor: None, tag: None, value: "quantity", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:12@60..3:13@61 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@62..4:0@62 MappingEnd
+4:2@64..4:2@64 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@64..4:6@68 Scalar { anchor: None, tag: None, value: "item", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:12@74..4:22@84 Scalar { anchor: None, tag: None, value: "Basketball", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@87..5:10@95 Scalar { anchor: None, tag: None, value: "quantity", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:12@97..5:13@98 Scalar { anchor: None, tag: None, value: "4", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@99..6:0@99 MappingEnd
+6:2@101..6:2@101 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@101..6:6@105 Scalar { anchor: None, tag: None, value: "item", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:12@111..6:21@120 Scalar { anchor: None, tag: None, value: "Big Shoes", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@123..7:10@131 Scalar { anchor: None, tag: None, value: "quantity", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:12@133..7:13@134 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@135..8:0@135 MappingEnd
+8:0@135..8:0@135 SequenceEnd
+8:0@135..8:0@135 DocumentEnd { implicit: true }
+8:0@135..8:0@135 StreamEnd

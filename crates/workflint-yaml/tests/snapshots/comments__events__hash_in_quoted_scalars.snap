@@ -1,0 +1,16 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "a: 'x # y'\nb: \"x # y\"\nc: \"x\n  # y\"\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:1@1 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:3@3..0:10@10 Scalar { anchor: None, tag: None, value: "x # y", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+1:0@11..1:1@12 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:3@14..1:10@21 Scalar { anchor: None, tag: None, value: "x # y", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+2:0@22..2:1@23 Scalar { anchor: None, tag: None, value: "c", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:3@25..3:6@34 Scalar { anchor: None, tag: None, value: "x # y", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+4:0@35..4:0@35 MappingEnd
+4:0@35..4:0@35 DocumentEnd { implicit: true }
+4:0@35..4:0@35 StreamEnd

@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:21@25 Scalar { anchor: None, tag: None, value: "here's to \"quotes\"", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+2:0@26..2:0@26 DocumentEnd { implicit: true }
+2:0@26..2:0@26 StreamEnd

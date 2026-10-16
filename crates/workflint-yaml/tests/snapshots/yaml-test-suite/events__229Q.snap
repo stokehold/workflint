@@ -1,0 +1,25 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@4..1:2@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:2@4..1:6@8 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:8@10..1:20@22 Scalar { anchor: None, tag: None, value: "Mark McGwire", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@25..2:4@27 Scalar { anchor: None, tag: None, value: "hr", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:8@31..2:10@33 Scalar { anchor: None, tag: None, value: "65", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@36..3:5@39 Scalar { anchor: None, tag: None, value: "avg", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:8@42..3:13@47 Scalar { anchor: None, tag: None, value: "0.278", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@48..4:0@48 MappingEnd
+5:2@52..5:2@52 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@52..5:6@56 Scalar { anchor: None, tag: None, value: "name", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:8@58..5:18@68 Scalar { anchor: None, tag: None, value: "Sammy Sosa", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@71..6:4@73 Scalar { anchor: None, tag: None, value: "hr", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@77..6:10@79 Scalar { anchor: None, tag: None, value: "63", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@82..7:5@85 Scalar { anchor: None, tag: None, value: "avg", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@88..7:13@93 Scalar { anchor: None, tag: None, value: "0.288", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@94..8:0@94 MappingEnd
+8:0@94..8:0@94 SequenceEnd
+8:0@94..8:0@94 DocumentEnd { implicit: true }
+8:0@94..8:0@94 StreamEnd

@@ -1,0 +1,12 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "run: |\n  # shell comment\n  echo hi # shell trailing\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:3@3 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:5@5..3:0@52 Scalar { anchor: None, tag: None, value: "# shell comment\necho hi # shell trailing\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+3:0@52..3:0@52 MappingEnd
+3:0@52..3:0@52 DocumentEnd { implicit: true }
+3:0@52..3:0@52 StreamEnd

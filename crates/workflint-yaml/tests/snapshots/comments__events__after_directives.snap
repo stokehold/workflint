@@ -1,0 +1,12 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "%YAML 1.1 # after version\n%TAG !e! tag:example.com,2000: # after tag\n# before start\n---\na: 1\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..3:3@87 DocumentStart { version_directive: Some(VersionDirective { major: 1, minor: 1 }), tag_directives: [TagDirective { handle: "!e!", prefix: "tag:example.com,2000:" }], implicit: false }
+4:0@88..4:0@88 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:0@88..4:1@89 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:3@91..4:4@92 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@93..5:0@93 MappingEnd
+5:0@93..5:0@93 DocumentEnd { implicit: true }
+5:0@93..5:0@93 StreamEnd

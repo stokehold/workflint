@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:1@1 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:1@1 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+0:2@2..0:7@7 Scalar { anchor: None, tag: None, value: "key", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+error: Parser error: line 2 column 3: did not find expected ',' or ']' while parsing a flow sequence (line 1 column 1)

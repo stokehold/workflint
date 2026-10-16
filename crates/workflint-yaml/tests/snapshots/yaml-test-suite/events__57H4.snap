@@ -1,0 +1,21 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:8@8 Scalar { anchor: None, tag: None, value: "sequence", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:10@10..1:1@17 SequenceStart { anchor: None, tag: Some("tag:yaml.org,2002:seq"), implicit: false, style: Block }
+1:2@18..1:7@23 Scalar { anchor: None, tag: None, value: "entry", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@26..3:1@33 SequenceStart { anchor: None, tag: Some("tag:yaml.org,2002:seq"), implicit: false, style: Block }
+3:3@35..3:9@41 Scalar { anchor: None, tag: None, value: "nested", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@42..4:0@42 SequenceEnd
+4:0@42..4:0@42 SequenceEnd
+4:0@42..4:7@49 Scalar { anchor: None, tag: None, value: "mapping", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:9@51..5:1@58 MappingStart { anchor: None, tag: Some("tag:yaml.org,2002:map"), implicit: false, style: Block }
+5:1@58..5:4@61 Scalar { anchor: None, tag: None, value: "foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@63..5:9@66 Scalar { anchor: None, tag: None, value: "bar", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@67..6:0@67 MappingEnd
+6:0@67..6:0@67 MappingEnd
+6:0@67..6:0@67 DocumentEnd { implicit: true }
+6:0@67..6:0@67 StreamEnd

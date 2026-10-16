@@ -1,0 +1,5 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+error: Scanner error: line 1 column 5: found unknown directive name while scanning a directive (line 1 column 1)

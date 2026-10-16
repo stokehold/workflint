@@ -1,0 +1,12 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "# first\n  # indented\n\n# after an empty line\na: 1\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+4:0@44..4:0@44 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+4:0@44..4:0@44 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:0@44..4:1@45 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:3@47..4:4@48 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@49..5:0@49 MappingEnd
+5:0@49..5:0@49 DocumentEnd { implicit: true }
+5:0@49..5:0@49 StreamEnd

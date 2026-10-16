@@ -1,0 +1,9 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "--- x # after the scalar\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+0:4@4..0:5@5 Scalar { anchor: None, tag: None, value: "x", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@25..1:0@25 DocumentEnd { implicit: true }
+1:0@25..1:0@25 StreamEnd
