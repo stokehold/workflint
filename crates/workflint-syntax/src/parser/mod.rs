@@ -14,6 +14,7 @@
 //! GitHub accepts. So a "billion laughs" input cannot make the walk
 //! exponential.
 
+mod event;
 mod leaf;
 mod mapping;
 mod workflow;
@@ -23,7 +24,7 @@ use workflint_yaml::{Document, Node, NodeId, NodeKind, Tag};
 
 use crate::Workflow;
 
-pub(crate) use mapping::{KeySpec, Label, MapEntry, Section};
+pub(crate) use mapping::{Key, KeySpec, Label, MapEntry, Section};
 
 /// The result of [`parse`].
 #[derive(Debug, Clone, PartialEq)]

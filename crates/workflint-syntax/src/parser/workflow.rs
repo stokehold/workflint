@@ -1,7 +1,5 @@
 //! The workflow root, as the reference's `parse` at `parse.go:1499-1557`.
 
-use std::sync::Arc;
-
 use workflint_diagnostics::Span;
 
 use super::{KeySpec, Label, MAX_YAML_NODES, MapEntry, Parser, Section, yaml_node_count};
@@ -51,13 +49,8 @@ static ROOT_KEYS: [KeySpec<Root>; 8] = [
     },
 ];
 
-// TODO(#68): parse the events.
-fn parse_on<'a>(_: &mut Parser<'a, '_>, workflow: &mut Workflow<'a>, entry: &MapEntry<'a>) {
-    workflow.on = Field::Valid {
-        key: entry.key.string,
-        span: entry.value.span,
-        value: Arc::new([]),
-    };
+fn parse_on<'a>(p: &mut Parser<'a, '_>, workflow: &mut Workflow<'a>, entry: &MapEntry<'a>) {
+    workflow.on = p.parse_events(entry.key.string, entry.value);
 }
 
 // TODO(#70): parse the jobs.
@@ -75,8 +68,8 @@ impl<'a> Parser<'a, '_> {
     /// A file with no document reports `workflow is empty`. A workflow with
     /// more than [`MAX_YAML_NODES`] YAML nodes, aliases expanded, reports
     /// that GitHub rejects it, and nothing more is parsed. Otherwise the
-    /// root must be a mapping with the keys of [`ROOT_KEYS`], and `on` and
-    /// `jobs` must be present. The reference reports a missing `on` or
+    /// root must be a mapping with the keys of [`ROOT_KEYS`], `on` must be
+    /// valid, and `jobs` must be present. The reference reports a missing `on` or
     /// `jobs` at its document node, which starts at the first directive,
     /// the `---`, or the root node, whichever comes first.
     pub(super) fn workflow(&mut self) -> Workflow<'a> {
@@ -115,7 +108,8 @@ impl<'a> Parser<'a, '_> {
         }
         let entries = self.parse_mapping(Label::Section("workflow"), root, false, true);
         self.parse_keys(entries, "workflow", &ROOT_KEYS, &mut workflow);
-        if !workflow.on.is_present() {
+        // An invalid `on` is the reference's nil `On`, so it is missing too.
+        if !workflow.on.is_valid() {
             self.error(
                 &MISSING_REQUIRED_KEY,
                 span,
