@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..5:0@18 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..5:0@18 Scalar { anchor: None, tag: None, value: "folded text\n", plain_implicit: false, quoted_implicit: true, style: Folded }
+5:0@18..5:0@18 DocumentEnd { implicit: true }
+5:0@18..5:0@18 StreamEnd

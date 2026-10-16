@@ -1,0 +1,17 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "safe", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..1:43@89 Scalar { anchor: None, tag: None, value: "a!\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~ !\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@90..2:18@108 Scalar { anchor: None, tag: None, value: "safe question mark", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:20@110..2:24@114 Scalar { anchor: None, tag: None, value: "?foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@115..3:10@125 Scalar { anchor: None, tag: None, value: "safe colon", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:12@127..3:16@131 Scalar { anchor: None, tag: None, value: ":foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@132..4:9@141 Scalar { anchor: None, tag: None, value: "safe dash", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:11@143..4:15@147 Scalar { anchor: None, tag: None, value: "-foo", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@148..5:0@148 MappingEnd
+5:0@148..5:0@148 DocumentEnd { implicit: true }
+5:0@148..5:0@148 StreamEnd

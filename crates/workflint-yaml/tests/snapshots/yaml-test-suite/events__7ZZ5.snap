@@ -1,0 +1,30 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@4..1:16@20 Scalar { anchor: None, tag: None, value: "nested sequences", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@22..2:1@23 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+2:2@24..2:2@24 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@26..2:4@26 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+2:6@28..2:7@29 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:7@29..2:8@30 SequenceEnd
+3:0@31..3:0@31 SequenceEnd
+3:0@31..3:0@31 SequenceEnd
+3:2@33..3:2@33 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@35..3:4@35 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@37..3:7@38 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+3:7@38..3:8@39 MappingEnd
+4:0@40..4:0@40 SequenceEnd
+4:0@40..4:0@40 SequenceEnd
+4:0@40..4:0@40 SequenceEnd
+4:0@40..4:4@44 Scalar { anchor: None, tag: None, value: "key1", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:6@46..4:7@47 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+4:7@47..4:8@48 SequenceEnd
+5:0@49..5:4@53 Scalar { anchor: None, tag: None, value: "key2", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:6@55..5:7@56 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+5:7@56..5:8@57 MappingEnd
+6:0@58..6:0@58 MappingEnd
+6:0@58..6:0@58 DocumentEnd { implicit: true }
+6:0@58..6:0@58 StreamEnd

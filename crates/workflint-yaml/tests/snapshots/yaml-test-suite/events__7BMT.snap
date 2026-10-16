@@ -1,0 +1,38 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@4..1:4@8 Scalar { anchor: None, tag: None, value: "top1", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:6@10..2:2@19 MappingStart { anchor: Some("node1"), tag: None, implicit: true, style: Block }
+2:2@19..2:10@27 Scalar { anchor: Some("k1"), tag: None, value: "key1", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:12@29..2:15@32 Scalar { anchor: None, tag: None, value: "one", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@33..3:0@33 MappingEnd
+3:0@33..3:4@37 Scalar { anchor: None, tag: None, value: "top2", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:6@39..4:2@58 MappingStart { anchor: Some("node2"), tag: None, implicit: true, style: Block }
+4:2@58..4:6@62 Scalar { anchor: None, tag: None, value: "key2", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:8@64..4:11@67 Scalar { anchor: None, tag: None, value: "two", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@68..5:0@68 MappingEnd
+5:0@68..5:4@72 Scalar { anchor: None, tag: None, value: "top3", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@76..6:2@76 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@76..6:10@84 Scalar { anchor: Some("k3"), tag: None, value: "key3", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:12@86..6:17@91 Scalar { anchor: None, tag: None, value: "three", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@92..7:0@92 MappingEnd
+7:0@92..7:4@96 Scalar { anchor: None, tag: None, value: "top4", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:6@98..8:2@107 MappingStart { anchor: Some("node4"), tag: None, implicit: true, style: Block }
+8:2@107..8:10@115 Scalar { anchor: Some("k4"), tag: None, value: "key4", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:12@117..8:16@121 Scalar { anchor: None, tag: None, value: "four", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:0@122..9:0@122 MappingEnd
+9:0@122..9:4@126 Scalar { anchor: None, tag: None, value: "top5", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:6@128..10:2@137 MappingStart { anchor: Some("node5"), tag: None, implicit: true, style: Block }
+10:2@137..10:6@141 Scalar { anchor: None, tag: None, value: "key5", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:8@143..10:12@147 Scalar { anchor: None, tag: None, value: "five", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:0@148..11:0@148 MappingEnd
+11:0@148..11:4@152 Scalar { anchor: None, tag: None, value: "top6", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:6@154..12:5@165 Scalar { anchor: Some("val6"), tag: None, value: "six", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@166..13:4@170 Scalar { anchor: None, tag: None, value: "top7", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:2@174..14:13@185 Scalar { anchor: Some("val7"), tag: None, value: "seven", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:0@186..15:0@186 MappingEnd
+15:0@186..15:0@186 DocumentEnd { implicit: true }
+15:0@186..15:0@186 StreamEnd

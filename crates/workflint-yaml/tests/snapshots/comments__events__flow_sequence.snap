@@ -1,0 +1,13 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "[a, # after a\n  # own line\n  b # after b\n  , c] # after the sequence\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:1@1 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:1@1 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+0:1@1..0:2@2 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@29..2:3@30 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@45..3:5@46 Scalar { anchor: None, tag: None, value: "c", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:5@46..3:6@47 SequenceEnd
+4:0@69..4:0@69 DocumentEnd { implicit: true }
+4:0@69..4:0@69 StreamEnd

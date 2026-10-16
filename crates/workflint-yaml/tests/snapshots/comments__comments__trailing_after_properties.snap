@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "a: &x # after anchor\n  b: 1\nc: !!map # after tag\n  d: *x # after alias\n"
+---
+0:6@6..0:20@20 Trailing "# after anchor"
+2:9@37..2:20@48 Trailing "# after tag"
+3:8@57..3:21@70 Trailing "# after alias"

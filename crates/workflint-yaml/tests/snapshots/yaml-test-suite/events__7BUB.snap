@@ -1,0 +1,19 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@4..1:2@6 Scalar { anchor: None, tag: None, value: "hr", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@10..2:2@10 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@12..2:16@24 Scalar { anchor: None, tag: None, value: "Mark McGwire", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:4@59..4:18@73 Scalar { anchor: Some("SS"), tag: None, value: "Sammy Sosa", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@74..5:0@74 SequenceEnd
+5:0@74..5:3@77 Scalar { anchor: None, tag: None, value: "rbi", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@81..6:2@81 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@83..6:7@86 Alias { anchor: "SS" }
+7:4@115..7:15@126 Scalar { anchor: None, tag: None, value: "Ken Griffey", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@127..8:0@127 SequenceEnd
+8:0@127..8:0@127 MappingEnd
+8:0@127..8:0@127 DocumentEnd { implicit: true }
+8:0@127..8:0@127 StreamEnd

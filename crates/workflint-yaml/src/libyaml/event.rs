@@ -1,5 +1,6 @@
 use super::{
-    Encoding, MappingStyle, Mark, ScalarStyle, SequenceStyle, TagDirective, VersionDirective,
+    CommentKind, Encoding, MappingStyle, Mark, ScalarStyle, SequenceStyle, TagDirective,
+    VersionDirective,
 };
 
 /// One parsing event, with the input range it covers.
@@ -84,4 +85,15 @@ pub enum EventData {
     },
     /// The end of a mapping.
     MappingEnd,
+    /// A comment, a workflint addition.
+    ///
+    /// The event's marks span the comment from its `#` to the end of its
+    /// line, without the line break, so `start_mark.index..end_mark.index`
+    /// slices the comment text from the source. The parser reports comments
+    /// in source order, each one before the first other event that starts
+    /// after it.
+    Comment {
+        /// Whether code precedes the comment on its line.
+        kind: CommentKind,
+    },
 }

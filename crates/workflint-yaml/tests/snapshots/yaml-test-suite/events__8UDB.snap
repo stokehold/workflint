@@ -1,0 +1,19 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:1@1 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:1@1 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+1:0@2..2:8@18 Scalar { anchor: None, tag: None, value: "double quoted", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+2:10@20..3:18@46 Scalar { anchor: None, tag: None, value: "single quoted", plain_implicit: false, quoted_implicit: true, style: SingleQuoted }
+4:0@48..5:5@59 Scalar { anchor: None, tag: None, value: "plain text", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:7@61..5:8@62 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+5:9@63..5:15@69 Scalar { anchor: None, tag: None, value: "nested", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:16@70..5:17@71 SequenceEnd
+6:0@73..6:0@73 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+6:0@73..6:6@79 Scalar { anchor: None, tag: None, value: "single", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:8@81..6:12@85 Scalar { anchor: None, tag: None, value: "pair", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:12@85..6:13@86 MappingEnd
+7:0@87..7:1@88 SequenceEnd
+8:0@89..8:0@89 DocumentEnd { implicit: true }
+8:0@89..8:0@89 StreamEnd

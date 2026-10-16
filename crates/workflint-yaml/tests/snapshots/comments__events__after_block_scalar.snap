@@ -1,0 +1,16 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "a: |\n  x\n # dedented\nb: |\n  y\n\n# after an empty line\nc: 1\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:1@1 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:3@3..2:0@9 Scalar { anchor: None, tag: None, value: "x\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+3:0@21..3:1@22 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:3@24..6:0@31 Scalar { anchor: None, tag: None, value: "y\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+7:0@53..7:1@54 Scalar { anchor: None, tag: None, value: "c", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:3@56..7:4@57 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@58..8:0@58 MappingEnd
+8:0@58..8:0@58 DocumentEnd { implicit: true }
+8:0@58..8:0@58 StreamEnd

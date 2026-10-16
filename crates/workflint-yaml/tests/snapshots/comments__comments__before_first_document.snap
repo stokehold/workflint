@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "# first\n  # indented\n\n# after an empty line\na: 1\n"
+---
+0:0@0..0:7@7 OwnLine "# first"
+1:2@10..1:12@20 OwnLine "# indented"
+3:0@22..3:21@43 OwnLine "# after an empty line"

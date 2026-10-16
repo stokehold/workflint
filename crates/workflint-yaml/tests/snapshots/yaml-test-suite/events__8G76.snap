@@ -1,0 +1,5 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+4:0@18..4:0@18 StreamEnd

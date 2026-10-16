@@ -1,0 +1,19 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+0:4@4..1:0@10 MappingStart { anchor: None, tag: Some("tag:yaml.org,2002:map"), implicit: false, style: Block }
+1:2@12..1:3@13 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@16..2:3@17 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@18..3:0@18 MappingEnd
+3:0@18..3:0@18 DocumentEnd { implicit: true }
+3:0@18..3:3@21 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+3:4@22..4:0@28 SequenceStart { anchor: None, tag: Some("tag:yaml.org,2002:seq"), implicit: false, style: Block }
+4:2@30..4:9@37 Scalar { anchor: None, tag: Some("tag:yaml.org,2002:str"), value: "c", plain_implicit: false, quoted_implicit: false, style: Plain }
+5:0@38..5:0@38 SequenceEnd
+5:0@38..5:0@38 DocumentEnd { implicit: true }
+5:0@38..5:3@41 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+5:4@42..7:1@51 Scalar { anchor: None, tag: Some("tag:yaml.org,2002:str"), value: "d e", plain_implicit: false, quoted_implicit: false, style: Plain }
+8:0@52..8:0@52 DocumentEnd { implicit: true }
+8:0@52..8:0@52 StreamEnd

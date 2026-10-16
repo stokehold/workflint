@@ -1,0 +1,14 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "a: b\n   # indented\nc: d\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:1@1 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:3@3..0:4@4 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@19..2:1@20 Scalar { anchor: None, tag: None, value: "c", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:3@22..2:4@23 Scalar { anchor: None, tag: None, value: "d", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@24..3:0@24 MappingEnd
+3:0@24..3:0@24 DocumentEnd { implicit: true }
+3:0@24..3:0@24 StreamEnd

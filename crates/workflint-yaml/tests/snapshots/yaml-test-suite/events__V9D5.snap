@@ -1,0 +1,23 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+0:2@2..0:2@2 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:2@2..0:5@5 Scalar { anchor: None, tag: None, value: "sun", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:7@7..0:13@13 Scalar { anchor: None, tag: None, value: "yellow", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@14..1:0@14 MappingEnd
+1:2@16..1:2@16 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:4@18..1:4@18 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:4@18..1:9@23 Scalar { anchor: None, tag: None, value: "earth", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:11@25..1:15@29 Scalar { anchor: None, tag: None, value: "blue", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@32..2:2@32 MappingEnd
+2:4@34..2:4@34 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+2:4@34..2:8@38 Scalar { anchor: None, tag: None, value: "moon", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:10@40..2:15@45 Scalar { anchor: None, tag: None, value: "white", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@46..3:0@46 MappingEnd
+3:0@46..3:0@46 MappingEnd
+3:0@46..3:0@46 SequenceEnd
+3:0@46..3:0@46 DocumentEnd { implicit: true }
+3:0@46..3:0@46 StreamEnd

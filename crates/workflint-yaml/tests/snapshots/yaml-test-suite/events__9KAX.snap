@@ -1,0 +1,43 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..3:7@21 Scalar { anchor: Some("a1"), tag: Some("tag:yaml.org,2002:str"), value: "scalar1", plain_implicit: false, quoted_implicit: false, style: Plain }
+4:0@22..4:0@22 DocumentEnd { implicit: true }
+4:0@22..4:3@25 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+5:0@26..7:7@43 Scalar { anchor: Some("a2"), tag: Some("tag:yaml.org,2002:str"), value: "scalar2", plain_implicit: false, quoted_implicit: false, style: Plain }
+8:0@44..8:0@44 DocumentEnd { implicit: true }
+8:0@44..8:3@47 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+9:0@48..10:13@65 Scalar { anchor: Some("a3"), tag: Some("tag:yaml.org,2002:str"), value: "scalar3", plain_implicit: false, quoted_implicit: false, style: Plain }
+11:0@66..11:0@66 DocumentEnd { implicit: true }
+11:0@66..11:3@69 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+12:0@70..13:0@80 MappingStart { anchor: Some("a4"), tag: Some("tag:yaml.org,2002:map"), implicit: false, style: Block }
+13:0@80..13:14@94 Scalar { anchor: Some("a5"), tag: Some("tag:yaml.org,2002:str"), value: "key5", plain_implicit: false, quoted_implicit: false, style: Plain }
+13:16@96..13:22@102 Scalar { anchor: None, tag: None, value: "value4", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:0@103..14:0@103 MappingEnd
+14:0@103..14:0@103 DocumentEnd { implicit: true }
+14:0@103..14:3@106 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+15:0@107..15:0@107 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:0@107..15:2@109 Scalar { anchor: None, tag: None, value: "a6", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@111..15:5@112 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:0@113..16:11@124 Scalar { anchor: Some("anchor6"), tag: None, value: "b6", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:13@126..16:14@127 Scalar { anchor: None, tag: None, value: "2", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:0@128..17:0@128 MappingEnd
+17:0@128..17:0@128 DocumentEnd { implicit: true }
+17:0@128..17:3@131 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+18:0@132..19:0@138 MappingStart { anchor: None, tag: Some("tag:yaml.org,2002:map"), implicit: false, style: Block }
+19:0@138..19:14@152 Scalar { anchor: Some("a8"), tag: Some("tag:yaml.org,2002:str"), value: "key8", plain_implicit: false, quoted_implicit: false, style: Plain }
+19:16@154..19:22@160 Scalar { anchor: None, tag: None, value: "value7", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:0@161..20:0@161 MappingEnd
+20:0@161..20:0@161 DocumentEnd { implicit: true }
+20:0@161..20:3@164 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+21:0@165..22:0@171 MappingStart { anchor: None, tag: Some("tag:yaml.org,2002:map"), implicit: false, style: Block }
+22:0@171..22:16@187 Scalar { anchor: Some("a10"), tag: Some("tag:yaml.org,2002:str"), value: "key10", plain_implicit: false, quoted_implicit: false, style: Plain }
+22:18@189..22:24@195 Scalar { anchor: None, tag: None, value: "value9", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:0@196..23:0@196 MappingEnd
+23:0@196..23:0@196 DocumentEnd { implicit: true }
+23:0@196..23:3@199 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+24:0@200..25:7@218 Scalar { anchor: Some("a11"), tag: Some("tag:yaml.org,2002:str"), value: "value11", plain_implicit: false, quoted_implicit: false, style: Plain }
+26:0@219..26:0@219 DocumentEnd { implicit: true }
+26:0@219..26:0@219 StreamEnd

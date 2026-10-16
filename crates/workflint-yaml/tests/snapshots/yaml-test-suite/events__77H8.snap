@@ -1,0 +1,15 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@4..1:8@12 Scalar { anchor: None, tag: None, value: "not-date", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:10@14..1:26@30 Scalar { anchor: None, tag: Some("tag:yaml.org,2002:str"), value: "2002-04-28", plain_implicit: false, quoted_implicit: false, style: Plain }
+3:0@32..3:7@39 Scalar { anchor: None, tag: None, value: "picture", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:9@41..9:0@149 Scalar { anchor: None, tag: Some("tag:yaml.org,2002:binary"), value: "R0lGODlhDAAMAIQAAP//9/X\n17unp5WZmZgAAAOfn515eXv\nPz7Y6OjuDg4J+fn5OTk6enp\n56enmleECcgggoBADs=\n", plain_implicit: false, quoted_implicit: false, style: Literal }
+9:0@149..9:24@173 Scalar { anchor: None, tag: None, value: "application specific tag", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:26@175..13:0@264 Scalar { anchor: None, tag: Some("!something"), value: "The semantics of the tag\nabove may be different for\ndifferent documents.\n", plain_implicit: false, quoted_implicit: false, style: Literal }
+13:0@264..13:0@264 MappingEnd
+13:0@264..13:0@264 DocumentEnd { implicit: true }
+13:0@264..13:0@264 StreamEnd

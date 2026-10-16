@@ -1,0 +1,62 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+0:4@4..1:0@39 MappingStart { anchor: None, tag: Some("tag:clarkevans.com,2002:invoice"), implicit: false, style: Block }
+1:0@39..1:7@46 Scalar { anchor: None, tag: None, value: "invoice", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:9@48..1:14@53 Scalar { anchor: None, tag: None, value: "34843", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@54..2:4@58 Scalar { anchor: None, tag: None, value: "date", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:9@63..2:19@73 Scalar { anchor: None, tag: None, value: "2001-01-23", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@74..3:7@81 Scalar { anchor: None, tag: None, value: "bill-to", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:9@83..4:4@94 MappingStart { anchor: Some("id001"), tag: None, implicit: true, style: Block }
+4:4@94..4:9@99 Scalar { anchor: None, tag: None, value: "given", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:13@103..4:18@108 Scalar { anchor: None, tag: None, value: "Chris", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:4@113..5:10@119 Scalar { anchor: None, tag: None, value: "family", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:13@122..5:19@128 Scalar { anchor: None, tag: None, value: "Dumars", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@133..6:11@140 Scalar { anchor: None, tag: None, value: "address", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@150..7:8@150 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+7:8@150..7:13@155 Scalar { anchor: None, tag: None, value: "lines", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:15@157..10:0@210 Scalar { anchor: None, tag: None, value: "458 Walkman Dr.\nSuite #292\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+10:8@218..10:12@222 Scalar { anchor: None, tag: None, value: "city", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:18@228..10:27@237 Scalar { anchor: None, tag: None, value: "Royal Oak", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:8@246..11:13@251 Scalar { anchor: None, tag: None, value: "state", plain_implicit: true, quoted_implicit: false, style: Plain }
+11:18@256..11:20@258 Scalar { anchor: None, tag: None, value: "MI", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:8@267..12:14@273 Scalar { anchor: None, tag: None, value: "postal", plain_implicit: true, quoted_implicit: false, style: Plain }
+12:18@277..12:23@282 Scalar { anchor: None, tag: None, value: "48046", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@283..13:0@283 MappingEnd
+13:0@283..13:0@283 MappingEnd
+13:0@283..13:7@290 Scalar { anchor: None, tag: None, value: "ship-to", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:9@292..13:15@298 Alias { anchor: "id001" }
+14:0@299..14:7@306 Scalar { anchor: None, tag: None, value: "product", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:4@312..15:4@312 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+15:6@314..15:6@314 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+15:6@314..15:9@317 Scalar { anchor: None, tag: None, value: "sku", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:20@328..15:26@334 Scalar { anchor: None, tag: None, value: "BL394D", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:6@341..16:14@349 Scalar { anchor: None, tag: None, value: "quantity", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:20@355..16:21@356 Scalar { anchor: None, tag: None, value: "4", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:6@363..17:17@374 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+17:20@377..17:30@387 Scalar { anchor: None, tag: None, value: "Basketball", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:6@394..18:11@399 Scalar { anchor: None, tag: None, value: "price", plain_implicit: true, quoted_implicit: false, style: Plain }
+18:20@408..18:26@414 Scalar { anchor: None, tag: None, value: "450.00", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:4@419..19:4@419 MappingEnd
+19:6@421..19:6@421 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+19:6@421..19:9@424 Scalar { anchor: None, tag: None, value: "sku", plain_implicit: true, quoted_implicit: false, style: Plain }
+19:20@435..19:27@442 Scalar { anchor: None, tag: None, value: "BL4438H", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:6@449..20:14@457 Scalar { anchor: None, tag: None, value: "quantity", plain_implicit: true, quoted_implicit: false, style: Plain }
+20:20@463..20:21@464 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:6@471..21:17@482 Scalar { anchor: None, tag: None, value: "description", plain_implicit: true, quoted_implicit: false, style: Plain }
+21:20@485..21:30@495 Scalar { anchor: None, tag: None, value: "Super Hoop", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:6@502..22:11@507 Scalar { anchor: None, tag: None, value: "price", plain_implicit: true, quoted_implicit: false, style: Plain }
+22:20@516..22:27@523 Scalar { anchor: None, tag: None, value: "2392.00", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:0@524..23:0@524 MappingEnd
+23:0@524..23:0@524 SequenceEnd
+23:0@524..23:3@527 Scalar { anchor: None, tag: None, value: "tax", plain_implicit: true, quoted_implicit: false, style: Plain }
+23:7@531..23:13@537 Scalar { anchor: None, tag: None, value: "251.42", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:0@538..24:5@543 Scalar { anchor: None, tag: None, value: "total", plain_implicit: true, quoted_implicit: false, style: Plain }
+24:7@545..24:14@552 Scalar { anchor: None, tag: None, value: "4443.52", plain_implicit: true, quoted_implicit: false, style: Plain }
+25:0@553..25:8@561 Scalar { anchor: None, tag: None, value: "comments", plain_implicit: true, quoted_implicit: false, style: Plain }
+26:4@567..28:24@643 Scalar { anchor: None, tag: None, value: "Late afternoon is best. Backup contact is Nancy Billsmer @ 338-4338.", plain_implicit: true, quoted_implicit: false, style: Plain }
+29:0@644..29:0@644 MappingEnd
+29:0@644..29:0@644 DocumentEnd { implicit: true }
+29:0@644..29:0@644 StreamEnd

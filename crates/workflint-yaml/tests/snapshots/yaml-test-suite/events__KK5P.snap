@@ -1,0 +1,44 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:8@8 Scalar { anchor: None, tag: None, value: "complex1", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@12..1:2@12 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:4@14..1:4@14 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+1:6@16..1:7@17 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@18..2:0@18 SequenceEnd
+2:0@18..2:0@18 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@18..2:0@18 MappingEnd
+2:0@18..2:8@26 Scalar { anchor: None, tag: None, value: "complex2", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:2@30..3:2@30 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@32..3:4@32 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+3:6@34..3:7@35 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@38..4:2@38 SequenceEnd
+4:4@40..4:5@41 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@42..5:0@42 MappingEnd
+5:0@42..5:8@50 Scalar { anchor: None, tag: None, value: "complex3", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:2@54..6:2@54 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:4@56..6:4@56 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+6:6@58..6:7@59 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:2@62..7:2@62 SequenceEnd
+7:4@64..9:0@72 Scalar { anchor: None, tag: None, value: "b\n", plain_implicit: false, quoted_implicit: true, style: Folded }
+9:0@72..9:0@72 MappingEnd
+9:0@72..9:8@80 Scalar { anchor: None, tag: None, value: "complex4", plain_implicit: true, quoted_implicit: false, style: Plain }
+10:2@84..10:2@84 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+10:4@86..12:0@94 Scalar { anchor: None, tag: None, value: "a\n", plain_implicit: false, quoted_implicit: true, style: Folded }
+12:3@97..12:3@97 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+13:0@98..13:0@98 MappingEnd
+13:0@98..13:8@106 Scalar { anchor: None, tag: None, value: "complex5", plain_implicit: true, quoted_implicit: false, style: Plain }
+14:2@110..14:2@110 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+14:4@112..14:4@112 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+14:6@114..14:7@115 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+15:2@118..15:2@118 SequenceEnd
+15:4@120..15:4@120 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+15:6@122..15:7@123 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+16:0@124..16:0@124 SequenceEnd
+16:0@124..16:0@124 MappingEnd
+16:0@124..16:0@124 MappingEnd
+16:0@124..16:0@124 DocumentEnd { implicit: true }
+16:0@124..16:0@124 StreamEnd

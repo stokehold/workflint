@@ -1,0 +1,13 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:7@7 Scalar { anchor: None, tag: None, value: "Folding", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@11..3:17@45 Scalar { anchor: None, tag: None, value: "Empty line\nas a line feed", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+4:0@46..4:8@54 Scalar { anchor: None, tag: None, value: "Chomping", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:10@56..8:0@83 Scalar { anchor: None, tag: None, value: "Clipped empty lines\n", plain_implicit: false, quoted_implicit: true, style: Literal }
+8:0@83..8:0@83 MappingEnd
+8:0@83..8:0@83 DocumentEnd { implicit: true }
+8:0@83..8:0@83 StreamEnd

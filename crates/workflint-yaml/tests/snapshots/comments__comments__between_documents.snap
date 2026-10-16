@@ -1,0 +1,7 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "a: 1\n# between\n---\nb: 2\n---\n# after the start line\nc: 3\n"
+---
+1:0@5..1:9@14 OwnLine "# between"
+5:0@28..5:22@50 OwnLine "# after the start line"

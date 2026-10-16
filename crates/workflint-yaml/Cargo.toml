@@ -14,6 +14,7 @@ include = ["/src", "/README.md"]
 
 [dev-dependencies]
 datatest-stable = "0.3.3"
+insta = "1.49.0"
 
 [[test]]
 name = "yaml_test_suite"

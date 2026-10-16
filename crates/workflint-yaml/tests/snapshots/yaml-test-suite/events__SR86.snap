@@ -1,0 +1,11 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:4@4 Scalar { anchor: None, tag: None, value: "key1", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:6@6..0:14@14 Scalar { anchor: Some("a"), tag: None, value: "value", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:0@15..1:4@19 Scalar { anchor: None, tag: None, value: "key2", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:6@21..1:8@23 Scalar { anchor: Some("b"), tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Parser error: line 2 column 10: did not find expected key while parsing a block mapping (line 1 column 1)

@@ -1,0 +1,25 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@4..1:4@8 Scalar { anchor: None, tag: None, value: "time", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:6@10..1:14@18 Scalar { anchor: None, tag: None, value: "20:03:20", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@19..2:6@25 Scalar { anchor: None, tag: None, value: "player", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:8@27..2:18@37 Scalar { anchor: None, tag: None, value: "Sammy Sosa", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@38..3:6@44 Scalar { anchor: None, tag: None, value: "action", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:8@46..3:21@59 Scalar { anchor: None, tag: None, value: "strike (miss)", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@60..4:0@60 MappingEnd
+4:0@60..4:3@63 DocumentEnd { implicit: false }
+5:0@64..5:3@67 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+6:0@68..6:0@68 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:0@68..6:4@72 Scalar { anchor: None, tag: None, value: "time", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:6@74..6:14@82 Scalar { anchor: None, tag: None, value: "20:03:47", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@83..7:6@89 Scalar { anchor: None, tag: None, value: "player", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:8@91..7:18@101 Scalar { anchor: None, tag: None, value: "Sammy Sosa", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@102..8:6@108 Scalar { anchor: None, tag: None, value: "action", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:8@110..8:18@120 Scalar { anchor: None, tag: None, value: "grand slam", plain_implicit: true, quoted_implicit: false, style: Plain }
+9:0@121..9:0@121 MappingEnd
+9:0@121..9:3@124 DocumentEnd { implicit: false }
+10:0@125..10:0@125 StreamEnd

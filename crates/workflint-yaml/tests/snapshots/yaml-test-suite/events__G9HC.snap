@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@4..1:3@7 Scalar { anchor: None, tag: None, value: "seq", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Scanner error: line 4 column 1: could not find expected ':' while scanning a simple key (line 3 column 1)

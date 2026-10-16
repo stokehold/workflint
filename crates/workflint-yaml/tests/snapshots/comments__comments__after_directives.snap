@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "%YAML 1.1 # after version\n%TAG !e! tag:example.com,2000: # after tag\n# before start\n---\na: 1\n"
+---
+0:10@10..0:25@25 Trailing "# after version"
+1:31@57..1:42@68 Trailing "# after tag"
+2:0@69..2:14@83 OwnLine "# before start"

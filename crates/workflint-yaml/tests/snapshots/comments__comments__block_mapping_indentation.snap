@@ -1,0 +1,9 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "jobs:\n  # indent 2\n  build:\n        # deeper than the next key\n    runs-on: x\n# column 0 inside the nested mapping\n    steps: []\n    # after the last key\n  test: {}\n"
+---
+1:2@8..1:12@18 OwnLine "# indent 2"
+3:8@36..3:34@62 OwnLine "# deeper than the next key"
+5:0@78..5:36@114 OwnLine "# column 0 inside the nested mapping"
+7:4@133..7:24@153 OwnLine "# after the last key"

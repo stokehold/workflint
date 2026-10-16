@@ -1,0 +1,9 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "[a, # after a\n  # own line\n  b # after b\n  , c] # after the sequence\n"
+---
+0:4@4..0:13@13 Trailing "# after a"
+1:2@16..1:12@26 OwnLine "# own line"
+2:4@31..2:13@40 Trailing "# after b"
+3:7@48..3:27@68 Trailing "# after the sequence"

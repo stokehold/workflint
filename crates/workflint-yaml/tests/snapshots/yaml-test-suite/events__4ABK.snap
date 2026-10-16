@@ -1,0 +1,11 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:1@1 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:1@1 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+1:0@2..1:8@10 Scalar { anchor: None, tag: None, value: "unquoted", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:11@13..1:21@23 Scalar { anchor: None, tag: None, value: "separate", plain_implicit: false, quoted_implicit: true, style: DoubleQuoted }
+2:0@25..2:14@39 Scalar { anchor: None, tag: None, value: "http://foo.com", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:14@39..2:14@39 Scalar { anchor: None, tag: None, value: "", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Scanner error: line 4 column 14: found unexpected ':' while scanning a plain scalar (line 4 column 1)

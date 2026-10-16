@@ -1,0 +1,23 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:12@12 Scalar { anchor: None, tag: None, value: "Mark McGwire", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:14@14..0:15@15 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+0:15@15..0:17@17 Scalar { anchor: None, tag: None, value: "hr", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:19@19..0:21@21 Scalar { anchor: None, tag: None, value: "65", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:23@23..0:26@26 Scalar { anchor: None, tag: None, value: "avg", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:28@28..0:33@33 Scalar { anchor: None, tag: None, value: "0.278", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:33@33..0:34@34 MappingEnd
+1:0@35..1:10@45 Scalar { anchor: None, tag: None, value: "Sammy Sosa", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:12@47..1:13@48 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:4@53..2:6@55 Scalar { anchor: None, tag: None, value: "hr", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:8@57..2:10@59 Scalar { anchor: None, tag: None, value: "63", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@65..3:7@68 Scalar { anchor: None, tag: None, value: "avg", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:9@70..3:14@75 Scalar { anchor: None, tag: None, value: "0.288", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:2@78..4:3@79 MappingEnd
+5:0@80..5:0@80 MappingEnd
+5:0@80..5:0@80 DocumentEnd { implicit: true }
+5:0@80..5:0@80 StreamEnd

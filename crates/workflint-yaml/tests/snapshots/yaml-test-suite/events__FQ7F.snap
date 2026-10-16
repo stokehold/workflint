@@ -1,0 +1,12 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+0:2@2..0:14@14 Scalar { anchor: None, tag: None, value: "Mark McGwire", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@17..1:12@27 Scalar { anchor: None, tag: None, value: "Sammy Sosa", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:2@30..2:13@41 Scalar { anchor: None, tag: None, value: "Ken Griffey", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@42..3:0@42 SequenceEnd
+3:0@42..3:0@42 DocumentEnd { implicit: true }
+3:0@42..3:0@42 StreamEnd

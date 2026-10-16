@@ -1,0 +1,25 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:2@2..0:2@2 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+0:4@4..0:18@18 Scalar { anchor: None, tag: None, value: "Detroit Tigers", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:4@23..1:16@35 Scalar { anchor: None, tag: None, value: "Chicago cubs", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@36..2:0@36 SequenceEnd
+3:2@40..3:2@40 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+3:4@42..3:14@52 Scalar { anchor: None, tag: None, value: "2001-07-23", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@54..5:0@54 SequenceEnd
+5:2@56..5:3@57 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+5:4@58..5:20@74 Scalar { anchor: None, tag: None, value: "New York Yankees", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@80..6:18@94 Scalar { anchor: None, tag: None, value: "Atlanta Braves", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:19@95..6:20@96 SequenceEnd
+7:2@99..7:3@100 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+7:4@101..7:14@111 Scalar { anchor: None, tag: None, value: "2001-07-02", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:16@113..7:26@123 Scalar { anchor: None, tag: None, value: "2001-08-12", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:4@129..8:14@139 Scalar { anchor: None, tag: None, value: "2001-08-14", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:15@140..8:16@141 SequenceEnd
+9:0@142..9:0@142 MappingEnd
+9:0@142..9:0@142 DocumentEnd { implicit: true }
+9:0@142..9:0@142 StreamEnd

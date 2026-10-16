@@ -1,0 +1,21 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:8@8 Scalar { anchor: None, tag: None, value: "american", plain_implicit: true, quoted_implicit: false, style: Plain }
+1:2@12..1:2@12 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+1:4@14..1:18@28 Scalar { anchor: None, tag: None, value: "Boston Red Sox", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:4@33..2:18@47 Scalar { anchor: None, tag: None, value: "Detroit Tigers", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:4@52..3:20@68 Scalar { anchor: None, tag: None, value: "New York Yankees", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@69..4:0@69 SequenceEnd
+4:0@69..4:8@77 Scalar { anchor: None, tag: None, value: "national", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:2@81..5:2@81 SequenceStart { anchor: None, tag: None, implicit: true, style: Block }
+5:4@83..5:17@96 Scalar { anchor: None, tag: None, value: "New York Mets", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:4@101..6:16@113 Scalar { anchor: None, tag: None, value: "Chicago Cubs", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:4@118..7:18@132 Scalar { anchor: None, tag: None, value: "Atlanta Braves", plain_implicit: true, quoted_implicit: false, style: Plain }
+8:0@133..8:0@133 SequenceEnd
+8:0@133..8:0@133 MappingEnd
+8:0@133..8:0@133 DocumentEnd { implicit: true }
+8:0@133..8:0@133 StreamEnd

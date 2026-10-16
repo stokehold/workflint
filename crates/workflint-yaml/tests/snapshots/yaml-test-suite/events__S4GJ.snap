@@ -1,0 +1,8 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:0@4 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+1:0@4..1:6@10 Scalar { anchor: None, tag: None, value: "folded", plain_implicit: true, quoted_implicit: false, style: Plain }
+error: Scanner error: line 2 column 11: did not find expected comment or line break while scanning a block scalar (line 2 column 9)

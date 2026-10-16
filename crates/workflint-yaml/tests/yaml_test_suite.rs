@@ -6,6 +6,14 @@
 //! upstream's: they name the cases where libyaml itself disagrees with the
 //! suite. Those cases must still disagree, so that a fix shows up as a test
 //! failure and the list stays accurate.
+//!
+//! Each case also has a snapshot of its full event stream, with marks, in
+//! `tests/snapshots/yaml-test-suite/`. The snapshots were recorded before the
+//! scanner reported comments and leave comment events out, so they show that
+//! comments change no other event. The same test checks the comment events
+//! of every case, which have comments in most places the grammar allows.
+
+mod support;
 
 use std::fmt::Write as _;
 use std::fs;
@@ -72,6 +80,8 @@ fn render_events(input: &str) -> Result<String, workflint_yaml::Error> {
                 out.push('\n');
             }
             EventData::MappingEnd => out.push_str("-MAP\n"),
+            // The test suite's event format has no comments.
+            EventData::Comment { .. } => {}
         }
     }
     Ok(out)
@@ -135,6 +145,25 @@ fn yaml_test_suite_case(path: &Utf8Path, input: String) -> datatest_stable::Resu
     }
 }
 
+// datatest-stable passes the file contents as an owned `String`.
+#[allow(clippy::needless_pass_by_value)]
+fn event_snapshot(path: &Utf8Path, input: String) -> datatest_stable::Result<()> {
+    let id = path
+        .parent()
+        .and_then(Utf8Path::file_name)
+        .ok_or("case file has no directory")?;
+    let mut settings = insta::Settings::clone_current();
+    settings.set_snapshot_path("snapshots/yaml-test-suite");
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_omit_expression(true);
+    settings.bind(|| {
+        insta::assert_snapshot!(format!("events__{id}"), support::dump_events(&input));
+    });
+    support::dump_comments(&input);
+    Ok(())
+}
+
 datatest_stable::harness! {
     { test = yaml_test_suite_case, root = "tests/yaml-test-suite", pattern = r"/in\.yaml$" },
+    { test = event_snapshot, root = "tests/yaml-test-suite", pattern = r"/in\.yaml$" },
 }

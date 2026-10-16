@@ -1,0 +1,14 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "run: >-2 # note\n   echo hi\nnext: 1\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:3@3 Scalar { anchor: None, tag: None, value: "run", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:5@5..2:0@27 Scalar { anchor: None, tag: None, value: " echo hi", plain_implicit: false, quoted_implicit: true, style: Folded }
+2:0@27..2:4@31 Scalar { anchor: None, tag: None, value: "next", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:6@33..2:7@34 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@35..3:0@35 MappingEnd
+3:0@35..3:0@35 DocumentEnd { implicit: true }
+3:0@35..3:0@35 StreamEnd

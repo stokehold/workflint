@@ -1,0 +1,11 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..1:3@17 DocumentStart { version_directive: None, tag_directives: [TagDirective { handle: "!m!", prefix: "!my-" }], implicit: false }
+2:0@30..2:20@50 Scalar { anchor: None, tag: Some("!my-light"), value: "fluorescent", plain_implicit: false, quoted_implicit: false, style: Plain }
+3:0@51..3:3@54 DocumentEnd { implicit: false }
+4:0@55..5:3@72 DocumentStart { version_directive: None, tag_directives: [TagDirective { handle: "!m!", prefix: "!my-" }], implicit: false }
+6:0@86..6:14@100 Scalar { anchor: None, tag: Some("!my-light"), value: "green", plain_implicit: false, quoted_implicit: false, style: Plain }
+7:0@101..7:0@101 DocumentEnd { implicit: true }
+7:0@101..7:0@101 StreamEnd

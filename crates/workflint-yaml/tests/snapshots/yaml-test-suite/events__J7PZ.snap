@@ -1,0 +1,21 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+3:0@95..3:3@98 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+3:4@99..4:0@106 SequenceStart { anchor: None, tag: Some("tag:yaml.org,2002:omap"), implicit: false, style: Block }
+4:2@108..4:2@108 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+4:2@108..4:14@120 Scalar { anchor: None, tag: None, value: "Mark McGwire", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:16@122..4:18@124 Scalar { anchor: None, tag: None, value: "65", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:0@125..5:0@125 MappingEnd
+5:2@127..5:2@127 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+5:2@127..5:12@137 Scalar { anchor: None, tag: None, value: "Sammy Sosa", plain_implicit: true, quoted_implicit: false, style: Plain }
+5:14@139..5:16@141 Scalar { anchor: None, tag: None, value: "63", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:0@142..6:0@142 MappingEnd
+6:2@144..6:2@144 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:2@144..6:12@154 Scalar { anchor: None, tag: None, value: "Ken Griffy", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:14@156..6:16@158 Scalar { anchor: None, tag: None, value: "58", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@159..7:0@159 MappingEnd
+7:0@159..7:0@159 SequenceEnd
+7:0@159..7:0@159 DocumentEnd { implicit: true }
+7:0@159..7:0@159 StreamEnd

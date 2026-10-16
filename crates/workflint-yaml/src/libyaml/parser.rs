@@ -13,6 +13,8 @@ use super::{
 pub struct Parser<'input> {
     pub(crate) scanner: Scanner<'input>,
     pub(crate) inner: ParserInner,
+    /// An event held back while the comments before it are returned.
+    pub(crate) pending_event: Option<Event>,
 }
 
 /// The non-generic parts of `Parser`.
@@ -95,7 +97,9 @@ impl Iterator for Parser<'_> {
     type Item = Result<Event>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.scanner.stream_end_produced || self.inner.state == ParserState::End {
+        if self.pending_event.is_none()
+            && (self.scanner.stream_end_produced || self.inner.state == ParserState::End)
+        {
             None
         } else {
             Some(self.parse())
@@ -116,6 +120,7 @@ impl<'input> Parser<'input> {
                 marks: Vec::with_capacity(16),
                 tag_directives: Vec::with_capacity(16),
             },
+            pending_event: None,
         }
     }
 
@@ -126,14 +131,46 @@ impl<'input> Parser<'input> {
     /// [`EventData::StreamStart`] while the ending event has the type
     /// [`EventData::StreamEnd`].
     pub fn parse(&mut self) -> Result<Event> {
-        if self.scanner.stream_end_produced || self.inner.state == ParserState::End {
+        let event = if let Some(event) = self.pending_event.take() {
+            event
+        } else if self.scanner.stream_end_produced || self.inner.state == ParserState::End {
             return Ok(Event {
                 data: EventData::StreamEnd,
                 start_mark: Mark::default(),
                 end_mark: Mark::default(),
             });
+        } else {
+            self.state_machine()?
+        };
+        Ok(self.comment_before(event))
+    }
+
+    /// Returns the first comment the scanner recorded if it starts before
+    /// `event`, and holds `event` back for the next call. Otherwise returns
+    /// `event`. A workflint addition.
+    ///
+    /// When the parser produces an event, the scanner has read past its
+    /// start, so every comment before that start is already recorded. The
+    /// comments therefore come out in source order, each one before the
+    /// first other event that starts after it.
+    fn comment_before(&mut self, event: Event) -> Event {
+        let starts_before = self
+            .scanner
+            .comments
+            .front()
+            .is_some_and(|comment| comment.start_mark.index < event.start_mark.index);
+        if !starts_before {
+            return event;
         }
-        self.state_machine()
+        let Some(comment) = self.scanner.comments.pop_front() else {
+            return event;
+        };
+        self.pending_event = Some(event);
+        Event {
+            data: EventData::Comment { kind: comment.kind },
+            start_mark: comment.start_mark,
+            end_mark: comment.end_mark,
+        }
     }
 
     fn state_machine(&mut self) -> Result<Event> {

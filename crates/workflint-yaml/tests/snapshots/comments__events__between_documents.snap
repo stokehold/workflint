@@ -1,0 +1,24 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+description: "a: 1\n# between\n---\nb: 2\n---\n# after the start line\nc: 3\n"
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:0@0 DocumentStart { version_directive: None, tag_directives: [], implicit: true }
+0:0@0..0:0@0 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+0:0@0..0:1@1 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+0:3@3..0:4@4 Scalar { anchor: None, tag: None, value: "1", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:0@15..2:0@15 MappingEnd
+2:0@15..2:0@15 DocumentEnd { implicit: true }
+2:0@15..2:3@18 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+3:0@19..3:0@19 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+3:0@19..3:1@20 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:3@22..3:4@23 Scalar { anchor: None, tag: None, value: "2", plain_implicit: true, quoted_implicit: false, style: Plain }
+4:0@24..4:0@24 MappingEnd
+4:0@24..4:0@24 DocumentEnd { implicit: true }
+4:0@24..4:3@27 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+6:0@51..6:0@51 MappingStart { anchor: None, tag: None, implicit: true, style: Block }
+6:0@51..6:1@52 Scalar { anchor: None, tag: None, value: "c", plain_implicit: true, quoted_implicit: false, style: Plain }
+6:3@54..6:4@55 Scalar { anchor: None, tag: None, value: "3", plain_implicit: true, quoted_implicit: false, style: Plain }
+7:0@56..7:0@56 MappingEnd
+7:0@56..7:0@56 DocumentEnd { implicit: true }
+7:0@56..7:0@56 StreamEnd

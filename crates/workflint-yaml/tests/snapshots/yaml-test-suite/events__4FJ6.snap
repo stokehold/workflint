@@ -1,0 +1,27 @@
+---
+source: crates/workflint-yaml/tests/yaml_test_suite.rs
+---
+0:0@0..0:0@0 StreamStart { encoding: Utf8 }
+0:0@0..0:3@3 DocumentStart { version_directive: None, tag_directives: [], implicit: false }
+1:0@4..1:1@5 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:2@8..2:2@8 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:2@8..2:3@9 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:4@10..2:5@11 Scalar { anchor: None, tag: None, value: "a", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:7@13..2:8@14 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:9@15..2:9@15 MappingStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:9@15..2:10@16 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:10@16..2:11@17 SequenceStart { anchor: None, tag: None, implicit: true, style: Flow }
+2:11@17..2:12@18 Scalar { anchor: None, tag: None, value: "b", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:13@19..2:14@20 Scalar { anchor: None, tag: None, value: "c", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:14@20..2:15@21 SequenceEnd
+2:15@21..2:16@22 SequenceEnd
+2:18@24..2:19@25 Scalar { anchor: None, tag: None, value: "d", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:19@25..2:20@26 MappingEnd
+2:21@27..2:22@28 Scalar { anchor: None, tag: None, value: "e", plain_implicit: true, quoted_implicit: false, style: Plain }
+2:22@28..2:23@29 SequenceEnd
+2:23@29..2:24@30 SequenceEnd
+2:26@32..2:28@34 Scalar { anchor: None, tag: None, value: "23", plain_implicit: true, quoted_implicit: false, style: Plain }
+3:0@35..3:1@36 MappingEnd
+3:0@35..3:1@36 SequenceEnd
+4:0@37..4:0@37 DocumentEnd { implicit: true }
+4:0@37..4:0@37 StreamEnd

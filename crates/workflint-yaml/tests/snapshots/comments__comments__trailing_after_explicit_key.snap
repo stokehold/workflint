@@ -1,0 +1,7 @@
+---
+source: crates/workflint-yaml/tests/comments.rs
+assertion_line: 19
+description: "? a # key\n: b # value\n"
+---
+0:4@4..0:9@9 Trailing "# key"
+1:4@14..1:11@21 Trailing "# value"
