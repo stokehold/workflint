@@ -26,9 +26,8 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      # CodSpeed authenticates the upload with an OIDC token, so the job needs
-      # no secret. The token grants no access to the repository.
-      id-token: write
+      # The OIDC token gives no access to the repository, and the job needs no secret.
+      id-token: write # CodSpeed authenticates the upload with an OIDC token.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
