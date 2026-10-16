@@ -1,0 +1,8 @@
+---
+source: crates/workflint-diagnostics/tests/render.rs
+expression: "default_plain(&file, &[d])"
+---
+test.yaml:1:7: bad name [test-rule]
+  |
+1 | name: 🚀 deploy
+  |       ^~~~~~~~~

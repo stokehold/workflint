@@ -1,0 +1,8 @@
+---
+source: crates/workflint-diagnostics/tests/render.rs
+expression: out
+---
+test.yaml:1:70002: msg [test-rule]
+  |
+1 | <70000 x> token
+  | <70001 spaces>^~~~~

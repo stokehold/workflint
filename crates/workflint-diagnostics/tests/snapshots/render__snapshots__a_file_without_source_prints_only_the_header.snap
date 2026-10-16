@@ -1,0 +1,5 @@
+---
+source: crates/workflint-diagnostics/tests/render.rs
+expression: "default_plain(&file, &[d])"
+---
+test.yaml:1:1: workflow is empty [test-rule]

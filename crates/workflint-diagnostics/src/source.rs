@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Range;
 
 /// Identifies one [`SourceFile`] within a lint run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -118,7 +119,26 @@ impl SourceFile {
             + 1;
         LineCol { line, column }
     }
+
+    /// Returns the byte range of a 1-based line without its line break, or `None` if the file
+    /// has no such line.
+    pub(crate) fn line_range(&self, line: usize) -> Option<Range<usize>> {
+        let start = *self.line_starts.get(line.checked_sub(1)?)?;
+        let Some(&next) = self.line_starts.get(line) else {
+            return Some(start..self.text.len());
+        };
+        let with_break = self.text.get(start..next)?;
+        let break_len = LINE_BREAKS
+            .iter()
+            .find(|brk| with_break.ends_with(**brk))
+            .map_or(0, |brk| brk.len());
+        Some(start..next - break_len)
+    }
 }
+
+/// The line breaks [`line_starts`] recognises. `\r\n` comes before `\n` and `\r` so that it is
+/// removed as one break.
+const LINE_BREAKS: [&str; 6] = ["\r\n", "\n", "\r", "\u{85}", "\u{2028}", "\u{2029}"];
 
 /// Returns the byte offset where each line of `text` starts.
 fn line_starts(text: &str) -> Vec<usize> {
@@ -247,6 +267,34 @@ mod tests {
     #[test]
     fn an_empty_file_has_one_line() {
         assert_eq!(line_col("", 0), (1, 1));
+    }
+
+    #[test]
+    fn line_range_excludes_the_line_break() {
+        let f = file("a: 1\r\nb: 2\rc\u{2028}d\n");
+        let lines: Vec<_> = (1..=5).map(|n| f.line_range(n)).collect();
+        assert_eq!(
+            lines,
+            [
+                Some(0..4),
+                Some(6..10),
+                Some(11..12),
+                Some(15..16),
+                Some(17..17)
+            ]
+        );
+    }
+
+    #[test]
+    fn line_range_of_a_last_line_without_a_break_ends_at_end_of_file() {
+        assert_eq!(file("a\nbc").line_range(2), Some(2..4));
+    }
+
+    #[test]
+    fn line_range_of_a_missing_line_is_none() {
+        let f = file("a\n");
+        assert_eq!(f.line_range(0), None);
+        assert_eq!(f.line_range(3), None);
     }
 
     #[test]

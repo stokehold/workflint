@@ -1,0 +1,12 @@
+---
+source: crates/workflint-diagnostics/tests/render.rs
+expression: "default_plain(&file, &[first, second])"
+---
+test.yaml:1:5: first [test-rule]
+  |
+1 | on: push
+  |     ^~~~
+test.yaml:2:7: second [test-rule]
+  |
+2 | jobs: {}
+  |       ^~

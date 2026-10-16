@@ -1,0 +1,8 @@
+---
+source: crates/workflint-diagnostics/tests/render.rs
+expression: "default_plain(&file, &[d])"
+---
+test.yaml:10:1: msg [test-rule]
+   |
+10 | token
+   | ^~~~~
