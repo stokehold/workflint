@@ -7,6 +7,7 @@ This directory is a copy of files from [rhysd/actionlint](https://github.com/rhy
 - `scripts/generate-actionlint-matcher/test/`.
 - `.github/actionlint-matcher.json`.
 - `expr_sema.go`, the expression checker, whose `BuiltinGlobalVariableTypes` and `BuiltinFuncSignatures` tables the tests of `workflint-data` compare with.
+- `availability.go`, the contexts and special functions that each workflow key allows, which the tests of `workflint-data` compare with.
 - `expr_insecure.go`, the untrusted-input checker, whose `BuiltinUntrustedInputs` table the tests of `workflint-data` compare with.
 - `LICENSE.txt`, actionlint's MIT license, which covers every file here except this README.
 

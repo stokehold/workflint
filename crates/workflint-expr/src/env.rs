@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, LazyLock};
 
-use workflint_data::{GLOBAL_CONTEXTS, UntrustedInput};
+use workflint_data::{Availability, GLOBAL_CONTEXTS, UntrustedInput, workflow_key};
 
 use crate::types::{ObjectTy, Rest, Ty};
 
@@ -58,6 +58,8 @@ pub struct TypeEnv {
     /// The configured variable names. `None` turns the check of `vars.NAME` against the list
     /// off.
     config_vars: Option<Arc<[String]>>,
+    /// The contexts and special functions that expressions may use. `None` allows all of them.
+    availability: Option<Availability>,
     /// The untrusted input paths that [`check`](Self::check) reports. `None` turns the check
     /// off.
     untrusted_inputs: Option<&'static [UntrustedInput]>,
@@ -133,6 +135,43 @@ impl TypeEnv {
     /// compared without regard to case. Without a call, any name is allowed.
     pub fn set_config_vars<S: Into<String>>(&mut self, names: impl IntoIterator<Item = S>) {
         self.config_vars = Some(names.into_iter().map(Into::into).collect());
+    }
+
+    /// Allows the contexts and special functions of the workflow key `key`, such as
+    /// `jobs.<job_id>.steps.if`. A key that `workflint-data` does not list, or an empty key,
+    /// allows no context and no special function, as in the reference. Without a call to this
+    /// or [`set_availability`](Self::set_availability), every context and special function is
+    /// allowed.
+    ///
+    /// ```
+    /// use workflint_expr::{TypeEnv, parse_expression};
+    ///
+    /// let mut env = TypeEnv::new();
+    /// env.set_workflow_key("jobs.<job_id>.if");
+    ///
+    /// let (expr, _) = parse_expression("success() && github.ref == 'main' }}").unwrap();
+    /// assert!(env.check(&expr).1.is_empty());
+    ///
+    /// let (expr, _) = parse_expression("hashFiles('*.lock') }}").unwrap();
+    /// let (_, errors) = env.check(&expr);
+    /// assert!(errors[0].message.starts_with(r#"calling function "hashFiles" is not allowed here."#));
+    /// ```
+    pub fn set_workflow_key(&mut self, key: &str) {
+        let availability = workflow_key(key).copied().unwrap_or(Availability::NONE);
+        self.set_availability(availability);
+    }
+
+    /// Allows only the contexts and special functions in `availability`. Messages list the
+    /// allowed contexts in its order. This is the reference's `SetContextAvailability` and
+    /// `SetSpecialFunctionAvailability`.
+    pub fn set_availability(&mut self, availability: Availability) {
+        self.availability = Some(availability);
+    }
+
+    /// Returns the contexts and special functions that expressions may use, or `None` if all
+    /// of them are allowed.
+    pub(crate) fn availability(&self) -> Option<&Availability> {
+        self.availability.as_ref()
     }
 
     /// Turns on the check for untrusted input with the paths in `roots`, as for an expression in

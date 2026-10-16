@@ -1,5 +1,6 @@
-//! Reads tables from the reference's `expr_sema.go` and `expr_insecure.go`, vendored by
-//! `cargo xtask vendor-testdata`, for the tests that compare them with `workflint-data`.
+//! Reads tables from the reference's `expr_sema.go`, `availability.go`, and `expr_insecure.go`,
+//! vendored by `cargo xtask vendor-testdata`, for the tests that compare them with
+//! `workflint-data`.
 
 // Each test file uses part of this module.
 #![allow(clippy::panic, dead_code)]
@@ -11,6 +12,10 @@ use workflint_data::{Rest, TypeDesc};
 
 /// The reference's `expr_sema.go`.
 const EXPR_SEMA_GO: &str = include_str!("../../../../tests/conformance/actionlint/expr_sema.go");
+
+/// The reference's `availability.go`.
+const AVAILABILITY_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/availability.go");
 
 /// The reference's `expr_insecure.go`.
 const EXPR_INSECURE_GO: &str =
@@ -156,13 +161,13 @@ struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    /// A parser of `source` after `declaration`, such as `var Foo = `.
-    fn after(source: &'a str, declaration: &str) -> Self {
-        let Some(start) = source.find(declaration) else {
+    /// A parser of `src` after `declaration`, such as `var Foo = `.
+    fn after(src: &'a str, declaration: &str) -> Self {
+        let Some(start) = src.find(declaration) else {
             panic!("the Go source has no {declaration:?}");
         };
         Parser {
-            tokens: tokenize(&source[start + declaration.len()..])
+            tokens: tokenize(&src[start + declaration.len()..])
                 .into_iter()
                 .peekable(),
         }
@@ -314,6 +319,88 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn str(&mut self) -> &'a str {
+        match self.next() {
+            Token::Str(s) => s,
+            token => panic!("expected a string, got {token:?}"),
+        }
+    }
+
+    /// `[]string{"a", "b", ...}`
+    fn strings(&mut self) -> Vec<String> {
+        self.expect_all(&[
+            Token::Punct('['),
+            Token::Punct(']'),
+            Token::Ident("string"),
+            Token::Punct('{'),
+        ]);
+        let mut strings = Vec::new();
+        while !self.eat(&Token::Punct('}')) {
+            strings.push(self.str().to_owned());
+            self.eat(&Token::Punct(','));
+        }
+        strings
+    }
+
+    /// `map[string][]string{"name": []string{...}, ...}`
+    fn strings_map(&mut self) -> BTreeMap<String, Vec<String>> {
+        self.expect_all(&[
+            Token::Ident("map"),
+            Token::Punct('['),
+            Token::Ident("string"),
+            Token::Punct(']'),
+            Token::Punct('['),
+            Token::Punct(']'),
+            Token::Ident("string"),
+            Token::Punct('{'),
+        ]);
+        let mut entries = BTreeMap::new();
+        while !self.eat(&Token::Punct('}')) {
+            let name = self.str();
+            self.expect(&Token::Punct(':'));
+            let strings = self.strings();
+            assert!(
+                entries.insert(name.to_owned(), strings).is_none(),
+                "{name:?} appears twice"
+            );
+            self.eat(&Token::Punct(','));
+        }
+        entries
+    }
+
+    /// The arms of `switch key { case "a", "b": return []string{...}, []string{...} ... }` up to
+    /// `default`, keyed by each string of each `case`.
+    fn availability_switch(&mut self) -> BTreeMap<String, Availability> {
+        self.expect_all(&[
+            Token::Ident("switch"),
+            Token::Ident("key"),
+            Token::Punct('{'),
+        ]);
+        let mut entries = BTreeMap::new();
+        while self.eat(&Token::Ident("case")) {
+            let mut keys = vec![self.str()];
+            while self.eat(&Token::Punct(',')) {
+                keys.push(self.str());
+            }
+            self.expect_all(&[Token::Punct(':'), Token::Ident("return")]);
+            let contexts = self.strings();
+            self.expect(&Token::Punct(','));
+            let special_functions = self.strings();
+            for key in keys {
+                let availability = Availability {
+                    contexts: contexts.clone(),
+                    special_functions: special_functions.clone(),
+                };
+                assert!(
+                    entries.insert(key.to_owned(), availability).is_none(),
+                    "{key:?} appears twice"
+                );
+            }
+        }
+        self.expect(&Token::Ident("default"));
+        entries
+    }
+
     fn bool(&mut self) -> bool {
         match self.next() {
             Token::Ident("true") => true,
@@ -410,6 +497,33 @@ pub(crate) fn builtin_global_variable_types() -> BTreeMap<String, Ty> {
 /// The reference's `BuiltinFuncSignatures`.
 pub(crate) fn builtin_func_signatures() -> BTreeMap<String, Vec<FuncSignature>> {
     Parser::after(EXPR_SEMA_GO, "var BuiltinFuncSignatures = ").signature_map()
+}
+
+/// What one workflow key allows in the reference's `WorkflowKeyAvailability`, with the names in
+/// the reference's order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Availability {
+    pub(crate) contexts: Vec<String>,
+    pub(crate) special_functions: Vec<String>,
+}
+
+/// The reference's `WorkflowKeyAvailability`, as a map from each workflow key that it knows.
+pub(crate) fn workflow_key_availability() -> BTreeMap<String, Availability> {
+    Parser::after(
+        AVAILABILITY_GO,
+        "func WorkflowKeyAvailability(key string) ([]string, []string) {",
+    )
+    .availability_switch()
+}
+
+/// The reference's `SpecialFunctionNames`.
+pub(crate) fn special_function_names() -> BTreeMap<String, Vec<String>> {
+    Parser::after(AVAILABILITY_GO, "var SpecialFunctionNames = ").strings_map()
+}
+
+/// The reference's `AllContexts`.
+pub(crate) fn all_contexts() -> BTreeMap<String, Vec<String>> {
+    Parser::after(AVAILABILITY_GO, "var AllContexts = ").strings_map()
 }
 
 /// The paths of the untrusted values in the reference's `BuiltinUntrustedInputs`, such as

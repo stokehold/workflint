@@ -18,6 +18,8 @@
 //! [`TypeEnv::check`] type-checks an [`Expr`] against them. It returns the expression's type
 //! and actionlint's semantic errors, such as an undefined variable or property or a call of a
 //! built-in function with the wrong arguments, each with its rule from [`rules`].
+//! [`TypeEnv::set_workflow_key`] limits the contexts and special functions to those that a
+//! workflow key allows.
 //! [`Expr::is_constant`] tells whether an expression has the same value in every run.
 //!
 //! [`TypeEnv::set_untrusted_inputs`] turns on the check for expressions in scripts: `check` then
