@@ -163,6 +163,15 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "workflint-diagnostics",
+ "workflint-syntax",
+ "workflint-yaml",
+]
+
+[[package]]
+name = "workflint-syntax"
+version = "0.0.1"
+dependencies = [
+ "workflint-diagnostics",
  "workflint-yaml",
 ]
 

@@ -114,11 +114,12 @@ The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchm
 
 | Target | What it checks |
 | --- | --- |
+| `glob` | `workflint_syntax::glob` validates the input as a branch or tag pattern and as a path pattern without panicking. Every problem has a message, each range covers one character of the input, and the ranges never move backwards. |
 | `render` | `workflint-diagnostics` builds a `SourceFile` from the input text and renders diagnostics with arbitrary spans in the default and one-line formats without panicking. The output is UTF-8, has one header per diagnostic and well-formed snippets, and differs between color on and off only in escape sequences. The comment at the top of `fuzz/fuzz_targets/render.rs` describes the input layout. |
 | `yaml_events` | The event parser of `workflint-yaml` reads the input up to the end of the stream or the first error without panicking. Every event's marks lie inside the input on character boundaries. |
 | `yaml_tree` | `workflint_yaml::parse` builds the tree without panicking. Every span lies inside the input on character boundaries and converts to a line and column, and every node ID in the tree refers to a node. Every scalar's source map is exact and maps each character inside the scalar's span. |
 
-All three targets replace invalid UTF-8 with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
+All four targets replace invalid UTF-8 with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
 
 ```sh
 cargo xtask fuzz-seeds
@@ -127,7 +128,7 @@ cargo +nightly fuzz run yaml_tree -- -max_total_time=300
 
 `cargo xtask fuzz-seeds` copies the YAML files of the vendored test data, the 1,503 workflows in its corpus archive, the YAML test suite inputs, and the fuzz regression inputs into `fuzz/corpus/<target>/`, which git ignores. `cargo fuzz` keeps the inputs it finds in the same directory. `fuzz/rust-toolchain.toml` pins the nightly that CI uses. Run `cargo fuzz` inside `fuzz/` without `+nightly` to use it.
 
-CI builds the targets on pull requests that change `workflint-yaml`, `workflint-diagnostics`, or `fuzz/`. Every night it runs each target for five minutes. A target fails the run when an input panics or takes longer than 10 seconds, and the run uploads that input as the artifact `fuzz-<target>`.
+CI builds the targets on pull requests that change `workflint-yaml`, `workflint-diagnostics`, `workflint-syntax`, or `fuzz/`. Every night it runs each target for five minutes. A target fails the run when an input panics or takes longer than 10 seconds, and the run uploads that input as the artifact `fuzz-<target>`.
 
 To turn a failing input into a regression test:
 

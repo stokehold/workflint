@@ -15,7 +15,7 @@ use anyhow::{Context, Result, bail};
 use zip::ZipArchive;
 
 /// The fuzz targets in `fuzz/fuzz_targets/`. Each gets every seed.
-pub(crate) const TARGETS: &[&str] = &["render", "yaml_events", "yaml_tree"];
+pub(crate) const TARGETS: &[&str] = &["glob", "render", "yaml_events", "yaml_tree"];
 
 /// The vendored reference test data, relative to the repository root.
 const FIXTURES: &str = "tests/conformance/actionlint/testdata";
