@@ -4,4 +4,4 @@ The YAML layer of [workflint](https://github.com/stokehold/workflint). It parses
 
 This is an internal crate of workflint. Its API has no stability promise and may change in any release.
 
-`src/libyaml/ORIGIN.md` records where the vendored code comes from and what changed. `tests/yaml-test-suite/` holds cases from the [YAML test suite](https://github.com/yaml/yaml-test-suite), under its MIT license in `tests/yaml-test-suite/LICENSE`. `tests/actionlint/` holds fixtures from [actionlint](https://github.com/rhysd/actionlint), under its MIT license in `tests/actionlint/LICENSE`.
+`src/libyaml/ORIGIN.md` records where the vendored code comes from and what changed. `tests/yaml-test-suite/` holds cases from the [YAML test suite](https://github.com/yaml/yaml-test-suite), under its MIT license in `tests/yaml-test-suite/LICENSE`.

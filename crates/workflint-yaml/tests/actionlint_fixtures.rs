@@ -1,7 +1,7 @@
 //! The YAML-level diagnostics of the reference's fixtures.
 //!
-//! The inputs in `actionlint/` are copies of the reference's
-//! `testdata/<dir>/<name>.yaml` files. Each test lists the lines of the
+//! The inputs are the reference's fixtures vendored in
+//! `tests/conformance/actionlint/testdata/`. Each test lists the lines of the
 //! fixture's `.out` file that the YAML layer reports, as
 //! `line:column: message [rule-id]`. Lines that the workflow parser or rules
 //! report come in later milestones. Where `docs/differences.md` changes a
@@ -41,7 +41,9 @@ fn lint(text: &str) -> (String, Option<Document>) {
 // (docs/differences.md#yaml-error-positions).
 #[test]
 fn err_yaml_syntax_error() {
-    let (diagnostics, document) = lint(include_str!("actionlint/err/yaml_syntax_error.yaml"));
+    let (diagnostics, document) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/err/yaml_syntax_error.yaml"
+    ));
     assert_eq!(
         diagnostics,
         "2:8: could not parse as YAML: block sequence entries are not allowed in this context [yaml-syntax-error]\n"
@@ -53,7 +55,9 @@ fn err_yaml_syntax_error() {
 // this context` (docs/differences.md#yaml-error-positions).
 #[test]
 fn examples_broken_yaml() {
-    let (diagnostics, document) = lint(include_str!("actionlint/examples/broken_yaml.yaml"));
+    let (diagnostics, document) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/examples/broken_yaml.yaml"
+    ));
     assert_eq!(
         diagnostics,
         "6:17: could not parse as YAML: mapping values are not allowed in this context [yaml-syntax-error]\n"
@@ -66,7 +70,9 @@ fn examples_broken_yaml() {
 // unknown alias is reported.
 #[test]
 fn err_undefined_anchor() {
-    let (diagnostics, document) = lint(include_str!("actionlint/err/undefined_anchor.yaml"));
+    let (diagnostics, document) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/err/undefined_anchor.yaml"
+    ));
     assert_eq!(
         diagnostics,
         "8:14: could not parse as YAML: unknown anchor 'default_env' referenced [unknown-anchor]\n"
@@ -78,7 +84,9 @@ fn err_undefined_anchor() {
 // referenced` (docs/differences.md#unknown-anchor-position).
 #[test]
 fn examples_dangling_alias() {
-    let (diagnostics, document) = lint(include_str!("actionlint/examples/dangling_alias.yaml"));
+    let (diagnostics, document) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/examples/dangling_alias.yaml"
+    ));
     assert_eq!(
         diagnostics,
         "9:14: could not parse as YAML: unknown anchor 'credentials' referenced [unknown-anchor]\n"
@@ -88,7 +96,9 @@ fn examples_dangling_alias() {
 
 #[test]
 fn err_unused_anchors() {
-    let (diagnostics, document) = lint(include_str!("actionlint/err/unused_anchors.yaml"));
+    let (diagnostics, document) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/err/unused_anchors.yaml"
+    ));
     assert_eq!(
         diagnostics,
         concat!(
@@ -104,7 +114,9 @@ fn err_unused_anchors() {
 
 #[test]
 fn err_recursive_anchors() {
-    let (diagnostics, document) = lint(include_str!("actionlint/err/recursive_anchors.yaml"));
+    let (diagnostics, document) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/err/recursive_anchors.yaml"
+    ));
     assert_eq!(
         diagnostics,
         concat!(
@@ -116,7 +128,9 @@ fn err_recursive_anchors() {
     // A recursive alias stays in the tree unresolved, and the alias to the
     // completed `&recursive1` on line 13 is resolved.
     let document = document.unwrap();
-    let file = source(include_str!("actionlint/err/recursive_anchors.yaml"));
+    let file = source(include_str!(
+        "../../../tests/conformance/actionlint/testdata/err/recursive_anchors.yaml"
+    ));
     let aliases: Vec<_> = document
         .nodes()
         .filter_map(|(_, node)| match &node.kind {
@@ -132,7 +146,7 @@ fn err_recursive_anchors() {
 #[test]
 fn err_issue_610_recursive_raw_yaml_value() {
     let (diagnostics, _) = lint(include_str!(
-        "actionlint/err/issue-610_recursive_raw_yaml_value.yaml"
+        "../../../tests/conformance/actionlint/testdata/err/issue-610_recursive_raw_yaml_value.yaml"
     ));
     assert_eq!(
         diagnostics,
@@ -142,7 +156,9 @@ fn err_issue_610_recursive_raw_yaml_value() {
 
 #[test]
 fn err_errors_in_anchor() {
-    let (diagnostics, _) = lint(include_str!("actionlint/err/errors_in_anchor.yaml"));
+    let (diagnostics, _) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/err/errors_in_anchor.yaml"
+    ));
     assert_eq!(
         diagnostics,
         concat!(
@@ -154,7 +170,9 @@ fn err_errors_in_anchor() {
 
 #[test]
 fn examples_yaml_anchor_usage() {
-    let (diagnostics, _) = lint(include_str!("actionlint/examples/yaml_anchor_usage.yaml"));
+    let (diagnostics, _) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/examples/yaml_anchor_usage.yaml"
+    ));
     assert_eq!(
         diagnostics,
         concat!(
@@ -166,7 +184,9 @@ fn examples_yaml_anchor_usage() {
 
 #[test]
 fn ok_anchors() {
-    let (diagnostics, document) = lint(include_str!("actionlint/ok/anchors.yaml"));
+    let (diagnostics, document) = lint(include_str!(
+        "../../../tests/conformance/actionlint/testdata/ok/anchors.yaml"
+    ));
     assert_eq!(diagnostics, "");
     assert!(document.is_some());
 }
@@ -202,7 +222,7 @@ fn steps(document: &Document) -> Vec<workflint_yaml::NodeId> {
 // the same subtree, with its error, is reachable from all 12 items.
 #[test]
 fn err_dedup_errors_shares_the_anchored_subtree() {
-    let text = include_str!("actionlint/err/dedup_errors.yaml");
+    let text = include_str!("../../../tests/conformance/actionlint/testdata/err/dedup_errors.yaml");
     let (diagnostics, document) = lint(text);
     assert_eq!(diagnostics, "");
     let document = document.unwrap();
@@ -236,7 +256,8 @@ fn err_dedup_errors_shares_the_anchored_subtree() {
 // reported once per use at the anchor's position and then deduplicated.
 #[test]
 fn err_errors_in_anchor_reaches_the_subtree_through_every_alias() {
-    let text = include_str!("actionlint/err/errors_in_anchor.yaml");
+    let text =
+        include_str!("../../../tests/conformance/actionlint/testdata/err/errors_in_anchor.yaml");
     let (_, document) = lint(text);
     let document = document.unwrap();
     let items = steps(&document);

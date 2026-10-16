@@ -1,6 +1,8 @@
-//! Builds the tree for every YAML file in `.reference/`.
+//! Builds the tree for every YAML file of the reference.
 //!
-//! The test needs the checkout that `cargo xtask reference` creates, so it is
+//! The first test reads the fixtures vendored in
+//! `tests/conformance/actionlint/testdata/`. The second reads the corpus in
+//! `.reference/realworld/`, which `cargo xtask reference` creates, so it is
 //! ignored by default. Run it with
 //! `cargo nextest run -p workflint-yaml --run-ignored all reference_files`.
 
@@ -29,21 +31,11 @@ fn yaml_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-#[test]
-#[ignore = "needs .reference/ from cargo xtask reference"]
-fn every_reference_file_parses_without_panicking() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.reference");
+/// Parses every YAML file under `dir` and checks that the tree's spans lie
+/// on character boundaries of the file. Returns the number of files.
+fn parse_all(dir: &Path) -> usize {
     let mut files = Vec::new();
-    yaml_files(&root.join("actionlint/testdata"), &mut files);
-    yaml_files(&root.join("realworld"), &mut files);
-    assert!(
-        files.len() > 1_000,
-        "found only {} files under {}",
-        files.len(),
-        root.display()
-    );
-
-    let mut with_document = 0;
+    yaml_files(dir, &mut files);
     for path in &files {
         let Ok(bytes) = std::fs::read(path) else {
             continue;
@@ -52,8 +44,6 @@ fn every_reference_file_parses_without_panicking() {
         let file = SourceFile::new(FileId::new(0), path.display().to_string(), text).unwrap();
         let parsed = parse(&file);
         if let Some(document) = &parsed.document {
-            with_document += 1;
-            // Every span lies inside the file and on character boundaries.
             for (_, node) in document.nodes() {
                 let (start, end) = (node.span.start as usize, node.span.end as usize);
                 assert!(
@@ -65,8 +55,22 @@ fn every_reference_file_parses_without_panicking() {
             let _ = document.dump(&file);
         }
     }
-    eprintln!(
-        "parsed {} files, {with_document} with a document",
-        files.len()
-    );
+    files.len()
+}
+
+fn repository() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+#[test]
+fn every_reference_fixture_parses_without_panicking() {
+    let count = parse_all(&repository().join("tests/conformance/actionlint/testdata"));
+    assert!(count > 300, "found only {count} fixtures");
+}
+
+#[test]
+#[ignore = "needs .reference/ from cargo xtask reference"]
+fn every_corpus_file_parses_without_panicking() {
+    let count = parse_all(&repository().join(".reference/realworld"));
+    assert_eq!(count, 1_503);
 }
