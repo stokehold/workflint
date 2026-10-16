@@ -764,8 +764,11 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "similar",
  "tempfile",
  "toml",
+ "workflint-diagnostics",
+ "workflint-yaml",
  "zip",
 ]
 

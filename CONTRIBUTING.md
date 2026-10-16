@@ -37,6 +37,14 @@ The test suite does not need `.reference/`. It reads a copy of the reference's t
 
 The conformance suite, the `conformance` test target of `xtask`, lints each of those fixtures with the `workflint` binary. `tests/conformance/README.md` describes how it runs them and the files that list expected failures and allowed differences. Fixtures that need shellcheck or pyflakes are skipped when the tool is not on `PATH`, so install both to run every fixture.
 
+After a change to `crates/workflint-yaml/`, `crates/workflint-diagnostics/`, or `xtask/goyaml-dump/`, run:
+
+```sh
+cargo xtask yaml-parity
+```
+
+It builds a small Go program with go-yaml, the YAML library of the reference, and compares the trees of both parsers on the vendored test data, the 1,503 corpus files, and `tests/yaml-parity/`. Every node must have the same kind, position, decoded value, anchor, and alias name. A file that go-yaml rejects must fail in workflint too, at any position. The command prints a diff for each file that differs and exits with an error. It needs Go 1.26.4, not `.reference/`. Pass file or directory paths to compare only those. CI runs it when these paths change.
+
 ## Fuzzing
 
 `fuzz/` holds the fuzz targets for [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz). It is a separate workspace with its own `Cargo.lock`, because `cargo fuzz` needs a nightly toolchain. Install cargo-fuzz with `cargo install --locked cargo-fuzz@0.13.2`.

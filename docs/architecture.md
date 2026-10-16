@@ -62,6 +62,7 @@ ADR 0006 has the full dependency table and the boundary rules. Only `workflint-l
 | Unit tests | next to the code | Lexer tokens, type rules, single rule behaviour. |
 | Snapshot tests | each crate's `tests/` | Rendered output for representative inputs, with `insta`. |
 | Conformance suite | `tests/conformance/`, run by `xtask/tests/conformance.rs` | The reference's fixtures and workflint's own through the real CLI, compared with expected errors (ADR 0004). |
+| YAML parity | `cargo xtask yaml-parity` | The `workflint-yaml` tree against go-yaml's on fixtures and the 1,503-file corpus: node kinds, positions, decoded values, anchors, and aliases. |
 | Oracle diff | `cargo xtask oracle` | workflint against the reference binary on fixtures and the 1,503-file corpus. |
 | Rule examples | `docs/rules/*.md` | Every documented example runs as a test. |
 | Fuzzing | `fuzz/` | Parsers and the full lint of one file must never panic (ADR 0018). |

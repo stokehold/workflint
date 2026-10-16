@@ -7,5 +7,8 @@
 # The vendored reference test data must stay byte-identical to upstream, which marks it the same way.
 /tests/conformance/actionlint/** -text
 
+# The YAML parity inputs test BOMs and line breaks, so they must reach both parsers byte for byte.
+/tests/yaml-parity/** -text
+
 # Fuzz regression inputs must reach the checks byte for byte, like the crash inputs they come from.
 /crates/workflint-yaml/tests/fuzz-regressions/** -text
