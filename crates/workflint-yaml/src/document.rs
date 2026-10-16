@@ -1,5 +1,6 @@
 //! The span tree: one arena of nodes per document.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::Range;
 
@@ -204,7 +205,7 @@ impl Document {
             }
             let key = match comparison {
                 KeyComparison::Exact => key.value.clone(),
-                KeyComparison::CaseInsensitive => simple_lowercase(&key.value),
+                KeyComparison::CaseInsensitive => simple_lowercase(&key.value).into_owned(),
             };
             match first.get(&key) {
                 Some(&first) => duplicates.push(DuplicateKey {
@@ -237,18 +238,30 @@ fn written_len(node: &Node) -> usize {
 /// The simple mapping takes one character to one character. Rust's
 /// lowercase differs from it only for U+0130, whose lowercase adds a
 /// combining dot after the `i`. [`KeyComparison::CaseInsensitive`] says
-/// where the Unicode versions of Rust and Go differ.
-fn simple_lowercase(text: &str) -> String {
-    text.chars()
-        .map(|ch| {
-            let mut lower = ch.to_lowercase();
-            match (lower.next(), lower.next()) {
-                (Some(lower), None) => lower,
-                _ if ch == '\u{130}' => 'i',
-                _ => ch,
-            }
-        })
-        .collect()
+/// where the Unicode versions of Rust and Go differ. The result borrows
+/// `text` when no character changes.
+///
+/// ```
+/// use workflint_yaml::simple_lowercase;
+///
+/// assert_eq!(simple_lowercase("GITHUB_TOKEN"), "github_token");
+/// assert_eq!(simple_lowercase("\u{130}"), "i");
+/// ```
+#[must_use]
+pub fn simple_lowercase(text: &str) -> Cow<'_, str> {
+    let lower = |ch: char| {
+        let mut lower = ch.to_lowercase();
+        match (lower.next(), lower.next()) {
+            (Some(lower), None) => lower,
+            _ if ch == '\u{130}' => 'i',
+            _ => ch,
+        }
+    };
+    if text.chars().all(|ch| lower(ch) == ch) {
+        Cow::Borrowed(text)
+    } else {
+        Cow::Owned(text.chars().map(lower).collect())
+    }
 }
 
 fn slice<'a, T>(items: &'a [T], range: &Range<u32>) -> &'a [T] {

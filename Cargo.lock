@@ -946,6 +946,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "workflint-syntax"
+version = "0.0.1"
+dependencies = [
+ "workflint-diagnostics",
+ "workflint-yaml",
+]
+
+[[package]]
 name = "workflint-yaml"
 version = "0.0.1"
 dependencies = [

@@ -50,7 +50,7 @@ Parse-stage rules are an exception to "rules live in `workflint-rules`". `workfl
 | `Diagnostic` | diagnostics | Rule, severity, message, primary span, labels, optional fix (ADR 0007). |
 | `RuleMeta` | diagnostics | Static rule metadata: kebab-case ID, kind, category, default severity, docs URL. |
 | `yaml::Document` and `yaml::Node` | yaml | Arena-allocated span tree with tags, scalar styles, anchors, and comments. `Node::source_map` builds a scalar's source map on demand (ADR 0022). |
-| `Workflow`, `Job`, `Step`, `ActionMetadata` | syntax | Typed AST. Every field keeps its `Span`. Values that may be expressions are `Value<T>` (a literal `T` or an expression). |
+| `Workflow`, `Event`, `Job`, `Step`, `ActionMetadata` | syntax | Typed AST that borrows from the `yaml::Document`. Keys and strings are `Str` leaves, which keep their YAML node and span. A key's value is a `Field<T>` (absent, invalid, or valid) or, where it may be a `${{ }}` expression, a `Value<T>` (absent, invalid, a literal `T`, or an `Expr`). Collections keyed by name are `Keyed<T>`, in source order with case-insensitive lookup. Collections are shared through `Arc`, so an anchored subtree is built once. |
 | `Expr`, `Ty` | expr | Expression AST and types. `Ty` is an immutable enum shared through `Arc`. |
 | `Rule` trait and `Registry` | rules | A rule declares its metadata and implements visitor callbacks for the nodes it cares about. |
 | `Project`, `Config`, `Linter` | linter | Project root, loaded config, caches, and the parallel driver. |

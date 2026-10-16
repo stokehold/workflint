@@ -44,6 +44,7 @@ pub use decode::{DecodeError, decode};
 pub use document::{
     Alias, Anchor, BlockHeader, Chomping, CollectionStyle, Comment, Document, DuplicateKey, Entry,
     KeyComparison, Mapping, Node, NodeId, NodeKind, Scalar, ScalarStyle, Sequence, Tag,
+    simple_lowercase,
 };
 pub use libyaml::CommentKind;
 pub use source_map::SourceMap;
