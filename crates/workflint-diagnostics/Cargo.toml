@@ -14,6 +14,11 @@ readme = "README.md"
 thiserror = "2.0.21"
 # Pinned to Unicode 15.0.0, the version Go uses. See `quote::is_print`.
 unicode-general-category = "=0.6.0"
+# The default `cjk` feature adds widths for CJK locales, which output must not depend on.
+unicode-width = { version = "0.2.2", default-features = false }
+
+[dev-dependencies]
+insta = "1.49.0"
 
 [lints]
 workspace = true

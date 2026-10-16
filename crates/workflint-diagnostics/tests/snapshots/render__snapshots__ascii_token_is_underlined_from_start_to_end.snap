@@ -1,0 +1,8 @@
+---
+source: crates/workflint-diagnostics/tests/render.rs
+expression: "default_plain(&file, &[d])"
+---
+test.yaml:4:14: label "ubuntu-latest" is unknown [test-rule]
+  |
+4 |     runs-on: ubuntu-latest
+  |              ^~~~~~~~~~~~~

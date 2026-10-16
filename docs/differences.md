@@ -38,9 +38,13 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="column-units"></a>
 ### Columns are always Unicode code points
 
-- Upstream: columns from YAML nodes count code points, but positions inside `${{ }}` add byte offsets to the node column. In `"日本語" ${{ matrix.foo }}` the error is reported at column 35, while the code-point column is 29. The `^~~~` indicator slices the source line by bytes, so it lands on the wrong token after non-ASCII text. `EndColumn` in templates is a display width, a third unit.
-- workflint: text output, `-format` fields and JSON use 1-based code-point columns everywhere. The indicator is placed by display width and underlines the whole token. `EndColumn` uses the same unit as `Column`. SARIF and the future language server use UTF-16 code units, as their specifications require (ADR 0007).
-- Why: one consistent unit. ASCII-only files are not affected.
+- Upstream: columns from YAML nodes count code points, but positions inside `${{ }}` add byte offsets to the node column. In `"日本語" ${{ matrix.foo }}` the error is reported at column 35, while the code-point column is 29. The `^~~~` indicator slices the source line by bytes, so it lands on the wrong token after non-ASCII text. It counts a tab as zero cells, so a tab before the column moves the `^` left, and East Asian ambiguous characters count as two cells in a CJK locale. The `~` run covers the characters from the column to the next space or tab, whatever the error is about. `EndColumn` in templates is a display width, a third unit.
+- workflint: text output, `-format` fields and JSON use 1-based code-point columns everywhere. `EndColumn` uses the same unit as `Column`. SARIF and the future language server use UTF-16 code units, as their specifications require (ADR 0007). The indicator line works like this:
+  - Each character before the column becomes as many spaces as its display width. A tab stays a tab, so the `^` lines up with the source line at any tab width.
+  - Wide characters, such as CJK characters and most emoji, take two cells. Ambiguous characters take one cell in every locale, and control characters take none.
+  - The `^` and `~` run underlines the diagnostic's span up to the end of its line, so it covers the whole token, spaces included. A tab inside the span stays a tab. A span with nothing visible on the line, such as one at the end of a line, gets a single `^`.
+  - An empty span falls back to upstream's run: from the column to the next space or tab.
+- Why: one consistent unit. ASCII-only files without tabs report the same columns as upstream. Their indicator differs only where the span is not the run up to the next space, for example a message about a quoted string that contains spaces.
 - Upstream issue: none.
 - Milestone: M1, M3.
 - Status: planned.
@@ -95,6 +99,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Upstream: the source line for the snippet is read with Go's `bufio.Scanner`, which fails on lines longer than 64 KiB. The error then prints without a snippet.
 - workflint: the snippet is printed whatever the line length.
 - Why: the limit is an artefact of the Go reader.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned.
+
+<a id="snippet-line-breaks"></a>
+### Snippet lines end at every YAML line break
+
+- Upstream: the YAML parser counts a lone `\r`, U+0085, U+2028, and U+2029 as line breaks, so the line number in the header counts them. The snippet reader splits lines at `\n` only. In a file with one of these breaks, the snippet shows a different line than the header names, or no snippet at all.
+- workflint: the snippet shows the line the header names. It ends at the same line breaks the YAML parser counts.
+- Why: the snippet must show the line the diagnostic is on.
 - Upstream issue: none.
 - Milestone: M1.
 - Status: planned.
