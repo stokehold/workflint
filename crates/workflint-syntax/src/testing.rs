@@ -3,10 +3,11 @@
 
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use workflint_diagnostics::{FileId, SourceFile};
+use workflint_diagnostics::{Diagnostic, FileId, SourceFile, sort_and_dedup};
 use workflint_yaml::{Document, Node, NodeKind, parse};
 
 use crate::Str;
+use crate::parser::Parser;
 
 /// Parses `text` as the YAML of a file with ID 0.
 pub(crate) fn document(text: &str) -> Document {
@@ -76,4 +77,37 @@ pub(crate) fn key_at<'a>(document: &'a Document, path: &[&str]) -> Str<'a> {
 /// Returns the scalar at `path`.
 pub(crate) fn str_at<'a>(document: &'a Document, path: &[&str]) -> Str<'a> {
     Str::new(node_at(document, path)).unwrap()
+}
+
+/// Renders `diagnostics`, sorted and deduplicated, one per line as
+/// `line:column: message [rule-id]`.
+pub(crate) fn render(file: &SourceFile, mut diagnostics: Vec<Diagnostic>) -> Vec<String> {
+    sort_and_dedup(file, &mut diagnostics);
+    diagnostics
+        .iter()
+        .map(|diagnostic| {
+            let pos = file.line_col(diagnostic.span.start);
+            format!(
+                "{}:{}: {} [{}]",
+                pos.line, pos.column, diagnostic.message, diagnostic.rule.id
+            )
+        })
+        .collect()
+}
+
+/// Parses `text` as YAML, runs `f` with a parser and the root node, and
+/// returns the parser's diagnostics as [`render`] prints them, followed by
+/// the lines that `f` returns.
+pub(crate) fn parse_with(
+    text: &str,
+    f: impl for<'a, 'f> FnOnce(&mut Parser<'a, 'f>, &'a Node) -> Vec<String>,
+) -> Vec<String> {
+    let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+    let document = parse(&file).document.unwrap();
+    let mut parser = Parser::new(&file, &document);
+    let root = parser.node(document.root().unwrap()).unwrap();
+    let lines = f(&mut parser, root);
+    let mut out = render(&file, parser.into_diagnostics());
+    out.extend(lines);
+    out
 }

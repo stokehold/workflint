@@ -935,6 +935,7 @@ name = "workflint"
 version = "0.0.1"
 dependencies = [
  "workflint-diagnostics",
+ "workflint-syntax",
  "workflint-yaml",
 ]
 

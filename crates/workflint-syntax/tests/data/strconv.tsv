@@ -1,0 +1,153 @@
+Atoi	0	ok	0
+Atoi	1	ok	1
+Atoi	-1	ok	-1
+Atoi	+1	ok	1
+Atoi	-0	ok	0
+Atoi	00012	ok	12
+Atoi	+	err	strconv.Atoi: parsing "+": invalid syntax
+Atoi	-	err	strconv.Atoi: parsing "-": invalid syntax
+Atoi		err	strconv.Atoi: parsing "": invalid syntax
+Atoi	 1	err	strconv.Atoi: parsing " 1": invalid syntax
+Atoi	1 	err	strconv.Atoi: parsing "1 ": invalid syntax
+Atoi	1x	err	strconv.Atoi: parsing "1x": invalid syntax
+Atoi	1.5	err	strconv.Atoi: parsing "1.5": invalid syntax
+Atoi	1e3	err	strconv.Atoi: parsing "1e3": invalid syntax
+Atoi	1_000	err	strconv.Atoi: parsing "1_000": invalid syntax
+Atoi	0x10	err	strconv.Atoi: parsing "0x10": invalid syntax
+Atoi	0o17	err	strconv.Atoi: parsing "0o17": invalid syntax
+Atoi	0b101	err	strconv.Atoi: parsing "0b101": invalid syntax
+Atoi	017	ok	17
+Atoi	true	err	strconv.Atoi: parsing "true": invalid syntax
+Atoi	abc	err	strconv.Atoi: parsing "abc": invalid syntax
+Atoi	１	err	strconv.Atoi: parsing "１": invalid syntax
+Atoi	123456789012345678	ok	123456789012345678
+Atoi	1234567890123456789	ok	1234567890123456789
+Atoi	12345678901234567890	err	strconv.Atoi: parsing "12345678901234567890": value out of range
+Atoi	9223372036854775807	ok	9223372036854775807
+Atoi	9223372036854775808	err	strconv.Atoi: parsing "9223372036854775808": value out of range
+Atoi	-9223372036854775808	ok	-9223372036854775808
+Atoi	-9223372036854775809	err	strconv.Atoi: parsing "-9223372036854775809": value out of range
+Atoi	99999999999999999999	err	strconv.Atoi: parsing "99999999999999999999": value out of range
+Atoi	99999999999999999999x	err	strconv.Atoi: parsing "99999999999999999999x": value out of range
+Atoi	-99999999999999999999x	err	strconv.Atoi: parsing "-99999999999999999999x": value out of range
+Atoi	+9223372036854775807	ok	9223372036854775807
+ParseFloat	0	ok	0000000000000000
+ParseFloat	1	ok	3ff0000000000000
+ParseFloat	-1	ok	bff0000000000000
+ParseFloat	+1	ok	3ff0000000000000
+ParseFloat	-0	ok	8000000000000000
+ParseFloat	-0.0	ok	8000000000000000
+ParseFloat	00	ok	0000000000000000
+ParseFloat	017	ok	4031000000000000
+ParseFloat	1.5	ok	3ff8000000000000
+ParseFloat	.5	ok	3fe0000000000000
+ParseFloat	1.	ok	3ff0000000000000
+ParseFloat	-.5	ok	bfe0000000000000
+ParseFloat	+.5	ok	3fe0000000000000
+ParseFloat	1e3	ok	408f400000000000
+ParseFloat	1E3	ok	408f400000000000
+ParseFloat	1e+3	ok	408f400000000000
+ParseFloat	1e-3	ok	3f50624dd2f1a9fc
+ParseFloat	1e	err	strconv.ParseFloat: parsing "1e": invalid syntax
+ParseFloat	1e+	err	strconv.ParseFloat: parsing "1e+": invalid syntax
+ParseFloat	e3	err	strconv.ParseFloat: parsing "e3": invalid syntax
+ParseFloat	.	err	strconv.ParseFloat: parsing ".": invalid syntax
+ParseFloat	-	err	strconv.ParseFloat: parsing "-": invalid syntax
+ParseFloat	+	err	strconv.ParseFloat: parsing "+": invalid syntax
+ParseFloat		err	strconv.ParseFloat: parsing "": invalid syntax
+ParseFloat	 1	err	strconv.ParseFloat: parsing " 1": invalid syntax
+ParseFloat	1 	err	strconv.ParseFloat: parsing "1 ": invalid syntax
+ParseFloat	1.5.5	err	strconv.ParseFloat: parsing "1.5.5": invalid syntax
+ParseFloat	1,5	err	strconv.ParseFloat: parsing "1,5": invalid syntax
+ParseFloat	1:20	err	strconv.ParseFloat: parsing "1:20": invalid syntax
+ParseFloat	2026-10-15	err	strconv.ParseFloat: parsing "2026-10-15": invalid syntax
+ParseFloat	true	err	strconv.ParseFloat: parsing "true": invalid syntax
+ParseFloat	abc	err	strconv.ParseFloat: parsing "abc": invalid syntax
+ParseFloat	１	err	strconv.ParseFloat: parsing "１": invalid syntax
+ParseFloat	1_000	ok	408f400000000000
+ParseFloat	1__0	err	strconv.ParseFloat: parsing "1__0": invalid syntax
+ParseFloat	_1	err	strconv.ParseFloat: parsing "_1": invalid syntax
+ParseFloat	1_	err	strconv.ParseFloat: parsing "1_": invalid syntax
+ParseFloat	1_.5	err	strconv.ParseFloat: parsing "1_.5": invalid syntax
+ParseFloat	1._5	err	strconv.ParseFloat: parsing "1._5": invalid syntax
+ParseFloat	1e1_0	ok	4202a05f20000000
+ParseFloat	1e_10	err	strconv.ParseFloat: parsing "1e_10": invalid syntax
+ParseFloat	1_e10	err	strconv.ParseFloat: parsing "1_e10": invalid syntax
+ParseFloat	0x10	err	strconv.ParseFloat: parsing "0x10": invalid syntax
+ParseFloat	0x1p4	ok	4030000000000000
+ParseFloat	0X1P4	ok	4030000000000000
+ParseFloat	0x1P-2	ok	3fd0000000000000
+ParseFloat	0x1.8p1	ok	4008000000000000
+ParseFloat	0x.8p1	ok	3ff0000000000000
+ParseFloat	0x1	err	strconv.ParseFloat: parsing "0x1": invalid syntax
+ParseFloat	0x1.8	err	strconv.ParseFloat: parsing "0x1.8": invalid syntax
+ParseFloat	0x	err	strconv.ParseFloat: parsing "0x": invalid syntax
+ParseFloat	0xp1	err	strconv.ParseFloat: parsing "0xp1": invalid syntax
+ParseFloat	0x_1p0	ok	3ff0000000000000
+ParseFloat	0x1_0p0	ok	4030000000000000
+ParseFloat	0x1p	err	strconv.ParseFloat: parsing "0x1p": invalid syntax
+ParseFloat	0x1p+	err	strconv.ParseFloat: parsing "0x1p+": invalid syntax
+ParseFloat	0x1e3	err	strconv.ParseFloat: parsing "0x1e3": invalid syntax
+ParseFloat	0x1fp0	ok	403f000000000000
+ParseFloat	0o17	err	strconv.ParseFloat: parsing "0o17": invalid syntax
+ParseFloat	0b101	err	strconv.ParseFloat: parsing "0b101": invalid syntax
+ParseFloat	1p3	err	strconv.ParseFloat: parsing "1p3": invalid syntax
+ParseFloat	inf	ok	7ff0000000000000
+ParseFloat	Inf	ok	7ff0000000000000
+ParseFloat	INF	ok	7ff0000000000000
+ParseFloat	+inf	ok	7ff0000000000000
+ParseFloat	-inf	ok	fff0000000000000
+ParseFloat	infinity	ok	7ff0000000000000
+ParseFloat	-Infinity	ok	fff0000000000000
+ParseFloat	+INFINITY	ok	7ff0000000000000
+ParseFloat	infin	err	strconv.ParseFloat: parsing "infin": invalid syntax
+ParseFloat	infx	err	strconv.ParseFloat: parsing "infx": invalid syntax
+ParseFloat	in	err	strconv.ParseFloat: parsing "in": invalid syntax
+ParseFloat	nan	ok	7ff8000000000001
+ParseFloat	NaN	ok	7ff8000000000001
+ParseFloat	NAN	ok	7ff8000000000001
+ParseFloat	-nan	err	strconv.ParseFloat: parsing "-nan": invalid syntax
+ParseFloat	+NaN	err	strconv.ParseFloat: parsing "+NaN": invalid syntax
+ParseFloat	nanx	err	strconv.ParseFloat: parsing "nanx": invalid syntax
+ParseFloat	.nan	err	strconv.ParseFloat: parsing ".nan": invalid syntax
+ParseFloat	.NaN	err	strconv.ParseFloat: parsing ".NaN": invalid syntax
+ParseFloat	.inf	err	strconv.ParseFloat: parsing ".inf": invalid syntax
+ParseFloat	-.inf	err	strconv.ParseFloat: parsing "-.inf": invalid syntax
+ParseFloat	+.inf	err	strconv.ParseFloat: parsing "+.inf": invalid syntax
+ParseFloat	.Inf	err	strconv.ParseFloat: parsing ".Inf": invalid syntax
+ParseFloat	1e308	ok	7fe1ccf385ebc8a0
+ParseFloat	1e309	err	strconv.ParseFloat: parsing "1e309": value out of range
+ParseFloat	-1e309	err	strconv.ParseFloat: parsing "-1e309": value out of range
+ParseFloat	1.7976931348623157e308	ok	7fefffffffffffff
+ParseFloat	1.7976931348623158e308	ok	7fefffffffffffff
+ParseFloat	1.7976931348623159e308	err	strconv.ParseFloat: parsing "1.7976931348623159e308": value out of range
+ParseFloat	4.9e-324	ok	0000000000000001
+ParseFloat	2.4e-324	ok	0000000000000000
+ParseFloat	2.5e-324	ok	0000000000000001
+ParseFloat	1e-400	ok	0000000000000000
+ParseFloat	0e99999	ok	0000000000000000
+ParseFloat	1e99999999999	err	strconv.ParseFloat: parsing "1e99999999999": value out of range
+ParseFloat	-1e99999999999	err	strconv.ParseFloat: parsing "-1e99999999999": value out of range
+ParseFloat	0x1p1023	ok	7fe0000000000000
+ParseFloat	0x1p1024	err	strconv.ParseFloat: parsing "0x1p1024": value out of range
+ParseFloat	0x1p-1074	ok	0000000000000001
+ParseFloat	0x1p-1075	ok	0000000000000000
+ParseFloat	0x1.8p-1074	ok	0000000000000002
+ParseFloat	0x1.fffffffffffffp1023	ok	7fefffffffffffff
+ParseFloat	0x1.fffffffffffff8p1023	err	strconv.ParseFloat: parsing "0x1.fffffffffffff8p1023": value out of range
+ParseFloat	0x1.00000000000008p0	ok	3ff0000000000000
+ParseFloat	0x1.00000000000018p0	ok	3ff0000000000002
+ParseFloat	0x1.000000000000081p0	ok	3ff0000000000001
+ParseFloat	0x123456789abcdef0123p0	ok	44723456789abcdf
+ParseFloat	0x0p99999	ok	0000000000000000
+ParseFloat	0x1p-99999	ok	0000000000000000
+ParseFloat	0x1p99999	err	strconv.ParseFloat: parsing "0x1p99999": value out of range
+ParseFloat	123456789012345678901234567890	ok	45f8ee90ff6c373e
+ParseFloat	0.1	ok	3fb999999999999a
+ParseFloat	0.30000000000000004	ok	3fd3333333333334
+ParseFloat	9007199254740993	ok	4340000000000000
+ParseFloat	9007199254740993.0000000000000000000001	ok	4340000000000001
+ParseFloat	2.2250738585072011e-308	ok	000fffffffffffff
+ParseFloat	2.2250738585072014e-308	ok	0010000000000000
+ParseFloat	000000000000000000000000000001.5	ok	3ff8000000000000
+ParseFloat	1.500000000000000000000000000000	ok	3ff8000000000000

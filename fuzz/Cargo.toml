@@ -14,6 +14,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4.13"
 workflint-diagnostics = { path = "../crates/workflint-diagnostics" }
+workflint-syntax = { path = "../crates/workflint-syntax" }
 workflint-yaml = { path = "../crates/workflint-yaml" }
 
 [workspace]
@@ -28,6 +29,13 @@ bench = false
 [[bin]]
 name = "yaml_tree"
 path = "fuzz_targets/yaml_tree.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "syntax"
+path = "fuzz_targets/syntax.rs"
 test = false
 doc = false
 bench = false

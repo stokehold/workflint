@@ -94,6 +94,8 @@ struct Builder<'a> {
     comments: Vec<Comment>,
     comment_lines: Vec<u64>,
     root: Option<NodeId>,
+    /// The offset of the first document's start event.
+    start: u32,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -116,6 +118,7 @@ impl<'a> Builder<'a> {
             comments: Vec::new(),
             comment_lines: Vec::new(),
             root: None,
+            start: 0,
             diagnostics: Vec::new(),
         }
     }
@@ -179,11 +182,10 @@ impl<'a> Builder<'a> {
                 ),
                 EventData::SequenceEnd | EventData::MappingEnd => self.close(event.end_mark),
                 EventData::Alias { anchor } => self.alias(event, anchor)?,
+                EventData::DocumentStart { .. } => self.start = Self::offset(event.start_mark),
                 EventData::DocumentEnd { .. } => first_document_done = true,
                 EventData::StreamEnd => break,
-                EventData::StreamStart { .. }
-                | EventData::DocumentStart { .. }
-                | EventData::Comment { .. } => {}
+                EventData::StreamStart { .. } | EventData::Comment { .. } => {}
             }
         }
         Ok(self.finish())
@@ -525,6 +527,7 @@ impl<'a> Builder<'a> {
         let document = Document {
             file: self.id,
             root: self.root,
+            start: self.start,
             nodes: self.nodes,
             items: self.items,
             entries: self.entries,

@@ -1,0 +1,249 @@
+//! The workflow root, as the reference's `parse` at `parse.go:1499-1557`.
+
+use std::sync::Arc;
+
+use workflint_diagnostics::Span;
+
+use super::{KeySpec, Label, MapEntry, Parser, Section};
+use crate::rules::{EMPTY_WORKFLOW, MISSING_REQUIRED_KEY};
+use crate::{Field, Keyed, Value, Workflow};
+
+/// The keys of the workflow root.
+struct Root;
+
+impl Section for Root {
+    type Ast<'a> = Workflow<'a>;
+}
+
+static ROOT_KEYS: [KeySpec<Root>; 8] = [
+    KeySpec {
+        name: "name",
+        parse: |p, w, e| w.name = p.parse_string(e.key.string, e.value, true),
+    },
+    KeySpec {
+        name: "run-name",
+        parse: |p, w, e| w.run_name = p.parse_string(e.key.string, e.value, false),
+    },
+    KeySpec {
+        name: "on",
+        parse: parse_on,
+    },
+    // TODO(#69): parse `permissions`, `env`, `defaults`, and `concurrency`.
+    KeySpec {
+        name: "permissions",
+        parse: |_, _, _| {},
+    },
+    KeySpec {
+        name: "env",
+        parse: |_, _, _| {},
+    },
+    KeySpec {
+        name: "defaults",
+        parse: |_, _, _| {},
+    },
+    KeySpec {
+        name: "concurrency",
+        parse: |_, _, _| {},
+    },
+    KeySpec {
+        name: "jobs",
+        parse: parse_jobs,
+    },
+];
+
+// TODO(#68): parse the events.
+fn parse_on<'a>(_: &mut Parser<'a, '_>, workflow: &mut Workflow<'a>, entry: &MapEntry<'a>) {
+    workflow.on = Field::Valid {
+        key: entry.key.string,
+        span: entry.value.span,
+        value: Arc::new([]),
+    };
+}
+
+// TODO(#70): parse the jobs.
+fn parse_jobs<'a>(_: &mut Parser<'a, '_>, workflow: &mut Workflow<'a>, entry: &MapEntry<'a>) {
+    workflow.jobs = Field::Valid {
+        key: entry.key.string,
+        span: entry.value.span,
+        value: Keyed::default(),
+    };
+}
+
+impl<'a> Parser<'a, '_> {
+    /// Parses the workflow root.
+    ///
+    /// A file with no document reports `workflow is empty`. Otherwise the
+    /// root must be a mapping with the keys of [`ROOT_KEYS`], and `on` and
+    /// `jobs` must be present. The reference reports a missing `on` or
+    /// `jobs` at its document node, which starts at the first directive,
+    /// the `---`, or the root node, whichever comes first.
+    pub(super) fn workflow(&mut self) -> Workflow<'a> {
+        let document = self.document;
+        let start = document.start();
+        let root = document.root().and_then(|id| self.node(id));
+        let end = root.map_or(start, |root| root.span.end.max(start));
+        let span = Span::new(document.file(), start, end);
+        let mut workflow = Workflow {
+            span,
+            name: Field::Absent,
+            run_name: Field::Absent,
+            on: Field::Absent,
+            permissions: Field::Absent,
+            env: Value::Absent,
+            defaults: Field::Absent,
+            concurrency: Field::Absent,
+            jobs: Field::Absent,
+        };
+        let Some(root) = root else {
+            if document.root().is_none() {
+                self.error(&EMPTY_WORKFLOW, span, "workflow is empty".to_owned());
+            }
+            return workflow;
+        };
+        let entries = self.parse_mapping(Label::Section("workflow"), root, false, true);
+        self.parse_keys(entries, "workflow", &ROOT_KEYS, &mut workflow);
+        if !workflow.on.is_present() {
+            self.error(
+                &MISSING_REQUIRED_KEY,
+                span,
+                "\"on\" section is missing in workflow".to_owned(),
+            );
+        }
+        if !workflow.jobs.is_present() {
+            self.error(
+                &MISSING_REQUIRED_KEY,
+                span,
+                "\"jobs\" section is missing in workflow".to_owned(),
+            );
+        }
+        workflow
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::panic)]
+
+    use workflint_diagnostics::{FileId, SourceFile};
+
+    use crate::testing::render;
+    use crate::{Str, parse};
+
+    fn check(text: &str) -> Vec<String> {
+        let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+        let document = workflint_yaml::parse(&file).document.unwrap();
+        render(&file, parse(&file, &document).diagnostics)
+    }
+
+    #[test]
+    fn a_file_with_no_document_is_an_empty_workflow() {
+        for text in ["", "# only a comment\n", "\n\n"] {
+            assert_eq!(
+                check(text),
+                ["1:1: workflow is empty [empty-workflow]"],
+                "{text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn missing_on_and_jobs_are_reported_where_the_document_starts() {
+        let cases: [(&str, &[&str]); 5] = [
+            (
+                "# issue #232\non: push\n",
+                &[r#"2:1: "jobs" section is missing in workflow [missing-required-key]"#],
+            ),
+            (
+                "# c\n\n---\n\non: push\n",
+                &[r#"3:1: "jobs" section is missing in workflow [missing-required-key]"#],
+            ),
+            (
+                "%YAML 1.1\n---\njobs: {}\n",
+                &[r#"1:1: "on" section is missing in workflow [missing-required-key]"#],
+            ),
+            (
+                "  on: push\n",
+                &[r#"1:3: "jobs" section is missing in workflow [missing-required-key]"#],
+            ),
+            (
+                "name: x\n",
+                &[
+                    r#"1:1: "jobs" section is missing in workflow [missing-required-key]"#,
+                    r#"1:1: "on" section is missing in workflow [missing-required-key]"#,
+                ],
+            ),
+        ];
+        for (text, want) in cases {
+            assert_eq!(check(text), want, "{text:?}");
+        }
+    }
+
+    #[test]
+    fn a_root_that_is_not_a_mapping_misses_on_and_jobs() {
+        assert_eq!(
+            check("---\n"),
+            [
+                r#"1:1: "jobs" section is missing in workflow [missing-required-key]"#,
+                r#"1:1: "on" section is missing in workflow [missing-required-key]"#,
+                r#"2:1: "workflow" section should not be empty. please remove this section if it's unnecessary [empty-section]"#,
+            ]
+        );
+        assert_eq!(
+            check("[]\n"),
+            [
+                r#"1:1: "jobs" section is missing in workflow [missing-required-key]"#,
+                r#"1:1: "on" section is missing in workflow [missing-required-key]"#,
+                r#"1:1: "workflow" section is sequence node but mapping node is expected [unexpected-node-kind]"#,
+            ]
+        );
+    }
+
+    #[test]
+    fn root_keys_are_case_sensitive_and_listed_when_unexpected() {
+        assert_eq!(
+            check("on: push\njobs: {}\nName: x\n"),
+            [
+                r#"3:1: unexpected key "Name" for "workflow" section. expected one of "concurrency", "defaults", "env", "jobs", "name", "on", "permissions", "run-name" [unexpected-key]"#
+            ]
+        );
+    }
+
+    #[test]
+    fn a_duplicate_root_key_is_reported_and_merge_keys_are_skipped() {
+        assert_eq!(
+            check("on: push\njobs: {}\n\"<<\": x\n<<: y\non: pull\n"),
+            [
+                r#"3:1: GitHub Actions does not support YAML merge key "<<" [merge-key-unsupported]"#,
+                r#"4:1: GitHub Actions does not support YAML merge key "<<" [merge-key-unsupported]"#,
+                r#"5:1: key "on" is duplicated in "workflow" section. previously defined at line:1,col:1 [duplicate-key]"#,
+            ]
+        );
+    }
+
+    #[test]
+    fn name_may_be_empty_and_run_name_may_not() {
+        assert_eq!(
+            check("on: push\njobs: {}\nname:\nrun-name:\n"),
+            ["4:10: string should not be empty [empty-string]"]
+        );
+    }
+
+    #[test]
+    fn name_and_run_name_are_parsed() {
+        let text = "name: CI\nrun-name: Deploy ${{ inputs.env }}\non: push\njobs: {}\n";
+        let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+        let document = workflint_yaml::parse(&file).document.unwrap();
+        let parsed = parse(&file, &document);
+
+        let workflow = parsed.workflow;
+        assert_eq!(workflow.name.value().map(Str::value), Some("CI"));
+        assert_eq!(workflow.name.key().map(Str::value), Some("name"));
+        assert_eq!(
+            workflow.run_name.value().map(Str::value),
+            Some("Deploy ${{ inputs.env }}")
+        );
+        assert!(workflow.on.is_present());
+        assert!(workflow.jobs.is_present());
+        assert_eq!(parsed.diagnostics, []);
+    }
+}

@@ -2,7 +2,8 @@
 //!
 //! This is the minimal binary that the conformance suite runs, with the command line in
 //! `tests/conformance/README.md`. It lints the files given as arguments with the YAML layer and
-//! prints the diagnostics. M5.6 replaces it with the full command-line interface.
+//! the workflow parser, and prints the diagnostics. M5.6 replaces it with the full command-line
+//! interface.
 
 use std::ffi::OsString;
 use std::fmt::Display;
@@ -168,10 +169,21 @@ fn lint(index: usize, path: &OsString) -> Result<(SourceFile, Vec<Diagnostic>), 
                 format!("could not parse as YAML: {}", err.problem()),
             )]
         }
-        None => workflint_yaml::parse(&file).diagnostics,
+        None => parse_file(&file),
     };
     sort_and_dedup(&file, &mut diagnostics);
     Ok((file, diagnostics))
+}
+
+/// Parses `file` with the YAML layer and, if it gives a document, with the workflow parser, and
+/// returns the diagnostics of both.
+fn parse_file(file: &SourceFile) -> Vec<Diagnostic> {
+    let parsed = workflint_yaml::parse(file);
+    let mut diagnostics = parsed.diagnostics;
+    if let Some(document) = &parsed.document {
+        diagnostics.extend(workflint_syntax::parse(file, document).diagnostics);
+    }
+    diagnostics
 }
 
 /// Decodes the longest prefix of `bytes` that ends at or before `end` and decodes without error.

@@ -12,8 +12,10 @@ use crate::{Event, Field, Job, Keyed, Str, Value, WorkflowCallEvent};
 /// written in, and its jobs are a [`Keyed`] collection in source order.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Workflow<'a> {
-    /// The span of the root node. The reference reports a missing `on` or
-    /// `jobs` section at its start.
+    /// From the start of the YAML document to the end of the root node. The
+    /// document starts at its first directive, its `---`, or else its root
+    /// node. The reference reports a missing `on` or `jobs` section at this
+    /// start.
     pub span: Span,
     /// `name`. It may be empty.
     pub name: Field<'a, Str<'a>>,
