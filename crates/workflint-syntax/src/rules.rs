@@ -19,7 +19,7 @@ pub static MERGE_KEY_UNSUPPORTED: RuleMeta = syntax_check(
 );
 
 /// A required section or key is missing, such as `on` or `jobs` at the
-/// workflow root.
+/// workflow root, or `type` of a `workflow_call` input.
 pub static MISSING_REQUIRED_KEY: RuleMeta = syntax_check(
     "missing-required-key",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/missing-required-key.md",
@@ -77,16 +77,40 @@ pub static TOO_MANY_YAML_NODES: RuleMeta = syntax_check(
     "https://github.com/stokehold/workflint/blob/main/docs/rules/too-many-yaml-nodes.md",
 );
 
+/// A `workflow_dispatch` input has a `type` that is not `string`, `number`,
+/// `boolean`, `choice`, or `environment`.
+pub static INVALID_DISPATCH_INPUT_TYPE: RuleMeta = syntax_check(
+    "invalid-dispatch-input-type",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-dispatch-input-type.md",
+);
+
+/// A `workflow_call` input has a `type` that is not `boolean`, `number`, or
+/// `string`.
+pub static INVALID_WORKFLOW_CALL_INPUT_TYPE: RuleMeta = syntax_check(
+    "invalid-workflow-call-input-type",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-workflow-call-input-type.md",
+);
+
+/// `schedule` is named in a string or a sequence item of `on`, so it has no
+/// `cron` entries.
+pub static SCHEDULE_WITHOUT_CONFIG: RuleMeta = syntax_check(
+    "schedule-without-config",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/schedule-without-config.md",
+);
+
 /// Every rule in this module, in the order of their IDs.
-pub static ALL: [&RuleMeta; 11] = [
+pub static ALL: [&RuleMeta; 14] = [
     &DUPLICATE_KEY,
     &EMPTY_SECTION,
     &EMPTY_STRING,
     &EMPTY_WORKFLOW,
     &EXPECTED_SINGLE_EXPRESSION,
+    &INVALID_DISPATCH_INPUT_TYPE,
     &INVALID_LITERAL_VALUE,
+    &INVALID_WORKFLOW_CALL_INPUT_TYPE,
     &MERGE_KEY_UNSUPPORTED,
     &MISSING_REQUIRED_KEY,
+    &SCHEDULE_WITHOUT_CONFIG,
     &TOO_MANY_YAML_NODES,
     &UNEXPECTED_KEY,
     &UNEXPECTED_NODE_KIND,

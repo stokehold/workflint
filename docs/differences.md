@@ -194,6 +194,18 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Upstream issue: none.
 - Milestone: M2.
 - Status: planned.
+- Fixtures: `err/case_sensitive_keys`, `err/unexpected_keys`.
+
+<a id="empty-event-name-section"></a>
+### Section name of an event with an empty name
+
+- Upstream: when the body of an event with an empty name is not a mapping, the message names the section `%q section`. An event key that is not a scalar also has the empty name. The parser formats the section name only when the event name is not empty (`parse.go:60-66`), so the format verb stays in the message.
+- workflint: the message names the section `"" section`, as upstream's unexpected-key messages for the same event already do.
+- Why: `%q` is an unformatted verb, not a section name.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned.
+- Fixtures: `workflint/err/empty_event_name`.
 
 <a id="action-metadata-aliases"></a>
 ### Aliases and merge keys in `action.yml` inputs

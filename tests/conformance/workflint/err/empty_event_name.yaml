@@ -1,0 +1,8 @@
+on:
+  # An event with an empty name and a body that is not a mapping
+  '': x
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
