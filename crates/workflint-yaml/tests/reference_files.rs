@@ -4,7 +4,7 @@
 //! `tests/conformance/actionlint/testdata/`. The second reads the corpus in
 //! `.reference/realworld/`, which `cargo xtask reference` creates, so it is
 //! ignored by default. Run it with
-//! `cargo nextest run -p workflint-yaml --run-ignored all reference_files`.
+//! `cargo nextest run -p workflint-yaml --run-ignored all -E 'binary(reference_files)'`.
 
 mod invariants;
 
@@ -38,6 +38,8 @@ fn parse_all(dir: &Path) -> usize {
             continue;
         };
         let text = invariants::text(&bytes);
+        // The checks' messages do not name the file, so print it first. The
+        // test runner shows the output of a failed test.
         println!("{}", path.display());
         invariants::check_events(&text);
         invariants::check_tree(&text);
