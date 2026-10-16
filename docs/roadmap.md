@@ -88,7 +88,7 @@ Goal: the expression language with the reference's type checking, without its bu
 Goal: every reference rule, with fine-grained rule IDs.
 
 - M4.1 `workflint-rules`: `Rule` trait, visitor, registry, rule metadata, fixed rule order.
-- M4.2 `workflint-data`: port the reference's tables (runner labels, permissions, webhooks, popular actions, availability, deprecated commands) as generated-style Rust files.
+- M4.2 `workflint-data`: port the remaining tables of the reference (runner labels, permissions, webhooks, popular actions, deprecated commands) as generated-style Rust files. M3 ports the expression tables.
 - M4.3 to M4.n One pull request per reference rule or group of closely related rules, in the order of `docs/parity-checklist.md`: expression checks, `if:` conditions, job `needs`, matrix, events, globs, permissions, runner labels, shell names, environment variable names, credentials, deprecated commands, actions and action metadata, reusable workflow calls.
 - M4.x Rule documentation pages for every rule, with examples run as tests.
 

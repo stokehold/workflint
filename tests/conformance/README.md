@@ -39,7 +39,7 @@ Add a fixture under `workflint/` when a checklist row says "none" in its fixture
 
 ## Command line
 
-This is the command line the runner uses. M5 builds the CLI to accept it, and the reference binary accepts it today.
+This is the command line the runner uses. The reference binary accepts it, and so does `workflint` from M2.0. From M2.0 the binary lints the files it is given: it reports the diagnostics of the YAML layer, and each later task adds its own. M5.6 replaces it with the full CLI.
 
 For each fixture, the runner creates a temporary directory and builds a project in `<temp>/project`:
 
@@ -97,7 +97,9 @@ A relative path is relative to the repository root. In this mode the runner does
 "ok/minimal.yaml" = "M5"
 ```
 
-The milestone is the latest one among the `docs/parity-checklist.md` rows that cite the fixture, or M5 if no row cites it. It is never earlier than M2, because no fixture can pass before M2.0 gives the binary the runner's command line.
+The milestone is the latest one among the `docs/parity-checklist.md` rows that cite the fixture, or M5 if no row cites it.
+
+The binary has linted for real since M2.0, so the file lists only fixtures that still fail. A task that makes a fixture fail again, and adds the fixture back to this file, introduces a regression. Fix the regression instead.
 
 - A listed fixture that fails passes its test and prints `expected failure until <milestone>` with the first line of the reason.
 - A listed fixture that passes fails its test, with a message that says to remove its line. The pull request that makes a fixture pass removes the line.
@@ -135,6 +137,8 @@ The runner fails:
 Every entry needs a matching section in `docs/differences.md`. Write that section first, then the entry.
 
 `cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. An `upstream` line must be in the fixture's `.out` file, as in the runner. The oracle removes the first line of the reference's output that this `.out` line matches, exactly or as a `/pattern/`. An entry that does not apply is a problem in the report that names the `.out` file, and the other entries of the fixture still apply. The corpus files have no fixture ID, so no entry applies to them yet (#49).
+
+`cargo xtask oracle --kind KIND` compares only the lines of the given kinds (`CONTRIBUTING.md#oracle`). It reads the kind of an `upstream` or `workflint` line, and of a `.out` line, from its brackets. A `/pattern/` line has the kind its pattern ends with, as `\[kind\]` or `\[(kind|kind)\]`, and a pattern line without one counts for every kind. The oracle uses only the `upstream` and `workflint` lines of the given kinds, and skips an entry that has neither, without a problem. An entry that replaces a line of one kind with a line of another kind applies one half: the half of the given kind.
 
 ## Rule kinds
 

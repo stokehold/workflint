@@ -6,7 +6,7 @@
 //! column of `docs/parity-checklist.md`. The conformance target checks that
 //! the two agree.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
 
 use regex::Regex;
@@ -24,6 +24,11 @@ static TABLE: LazyLock<BTreeMap<String, String>> = LazyLock::new(|| {
 /// with a lookup in the rule registry.
 pub fn actionlint_kind(rule_id: &str) -> Option<&'static str> {
     TABLE.get(rule_id).map(String::as_str)
+}
+
+/// Every actionlint kind that a rule ID maps to, sorted.
+pub fn kinds() -> BTreeSet<&'static str> {
+    TABLE.values().map(String::as_str).collect()
 }
 
 /// Replaces the rule ID in each diagnostic's brackets with its kind.
@@ -115,6 +120,15 @@ mod tests {
     fn a_known_rule_id_maps_to_its_kind() {
         assert_eq!(actionlint_kind("yaml-syntax-error"), Some("syntax-check"));
         assert_eq!(actionlint_kind("undefined-variable"), Some("expression"));
+    }
+
+    #[test]
+    fn the_kinds_are_the_values_of_the_table() {
+        let kinds = kinds();
+        assert!(kinds.contains("syntax-check"));
+        assert!(kinds.contains("workflow-call"));
+        assert!(!kinds.contains("yaml-syntax-error"));
+        assert_eq!(kinds.len(), 18);
     }
 
     #[test]

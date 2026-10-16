@@ -6,6 +6,7 @@ This directory is a copy of files from [rhysd/actionlint](https://github.com/rhy
 - `docs/checks.md`.
 - `scripts/generate-actionlint-matcher/test/`.
 - `.github/actionlint-matcher.json`.
+- `expr_sema.go`, the expression checker, whose `BuiltinGlobalVariableTypes` table the tests of `workflint-data` compare with.
 - `LICENSE.txt`, actionlint's MIT license, which covers every file here except this README.
 
 Do not edit these files. To recreate the copy, run this from the repository root:

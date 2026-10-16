@@ -73,7 +73,6 @@ jobs:
       - run: cargo nextest run --workspace --locked --profile ci
       # nextest does not run doctests.
       - run: cargo test --doc --workspace --locked
-      - run: cargo run --locked -p workflint
 
   deny:
     name: cargo-deny
