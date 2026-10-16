@@ -1,5 +1,9 @@
 # cargo-nextest configuration. CI runs `cargo nextest run --profile ci`.
 
+# The minimum nextest version, which is the version CI installs.
+# Older versions stop with an error that names this file.
+nextest-version = "0.9.148"
+
 [profile.ci]
 # Run every test and report all failures, instead of stopping at the first one.
 fail-fast = false
