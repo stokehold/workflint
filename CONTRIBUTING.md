@@ -102,10 +102,11 @@ The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchm
 
 | Target | What it checks |
 | --- | --- |
+| `render` | `workflint-diagnostics` builds a `SourceFile` from the input text and renders diagnostics with arbitrary spans in the default and one-line formats without panicking. The output is UTF-8, has one header per diagnostic and well-formed snippets, and differs between color on and off only in escape sequences. The comment at the top of `fuzz/fuzz_targets/render.rs` describes the input layout. |
 | `yaml_events` | The event parser of `workflint-yaml` reads the input up to the end of the stream or the first error without panicking. Every event's marks lie inside the input on character boundaries. |
 | `yaml_tree` | `workflint_yaml::parse` builds the tree without panicking. Every span lies inside the input on character boundaries and converts to a line and column, and every node ID in the tree refers to a node. Every scalar's source map is exact and maps each character inside the scalar's span. |
 
-Both targets replace invalid UTF-8 with U+FFFD and run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
+All three targets replace invalid UTF-8 with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
 
 ```sh
 cargo xtask fuzz-seeds

@@ -29,7 +29,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Order of diagnostics at the same position
 
 - Upstream: diagnostics are sorted by file, line, column, then message text.
-- workflint: diagnostics are sorted by file, line, column, rule ID, then message text (ADR 0007). Deduplication is unchanged: equal file, line, column and message collapse into one.
+- workflint: diagnostics are sorted by file, line, column, rule ID, then message text (ADR 0007). Deduplication is unchanged: equal file, line, column and message collapse into one. The diagnostic kept has the highest severity and, among those, the smallest rule ID, which is the ID shown in brackets.
 - Why: the order of findings at one position should not depend on message wording.
 - Upstream issue: none.
 - Milestone: M1.
@@ -40,9 +40,9 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 - Upstream: columns from YAML nodes count code points, but positions inside `${{ }}` add byte offsets to the node column. In `"日本語" ${{ matrix.foo }}` the error is reported at column 35, while the code-point column is 29. The `^~~~` indicator slices the source line by bytes, so it lands on the wrong token after non-ASCII text. It counts a tab as zero cells, so a tab before the column moves the `^` left, and East Asian ambiguous characters count as two cells in a CJK locale. The `~` run covers the characters from the column to the next space or tab, whatever the error is about. `EndColumn` in templates is a display width, a third unit.
 - workflint: text output, `-format` fields and JSON use 1-based code-point columns everywhere. `EndColumn` uses the same unit as `Column`. SARIF and the future language server use UTF-16 code units, as their specifications require (ADR 0007). The indicator line works like this:
-  - Each character before the column becomes as many spaces as its display width. A tab stays a tab, so the `^` lines up with the source line at any tab width.
-  - Wide characters, such as CJK characters and most emoji, take two cells. Ambiguous characters take one cell in every locale, and control characters take none.
-  - The `^` and `~` run underlines the diagnostic's span up to the end of its line, so it covers the whole token, spaces included. A tab inside the span stays a tab. A span with nothing visible on the line, such as one at the end of a line, gets a single `^`.
+  - The text before the column becomes as many spaces as its display width. A tab stays a tab, so the `^` lines up with the source line at any tab width.
+  - The display width is measured over each run of text between tabs, so an emoji sequence takes the cells a terminal gives it. `❤️` (U+2764 U+FE0F) and emoji joined with U+200D take two cells. Wide characters, such as CJK characters and most emoji, take two cells. Ambiguous characters take one cell in every locale, and control characters take none.
+  - The `^` and `~` run underlines the diagnostic's span up to the end of its line, so it covers the whole token, spaces included. A tab inside the span stays a tab. Tabs at the start of the span are copied before the `^`, so the `^` sits under the first character after them. Tabs at the end of the span are not underlined. A span with nothing visible on the line, such as one at the end of a line or one of only tabs, gets a single `^` at its start.
   - An empty span falls back to upstream's run: from the column to the next space or tab.
 - Why: one consistent unit. ASCII-only files without tabs report the same columns as upstream. Their indicator differs only where the span is not the run up to the next space, for example a message about a quoted string that contains spaces.
 - Upstream issue: none.
