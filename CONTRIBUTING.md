@@ -13,7 +13,7 @@ workflint is early in development. The plan lives in `docs/roadmap.md`, and the 
 
 You need [rustup](https://rustup.rs). The repository pins its toolchain in `rust-toolchain.toml`, and rustup installs it on first use.
 
-The tests run with [cargo-nextest](https://nexte.st). CI uses version 0.9.148. Install it with `cargo install --locked cargo-nextest`, or download a prebuilt binary as the nextest documentation describes.
+The tests run with [cargo-nextest](https://nexte.st) 0.9.148 or newer, the version CI uses. `.config/nextest.toml` sets that minimum, and older versions stop with an error. Install it with `cargo install --locked cargo-nextest`, or download a prebuilt binary as the nextest documentation describes.
 
 ```sh
 cargo run -p workflint
