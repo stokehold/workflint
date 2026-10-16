@@ -1,0 +1,6 @@
+x: &a.b 1
+y: *a.b
+z: &job/defaults 2
+w: *job/defaults
+v: &$v 3
+u: *$v
