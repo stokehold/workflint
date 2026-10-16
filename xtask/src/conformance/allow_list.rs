@@ -150,6 +150,13 @@ pub fn apply(expected: &[String], entries: &[&Entry]) -> Result<Vec<String>, Str
     Ok(lines)
 }
 
+/// The file path of an expected line: the path of an exact line, or the path
+/// at the start of a pattern line. `None` for a line with no position.
+#[must_use]
+pub fn line_path(line: &str) -> Option<String> {
+    sort_key(line).map(|(path, ..)| path)
+}
+
 /// What an expected line sorts by: path, line and column, and the message
 /// for an exact line. `None` for a line with no position.
 type SortKey = Option<(String, u32, u32, Option<String>)>;
@@ -353,6 +360,20 @@ workflint = "workflows/a.yaml:1:1: b [action]"
                 "test.yaml:2:1: a [x]"
             ])
         );
+    }
+
+    #[test]
+    fn the_path_of_a_line_comes_from_its_position() {
+        assert_eq!(
+            line_path("workflows/a.yaml:1:2: m [x]").as_deref(),
+            Some("workflows/a.yaml")
+        );
+        assert_eq!(
+            line_path(r"/workflows/b\.yaml:3:4: m/").as_deref(),
+            Some("workflows/b.yaml")
+        );
+        assert_eq!(line_path("/is unknown/"), None);
+        assert_eq!(line_path("Hello, world!"), None);
     }
 
     #[test]

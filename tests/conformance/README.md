@@ -1,6 +1,6 @@
 # Conformance suite
 
-The conformance suite runs every fixture in this directory through the `workflint` binary and compares the output with the fixture's expected errors, using the rules of actionlint's own tests (ADR 0004). The runner is the `conformance` test target of the `xtask` package, in `xtask/tests/conformance.rs`, with its code in `xtask/src/conformance/`. `cargo xtask oracle` (M1.10) uses the same output parsing, matching and allow-list.
+The conformance suite runs every fixture in this directory through the `workflint` binary and compares the output with the fixture's expected errors, using the rules of actionlint's own tests (ADR 0004). The runner is the `conformance` test target of the `xtask` package, in `xtask/tests/conformance.rs`, with its code in `xtask/src/conformance/`. `cargo xtask oracle` uses the same command line, output parsing, matching, kind mapping and allow-list to compare workflint with the reference binary, as `CONTRIBUTING.md` describes.
 
 `cargo test --workspace` and `cargo nextest run --workspace` both run it. To run only the suite:
 
@@ -122,6 +122,8 @@ The runner fails:
 - a fixture that is not in `expected-failures.toml` if it also passes without one of its entries. Remove such an entry.
 
 Every entry needs a matching section in `docs/differences.md`. Write that section first, then the entry.
+
+`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. The corpus files have no fixture ID, so no entry applies to them.
 
 ## Rule kinds
 

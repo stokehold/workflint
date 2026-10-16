@@ -1,0 +1,45 @@
+name: Oracle
+
+on:
+  pull_request:
+    paths:
+      - crates/**
+      - xtask/**
+      - tests/conformance/**
+      - .go-version
+      - .github/workflows/oracle.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  oracle:
+    name: cargo xtask oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: The reference against itself reports no difference
+        run: cargo xtask oracle --self-check > /dev/null
+      # M5.9 removes --report-only, so that an unexplained difference fails
+      # the job.
+      - name: Compare workflint with the reference
+        run: cargo xtask oracle --report-only
+      - name: Add the summary to the run page
+        if: ${{ !cancelled() && hashFiles('target/oracle/summary.md') != '' }}
+        run: cat target/oracle/summary.md >> "$GITHUB_STEP_SUMMARY"

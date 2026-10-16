@@ -45,6 +45,21 @@ cargo xtask yaml-parity
 
 It builds a small Go program with go-yaml, the YAML library of the reference, and compares the trees of both parsers on the vendored test data, the 1,503 corpus files, and `tests/yaml-parity/`. Every node must have the same kind, position, decoded value, anchor, and alias name. A file that go-yaml rejects must fail in workflint too, at any position. The command prints a diff for each file that differs and exits with an error. It needs Go 1.26.4, not `.reference/`. Pass file or directory paths to compare only those. CI runs it when these paths change.
 
+## Oracle
+
+`cargo xtask oracle` runs workflint and the reference binary on the same inputs and compares their output (ADR 0004). It needs git and Go 1.26.4 to build the reference, and builds it first if `.reference/` lacks it.
+
+```sh
+cargo xtask oracle
+cargo xtask oracle tests/conformance/actionlint/testdata/err/one_error.yaml
+```
+
+The inputs are the vendored `err`, `examples`, `ok`, and `projects` fixtures and the 1,503 corpus files. Both binaries run with `-oneline -no-color -shellcheck= -pyflakes=` and an empty config file, in a temporary project, as the conformance runner runs them (`tests/conformance/README.md`). Each fixture is one run, and the corpus is one run over all its files. The command groups the output by file, replaces each rule ID in workflint's output with its actionlint kind from `tests/conformance/rule-kinds.toml`, applies `tests/conformance/allowed-differences.toml` to the reference's output, and compares the lines and the exit codes.
+
+It prints a summary and a diff for each file that differs, and writes the same Markdown to `target/oracle/report.md`, with the summary alone in `target/oracle/summary.md`. It exits with an error if a difference is not in the allow-list. `--report-only` exits with success after writing the report.
+
+Pass fixture files, project directories, directories of fixtures, the corpus archive, or files in `.reference/realworld` to compare only those. CI runs the command with `--report-only` on pull requests that change `crates/`, `xtask/`, or `tests/conformance/`, and adds the summary to the run page. M5.9 removes `--report-only`, so that an unexplained difference fails the job. The job first runs the hidden `--self-check` flag, which runs the reference in place of workflint without the kind mapping or the allow-list and fails on any difference. That shows the runs are deterministic. It skips the three fixtures on which the reference's output varies between runs (`docs/differences.md#cached-metadata-errors`).
+
 ## Benchmarks
 
 `cargo xtask bench` compares a release build of workflint with the reference binary on the three scenarios in ADR 0019: the corpus with external tools off, the corpus with shellcheck on, and `testdata/bench/small.yaml`. It needs everything `cargo xtask reference` needs, plus [hyperfine](https://github.com/sharkdp/hyperfine) 2, and shellcheck 0.11.0 for the shellcheck scenario. CI uses hyperfine 2.0.0.
