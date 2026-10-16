@@ -14,6 +14,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4.13"
 workflint-diagnostics = { path = "../crates/workflint-diagnostics" }
+workflint-expr = { path = "../crates/workflint-expr" }
 workflint-syntax = { path = "../crates/workflint-syntax" }
 workflint-yaml = { path = "../crates/workflint-yaml" }
 
@@ -50,6 +51,27 @@ bench = false
 [[bin]]
 name = "glob"
 path = "fuzz_targets/glob.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_check"
+path = "fuzz_targets/expr_check.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_lex"
+path = "fuzz_targets/expr_lex.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_parse"
+path = "fuzz_targets/expr_parse.rs"
 test = false
 doc = false
 bench = false
