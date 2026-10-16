@@ -958,6 +958,8 @@ dependencies = [
 name = "workflint-expr"
 version = "0.0.1"
 dependencies = [
+ "codspeed-divan-compat",
+ "datatest-stable",
  "workflint-data",
  "workflint-diagnostics",
 ]

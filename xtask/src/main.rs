@@ -55,7 +55,9 @@ enum Command {
     },
     /// Write seed inputs for the fuzz targets into `fuzz/corpus/<target>/`:
     /// the YAML files of the vendored test data, the corpus archive, the YAML
-    /// test suite, and the fuzz regression inputs.
+    /// test suite, and the fuzz regression inputs, or, for the expression
+    /// targets, the reference's real-world expressions, the expressions in
+    /// the vendored test data, and the expression fuzz regression inputs.
     FuzzSeeds,
     /// Run workflint and the reference binary on the vendored fixtures and
     /// the corpus, and report each difference that

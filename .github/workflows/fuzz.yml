@@ -8,7 +8,9 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - crates/workflint-data/**
       - crates/workflint-diagnostics/**
+      - crates/workflint-expr/**
       - crates/workflint-syntax/**
       - crates/workflint-yaml/**
       - fuzz/**
@@ -66,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [glob, render, syntax, yaml_events, yaml_tree]
+        target: [expr_lex, expr_parse, glob, render, syntax, yaml_events, yaml_tree]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

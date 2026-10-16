@@ -2,10 +2,14 @@
 //! each fuzz target in `fuzz/`, so that `cargo fuzz run` starts from real
 //! workflows instead of an empty input.
 //!
-//! The seeds stay out of git. They are copies of files that git already has:
-//! the YAML files of the vendored reference test data, every workflow in its
-//! corpus archive, the inputs of the YAML test suite, and the fuzz regression
-//! inputs of `workflint-yaml`.
+//! The seeds stay out of git. They are copies of files that git already has.
+//! The targets that read workflows get the YAML files of the vendored
+//! reference test data, every workflow in its corpus archive, the inputs of
+//! the YAML test suite, and the fuzz regression inputs of `workflint-yaml`.
+//! The targets that read the text after `${{` get each line of the
+//! reference's `expressions.txt` followed by `}}`, the text after each `${{`
+//! in the YAML files of the vendored test data, and the fuzz regression inputs
+//! of `workflint-expr`.
 
 use std::fs::{self, File};
 use std::io::Read as _;
@@ -14,8 +18,13 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 use zip::ZipArchive;
 
-/// The fuzz targets in `fuzz/fuzz_targets/`. Each gets every seed.
+/// The fuzz targets in `fuzz/fuzz_targets/` that read workflows. Each gets
+/// every workflow seed.
 pub(crate) const TARGETS: &[&str] = &["glob", "render", "syntax", "yaml_events", "yaml_tree"];
+
+/// The fuzz targets in `fuzz/fuzz_targets/` that read the text after `${{`.
+/// Each gets every expression seed.
+pub(crate) const EXPRESSION_TARGETS: &[&str] = &["expr_lex", "expr_parse"];
 
 /// The vendored reference test data, relative to the repository root.
 const FIXTURES: &str = "tests/conformance/actionlint/testdata";
@@ -29,6 +38,14 @@ const YAML_TEST_SUITE: &str = "crates/workflint-yaml/tests/yaml-test-suite";
 /// The fuzz regression inputs, relative to the repository root.
 const REGRESSIONS: &str = "crates/workflint-yaml/tests/fuzz-regressions";
 
+/// The reference's real-world expressions, one per line, relative to the
+/// repository root.
+const EXPRESSIONS: &str = "tests/conformance/actionlint/testdata/bench/expressions.txt";
+
+/// The fuzz regression inputs of the expression targets, relative to the
+/// repository root.
+const EXPRESSION_REGRESSIONS: &str = "crates/workflint-expr/tests/fuzz-regressions";
+
 /// The corpus directories, relative to the repository root. `cargo fuzz run
 /// <target>` reads `fuzz/corpus/<target>/` by default.
 const CORPUS: &str = "fuzz/corpus";
@@ -41,22 +58,25 @@ struct Seed {
 }
 
 /// Collects the seeds under `root` and writes them into the corpus directory
-/// of every target in [`TARGETS`].
+/// of every target in [`TARGETS`] and [`EXPRESSION_TARGETS`].
 pub(crate) fn run(root: &Path) -> Result<()> {
     let seeds = collect(root)?;
-    for target in TARGETS {
-        let dir = root.join(CORPUS).join(target);
-        write(&dir, &seeds)?;
-        println!(
-            "fuzz-seeds: wrote {} seeds to {CORPUS}/{target}",
-            seeds.len()
-        );
+    let expressions = collect_expressions(root)?;
+    for (targets, seeds) in [(TARGETS, &seeds), (EXPRESSION_TARGETS, &expressions)] {
+        for target in targets {
+            let dir = root.join(CORPUS).join(target);
+            write(&dir, seeds)?;
+            println!(
+                "fuzz-seeds: wrote {} seeds to {CORPUS}/{target}",
+                seeds.len()
+            );
+        }
     }
     Ok(())
 }
 
-/// Reads the seeds from the sources under `root`, in a fixed order. Fails if
-/// a source is missing or two seeds would get the same file name.
+/// Reads the workflow seeds from the sources under `root`, in a fixed order.
+/// Fails if a source is missing or two seeds would get the same file name.
 fn collect(root: &Path) -> Result<Vec<Seed>> {
     let mut seeds = Vec::new();
     for path in files_under(&root.join(FIXTURES))? {
@@ -81,12 +101,76 @@ fn collect(root: &Path) -> Result<Vec<Seed>> {
             &path,
         )?);
     }
+    check_unique(&seeds)?;
+    Ok(seeds)
+}
+
+/// Reads the expression seeds from the sources under `root`, in a fixed
+/// order. Fails if a source is missing or two seeds would get the same file
+/// name.
+fn collect_expressions(root: &Path) -> Result<Vec<Seed>> {
+    let path = root.join(EXPRESSIONS);
+    let text =
+        fs::read_to_string(&path).with_context(|| format!("cannot read {}", path.display()))?;
+    let mut seeds: Vec<Seed> = text
+        .lines()
+        .enumerate()
+        .map(|(index, line)| Seed {
+            name: format!("expression-{:04}", index + 1),
+            contents: format!("{line}}}}}").into_bytes(),
+        })
+        .collect();
+    let fixtures = root.join(FIXTURES);
+    for path in files_under(&fixtures)? {
+        if !is_yaml(&path) {
+            continue;
+        }
+        let file = seed_from_file("fixture", &fixtures, &path)?;
+        let text = String::from_utf8_lossy(&file.contents);
+        for (index, expression) in expressions_in(&text).into_iter().enumerate() {
+            seeds.push(Seed {
+                name: format!("{}-{}", file.name, index + 1),
+                contents: expression.as_bytes().to_vec(),
+            });
+        }
+    }
+    for path in files_under(&root.join(EXPRESSION_REGRESSIONS))? {
+        seeds.push(seed_from_file(
+            "regression",
+            &root.join(EXPRESSION_REGRESSIONS),
+            &path,
+        )?);
+    }
+    check_unique(&seeds)?;
+    Ok(seeds)
+}
+
+/// Fails if two seeds have the same file name.
+fn check_unique(seeds: &[Seed]) -> Result<()> {
     let mut names: Vec<&str> = seeds.iter().map(|seed| seed.name.as_str()).collect();
     names.sort_unstable();
     if let Some([name, _]) = names.array_windows().find(|[a, b]| a == b) {
         bail!("two seeds are named {name}");
     }
-    Ok(seeds)
+    Ok(())
+}
+
+/// The text after each `${{` in `text`, up to the end of the line that has
+/// the next `}}`, or of the same line if no `}}` follows. The tests of
+/// `workflint-expr` in `real_world.rs` cut the fixtures the same way.
+fn expressions_in(text: &str) -> Vec<&str> {
+    let mut found = Vec::new();
+    let mut rest = text;
+    while let Some(start) = rest.find("${{") {
+        let after = &rest[start + 3..];
+        let close = after.find("}}").unwrap_or(0);
+        let end = after[close..]
+            .find('\n')
+            .map_or(after.len(), |newline| close + newline + 1);
+        found.push(&after[..end]);
+        rest = after;
+    }
+    found
 }
 
 /// Writes every seed into `dir`, creating it if needed. Files already in
@@ -231,6 +315,13 @@ mod tests {
             "+STR\n",
         );
         put(root, &format!("{REGRESSIONS}/tab-after-key"), "a:\t\n");
+        put(
+            root,
+            &format!("{FIXTURES}/c.yml"),
+            "x: ${{ a }} b\ny: ${{ c\n",
+        );
+        put(root, EXPRESSIONS, "a.b\n!c\n");
+        put(root, &format!("{EXPRESSION_REGRESSIONS}/empty"), "");
         dir
     }
 
@@ -252,6 +343,7 @@ mod tests {
     fn expected() -> Vec<(String, String)> {
         [
             ("fixture-b.yml", "on: pull_request\n"),
+            ("fixture-c.yml", "x: ${{ a }} b\ny: ${{ c\n"),
             ("fixture-examples-a.yaml", "on: push\n"),
             ("realworld-x_y_.github_workflows_ci.yml", "jobs: {}\n"),
             ("regression-tab-after-key", "a:\t\n"),
@@ -268,6 +360,77 @@ mod tests {
         for target in TARGETS {
             assert_eq!(corpus(dir.path(), target), expected(), "{target}");
         }
+    }
+
+    fn expected_expressions() -> Vec<(String, String)> {
+        [
+            ("expression-0001", "a.b}}"),
+            ("expression-0002", "!c}}"),
+            ("fixture-c.yml-1", " a }} b\n"),
+            ("fixture-c.yml-2", " c\n"),
+            ("regression-empty", ""),
+        ]
+        .map(|(name, contents)| (name.to_owned(), contents.to_owned()))
+        .to_vec()
+    }
+
+    #[test]
+    fn every_expression_target_gets_the_expressions_the_fixture_expressions_and_the_regressions() {
+        let dir = repository();
+        run(dir.path()).unwrap();
+        for target in EXPRESSION_TARGETS {
+            assert_eq!(
+                corpus(dir.path(), target),
+                expected_expressions(),
+                "{target}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_expression_seed_ends_at_the_line_with_the_next_closing_braces() {
+        let text = "a: ${{ x }} b\nc: ${{ 'y\n' }} d\ne: ${{ z";
+        assert_eq!(expressions_in(text), [" x }} b\n", " 'y\n' }} d\n", " z"]);
+    }
+
+    #[test]
+    fn missing_expressions_file_is_an_error() {
+        let dir = repository();
+        fs::remove_file(dir.path().join(EXPRESSIONS)).unwrap();
+        let error = run(dir.path()).unwrap_err();
+        assert!(
+            format!("{error:#}").contains("expressions.txt"),
+            "{error:#}"
+        );
+    }
+
+    /// Every fuzz target in `fuzz/Cargo.toml` gets seeds and runs in the
+    /// nightly matrix of `.github/workflows/fuzz.yml`, and no other target
+    /// does.
+    #[test]
+    fn the_target_lists_match_the_fuzz_workspace_and_the_fuzz_workflow() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let manifest = fs::read_to_string(root.join("fuzz/Cargo.toml")).unwrap();
+        let mut bins: Vec<&str> = manifest
+            .lines()
+            .filter_map(|line| line.strip_prefix("name = \""))
+            .filter_map(|name| name.strip_suffix('"'))
+            .filter(|name| *name != "workflint-fuzz")
+            .collect();
+        bins.sort_unstable();
+        let mut targets: Vec<&str> = TARGETS.iter().chain(EXPRESSION_TARGETS).copied().collect();
+        targets.sort_unstable();
+        assert_eq!(bins, targets);
+
+        let workflow = fs::read_to_string(root.join(".github/workflows/fuzz.yml")).unwrap();
+        let matrix = workflow
+            .lines()
+            .find_map(|line| line.trim().strip_prefix("target: ["))
+            .and_then(|list| list.strip_suffix(']'))
+            .unwrap();
+        let mut matrix: Vec<&str> = matrix.split(", ").collect();
+        matrix.sort_unstable();
+        assert_eq!(matrix, targets);
     }
 
     #[test]

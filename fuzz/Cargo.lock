@@ -149,6 +149,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
+name = "workflint-data"
+version = "0.0.1"
+
+[[package]]
 name = "workflint-diagnostics"
 version = "0.0.1"
 dependencies = [
@@ -158,11 +162,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "workflint-expr"
+version = "0.0.1"
+dependencies = [
+ "workflint-data",
+ "workflint-diagnostics",
+]
+
+[[package]]
 name = "workflint-fuzz"
 version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "workflint-diagnostics",
+ "workflint-expr",
  "workflint-syntax",
  "workflint-yaml",
 ]
