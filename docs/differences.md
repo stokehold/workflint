@@ -205,6 +205,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: planned.
 
+<a id="non-scalar-keys"></a>
+### Keys that are not strings in `permissions` and `env`
+
+- Upstream: a key of `permissions` or `env` that is a sequence or a mapping, such as `? [x]`, gets `expected scalar node for string value but found sequence node with "!!seq" tag`, and the parser keeps the entry under the name `""`. The `permissions` rule then also reports `unknown permission scope ""` at the key.
+- workflint: the parser reports the key and leaves the entry out, so the `permissions` rule does not report it again. In `env` the output does not change, because no rule reports an empty variable name.
+- Why: the second error repeats the first and names a scope that is not in the file.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned. No fixture covers it.
+
 <a id="typed-decoding-edge-cases"></a>
 ### Rare inputs to the typed decoding of local metadata
 

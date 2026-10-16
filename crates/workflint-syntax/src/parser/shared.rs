@@ -2,48 +2,293 @@
 //! `defaults`, and `concurrency`, and the job's `environment`, which has
 //! the shape of `concurrency`. The reference's productions at
 //! `parse.go:739-858`.
+//!
+//! Each production takes the key of its section and the value node. A
+//! value with the wrong node kind gives an invalid field. A mapping that
+//! lacks a required key still gives a valid field, with that key absent,
+//! so that rules can check the keys that are there.
 
-use workflint_yaml::Node;
+use workflint_yaml::{Node, NodeKind};
 
-use super::Parser;
 use super::mapping::Key;
-use crate::{Concurrency, Defaults, Env, Environment, Field, Permissions, Value};
+use super::{KeySpec, Label, MapEntry, Parser, Section};
+use crate::rules::MISSING_REQUIRED_KEY;
+use crate::{
+    Concurrency, Defaults, DefaultsRun, Env, Environment, Field, Keyed, KeyedEntry, Permissions,
+    Str, Value,
+};
+
+/// The keys of `defaults`.
+struct DefaultsSection;
+
+impl Section for DefaultsSection {
+    type Ast<'a> = Defaults<'a>;
+}
+
+static DEFAULTS_KEYS: [KeySpec<DefaultsSection>; 1] = [KeySpec {
+    name: "run",
+    parse: |p, d, e| d.run = p.parse_defaults_run(e),
+}];
+
+/// The keys of `defaults.run`.
+struct DefaultsRunSection;
+
+impl Section for DefaultsRunSection {
+    type Ast<'a> = DefaultsRun<'a>;
+}
+
+static DEFAULTS_RUN_KEYS: [KeySpec<DefaultsRunSection>; 2] = [
+    KeySpec {
+        name: "shell",
+        parse: |p, r, e| r.shell = p.parse_string(e.key.string, e.value, false),
+    },
+    KeySpec {
+        name: "working-directory",
+        parse: |p, r, e| r.working_directory = p.parse_string(e.key.string, e.value, false),
+    },
+];
+
+/// The keys of `concurrency`.
+struct ConcurrencySection;
+
+impl Section for ConcurrencySection {
+    type Ast<'a> = Concurrency<'a>;
+}
+
+static CONCURRENCY_KEYS: [KeySpec<ConcurrencySection>; 2] = [
+    KeySpec {
+        name: "group",
+        parse: |p, c, e| c.group = p.parse_string(e.key.string, e.value, false),
+    },
+    KeySpec {
+        name: "cancel-in-progress",
+        parse: |p, c, e| c.cancel_in_progress = p.parse_bool(e.key.string, e.value),
+    },
+];
+
+/// The keys of `environment`.
+struct EnvironmentSection;
+
+impl Section for EnvironmentSection {
+    type Ast<'a> = Environment<'a>;
+}
+
+static ENVIRONMENT_KEYS: [KeySpec<EnvironmentSection>; 3] = [
+    KeySpec {
+        name: "name",
+        parse: |p, v, e| v.name = p.parse_string(e.key.string, e.value, false),
+    },
+    KeySpec {
+        name: "url",
+        parse: |p, v, e| v.url = p.parse_string(e.key.string, e.value, false),
+    },
+    KeySpec {
+        name: "deployment",
+        parse: |p, v, e| v.deployment = p.parse_bool(e.key.string, e.value),
+    },
+];
 
 impl<'a> Parser<'a, '_> {
+    /// Parses `permissions`, the reference's `parsePermissions`.
+    ///
+    /// A scalar is the string form, such as `read-all`. An empty one is
+    /// reported and kept, so the `permissions` rule reports it as well, as
+    /// in the reference. Anything else is a case-insensitive mapping of
+    /// scopes to non-empty strings. The mapping may have no entries, since
+    /// `permissions: {}` turns every scope off. The `permissions` rule
+    /// checks the scope names and values.
     pub(crate) fn parse_permissions(
         &mut self,
-        _key: Key<'a>,
-        _node: &'a Node,
+        key: Key<'a>,
+        node: &'a Node,
     ) -> Field<'a, Permissions<'a>> {
-        Field::Absent
+        if let Some(all) = Str::new(node) {
+            self.check_string(node, false);
+            return Field::Valid {
+                key: key.string,
+                span: node.span,
+                value: Permissions::All(all),
+            };
+        }
+        let entries = self.parse_mapping(Label::Section("permissions"), node, true, false);
+        let scopes = self.keyed_strings(entries, false);
+        mapping_field(key, node, Permissions::Scopes(scopes))
     }
 
-    pub(crate) fn parse_env(&mut self, _key: Key<'a>, _node: &'a Node) -> Value<'a, Env<'a>> {
-        Value::Absent
+    /// Parses `env` of a workflow, job, step, or container, the reference's
+    /// `parseEnv`.
+    ///
+    /// A scalar must be a single `${{ }}` expression. A null `env:` is a
+    /// scalar too, so it gets that message rather than the empty-section
+    /// one, as in the reference. Anything else is a case-insensitive
+    /// mapping of names to strings that may be empty, and must have
+    /// entries.
+    pub(crate) fn parse_env(&mut self, key: Key<'a>, node: &'a Node) -> Value<'a, Env<'a>> {
+        let key = key.string;
+        if let NodeKind::Scalar(_) = node.kind {
+            return match self.parse_expression(node, "mapping value for \"env\" section") {
+                Some(expr) => Value::Expression { key, expr },
+                None => Value::Invalid {
+                    key,
+                    span: node.span,
+                },
+            };
+        }
+        let entries = self.parse_mapping(Label::Section("env"), node, false, false);
+        let vars = self.keyed_strings(entries, true);
+        match node.kind {
+            NodeKind::Mapping(_) => Value::Literal {
+                key,
+                span: node.span,
+                value: vars,
+            },
+            NodeKind::Scalar(_) | NodeKind::Sequence(_) | NodeKind::Alias(_) => Value::Invalid {
+                key,
+                span: node.span,
+            },
+        }
     }
 
+    /// Parses `defaults`, the reference's `parseDefaults`: a mapping whose
+    /// only key is `run`, with `shell` and `working-directory`.
+    ///
+    /// Without a `run` key it reports `"defaults" section should have "run"
+    /// section` at the value. A `run` key with an invalid value counts as
+    /// written.
     pub(crate) fn parse_defaults(
         &mut self,
-        _key: Key<'a>,
-        _node: &'a Node,
+        key: Key<'a>,
+        node: &'a Node,
     ) -> Field<'a, Defaults<'a>> {
-        Field::Absent
+        let mut defaults = Defaults::default();
+        let entries = self.parse_mapping(Label::Section("defaults"), node, false, true);
+        self.parse_keys(entries, "defaults", &DEFAULTS_KEYS, &mut defaults);
+        if !defaults.run.is_present() {
+            self.error(
+                &MISSING_REQUIRED_KEY,
+                node.span,
+                "\"defaults\" section should have \"run\" section".to_owned(),
+            );
+        }
+        mapping_field(key, node, defaults)
     }
 
+    fn parse_defaults_run(&mut self, entry: &MapEntry<'a>) -> Field<'a, DefaultsRun<'a>> {
+        let mut run = DefaultsRun::default();
+        let entries = self.parse_mapping(Label::Section("run"), entry.value, false, true);
+        self.parse_keys(entries, "run", &DEFAULTS_RUN_KEYS, &mut run);
+        mapping_field(entry.key, entry.value, run)
+    }
+
+    /// Parses `concurrency`, the reference's `parseConcurrency`.
+    ///
+    /// A scalar is the group, with no key. Otherwise it is a mapping with
+    /// `group` and `cancel-in-progress`. Without a `group` key it reports
+    /// `group name is missing in "concurrency" section` at the section's
+    /// key, also when the value is not a mapping.
     pub(crate) fn parse_concurrency(
         &mut self,
-        _key: Key<'a>,
-        _node: &'a Node,
+        key: Key<'a>,
+        node: &'a Node,
     ) -> Field<'a, Concurrency<'a>> {
-        Field::Absent
+        if let NodeKind::Scalar(_) = node.kind {
+            let concurrency = Concurrency {
+                group: self.parse_string(None, node, false),
+                ..Concurrency::default()
+            };
+            return Field::Valid {
+                key: key.string,
+                span: node.span,
+                value: concurrency,
+            };
+        }
+        let mut concurrency = Concurrency::default();
+        let entries = self.parse_mapping(Label::Section("concurrency"), node, false, true);
+        self.parse_keys(entries, "concurrency", &CONCURRENCY_KEYS, &mut concurrency);
+        if !concurrency.group.is_present() {
+            self.error(
+                &MISSING_REQUIRED_KEY,
+                key.span,
+                "group name is missing in \"concurrency\" section".to_owned(),
+            );
+        }
+        mapping_field(key, node, concurrency)
     }
 
+    /// Parses `environment` of a job, the reference's `parseEnvironment`.
+    ///
+    /// A scalar is the name, with no key. Otherwise it is a mapping with
+    /// `name`, `url`, and `deployment`. Without a `name` key it reports
+    /// `name is missing in "environment" section` at the section's key,
+    /// also when the value is not a mapping.
+    #[cfg_attr(not(test), expect(dead_code, reason = "the job parser (#70) calls it"))]
     pub(crate) fn parse_environment(
         &mut self,
-        _key: Key<'a>,
-        _node: &'a Node,
+        key: Key<'a>,
+        node: &'a Node,
     ) -> Field<'a, Environment<'a>> {
-        Field::Absent
+        if let NodeKind::Scalar(_) = node.kind {
+            let environment = Environment {
+                name: self.parse_string(None, node, false),
+                ..Environment::default()
+            };
+            return Field::Valid {
+                key: key.string,
+                span: node.span,
+                value: environment,
+            };
+        }
+        let mut environment = Environment::default();
+        let entries = self.parse_mapping(Label::Section("environment"), node, false, true);
+        self.parse_keys(entries, "environment", &ENVIRONMENT_KEYS, &mut environment);
+        if !environment.name.is_present() {
+            self.error(
+                &MISSING_REQUIRED_KEY,
+                key.span,
+                "name is missing in \"environment\" section".to_owned(),
+            );
+        }
+        mapping_field(key, node, environment)
+    }
+
+    /// Collects the entries of a case-insensitive mapping of strings, such
+    /// as `env` or the scopes of `permissions`. A value that is not a
+    /// string, or is empty unless `allow_empty`, is reported and kept as
+    /// `None`.
+    ///
+    /// An entry whose key is not a scalar is left out, because a
+    /// [`Keyed`] collection needs a string key. The mapping walker has
+    /// reported the key. The reference keeps such an entry under the name
+    /// `""` (`docs/differences.md#non-scalar-keys`).
+    fn keyed_strings(
+        &mut self,
+        entries: Vec<MapEntry<'a>>,
+        allow_empty: bool,
+    ) -> Keyed<'a, Option<Str<'a>>> {
+        let mut keyed = Vec::with_capacity(entries.len());
+        for entry in entries {
+            let value = self.check_string(entry.value, allow_empty);
+            if let Some(name) = entry.key.string {
+                keyed.push(KeyedEntry::new(name, entry.value.span, value));
+            }
+        }
+        Keyed::new(keyed)
+    }
+}
+
+/// Returns `value` as a valid field if `node` is a mapping, and an invalid
+/// one otherwise. The mapping walker has reported a node of another kind.
+fn mapping_field<'a, T>(key: Key<'a>, node: &'a Node, value: T) -> Field<'a, T> {
+    match node.kind {
+        NodeKind::Mapping(_) => Field::Valid {
+            key: key.string,
+            span: node.span,
+            value,
+        },
+        NodeKind::Scalar(_) | NodeKind::Sequence(_) | NodeKind::Alias(_) => Field::Invalid {
+            key: key.string,
+            span: node.span,
+        },
     }
 }
 
@@ -54,9 +299,7 @@ mod tests {
     use std::fmt::Debug;
 
     use super::*;
-    use crate::parser::Label;
     use crate::testing::parse_with;
-    use crate::{Keyed, Str};
 
     /// Runs `production` on the first entry of the root mapping of `text`,
     /// and returns the diagnostics followed by the line it returns.
@@ -221,10 +464,10 @@ mod tests {
                 "permissions:\n  Contents: read\n  contents: write\n  issues: ''\n  pages: [a]\n  ? [x]\n  : read\n"
             ),
             [
-                r#"4:3: key "contents" is duplicated in "permissions" section. previously defined at line:3,col:3. note that this key is case insensitive [duplicate-key]"#,
-                "5:11: string should not be empty [empty-string]",
-                r#"6:10: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
-                r#"7:5: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
+                r#"3:3: key "contents" is duplicated in "permissions" section. previously defined at line:2,col:3. note that this key is case insensitive [duplicate-key]"#,
+                "4:11: string should not be empty [empty-string]",
+                r#"5:10: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
+                r#"6:5: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
                 "scopes [Contents=read, issues=-, pages=-]",
             ]
         );
@@ -317,16 +560,16 @@ mod tests {
         assert_eq!(
             defaults("defaults:\n"),
             [
-                r#"1:10: "defaults" section should have "run" section [missing-required-key]"#,
                 r#"1:10: "defaults" section should not be empty. please remove this section if it's unnecessary [empty-section]"#,
+                r#"1:10: "defaults" section should have "run" section [missing-required-key]"#,
                 "invalid",
             ]
         );
         assert_eq!(
             defaults("defaults: {}\n"),
             [
-                r#"1:11: "defaults" section should have "run" section [missing-required-key]"#,
                 r#"1:11: "defaults" section should not be empty. please remove this section if it's unnecessary [empty-section]"#,
+                r#"1:11: "defaults" section should have "run" section [missing-required-key]"#,
                 "run absent",
             ]
         );
@@ -341,8 +584,8 @@ mod tests {
         assert_eq!(
             defaults("defaults: []\n"),
             [
-                r#"1:11: "defaults" section is sequence node but mapping node is expected [unexpected-node-kind]"#,
                 r#"1:11: "defaults" section should have "run" section [missing-required-key]"#,
+                r#"1:11: "defaults" section is sequence node but mapping node is expected [unexpected-node-kind]"#,
                 "invalid",
             ]
         );

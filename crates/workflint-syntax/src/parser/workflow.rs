@@ -351,8 +351,8 @@ concurrency:
             [
                 "3:13: string should not be empty [empty-string]",
                 r#"4:5: expecting a single ${{...}} expression or mapping value for "env" section, but found plain text node [expected-single-expression]"#,
-                r#"5:10: "defaults" section should have "run" section [missing-required-key]"#,
                 r#"5:10: "defaults" section should not be empty. please remove this section if it's unnecessary [empty-section]"#,
+                r#"5:10: "defaults" section should have "run" section [missing-required-key]"#,
                 r#"6:1: group name is missing in "concurrency" section [missing-required-key]"#,
             ]
         );

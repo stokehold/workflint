@@ -63,10 +63,16 @@ pub type Env<'a> = Keyed<'a, Option<Str<'a>>>;
 pub enum Permissions<'a> {
     /// The string form, such as `read-all`. The reference's
     /// `Permissions.All`.
+    ///
+    /// It may be empty, as in `permissions:` with no value. The parser
+    /// reports an empty string and keeps it, and the `permissions` rule
+    /// reports it as an invalid value too, as in the reference.
     All(Str<'a>),
     /// The mapping form, keyed by scope name. A scope's value is `None`
     /// when it is not a non-empty string, which the parser reports. The
-    /// reference's `PermissionScope.Name` is the entry's key.
+    /// reference keeps such a value as `""` and its `permissions` rule
+    /// reports it at the entry's span. The reference's
+    /// `PermissionScope.Name` is the entry's key.
     Scopes(Keyed<'a, Option<Str<'a>>>),
 }
 
