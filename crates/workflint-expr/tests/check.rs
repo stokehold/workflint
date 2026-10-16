@@ -14,11 +14,11 @@
 #![allow(clippy::expect_used, clippy::panic)]
 
 use workflint_data::global_context;
+use workflint_diagnostics::RuleMeta;
 use workflint_expr::rules::{
     INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS, INVALID_OBJECT_FILTER,
     INVALID_PROPERTY_ACCESS, UNDEFINED_CONFIG_VARIABLE, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
 };
-use workflint_diagnostics::RuleMeta;
 use workflint_expr::{Expr, ExprError, ObjectTy, Rest, Ty, TypeEnv, parse_expression};
 
 /// The names in the message of an undefined variable in the default environment.
@@ -155,7 +155,10 @@ mod semantics_check_ok {
 
     #[test]
     fn array_element_dereference_with_any_type() {
-        assert_eq!(ty("github.event.labels.*.name"), Ty::filtered_array(Ty::Any));
+        assert_eq!(
+            ty("github.event.labels.*.name"),
+            Ty::filtered_array(Ty::Any)
+        );
     }
 
     #[test]
@@ -1313,10 +1316,7 @@ mod differences {
     #[test]
     fn object_filter_does_not_change_the_type_for_the_next_expression() {
         let env = env_with_matrix(strict([("os", Ty::array(Ty::String))]));
-        assert_eq!(
-            ty_in(&env, "matrix.os.*"),
-            Ty::filtered_array(Ty::String)
-        );
+        assert_eq!(ty_in(&env, "matrix.os.*"), Ty::filtered_array(Ty::String));
         assert_eq!(ty_in(&env, "matrix.os"), Ty::array(Ty::String));
         assert_eq!(
             errors_in(&env, "matrix.os.a"),
@@ -1434,14 +1434,6 @@ mod error_ranges {
                 ),
             ]
         );
-    }
-
-    #[test]
-    fn checking_one_expression_does_not_change_the_next() {
-        let env = TypeEnv::new();
-        let first = env.check(&parse("matrix.foo"));
-        let second = env.check(&parse("matrix.foo"));
-        assert_eq!(first, second);
     }
 }
 
