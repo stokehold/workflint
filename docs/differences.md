@@ -319,11 +319,21 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Case-insensitive keys from `fromJSON` literals
 
 - Upstream: object keys in a `fromJSON('...')` literal keep their case while property names are lowercased, so `fromJSON('{"Foo":1}').Foo` reports `property "foo" is not defined in object type {Foo: number}`.
-- workflint: keys from `fromJSON` literals are matched case-insensitively.
+- workflint: keys from `fromJSON` literals are matched case-insensitively. They keep their spelling in printed types, so the object above prints as `{Foo: number}`. If two keys differ only in case, the key spelled exactly like the property wins, so `.foo` reads `foo` and `['Foo']` reads `Foo`.
 - Why: upstream rejects valid code. Property access is case-insensitive at run time.
 - Upstream issue: none.
 - Milestone: M3.
 - Status: planned.
+
+<a id="fromjson-nesting"></a>
+### Deeply nested `fromJSON` literals
+
+- Upstream: the type of a `fromJSON('...')` literal follows its value at any depth up to the 10,000 levels that Go's `encoding/json` accepts.
+- workflint: a value nested more than 128 levels deep has type `any`. The syntax check still covers the whole literal, with Go's limit and message.
+- Why: printing, merging, and comparing types recurse, and a type 10,000 levels deep could overflow the stack. The expression parser has the same limit of 128 levels.
+- Upstream issue: none.
+- Milestone: M3.
+- Status: planned. No fixture covers it.
 
 <a id="object-filter-mutation"></a>
 ### Object filters do not change shared types

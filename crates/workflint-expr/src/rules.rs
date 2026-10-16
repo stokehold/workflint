@@ -155,6 +155,15 @@ pub static CASE_ARGUMENT_COUNT: RuleMeta = RuleMeta {
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/case-argument-count.md",
 };
 
+/// The string literal passed to `fromJSON()` is not valid JSON, such as `fromJSON('[1,')`.
+pub static INVALID_JSON_LITERAL: RuleMeta = RuleMeta {
+    id: "invalid-json-literal",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-json-literal.md",
+};
+
 /// A script reads a value that someone outside the repository can set, such as
 /// `github.event.issue.title`, so the value can inject code.
 pub static UNTRUSTED_INPUT: RuleMeta = RuleMeta {

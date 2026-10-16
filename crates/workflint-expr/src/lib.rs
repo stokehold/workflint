@@ -59,6 +59,7 @@ mod env;
 mod error;
 mod format;
 mod functions;
+mod json;
 mod lexer;
 mod parser;
 pub mod rules;
