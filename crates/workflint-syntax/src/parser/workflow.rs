@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use workflint_diagnostics::Span;
 
-use super::{KeySpec, Label, MapEntry, Parser, Section};
-use crate::rules::{EMPTY_WORKFLOW, MISSING_REQUIRED_KEY};
+use super::{KeySpec, Label, MAX_YAML_NODES, MapEntry, Parser, Section, yaml_node_count};
+use crate::rules::{EMPTY_WORKFLOW, MISSING_REQUIRED_KEY, TOO_MANY_YAML_NODES};
 use crate::{Field, Keyed, Value, Workflow};
 
 /// The keys of the workflow root.
@@ -72,7 +72,9 @@ fn parse_jobs<'a>(_: &mut Parser<'a, '_>, workflow: &mut Workflow<'a>, entry: &M
 impl<'a> Parser<'a, '_> {
     /// Parses the workflow root.
     ///
-    /// A file with no document reports `workflow is empty`. Otherwise the
+    /// A file with no document reports `workflow is empty`. A workflow with
+    /// more than [`MAX_YAML_NODES`] YAML nodes, aliases expanded, reports
+    /// that GitHub rejects it, and nothing more is parsed. Otherwise the
     /// root must be a mapping with the keys of [`ROOT_KEYS`], and `on` and
     /// `jobs` must be present. The reference reports a missing `on` or
     /// `jobs` at its document node, which starts at the first directive,
@@ -95,11 +97,22 @@ impl<'a> Parser<'a, '_> {
             jobs: Field::Absent,
         };
         let Some(root) = root else {
-            if document.root().is_none() {
-                self.error(&EMPTY_WORKFLOW, span, "workflow is empty".to_owned());
-            }
+            self.error(&EMPTY_WORKFLOW, span, "workflow is empty".to_owned());
             return workflow;
         };
+        // GitHub rejects the file, and walking it could take time
+        // exponential in its size.
+        if yaml_node_count(document, MAX_YAML_NODES + 1) > MAX_YAML_NODES {
+            self.error(
+                &TOO_MANY_YAML_NODES,
+                span,
+                format!(
+                    "workflow has more than {MAX_YAML_NODES} YAML nodes when its aliases are \
+                     expanded. GitHub rejects it with \"Maximum YAML nodes exceeded\""
+                ),
+            );
+            return workflow;
+        }
         let entries = self.parse_mapping(Label::Section("workflow"), root, false, true);
         self.parse_keys(entries, "workflow", &ROOT_KEYS, &mut workflow);
         if !workflow.on.is_present() {
@@ -126,7 +139,7 @@ mod tests {
 
     use workflint_diagnostics::{FileId, SourceFile};
 
-    use crate::testing::render;
+    use crate::testing::{laughs, render};
     use crate::{Str, parse};
 
     fn check(text: &str) -> Vec<String> {
@@ -196,6 +209,41 @@ mod tests {
                 r#"1:1: "workflow" section is sequence node but mapping node is expected [unexpected-node-kind]"#,
             ]
         );
+    }
+
+    /// A root sequence of `n` scalars has `n + 6` events.
+    fn sequence_of(n: usize) -> String {
+        format!("[{}]\n", vec!["a"; n].join(", "))
+    }
+
+    #[test]
+    fn a_workflow_over_github_s_node_limit_is_rejected_and_not_parsed() {
+        assert_eq!(
+            check(&sequence_of(49_995)),
+            [
+                r#"1:1: workflow has more than 50000 YAML nodes when its aliases are expanded. GitHub rejects it with "Maximum YAML nodes exceeded" [too-many-yaml-nodes]"#
+            ]
+        );
+    }
+
+    #[test]
+    fn a_workflow_at_github_s_node_limit_is_parsed() {
+        assert_eq!(
+            check(&sequence_of(49_994)),
+            [
+                r#"1:1: "jobs" section is missing in workflow [missing-required-key]"#,
+                r#"1:1: "on" section is missing in workflow [missing-required-key]"#,
+                r#"1:1: "workflow" section is sequence node but mapping node is expected [unexpected-node-kind]"#,
+            ]
+        );
+    }
+
+    #[test]
+    fn a_billion_laughs_is_over_the_node_limit() {
+        let text = laughs(9, "''");
+        let found = check(&text);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].ends_with("[too-many-yaml-nodes]"), "{found:?}");
     }
 
     #[test]

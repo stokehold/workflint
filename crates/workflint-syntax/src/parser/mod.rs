@@ -9,10 +9,10 @@
 //! The walk follows resolved aliases, so a subtree used through several
 //! aliases is parsed once per use, as in the reference, and the same error
 //! is reported once per use at the anchored node. Deduplication then keeps
-//! one. To keep a "billion laughs" input from making the walk exponential,
-//! [`Parser::node`] counts the nodes the walk enters and stops it once
-//! aliases account for too many of them, by go-yaml's rule for decoding
-//! aliases.
+//! one. Before the walk, [`parse`] counts the YAML nodes of the document
+//! with its aliases expanded, and walks nothing if there are more than
+//! GitHub accepts. So a "billion laughs" input cannot make the walk
+//! exponential.
 
 mod leaf;
 mod mapping;
@@ -22,7 +22,6 @@ use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
 use workflint_yaml::{Document, Node, NodeId, NodeKind, Tag};
 
 use crate::Workflow;
-use crate::rules::EXCESSIVE_ALIASING;
 
 pub(crate) use mapping::{KeySpec, Label, MapEntry, Section};
 
@@ -66,21 +65,12 @@ pub fn parse<'a>(file: &SourceFile, document: &'a Document) -> Parsed<'a> {
     }
 }
 
-/// The state of one parse: the diagnostics so far and the count of nodes
-/// the walk has entered.
+/// The state of one parse: the file, its span tree, and the diagnostics so
+/// far.
 pub(crate) struct Parser<'a, 'f> {
     file: &'f SourceFile,
     document: &'a Document,
     diagnostics: Vec<Diagnostic>,
-    /// Whether the walk has entered each node.
-    entered: Vec<bool>,
-    /// Every node the walk has entered, counting each use of a node.
-    visits: u64,
-    /// The visits to a node that the walk had entered before, which happen
-    /// only through aliases.
-    alias_visits: u64,
-    /// Whether the walk has stopped because of excessive aliasing.
-    stopped: bool,
 }
 
 impl<'a, 'f> Parser<'a, 'f> {
@@ -89,51 +79,13 @@ impl<'a, 'f> Parser<'a, 'f> {
             file,
             document,
             diagnostics: Vec::new(),
-            entered: vec![false; document.nodes().count()],
-            visits: 0,
-            alias_visits: 0,
-            stopped: false,
         }
     }
 
-    /// Enters the node `id` and returns it, or returns `None` if the walk
-    /// has stopped.
-    ///
-    /// Every production gets its child nodes through this function. It
-    /// stops the walk with an `excessive-aliasing` diagnostic as go-yaml's
-    /// decoder stops with `document contains excessive aliasing`: when more
-    /// than 100 visits came through aliases, more than 1000 visits happened,
-    /// and the share of alias visits is above go-yaml's limit (see
-    /// [`exceeds_alias_share`]). From
-    /// then on it returns `None` and the parser reports nothing else, so
-    /// the work is linear in the size of the document.
-    pub(crate) fn node(&mut self, id: NodeId) -> Option<&'a Node> {
-        if self.stopped {
-            return None;
-        }
-        let node = self.document.node(id)?;
-        let entered = usize::try_from(id.index())
-            .ok()
-            .and_then(|index| self.entered.get_mut(index))
-            .is_some_and(|entered| std::mem::replace(entered, true));
-        self.visits += 1;
-        if entered {
-            self.alias_visits += 1;
-        }
-        if self.alias_visits > 100
-            && self.visits > 1000
-            && exceeds_alias_share(self.alias_visits, self.visits)
-        {
-            self.diagnostics.push(Diagnostic::new(
-                &EXCESSIVE_ALIASING,
-                node.span,
-                "document contains excessive aliasing. the parts of the workflow that aliases \
-                 lead to from here on are not checked",
-            ));
-            self.stopped = true;
-            return None;
-        }
-        Some(node)
+    /// Returns the node `id` of the document. Every production gets its
+    /// child nodes through this function.
+    pub(crate) fn node(&self, id: NodeId) -> Option<&'a Node> {
+        self.document.node(id)
     }
 
     /// Returns the diagnostics reported so far.
@@ -141,11 +93,9 @@ impl<'a, 'f> Parser<'a, 'f> {
         self.diagnostics
     }
 
-    /// Reports `message` at `span`, unless the walk has stopped.
+    /// Reports `message` at `span`.
     pub(crate) fn error(&mut self, rule: &'static RuleMeta, span: Span, message: String) {
-        if !self.stopped {
-            self.diagnostics.push(Diagnostic::new(rule, span, message));
-        }
+        self.diagnostics.push(Diagnostic::new(rule, span, message));
     }
 
     /// Formats the start of `span` as the reference's `Pos.String()`, such
@@ -156,24 +106,73 @@ impl<'a, 'f> Parser<'a, 'f> {
     }
 }
 
-/// Returns whether `alias_visits` out of `visits` is more than go-yaml's
-/// `allowedAliasRatio(visits)`: 99% up to 400,000 visits, 10% from
-/// 4,000,000 visits, and a linear scale in between.
-fn exceeds_alias_share(alias_visits: u64, visits: u64) -> bool {
-    const LOW: u64 = 400_000;
-    const HIGH: u64 = 4_000_000;
-    let (alias_visits, visits) = (u128::from(alias_visits), u128::from(visits));
-    if visits <= u128::from(LOW) {
-        // alias_visits / visits > 0.99
-        alias_visits * 100 > visits * 99
-    } else if visits >= u128::from(HIGH) {
-        alias_visits * 10 > visits
-    } else {
-        // alias_visits / visits > 0.99 - 0.89 * (visits - LOW) / (HIGH - LOW)
-        let range = u128::from(HIGH - LOW);
-        let allowed = 99 * range - 89 * (visits - u128::from(LOW));
-        alias_visits * 100 * range > allowed * visits
+/// The most YAML nodes that GitHub reads in a workflow, `c_maxYamlNodes` of
+/// `YamlObjectReader` in `actions/runner`. Past it GitHub rejects the file
+/// with `Maximum YAML nodes exceeded`.
+pub(crate) const MAX_YAML_NODES: u64 = 50_000;
+
+/// Returns how many parsing events GitHub's `YamlObjectReader` reads for
+/// `document`, or `cap` if that is more.
+///
+/// The reader counts every event it moves to: the stream start, the
+/// document start, each scalar, the start and end of each collection, the
+/// document end, and the stream end. It reads an alias by replaying the
+/// events of its anchored node, so each use of an alias counts that node's
+/// events again. The count takes time in proportion to the number of nodes,
+/// however many times aliases expand them.
+///
+/// GitHub replays a recursive alias until the limit stops it. The YAML
+/// layer reports a recursive alias already, so it counts as one event here.
+pub(crate) fn yaml_node_count(document: &Document, cap: u64) -> u64 {
+    let Some(root) = document.root() else {
+        return 0;
+    };
+    // The events of each node's subtree with aliases expanded, once known.
+    let mut events: Vec<Option<u64>> = vec![None; document.nodes().count()];
+    let index = |id: NodeId| usize::try_from(id.index()).ok();
+    let children = |id: NodeId| -> Vec<NodeId> {
+        match document.node(id).map(|node| &node.kind) {
+            Some(NodeKind::Sequence(sequence)) => document.items(sequence).to_vec(),
+            Some(NodeKind::Mapping(mapping)) => document
+                .entries(mapping)
+                .iter()
+                .flat_map(|entry| [entry.key, entry.value])
+                .collect(),
+            _ => Vec::new(),
+        }
+    };
+    // A depth-first walk that visits a node's children before the node. The
+    // tree has no cycles, because a recursive alias stays an alias node.
+    let mut stack = vec![(root, false)];
+    while let Some((id, children_done)) = stack.pop() {
+        let Some(slot) = index(id).filter(|&i| i < events.len()) else {
+            continue;
+        };
+        if events[slot].is_some() {
+            continue;
+        }
+        let collection = matches!(
+            document.node(id).map(|node| &node.kind),
+            Some(NodeKind::Sequence(_) | NodeKind::Mapping(_))
+        );
+        if !collection {
+            events[slot] = Some(1);
+        } else if children_done {
+            let total = children(id)
+                .into_iter()
+                .filter_map(|child| events.get(index(child)?).copied().flatten())
+                .fold(2u64, u64::saturating_add);
+            events[slot] = Some(total.min(cap));
+        } else {
+            stack.push((id, true));
+            stack.extend(children(id).into_iter().map(|child| (child, false)));
+        }
     }
+    let root_events = index(root)
+        .and_then(|i| events.get(i).copied().flatten())
+        .unwrap_or(0);
+    // The stream and document start and end events.
+    root_events.saturating_add(4).min(cap)
 }
 
 /// The reference's `nodeKindName`.
@@ -196,107 +195,60 @@ pub(crate) fn tag_name(node: &Node) -> &str {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
-    use std::fmt::Write as _;
-
     use workflint_diagnostics::FileId;
 
     use super::*;
-    use crate::testing::render;
+    use crate::testing::laughs;
 
-    /// Enters every node under `node`, reporting each empty string, as a
-    /// production that reads arbitrary YAML would.
-    fn walk_all<'a>(parser: &mut Parser<'a, '_>, node: &'a Node) {
-        match &node.kind {
-            NodeKind::Mapping(_) => {
-                for entry in parser.parse_mapping(Label::Section("x"), node, true, false) {
-                    walk_all(parser, entry.value);
-                }
-            }
-            NodeKind::Sequence(_) => {
-                for &id in parser.check_sequence("x", node, true).unwrap_or_default() {
-                    if let Some(item) = parser.node(id) {
-                        walk_all(parser, item);
-                    }
-                }
-            }
-            NodeKind::Scalar(_) | NodeKind::Alias(_) => {
-                parser.check_string(node, false);
-            }
-        }
-    }
-
-    /// Nine levels of ten aliases each: 10^9 empty strings once expanded.
-    fn laughs(levels: usize) -> String {
-        let mut text = format!("l0: &l0 [{}]\n", ["''"; 10].join(", "));
-        for level in 1..levels {
-            let items = vec![format!("*l{}", level - 1); 10].join(", ");
-            let _ = writeln!(text, "l{level}: &l{level} [{items}]");
-        }
-        text
-    }
-
-    /// Walks all of `text` and returns the parser's counts and diagnostics.
-    fn walk(text: &str) -> (u64, usize, Vec<String>) {
+    fn count(text: &str) -> u64 {
         let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
         let document = workflint_yaml::parse(&file).document.unwrap();
-        let mut parser = Parser::new(&file, &document);
-        let root = parser.node(document.root().unwrap()).unwrap();
-        walk_all(&mut parser, root);
-        let visits = parser.visits;
-        let nodes = document.nodes().count();
-        (visits, nodes, render(&file, parser.into_diagnostics()))
+        yaml_node_count(&document, u64::MAX)
     }
 
     #[test]
-    fn a_billion_laughs_stops_the_walk_after_linear_work() {
-        let (visits, nodes, diagnostics) = walk(&laughs(9));
-
-        let nodes = u64::try_from(nodes).unwrap();
-        assert!(
-            visits <= 100 * nodes + 1000,
-            "{visits} visits for {nodes} nodes"
-        );
-        let stops: Vec<_> = diagnostics
-            .iter()
-            .filter(|line| line.ends_with("[excessive-aliasing]"))
-            .collect();
-        assert_eq!(stops.len(), 1, "{diagnostics:?}");
-        assert!(
-            stops[0].contains("document contains excessive aliasing"),
-            "{stops:?}"
-        );
-        // Each empty string is reported once per use, at the same place, so
-        // deduplication leaves the ten in `l0`.
-        assert_eq!(diagnostics.len(), 11, "{diagnostics:?}");
+    fn the_count_has_an_event_per_scalar_and_two_per_collection() {
+        // The stream and document events, the mapping's start and end, and
+        // two scalars.
+        assert_eq!(count("a: b\n"), 8);
+        assert_eq!(count("[a, [b, c], {d: e}]\n"), 4 + 2 + 1 + 4 + 4);
+        assert_eq!(count("---\n"), 5);
     }
 
     #[test]
-    fn an_anchor_used_a_few_times_is_walked_at_every_use() {
-        // Twelve uses of a step list, as in the reference's
-        // `err/dedup_errors` fixture.
-        let mut text = "steps: &steps [{run: ''}, {run: x}]\n".to_owned();
-        for job in 0..12 {
-            let _ = writeln!(text, "job{job}: *steps");
-        }
-        let (visits, nodes, diagnostics) = walk(&text);
+    fn each_use_of_an_alias_counts_its_node_again() {
+        // `x` and `y` are one event each, and `[a, b]` is four events at
+        // both of its uses.
+        assert_eq!(count("x: &x [a, b]\ny: *x\n"), 4 + 2 + 1 + 4 + 1 + 4);
+    }
 
+    #[test]
+    fn a_recursive_alias_counts_once() {
+        assert_eq!(count("a: &a [*a]\n"), 4 + 2 + 1 + 3);
+    }
+
+    #[test]
+    fn the_count_stops_at_the_cap() {
+        let text = laughs(20, "x");
+        let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+        let document = workflint_yaml::parse(&file).document.unwrap();
         assert_eq!(
-            diagnostics,
-            ["1:22: string should not be empty [empty-string]"]
+            yaml_node_count(&document, MAX_YAML_NODES + 1),
+            MAX_YAML_NODES + 1
         );
-        assert!(visits > u64::try_from(nodes).unwrap());
+        assert_eq!(yaml_node_count(&document, u64::MAX), u64::MAX);
     }
 
     #[test]
-    fn the_alias_share_follows_go_yaml() {
-        // Up to 400,000 visits, 99% may come through aliases.
-        assert!(!exceeds_alias_share(990, 1000));
-        assert!(exceeds_alias_share(991, 1000));
-        // Halfway through the range, 54.5% may.
-        assert!(!exceeds_alias_share(1_199_000, 2_200_000));
-        assert!(exceeds_alias_share(1_199_001, 2_200_000));
-        // From 4,000,000 visits, 10% may.
-        assert!(!exceeds_alias_share(400_000, 4_000_000));
-        assert!(exceeds_alias_share(400_001, 4_000_000));
+    fn a_file_with_no_document_has_no_events() {
+        assert_eq!(
+            yaml_node_count(
+                &workflint_yaml::parse(&SourceFile::new(FileId::new(0), "t.yml", "").unwrap())
+                    .document
+                    .unwrap(),
+                u64::MAX
+            ),
+            0
+        );
     }
 }

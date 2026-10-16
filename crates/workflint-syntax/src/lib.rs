@@ -52,9 +52,9 @@
 //!
 //! [`parse`] parses an anchored subtree again at each alias, as the
 //! reference does, because the same mapping can mean different things in
-//! different sections. It stops when aliases repeat too much of the walk,
-//! by go-yaml's limit for decoding aliases, so the work stays linear in the
-//! size of the input.
+//! different sections. It first counts the YAML nodes with aliases
+//! expanded, and parses nothing if there are more than the 50,000 that
+//! GitHub reads, so the work stays linear in the size of the input.
 //!
 //! # Positions
 //!

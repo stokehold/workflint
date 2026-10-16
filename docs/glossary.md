@@ -52,7 +52,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | section | A mapping of a workflow with a fixed set of keys, such as the workflow root, a job, or `defaults`. Messages call it `"name" section`. |
 | mapping walker | `Parser::parse_mapping` in `workflint-syntax`, the reference's `parseMapping`. It returns the entries of a mapping and reports a null or empty section, a node of the wrong kind, a key that is not a string, a merge key, and a duplicate key. |
 | key table | The keys of a section, each with the function that parses its value (`KeySpec`). The unexpected-key message lists the table's keys. |
-| alias budget | The limit on how much of the parser's walk may repeat nodes through aliases. It is go-yaml's limit for decoding aliases. Past it, the parser stops and reports `excessive-aliasing`. |
+| YAML node limit | The 50,000 YAML nodes, aliases expanded, that GitHub reads in a workflow before it fails with `Maximum YAML nodes exceeded`. Past it, the parser reports `too-many-yaml-nodes` and parses nothing else. |
 | ignore comment | A `# workflint: ignore[...]` YAML comment that suppresses diagnostics (ADR 0009). |
 | project root | The directory that contains `.github/workflows` and a version control marker (ADR 0010). |
 | external tool | shellcheck, ruff, or pyflakes, run as a subprocess (ADR 0012). |

@@ -135,12 +135,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: planned.
 
-<a id="excessive-aliasing"></a>
-### Excessive aliasing stops the parser
+<a id="yaml-node-limit"></a>
+### Workflows over GitHub's YAML node limit
 
 - Upstream: the parser walks an anchored subtree again at each alias that uses it. Nested aliases multiply, so a "billion laughs" workflow, nine levels of anchors with ten aliases each, makes the parser walk 10^9 nodes, and actionlint does not finish.
-- workflint: the parser counts the nodes it walks and the walks that repeat a node through an alias. It stops as go-yaml stops decoding aliases: when more than 100 walks came through aliases, more than 1000 walks happened, and the share through aliases is above 99% up to 400,000 walks, 10% from 4,000,000 walks, and a linear scale in between. It reports `document contains excessive aliasing. the parts of the workflow that aliases lead to from here on are not checked` at the node where it stopped, with the rule `excessive-aliasing`, and reports nothing for the nodes after it.
-- Why: a linter must finish on any input. The bound keeps the work linear in the size of the file.
+- workflint: before it parses, the parser counts the YAML events that GitHub's reader reads, with each alias expanded: the stream and document markers, each scalar, and the start and end of each collection. The reader is `YamlObjectReader` in `actions/runner` at `9abfe11`, and it stops past 50,000 events with `Maximum YAML nodes exceeded`. Past the same limit, workflint reports `workflow has more than 50000 YAML nodes when its aliases are expanded. GitHub rejects it with "Maximum YAML nodes exceeded"` at the start of the document, with the rule `too-many-yaml-nodes`, and parses nothing else. The count takes time in proportion to the size of the file. A recursive alias counts as one event, because the YAML layer reports it already.
+- Why: a linter must finish on any input, and GitHub rejects these files anyway.
 - Upstream issue: none.
 - Milestone: M2.
 - Status: planned. No fixture covers it.

@@ -70,11 +70,11 @@ pub static EXPECTED_SINGLE_EXPRESSION: RuleMeta = syntax_check(
     "https://github.com/stokehold/workflint/blob/main/docs/rules/expected-single-expression.md",
 );
 
-/// Aliases expand the workflow beyond the limit that go-yaml applies when it
-/// decodes aliases, so the parser stops reading the nodes they lead to.
-pub static EXCESSIVE_ALIASING: RuleMeta = syntax_check(
-    "excessive-aliasing",
-    "https://github.com/stokehold/workflint/blob/main/docs/rules/excessive-aliasing.md",
+/// The workflow has more YAML nodes, with its aliases expanded, than GitHub
+/// reads. GitHub rejects it with `Maximum YAML nodes exceeded`.
+pub static TOO_MANY_YAML_NODES: RuleMeta = syntax_check(
+    "too-many-yaml-nodes",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/too-many-yaml-nodes.md",
 );
 
 /// Every rule in this module, in the order of their IDs.
@@ -83,11 +83,11 @@ pub static ALL: [&RuleMeta; 11] = [
     &EMPTY_SECTION,
     &EMPTY_STRING,
     &EMPTY_WORKFLOW,
-    &EXCESSIVE_ALIASING,
     &EXPECTED_SINGLE_EXPRESSION,
     &INVALID_LITERAL_VALUE,
     &MERGE_KEY_UNSUPPORTED,
     &MISSING_REQUIRED_KEY,
+    &TOO_MANY_YAML_NODES,
     &UNEXPECTED_KEY,
     &UNEXPECTED_NODE_KIND,
 ];

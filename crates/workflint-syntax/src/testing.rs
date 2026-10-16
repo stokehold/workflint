@@ -3,6 +3,8 @@
 
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use std::fmt::Write as _;
+
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, sort_and_dedup};
 use workflint_yaml::{Document, Node, NodeKind, parse};
 
@@ -110,4 +112,15 @@ pub(crate) fn parse_with(
     let mut out = render(&file, parser.into_diagnostics());
     out.extend(lines);
     out
+}
+
+/// A "billion laughs": `levels` anchored sequences, each with ten aliases of
+/// the one before, which expand to 10^`levels` copies of `item`.
+pub(crate) fn laughs(levels: usize, item: &str) -> String {
+    let mut text = format!("l0: &l0 [{}]\n", [item; 10].join(", "));
+    for level in 1..levels {
+        let items = vec![format!("*l{}", level - 1); 10].join(", ");
+        let _ = writeln!(text, "l{level}: &l{level} [{items}]");
+    }
+    text
 }

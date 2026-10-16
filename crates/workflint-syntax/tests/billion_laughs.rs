@@ -1,7 +1,8 @@
 //! A "billion laughs" workflow: nine levels of anchors, each used ten times
-//! by the next, which expand to 10^9 nodes. The parser must finish in
-//! linear time, so the test puts the anchors where section parsers read
-//! arbitrary YAML: matrix rows, `env`, `with`, and `steps`.
+//! by the next, which expand to 10^9 nodes. GitHub rejects it, and the
+//! parser must say so in linear time. The test puts the anchors where
+//! section parsers read arbitrary YAML: matrix rows, `env`, `with`, and
+//! `steps`.
 
 #![allow(clippy::unwrap_used)]
 
@@ -66,4 +67,6 @@ fn a_billion_laughs_finishes_in_under_one_second() {
         Duration::from_secs(1)
     };
     assert!(elapsed < limit, "took {elapsed:?}");
+    let rules: Vec<_> = diagnostics.iter().map(|d| d.rule.id).collect();
+    assert_eq!(rules, ["too-many-yaml-nodes"]);
 }
