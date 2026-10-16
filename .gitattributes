@@ -6,3 +6,6 @@
 
 # The vendored reference test data must stay byte-identical to upstream, which marks it the same way.
 /tests/conformance/actionlint/** -text
+
+# Fuzz regression inputs must reach the checks byte for byte, like the crash inputs they come from.
+/crates/workflint-yaml/tests/fuzz-regressions/** -text

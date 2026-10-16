@@ -23,5 +23,9 @@ insta = "1.49.0"
 name = "yaml_test_suite"
 harness = false
 
+[[test]]
+name = "fuzz_regressions"
+harness = false
+
 [lints]
 workspace = true
