@@ -7,7 +7,6 @@
 # The pull request that makes a fixture pass removes its line. See
 # tests/conformance/README.md.
 
-"err/assign_expression" = "M2"
 "err/case_sensitive_keys" = "M4"
 "err/context_availability" = "M4"
 "err/cron_5minutes_limit" = "M4"
@@ -15,7 +14,6 @@
 "err/deprecated_action_inputs" = "M4"
 "err/deprecated_workflow_commands" = "M4"
 "err/docker_specific_inputs_with_normal_action" = "M4"
-"err/duplicate_keys" = "M2"
 "err/empty_sequence_or_string" = "M2"
 "err/env_context_banned" = "M4"
 "err/errors_in_anchor" = "M4"
@@ -36,13 +34,11 @@
 "err/invalid_event_filters" = "M4"
 "err/invalid_float_at_timeout_minutes" = "M2"
 "err/invalid_id" = "M4"
-"err/invalid_int_at_max_parallel" = "M2"
 "err/invalid_json_in_fromjson" = "M4"
 "err/invalid_permissions" = "M4"
 "err/invalid_runner_labels" = "M4"
 "err/invalid_snapshot" = "M3"
 "err/invalid_steps" = "M2"
-"err/issue-610_recursive_raw_yaml_value" = "M2"
 "err/issue102" = "M2"
 "err/issue151_child_of_child_job" = "M4"
 "err/issue155_env_in_job_level_if" = "M4"
@@ -115,7 +111,6 @@
 "examples/local_action_outputs" = "M4"
 "examples/main" = "M5"
 "examples/matrix_checks" = "M4"
-"examples/missing_required_keys" = "M2"
 "examples/not_persistent_matrix_values" = "M4"
 "examples/permissions" = "M4"
 "examples/popular_action_inputs" = "M4"
