@@ -20,7 +20,13 @@ cargo test --workspace
 
 `cargo xtask --help` lists the developer commands.
 
-Parity work also needs the reference checkout of actionlint and its test corpus. `docs/research/README.md` explains how to recreate `.reference/`. The conformance tooling added in milestone M1 will also need a Go toolchain and shellcheck.
+Parity work also needs the reference checkout of actionlint, a reference binary built from it, and its test corpus. They live in `.reference/`, which git ignores. Install git and Go 1.26.4, the version in `.go-version`, then create them:
+
+```sh
+cargo xtask reference
+```
+
+The command checks the Go version before it builds. With another Go 1.21 or later installed, `GOTOOLCHAIN=go1.26.4 cargo xtask reference` makes it download Go 1.26.4. `docs/research/README.md` lists the other projects under `.reference/`, which you clone by hand. The conformance tooling added in milestone M1 will also need shellcheck.
 
 ## Pull requests
 
