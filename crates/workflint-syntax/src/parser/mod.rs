@@ -19,6 +19,7 @@ mod job;
 mod leaf;
 mod mapping;
 mod shared;
+mod step;
 mod strategy;
 mod workflow;
 
