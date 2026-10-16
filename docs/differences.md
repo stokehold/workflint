@@ -205,6 +205,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: planned.
 - Fixtures: `err/case_sensitive_keys`, `err/unexpected_keys`.
+- Corpus: `netdata_netdata_.github_workflows_dashboard-pr.yml`, `netdata_netdata_.github_workflows_docker.yml`, `netdata_netdata_.github_workflows_packaging.yml`. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
 
 <a id="empty-event-name-section"></a>
 ### Section name of an event with an empty name
