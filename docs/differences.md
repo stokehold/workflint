@@ -103,6 +103,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M1.
 - Status: planned.
 
+<a id="snippet-line-breaks"></a>
+### Snippet lines end at every YAML line break
+
+- Upstream: the YAML parser counts a lone `\r`, U+0085, U+2028, and U+2029 as line breaks, so the line number in the header counts them. The snippet reader splits lines at `\n` only. In a file with one of these breaks, the snippet shows a different line than the header names, or no snippet at all.
+- workflint: the snippet shows the line the header names. It ends at the same line breaks the YAML parser counts.
+- Why: the snippet must show the line the diagnostic is on.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned.
+
 ## Workflow parser
 
 <a id="nan-panic"></a>

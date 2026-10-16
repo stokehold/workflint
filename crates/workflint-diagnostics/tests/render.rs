@@ -267,6 +267,19 @@ fn a_position_at_the_end_of_the_file_after_a_newline_prints_only_the_header() {
 }
 
 #[test]
+fn snippet_lines_end_at_every_yaml_line_break() {
+    for brk in ["\r", "\u{85}", "\u{2028}", "\u{2029}"] {
+        let file = file(&format!("a: 1{brk}b: x{brk}c: 3"));
+        let d = at_token(&file, "x", "msg");
+        assert_eq!(
+            default_plain(&file, &[d]),
+            "test.yaml:2:4: msg [test-rule]\n  |\n2 | b: x\n  |    ^\n",
+            "{brk:?}"
+        );
+    }
+}
+
+#[test]
 fn oneline_prints_only_the_header_without_color() {
     let file = file("on: push\njobs: {}\n");
     let d = at_token(&file, "{}", "\"jobs\" section is empty");
