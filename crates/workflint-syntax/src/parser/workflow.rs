@@ -28,22 +28,21 @@ static ROOT_KEYS: [KeySpec<Root>; 8] = [
         name: "on",
         parse: parse_on,
     },
-    // TODO(#69): parse `permissions`, `env`, `defaults`, and `concurrency`.
     KeySpec {
         name: "permissions",
-        parse: |_, _, _| {},
+        parse: |p, w, e| w.permissions = p.parse_permissions(e.key, e.value),
     },
     KeySpec {
         name: "env",
-        parse: |_, _, _| {},
+        parse: |p, w, e| w.env = p.parse_env(e.key, e.value),
     },
     KeySpec {
         name: "defaults",
-        parse: |_, _, _| {},
+        parse: |p, w, e| w.defaults = p.parse_defaults(e.key, e.value),
     },
     KeySpec {
         name: "concurrency",
-        parse: |_, _, _| {},
+        parse: |p, w, e| w.concurrency = p.parse_concurrency(e.key, e.value),
     },
     KeySpec {
         name: "jobs",
@@ -140,7 +139,7 @@ mod tests {
     use workflint_diagnostics::{FileId, SourceFile};
 
     use crate::testing::{laughs, render};
-    use crate::{Str, parse};
+    use crate::{Permissions, Str, parse};
 
     fn check(text: &str) -> Vec<String> {
         let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
@@ -293,5 +292,69 @@ mod tests {
         assert!(workflow.on.is_present());
         assert!(workflow.jobs.is_present());
         assert_eq!(parsed.diagnostics, []);
+    }
+
+    #[test]
+    fn the_shared_sections_are_parsed_at_the_root() {
+        let text = "\
+on: push
+permissions: read-all
+env:
+  CI: 'true'
+defaults:
+  run:
+    shell: bash
+concurrency: ci
+jobs: {}
+";
+        let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+        let document = workflint_yaml::parse(&file).document.unwrap();
+        let parsed = parse(&file, &document);
+        assert_eq!(parsed.diagnostics, []);
+
+        let workflow = parsed.workflow;
+        assert!(matches!(
+            workflow.permissions.value(),
+            Some(Permissions::All(all)) if all.value() == "read-all"
+        ));
+        assert_eq!(
+            workflow.permissions.key().map(Str::value),
+            Some("permissions")
+        );
+        let env = workflow.env.literal().unwrap();
+        assert_eq!(
+            env.get("ci")
+                .and_then(|var| var.value)
+                .map(|value| value.value()),
+            Some("true")
+        );
+        let run = workflow.defaults.value().unwrap().run.value().unwrap();
+        assert_eq!(run.shell.value().map(Str::value), Some("bash"));
+        let concurrency = workflow.concurrency.value().unwrap();
+        assert_eq!(concurrency.group.value().map(Str::value), Some("ci"));
+        assert_eq!(concurrency.group.key(), None);
+    }
+
+    #[test]
+    fn errors_in_the_shared_sections_are_reported_at_the_root() {
+        assert_eq!(
+            check(
+                "on: push
+jobs: {}
+permissions:
+env:
+defaults:
+concurrency:
+  cancel-in-progress: true
+"
+            ),
+            [
+                "3:13: string should not be empty [empty-string]",
+                r#"4:5: expecting a single ${{...}} expression or mapping value for "env" section, but found plain text node [expected-single-expression]"#,
+                r#"5:10: "defaults" section should have "run" section [missing-required-key]"#,
+                r#"5:10: "defaults" section should not be empty. please remove this section if it's unnecessary [empty-section]"#,
+                r#"6:1: group name is missing in "concurrency" section [missing-required-key]"#,
+            ]
+        );
     }
 }
