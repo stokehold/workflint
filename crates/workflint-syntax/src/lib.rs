@@ -66,6 +66,7 @@
 
 mod event;
 mod expression;
+pub mod glob;
 mod job;
 mod keyed;
 mod leaf;

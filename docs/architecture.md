@@ -11,7 +11,7 @@ workflint                      binary: CLI, output formats
 ├── workflint-gotemplate       Go text/template subset for -format
 └── workflint-linter           discovery, config, parallel driver, caches, external tools
     └── workflint-rules        rule registry and rules
-        └── workflint-syntax   workflow and action.yml AST and parser
+        └── workflint-syntax   workflow and action.yml AST, parser, glob validator
             ├── workflint-yaml YAML parser fork, span tree, comments, source maps
             └── workflint-expr ${{ }} lexer, parser, types, checker
                 └── workflint-data  GitHub platform data, also used by workflint-rules
