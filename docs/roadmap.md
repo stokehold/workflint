@@ -10,11 +10,9 @@ M0 ─ M1 ─┬─ M2 ─┬─ M4 ─ M5 ═ 0.1.0 ─ M7 ─ M8 ─ M9 ═ 1.
 M6 (release pipeline) runs in parallel from M1 and is required for 0.1.0
 ```
 
-Issues exist for M1 and M6. Issues for each later milestone are created when the milestone before it is nearly done, so that they reflect what the earlier work taught. Until then, the task lists below are the plan. Dependencies between tasks are recorded on the issues as "blocked by" links.
+Issues exist for M1, M6, and M5.11. Issues for each later milestone are created when the milestone before it is nearly done, so that they reflect what the earlier work taught. Until then, the task lists below are the plan. Dependencies between tasks are recorded on the issues as "blocked by" links.
 
 ## M0: planning and skeleton
-
-Done.
 
 - M0.1 Research upstream actionlint, its issues, and related projects (`docs/research/`).
 - M0.2 ADRs, architecture, roadmap, parity checklist, issue coverage, differences, glossary.
@@ -43,11 +41,18 @@ Goal: the types and test infrastructure every later milestone builds on. Start w
 - M1.13 Add cargo xtask reference to recreate .reference/ [#14](https://github.com/stokehold/workflint/issues/14)
 - M1.14 Add divan micro-benchmarks and run them on pull requests with CodSpeed [#15](https://github.com/stokehold/workflint/issues/15)
 - M1.15 Fuzz the YAML layer [#16](https://github.com/stokehold/workflint/issues/16)
+- M1.16 Match go-yaml in the vendored YAML event layer [#50](https://github.com/stokehold/workflint/issues/50)
+- M1.17 Fix comment attachment, duplicate keys and deep trees in the YAML tree [#51](https://github.com/stokehold/workflint/issues/51)
+- M1.18 Make the conformance runner and the oracle fail loudly [#52](https://github.com/stokehold/workflint/issues/52)
+- M1.19 Scope CI credentials and verify tool installs [#53](https://github.com/stokehold/workflint/issues/53)
+- M1.20 Fix renderer columns and test Go quoting over every code point [#54](https://github.com/stokehold/workflint/issues/54)
+- M1.21 Update the docs and ADRs after the M1 review [#55](https://github.com/stokehold/workflint/issues/55)
 
 ## M2: workflow syntax
 
-Goal: every `syntax-check` diagnostic of the reference, on a typed AST.
+Goal: every `syntax-check` diagnostic of the reference, on a typed AST. Start with M2.0, which every task that ticks a fixture needs.
 
+- M2.0 A minimal `workflint` binary, so that M2 to M4 can tick fixtures. It accepts the conformance runner's command line, `workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <config> <files>...` (`tests/conformance/README.md`), and lints the given files. It prints one line per diagnostic on standard output, `path:line:col: message [rule-id]`, with the one-line renderer. Exit codes are actionlint's: 0 for no problems, 1 for problems found, 2 for an invalid option, and 3 for a fatal error. M5.6 replaces it with the full CLI.
 - M2.1 `workflint-syntax`: AST types for workflows with spans on every field and `Value<T>` for expression-capable values.
 - M2.2 Parser framework: mapping walker with case-insensitive keys, unknown key, duplicate key, wrong kind, and empty value handling, matching the reference's messages.
 - M2.3 Parse `on:` with every event type, filters, `workflow_dispatch` and `workflow_call` inputs, outputs, and secrets.
@@ -92,9 +97,10 @@ Goal: a drop-in binary. Release 0.1.0 at the end of this milestone.
 - M5.5 shellcheck and pyflakes rules with source-mapped positions, deduplication, and the opt-in cache. Evaluate batching.
 - M5.6 CLI with Go-style flag normalisation over clap, exit codes, `-version`, help.
 - M5.7 `workflint-gotemplate`: lexer, parser, executor, actionlint's functions; fixtures from the reference's format tests.
-- M5.8 Output formats: default, `-oneline`, `-format`, `json`, `sarif`, `github`.
-- M5.9 Whole conformance suite green; oracle diff clean apart from allowed differences; performance targets met.
+- M5.8 Output formats: default, `-oneline`, `-format`, `json`, `sarif`, `github`. A hint line under go-yaml's `did not find expected key` error that names the likely cause, such as a mis-indented list item (rhysd/actionlint#519).
+- M5.9 Whole conformance suite green; oracle diff clean apart from allowed differences, and the oracle job made blocking; performance targets met. Needs M5.11.
 - M5.10 Release 0.1.0.
+- M5.11 Apply allow-list entries to corpus files in cargo xtask oracle [#49](https://github.com/stokehold/workflint/issues/49)
 
 ## M6: release pipeline
 

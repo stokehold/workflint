@@ -16,22 +16,39 @@ actionlint
 
 libyaml-safer 0.3.0
   https://github.com/simonask/libyaml-safer
+  Copyright (c) Simon Ask Ulsnes
   MIT license
-  A Rust port of libyaml (Copyright (c) 2006-2016 Kirill Simonov,
-  Copyright (c) 2017-2020 Ingy döt Net), also MIT-licensed. A modified copy
-  of commit 7fe984df4b2c9003cb319002f0e2669c753eea09 is vendored in
+  A fork of unsafe-libyaml in safe Rust. A modified copy of commit
+  7fe984df4b2c9003cb319002f0e2669c753eea09 is vendored in
   crates/workflint-yaml/src/libyaml/, with its original LICENSE-MIT file.
   ORIGIN.md in that directory lists the changes.
+
+unsafe-libyaml
+  https://github.com/dtolnay/unsafe-libyaml
+  Copyright (c) David Tolnay
+  MIT license
+  libyaml translated from C to Rust. libyaml-safer, and through it the
+  vendored parser in crates/workflint-yaml/src/libyaml/, derive from it.
+
+libyaml
+  https://github.com/yaml/libyaml
+  Copyright (c) 2006-2016 Kirill Simonov
+  Copyright (c) 2017-2020 Ingy döt Net
+  MIT license
+  The C library that unsafe-libyaml translates. The vendored parser in
+  crates/workflint-yaml/src/libyaml/ derives from it.
 
 go-yaml v4.0.0-rc.3
   https://github.com/yaml/go-yaml
   Copyright (c) 2011-2019 Canonical Ltd
   Copyright (c) 2006-2010 Kirill Simonov
   MIT license
-  The comment recording in crates/workflint-yaml/src/libyaml/scanner.rs
-  follows go-yaml's internal/libyaml/scanner.go. go-yaml's NOTICE file
-  places that file under libyaml's MIT license, and the file's header
-  carries the copyright lines above.
+  The YAML library of actionlint. crates/workflint-yaml reproduces its
+  limits and error messages, so that workflint accepts and rejects the
+  same files. go-yaml's NOTICE file places its internal/libyaml/ files,
+  which hold that behaviour, under libyaml's MIT license, and their
+  headers carry the copyright lines above. xtask/goyaml-dump builds the
+  unmodified library to compare the two parsers.
 
 YAML test suite
   https://github.com/yaml/yaml-test-suite

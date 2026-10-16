@@ -129,8 +129,17 @@ To turn a failing input into a regression test:
 - One issue per pull request. Open it as a draft with `Closes #N` in the description as soon as you start, so others can see the task is taken.
 - The pull request title follows Conventional Commits and names the task, for example `feat(expr): M3.2 Pratt parser`. It becomes the squash commit message.
 - Write the failing test before the fix or feature.
-- Before you open the pull request, run `cargo fmt --all`, `cargo clippy --workspace --all-targets`, `cargo nextest run --workspace`, and `cargo test --doc --workspace`.
-- If your change makes workflint differ from actionlint, add an entry to `docs/differences.md`.
+- Before you open the pull request, run the checks below. They are the checks in the "Done" list of `AGENTS.md`, and CI runs them too. Clippy must report no warnings, and `cargo nextest run --workspace` includes the conformance suite. Install cargo-deny with `cargo install --locked cargo-deny`.
+
+  ```sh
+  cargo fmt --all --check
+  cargo clippy --workspace --all-targets
+  cargo nextest run --workspace
+  cargo test --doc --workspace
+  cargo deny check
+  ```
+
+- If your change makes workflint differ from actionlint, add an entry to `docs/differences.md`. If the difference changes a fixture's output, also add records to `tests/conformance/allowed-differences.toml` (ADR 0023).
 - Say in the pull request how you verified the change.
 
 AI-assisted contributions are welcome. `AGENTS.md` has the instructions for coding agents, and the same rules apply to people.
