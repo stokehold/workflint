@@ -98,8 +98,28 @@ pub static SCHEDULE_WITHOUT_CONFIG: RuleMeta = syntax_check(
     "https://github.com/stokehold/workflint/blob/main/docs/rules/schedule-without-config.md",
 );
 
+/// A job that calls a reusable workflow with `uses` has a key that only a
+/// job with steps may have, such as `runs-on` or `services`.
+pub static INVALID_REUSABLE_CALL_KEY: RuleMeta = syntax_check(
+    "invalid-reusable-call-key",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-reusable-call-key.md",
+);
+
+/// A job without `uses` has `with` or `secrets`, which only a job that
+/// calls a reusable workflow may have.
+pub static REUSABLE_CALL_KEY_WITHOUT_USES: RuleMeta = syntax_check(
+    "reusable-call-key-without-uses",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/reusable-call-key-without-uses.md",
+);
+
+/// A literal `timeout-minutes` or `max-parallel` is zero or less.
+pub static NON_POSITIVE_NUMBER: RuleMeta = syntax_check(
+    "non-positive-number",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/non-positive-number.md",
+);
+
 /// Every rule in this module, in the order of their IDs.
-pub static ALL: [&RuleMeta; 14] = [
+pub static ALL: [&RuleMeta; 17] = [
     &DUPLICATE_KEY,
     &EMPTY_SECTION,
     &EMPTY_STRING,
@@ -107,9 +127,12 @@ pub static ALL: [&RuleMeta; 14] = [
     &EXPECTED_SINGLE_EXPRESSION,
     &INVALID_DISPATCH_INPUT_TYPE,
     &INVALID_LITERAL_VALUE,
+    &INVALID_REUSABLE_CALL_KEY,
     &INVALID_WORKFLOW_CALL_INPUT_TYPE,
     &MERGE_KEY_UNSUPPORTED,
     &MISSING_REQUIRED_KEY,
+    &NON_POSITIVE_NUMBER,
+    &REUSABLE_CALL_KEY_WITHOUT_USES,
     &SCHEDULE_WITHOUT_CONFIG,
     &TOO_MANY_YAML_NODES,
     &UNEXPECTED_KEY,

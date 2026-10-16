@@ -221,7 +221,6 @@ impl<'a> Parser<'a, '_> {
     /// `name`, `url`, and `deployment`. Without a `name` key it reports
     /// `name is missing in "environment" section` at the section's key,
     /// also when the value is not a mapping.
-    #[cfg_attr(not(test), expect(dead_code, reason = "the job parser (#70) calls it"))]
     pub(crate) fn parse_environment(
         &mut self,
         key: Key<'a>,
@@ -260,7 +259,7 @@ impl<'a> Parser<'a, '_> {
     /// [`Keyed`] collection needs a string key. The mapping walker has
     /// reported the key. The reference keeps such an entry under the name
     /// `""` (`docs/differences.md#non-scalar-keys`).
-    fn keyed_strings(
+    pub(super) fn keyed_strings(
         &mut self,
         entries: Vec<MapEntry<'a>>,
         allow_empty: bool,
@@ -278,7 +277,7 @@ impl<'a> Parser<'a, '_> {
 
 /// Returns `value` as a valid field if `node` is a mapping, and an invalid
 /// one otherwise. The mapping walker has reported a node of another kind.
-fn mapping_field<'a, T>(key: Key<'a>, node: &'a Node, value: T) -> Field<'a, T> {
+pub(super) fn mapping_field<'a, T>(key: Key<'a>, node: &'a Node, value: T) -> Field<'a, T> {
     match node.kind {
         NodeKind::Mapping(_) => Field::Valid {
             key: key.string,

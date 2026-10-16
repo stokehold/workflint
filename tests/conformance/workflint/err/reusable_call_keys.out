@@ -1,0 +1,4 @@
+test.yaml:8:5: when a reusable workflow is called with "uses", "runs-on" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", and "permissions" in job "call" [syntax-check]
+test.yaml:9:5: when a reusable workflow is called with "uses", "services" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", and "permissions" in job "call" [syntax-check]
+test.yaml:14:5: "with" is only available for a reusable workflow call with "uses" but "uses" is not found in job "test" [syntax-check]
+test.yaml:16:5: "secrets" is only available for a reusable workflow call with "uses" but "uses" is not found in job "test" [syntax-check]

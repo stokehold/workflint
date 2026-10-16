@@ -1,0 +1,19 @@
+on: push
+jobs:
+  # A job that calls a reusable workflow, with two keys that only a job
+  # with steps may have. Upstream accepts `services` and reports only the
+  # last key.
+  call:
+    uses: owner/repo/.github/workflows/ci.yml@v1
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+  # `with` and `secrets` without `uses`. Upstream reports only `secrets`.
+  test:
+    with:
+      foo: bar
+    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello

@@ -36,7 +36,9 @@ pub struct Workflow<'a> {
     pub defaults: Field<'a, Defaults<'a>>,
     /// `concurrency`. The reference's `Concurrency.Pos` is this field's key.
     pub concurrency: Field<'a, Concurrency<'a>>,
-    /// `jobs`, keyed by job ID.
+    /// `jobs`, keyed by job ID, in source order. A null `jobs:` has no
+    /// entries. A job whose ID is not a scalar is left out after the parser
+    /// reports it.
     pub jobs: Field<'a, Keyed<'a, Job<'a>>>,
 }
 

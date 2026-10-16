@@ -175,6 +175,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: planned.
 
+<a id="reusable-call-keys"></a>
+### Every misplaced key of a reusable workflow call job is reported
+
+- Upstream: a job with `uses` reports only the last key written that only a job with steps may have, such as `runs-on` or `env` (`parse.go:1461`). A job without `uses` reports only the last of `with` and `secrets` (`parse.go:1479`). After fixing that key, the next run reports the one before it.
+- workflint: each such key gets its own error, at its key.
+- Why: one run should show every key to remove. No fixture and no corpus file has a job with two such keys, so no expected output changes.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned.
+
 <a id="snapshot-section-name"></a>
 ### `snapshot` errors name the right section
 
