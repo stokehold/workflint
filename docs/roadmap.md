@@ -83,7 +83,6 @@ Goal: the expression language with the reference's type checking, without its bu
 - M3.7 Detect untrusted input in script expressions [#88](https://github.com/stokehold/workflint/issues/88)
 - M3.8 Fuzz and benchmark the expression engine [#89](https://github.com/stokehold/workflint/issues/89)
 - M3.9 Type fromJSON literals and report Go's JSON errors [#90](https://github.com/stokehold/workflint/issues/90)
-- M3.10 Fuzz and benchmark the expression checker [#107](https://github.com/stokehold/workflint/issues/107)
 
 ## M4: rules and data
 

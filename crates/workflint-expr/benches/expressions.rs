@@ -1,5 +1,5 @@
-//! Micro-benchmarks for lexing and parsing the reference's 1,858 real-world expressions
-//! (ADR 0019), as the reference's `BenchmarkExprRealWorld` does.
+//! Micro-benchmarks for lexing, parsing, and type-checking the reference's 1,858 real-world
+//! expressions (ADR 0019), as the reference's `BenchmarkExprRealWorld` does.
 //!
 //! The input is `tests/conformance/actionlint/testdata/bench/expressions.txt`, actionlint's
 //! file under its MIT license in `tests/conformance/actionlint/LICENSE.txt`. It is outside this
@@ -9,7 +9,7 @@
 
 use divan::Bencher;
 use divan::counter::ItemsCount;
-use workflint_expr::{Lexer, TokenKind, parse_expression};
+use workflint_expr::{Expr, Lexer, TokenKind, TypeEnv, parse_expression};
 
 fn main() {
     divan::main();
@@ -58,5 +58,45 @@ fn parse(bencher: Bencher<'_, '_>) {
                 }
             }
             parsed
+        });
+}
+
+/// Lexes, parses, and type-checks each expression against the global contexts, as the
+/// reference's `LexParseSema` does.
+#[divan::bench]
+fn parse_and_check(bencher: Bencher<'_, '_>) {
+    let inputs = inputs();
+    let env = TypeEnv::new();
+    bencher
+        .counter(ItemsCount::new(inputs.len()))
+        .bench_local(|| {
+            let mut errors = 0_usize;
+            for src in &inputs {
+                if let Ok((expr, _)) = parse_expression(divan::black_box(src)) {
+                    errors += env.check(&expr).1.len();
+                }
+            }
+            errors
+        });
+}
+
+/// Type-checks each expression, parsed before the measurement, against the global contexts,
+/// as the reference's `Sema-trust` does.
+#[divan::bench]
+fn check(bencher: Bencher<'_, '_>) {
+    let trees: Vec<Expr> = inputs()
+        .iter()
+        .filter_map(|src| parse_expression(src).ok())
+        .map(|(expr, _)| expr)
+        .collect();
+    let env = TypeEnv::new();
+    bencher
+        .counter(ItemsCount::new(trees.len()))
+        .bench_local(|| {
+            let mut errors = 0_usize;
+            for expr in &trees {
+                errors += env.check(divan::black_box(expr)).1.len();
+            }
+            errors
         });
 }

@@ -1,9 +1,10 @@
-//! Lexes and parses the reference's real-world expressions, and runs the checks of the fuzz
-//! targets on them and on every expression in the reference's fixtures.
+//! Lexes, parses, and type-checks the reference's real-world expressions, and runs the checks of
+//! the fuzz targets on them and on every expression in the reference's fixtures.
 //!
 //! `testdata/bench/expressions.txt` holds 1,858 expressions from public workflows, one per line,
 //! without `${{` and `}}`. The reference's `TestExprSemanticsCheckRealWorld` parses each of them
-//! without an error. The benchmarks in `benches/expressions.rs` measure the same file.
+//! without an error and type-checks it against the global contexts. The benchmarks in
+//! `benches/expressions.rs` measure the same file.
 
 #![allow(clippy::expect_used, clippy::panic)]
 
@@ -11,7 +12,7 @@ mod invariants;
 
 use std::path::{Path, PathBuf};
 
-use workflint_expr::{lex_expression, parse_expression};
+use workflint_expr::{TypeEnv, lex_expression, parse_expression};
 
 const EXPRESSIONS: &str =
     include_str!("../../../tests/conformance/actionlint/testdata/bench/expressions.txt");
@@ -73,11 +74,26 @@ fn every_real_world_expression_lexes_and_parses_without_an_error() {
 }
 
 #[test]
+fn every_real_world_expression_parses_and_type_checks() {
+    let env = TypeEnv::new();
+    for line in EXPRESSIONS.lines() {
+        let src = format!("{line}}}}}");
+        match parse_expression(&src) {
+            Ok((expr, _)) => {
+                let _ = env.check(&expr);
+            }
+            Err(err) => panic!("parsing {line:?} failed at {}: {err}", err.start),
+        }
+    }
+}
+
+#[test]
 fn every_real_world_expression_passes_the_fuzz_checks() {
     for line in EXPRESSIONS.lines() {
         let src = format!("{line}}}}}");
         invariants::check_lex(&src);
         invariants::check_parse(&src);
+        invariants::check_types(&src);
     }
 }
 
@@ -95,6 +111,7 @@ fn every_expression_in_the_reference_fixtures_passes_the_fuzz_checks() {
             println!("{}", path.display());
             invariants::check_lex(src);
             invariants::check_parse(src);
+            invariants::check_types(src);
             count += 1;
         }
     }

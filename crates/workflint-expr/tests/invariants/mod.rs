@@ -1,4 +1,5 @@
-//! The checks that the `expr_lex` and `expr_parse` fuzz targets in `fuzz/` run on each input.
+//! The checks that the `expr_lex`, `expr_parse`, and `expr_check` fuzz targets in `fuzz/` run on
+//! each input.
 //!
 //! The fuzz targets include this file with `#[path]`, and `real_world.rs` and
 //! `fuzz_regressions.rs` run it on expressions, so a crash input found by the fuzzer fails the
@@ -11,7 +12,7 @@ use std::ops::Range;
 
 use workflint_expr::rules::{INVALID_EXPRESSION_SYNTAX, INVALID_NUMBER_LITERAL};
 use workflint_expr::{Expr, ExprError, ExprKind, Lexer, TokenKind, Visit, lex_expression};
-use workflint_expr::{Token, parse_expression};
+use workflint_expr::{Token, TypeEnv, parse_expression};
 
 /// Lexes `src` one token at a time up to the end of the expression or the first error.
 ///
@@ -102,6 +103,31 @@ pub(crate) fn check_parse(src: &str) {
         Ok((_, lexed)) => assert_eq!(usize::try_from(lexed).unwrap(), end, "{src:?}"),
         Err(error) => panic!("the parser accepts {src:?}, but the lexer reports {error:?}"),
     }
+}
+
+/// Parses `src` and, if that succeeds, type-checks the tree against the global contexts.
+///
+/// The checker does not panic, and a second check returns the same type and errors. Every
+/// error has a message and a rule other than the two syntax rules, and its range lies inside
+/// the tree's range on character boundaries. [`Expr::is_constant`] does not panic.
+pub(crate) fn check_types(src: &str) {
+    let Ok((expr, _)) = parse_expression(src) else {
+        return;
+    };
+    let env = TypeEnv::new();
+    let (ty, errors) = env.check(&expr);
+    for error in &errors {
+        let what = format!("{error:?} in {src:?}");
+        assert!(!error.message.is_empty(), "{what}");
+        assert!(
+            ![INVALID_EXPRESSION_SYNTAX.id, INVALID_NUMBER_LITERAL.id].contains(&error.rule.id),
+            "{what}"
+        );
+        check_range(src, &error.range(), &what);
+        check_inside(&error.range(), &expr.range(), &what);
+    }
+    assert_eq!(env.check(&expr), (ty, errors), "{src:?}");
+    let _ = expr.is_constant();
 }
 
 /// An error has a message and one of the two rules of the lexer and the parser. Its range lies

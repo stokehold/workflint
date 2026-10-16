@@ -93,7 +93,7 @@ Hot paths have micro-benchmarks written with [divan](https://docs.rs/divan) (ADR
 
 - `crates/workflint-yaml/benches/parse.rs` parses `minimal.yaml`, `small.yaml`, `large.yaml`, and `many_scripts.yaml` to events and to the span tree.
 - `crates/workflint-diagnostics/benches/source.rs` builds the line index of `large.yaml` and converts the offset of each of its characters to a line and column.
-- `crates/workflint-expr/benches/expressions.rs` lexes and parses the 1,858 expressions of `expressions.txt`. Divide the reported time by 1,858 for the time per expression.
+- `crates/workflint-expr/benches/expressions.rs` lexes, parses, and type-checks the 1,858 expressions of `expressions.txt`. `check` type-checks trees parsed before the measurement, and `parse_and_check` lexes, parses, and type-checks in one pass. Divide the reported time by 1,858 for the time per expression.
 
 The inputs are the reference's benchmark files in `tests/conformance/actionlint/testdata/bench/`. They sit outside the crates, so the published packages do not contain them (ADR 0006).
 
@@ -116,6 +116,7 @@ The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchm
 
 | Target | What it checks |
 | --- | --- |
+| `expr_check` | `workflint_expr::TypeEnv::check` type-checks each input that parses against the global contexts without panicking, and a second check gives the same type and errors. Every error has a semantic rule and a range inside the expression on character boundaries. |
 | `expr_lex` | The expression lexer of `workflint-expr` reads the input as the text after `${{` up to the `}}` that ends it or the first error, without panicking and without looping. Every token and error range lies inside the input on character boundaries, tokens never overlap, and `lex_expression` returns the same tokens and error. |
 | `expr_parse` | `workflint_expr::parse_expression` parses the input as the text after `${{` without panicking. Every node's range lies inside its parent's on character boundaries, and so do its token and names. The visitor enters and leaves each node once. An error range covers at most one character or one token. |
 | `glob` | `workflint_syntax::glob` validates the input as a branch or tag pattern and as a path pattern without panicking. Every problem has a message, each range covers one character of the input, and the ranges never move backwards. |
@@ -124,7 +125,7 @@ The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchm
 | `yaml_events` | The event parser of `workflint-yaml` reads the input up to the end of the stream or the first error without panicking. Every event's marks lie inside the input on character boundaries. |
 | `yaml_tree` | `workflint_yaml::parse` builds the tree without panicking. Every span lies inside the input on character boundaries and converts to a line and column, and every node ID in the tree refers to a node. Every scalar's source map is exact and maps each character inside the scalar's span. |
 
-All seven targets replace invalid UTF-8 with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`, `syntax` runs the check in `crates/workflint-syntax/tests/invariants/mod.rs`, and the two expression targets run the checks in `crates/workflint-expr/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
+All eight targets replace invalid UTF-8 with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`, `syntax` runs the check in `crates/workflint-syntax/tests/invariants/mod.rs`, and the three expression targets run the checks in `crates/workflint-expr/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
 
 ```sh
 cargo xtask fuzz-seeds
@@ -139,7 +140,7 @@ To turn a failing input into a regression test:
 
 1. Download the artifact, or take the input from `fuzz/artifacts/<target>/` after a local run. `cargo fuzz` names it `crash-<hash>` for a panic and `timeout-<hash>` for a hang.
 2. Reproduce the failure with `cargo +nightly fuzz run yaml_tree <input>`. `cargo +nightly fuzz tmin yaml_tree <input>` writes a smaller input that fails the same way.
-3. Copy the input into `crates/workflint-yaml/tests/fuzz-regressions/`, under a name that says what it covers, such as `tab-before-flow-key`. `cargo nextest run -p workflint-yaml fuzz_regression` runs both targets' checks on every file there, so it now fails. An input of `expr_lex` or `expr_parse` goes into `crates/workflint-expr/tests/fuzz-regressions/` instead, and `cargo nextest run -p workflint-expr fuzz_regression` runs both expression checks on it.
+3. Copy the input into `crates/workflint-yaml/tests/fuzz-regressions/`, under a name that says what it covers, such as `tab-before-flow-key`. `cargo nextest run -p workflint-yaml fuzz_regression` runs both targets' checks on every file there, so it now fails. An input of an expression target goes into `crates/workflint-expr/tests/fuzz-regressions/` instead, and `cargo nextest run -p workflint-expr fuzz_regression` runs the three expression checks on it.
 4. Fix the bug in the crate, or fix the check in its `tests/invariants/mod.rs` if the check is wrong. The file stays as a regression test, and `cargo xtask fuzz-seeds` adds it to the seed inputs.
 
 ## Pull requests

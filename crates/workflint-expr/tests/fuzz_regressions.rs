@@ -1,4 +1,5 @@
-//! Runs the checks of the expression fuzz targets on each input in `tests/fuzz-regressions/`.
+//! Runs the checks of the three expression fuzz targets on each input in
+//! `tests/fuzz-regressions/`.
 //!
 //! Each file is an input that once made a fuzz target fail, or one that covers an edge case of
 //! the checks: a byte order mark, a NUL character, nesting at and past the parser's depth limit,
@@ -15,6 +16,7 @@ fn fuzz_regression(_path: &Utf8Path, data: Vec<u8>) -> datatest_stable::Result<(
     let src = String::from_utf8_lossy(&data);
     invariants::check_lex(&src);
     invariants::check_parse(&src);
+    invariants::check_types(&src);
     Ok(())
 }
 

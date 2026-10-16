@@ -56,6 +56,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "expr_check"
+path = "fuzz_targets/expr_check.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "expr_lex"
 path = "fuzz_targets/expr_lex.rs"
 test = false

@@ -24,7 +24,7 @@ pub(crate) const TARGETS: &[&str] = &["glob", "render", "syntax", "yaml_events",
 
 /// The fuzz targets in `fuzz/fuzz_targets/` that read the text after `${{`.
 /// Each gets every expression seed.
-pub(crate) const EXPRESSION_TARGETS: &[&str] = &["expr_lex", "expr_parse"];
+pub(crate) const EXPRESSION_TARGETS: &[&str] = &["expr_check", "expr_lex", "expr_parse"];
 
 /// The vendored reference test data, relative to the repository root.
 const FIXTURES: &str = "tests/conformance/actionlint/testdata";
