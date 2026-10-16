@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 /// The parsed file, from fixture ID to milestone.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ExpectedFailures {
+    /// The milestone of each fixture, by fixture ID.
     pub fixtures: BTreeMap<String, String>,
 }
 

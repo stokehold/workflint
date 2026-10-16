@@ -15,8 +15,11 @@ use regex::Regex;
 pub struct Diagnostic {
     /// The file path, with `/` separators.
     pub path: String,
+    /// The line number.
     pub line: u32,
+    /// The column number.
     pub column: u32,
+    /// The message, without the code in brackets.
     pub message: String,
     /// The text in brackets at the end of the line.
     pub code: String,

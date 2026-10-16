@@ -962,6 +962,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
+ "crc32fast",
  "datatest-stable",
  "regex",
  "serde",

@@ -16,6 +16,7 @@ use super::output::parse_line;
 #[derive(Debug, Default, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct AllowList {
+    /// The `[[difference]]` tables, in file order.
     #[serde(default, rename = "difference")]
     pub entries: Vec<Entry>,
 }

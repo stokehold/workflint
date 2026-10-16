@@ -37,9 +37,9 @@ pub(crate) struct Job<'a> {
 ///
 /// hyperfine has no time limit for a run. So the binary first runs once on
 /// its own under the limit, with its output in `job.log`. When that run times
-/// out, hyperfine does not start. Otherwise hyperfine gets the limit once for
-/// each of its runs and is killed, with its child processes, when it takes
-/// longer.
+/// out, hyperfine does not start. Otherwise the whole hyperfine series gets
+/// [`series_limit`], and hyperfine is killed, with its child processes, when
+/// it takes longer.
 pub(crate) fn measure(job: &Job<'_>) -> Result<Measurement> {
     let log =
         File::create(&job.log).with_context(|| format!("cannot create {}", job.log.display()))?;
@@ -82,7 +82,7 @@ pub(crate) fn measure(job: &Job<'_>) -> Result<Measurement> {
         .arg(command_line(job.program, job.args))
         .current_dir(job.cwd)
         .stdin(Stdio::null());
-    let limit = job.timeout * (job.warmup + job.runs).max(1);
+    let limit = series_limit(job.timeout, job.warmup, job.runs);
     match process::run(&mut hyperfine, limit)? {
         Finished::TimedOut => Ok(Measurement::TimedOut),
         Finished::Exited(status) if !status.success() => Ok(Measurement::Failed {
@@ -96,6 +96,13 @@ pub(crate) fn measure(job: &Job<'_>) -> Result<Measurement> {
             })
         }
     }
+}
+
+/// The time limit for the whole hyperfine series: `timeout` once for each
+/// warmup and measured run. One slow run can use the time that the others
+/// leave unused.
+pub(crate) fn series_limit(timeout: Duration, warmup: u32, runs: u32) -> Duration {
+    timeout * (warmup + runs).max(1)
 }
 
 /// Joins `program` and `args` into one command line that hyperfine splits

@@ -21,7 +21,12 @@ pub enum Verdict {
     /// The output matches.
     Passed,
     /// The output does not match, and a list of expected failures says so.
-    ExpectedFailure { listing: Listing, reason: String },
+    ExpectedFailure {
+        /// Why the fixture is expected to fail.
+        listing: Listing,
+        /// Why the test would fail without the entry.
+        reason: String,
+    },
 }
 
 /// Judges one fixture.
