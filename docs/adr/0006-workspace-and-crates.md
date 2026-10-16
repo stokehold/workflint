@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-15
+- Amended by: ADR 0025
 
 ## Context
 
@@ -13,7 +14,7 @@ The repository is one Cargo workspace. Crates live in `crates/` and are created 
 
 | Crate | Contents | Depends on |
 |---|---|---|
-| `workflint-diagnostics` | `Span`, `Diagnostic`, `Severity`, rule ID type, `Fix` and `TextEdit` types, the default and one-line renderers | none |
+| `workflint-diagnostics` | `Span`, `Diagnostic`, `Severity`, rule metadata, `Fix` and `TextEdit` types, the default and one-line renderers | none |
 | `workflint-yaml` | vendored YAML parser fork, span tree, comments, scalar source maps (ADR 0005) | diagnostics |
 | `workflint-expr` | `${{ }}` lexer, parser, AST, type system, semantic checker | diagnostics |
 | `workflint-syntax` | workflow and action metadata AST and the parser that builds it from the YAML tree | yaml, expr, diagnostics |

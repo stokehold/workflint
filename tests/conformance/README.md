@@ -8,7 +8,7 @@ The conformance suite runs every fixture in this directory through the `workflin
 cargo nextest run -p xtask --test conformance
 ```
 
-Each fixture is one test, named after its path, such as `actionlint::err/action_metadata_syntax_validation.yaml`. Three more tests check the data files described below.
+Each fixture is one test, named after its path, such as `actionlint::err/action_metadata_syntax_validation.yaml`. Three more tests check the data files described below, and `skipped_fixtures::README.md` prints how many fixtures the runner skips and why. `.config/nextest.toml` shows its output at the end of every nextest run.
 
 ## Contents
 
@@ -59,8 +59,9 @@ workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <c
   - `err` and `examples` fixtures turn a tool on only if the file name contains `shellcheck` or `pyflakes`.
   - `ok` fixtures turn on every tool found on `PATH`.
   - `projects` turn both off.
-  - A fixture whose file name contains a tool's name is skipped, with a message, if the tool is not on `PATH`.
-- Standard input is empty. Exit codes 0 and 1 are normal. Any other exit code fails the fixture and the runner prints standard error.
+  - A fixture whose file name contains a tool's name is skipped, with a message, if the tool is not on `PATH`. The Linux legs of the CI test job install shellcheck 0.11.0 and the pyflakes version in `requirements.txt`, so these fixtures run there.
+- Standard input is empty.
+- Exit code 0 means no errors, and exit code 1 means errors were found. The fixture fails, with a message that names the cause, if the binary exits with 0 and prints output, exits with 1 and prints nothing, exits with any other code, or prints anything to standard error.
 
 The runner builds the binary with `cargo build -p workflint` before the first fixture in each test process.
 
@@ -75,7 +76,17 @@ The runner compares the output with the expected lines as `checkErrors` in the r
 5. The number of errors must equal the number of expected lines.
 6. The n-th expected line must equal the n-th error, written as `path:line:col: message [kind]`. A line that starts and ends with `/` is a regular expression instead, which must match anywhere in the error. The `regex` crate reads these patterns, except that a `{` or `}` that does not form a repetition such as `{2,5}` is escaped first, because Go reads such braces as literals.
 
-`projects/local_action_invalid.out` has a pattern that expects the relative path `"testdata/projects/local_action_invalid/no_name/action.yaml"`. The reference's Go test passes a relative project root, but a CLI that finds the project root prints an absolute path, so the reference binary fails that line too. The task that implements `missing-action-name` (M4) decides how to handle it.
+`projects/local_action_invalid.out` has patterns that expect the relative path `testdata/projects/local_action_invalid/...`. The reference's Go test passes a relative project root, but a CLI that finds the project root prints an absolute path, so the reference binary fails those lines too. The reference run lists the fixture as a known failure (see below). The task that implements `missing-action-name` (M4) adds `allowed-differences.toml` entries that replace those lines with the lines workflint prints.
+
+## Running the reference
+
+To check the runner itself, run the suite with the reference binary in place of workflint:
+
+```sh
+WORKFLINT_CONFORMANCE_REFERENCE=.reference/bin/actionlint cargo nextest run -p xtask --test conformance
+```
+
+A relative path is relative to the repository root. In this mode the runner does not map kinds, because the reference prints kinds already. It reads neither `expected-failures.toml` nor `allowed-differences.toml`, and it skips workflint's own fixtures. The only expected failures are the ones in `REFERENCE_FAILURES` in `xtask/src/conformance/runner.rs`, each with its reason: today only `projects/local_action_invalid`. Every other fixture must pass, so a runner that passes or fails fixtures by mistake shows up. The oracle job in `.github/workflows/oracle.yml` runs this check.
 
 ## Expected failures
 
@@ -86,7 +97,7 @@ The runner compares the output with the expected lines as `checkErrors` in the r
 "ok/minimal.yaml" = "M5"
 ```
 
-The milestone is the latest one among the `docs/parity-checklist.md` rows that cite the fixture, or M5 if no row cites it.
+The milestone is the latest one among the `docs/parity-checklist.md` rows that cite the fixture, or M5 if no row cites it. It is never earlier than M2, because no fixture can pass before M2.0 gives the binary the runner's command line.
 
 - A listed fixture that fails passes its test and prints `expected failure until <milestone>` with the first line of the reason.
 - A listed fixture that passes fails its test, with a message that says to remove its line. The pull request that makes a fixture pass removes the line.
@@ -123,7 +134,7 @@ The runner fails:
 
 Every entry needs a matching section in `docs/differences.md`. Write that section first, then the entry.
 
-`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. The corpus files have no fixture ID, so no entry applies to them yet (#49).
+`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. An `upstream` line must be in the fixture's `.out` file, as in the runner. The oracle removes the first line of the reference's output that this `.out` line matches, exactly or as a `/pattern/`. An entry that does not apply is a problem in the report that names the `.out` file, and the other entries of the fixture still apply. The corpus files have no fixture ID, so no entry applies to them yet (#49).
 
 ## Rule kinds
 

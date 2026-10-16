@@ -22,7 +22,7 @@ allow = [
 ]
 
 # libfuzzer-sys bundles LLVM's libFuzzer, which is under NCSA. Only the fuzz
-# workspace uses it, and no published crate depends on it.
+# workspace uses it, and no published crate depends on it (ADR 0025).
 [[licenses.exceptions]]
 crate = "libfuzzer-sys"
 allow = ["NCSA"]

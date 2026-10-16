@@ -1,12 +1,15 @@
 /// How serious a diagnostic is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// The order goes from the least to the most serious, `Info < Warning < Error`, so that
+/// `--fail-on` (ADR 0008) can compare levels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Severity {
-    /// A problem that makes the workflow fail or behave wrongly.
-    Error,
-    /// A likely problem.
-    Warning,
     /// A suggestion.
     Info,
+    /// A likely problem.
+    Warning,
+    /// A problem that makes the workflow fail or behave wrongly.
+    Error,
 }
 
 impl Severity {
@@ -67,4 +70,17 @@ pub struct RuleMeta {
     pub default_severity: Severity,
     /// The URL of the rule's documentation page.
     pub docs_url: &'static str,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn severity_orders_info_below_warning_below_error() {
+        assert!(Severity::Info < Severity::Warning);
+        assert!(Severity::Warning < Severity::Error);
+        let levels = [Severity::Error, Severity::Info, Severity::Warning];
+        assert_eq!(levels.iter().max(), Some(&Severity::Error));
+    }
 }

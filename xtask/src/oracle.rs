@@ -13,7 +13,6 @@ mod report;
 mod select;
 
 use std::ffi::OsString;
-use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -21,12 +20,12 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result, bail};
 use xtask::conformance::allow_list::AllowList;
 use xtask::conformance::binary;
-use xtask::conformance::fixture::{self, Origin, Tools};
+use xtask::conformance::fixture::{self, Fixture, Origin, Tools};
 
 use crate::bench;
 use crate::reference::{self, CORPUS_FILES, Layout, corpus};
 use crate::vendor_testdata;
-use compare::Output;
+use compare::{Allowed, Output};
 use report::Report;
 use select::{Corpus, Places};
 
@@ -34,7 +33,8 @@ use select::{Corpus, Places};
 const FLAGS: [&str; 4] = ["-oneline", "-no-color", "-shellcheck=", "-pyflakes="];
 
 /// The fixtures on which the reference's output varies between runs
-/// (`docs/differences.md#cached-metadata-errors`). The self-check skips them.
+/// (`docs/differences.md#cached-metadata-errors`). Every run skips them, and
+/// the report lists them.
 const VARYING: [&str; 3] = [
     "projects/broken_local_action",
     "projects/broken_reusable_workflow",
@@ -76,19 +76,13 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
     let corpus_dir = layout.corpus();
     let selection = select::select(
         Places {
-            fixtures: fixture::discover(Origin::Actionlint),
+            fixtures: fixture::discover(Origin::Actionlint).map_err(anyhow::Error::msg)?,
             archive: &archive,
             corpus: &corpus_dir,
         },
         &paths,
     )?;
-    let mut fixtures = selection.fixtures;
-    let mut skipped = 0;
-    if options.self_check {
-        let before = fixtures.len();
-        fixtures.retain(|fixture| !VARYING.contains(&fixture.id.as_str()));
-        skipped = before - fixtures.len();
-    }
+    let (fixtures, skipped) = without_varying(selection.fixtures);
 
     reference::report_checkout(layout)?;
     reference::report_binary(layout)?;
@@ -101,14 +95,7 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
     let allow_list = if options.self_check {
         AllowList::default()
     } else {
-        let path = root
-            .join("tests")
-            .join("conformance")
-            .join("allowed-differences.toml");
-        let text = fs::read_to_string(&path)
-            .with_context(|| format!("cannot read {}", layout.display(&path)))?;
-        AllowList::parse(&text)
-            .map_err(|error| anyhow::anyhow!("{}: {error}", layout.display(&path)))?
+        read_allow_list(layout)?
     };
     let map_kinds = !options.self_check;
 
@@ -120,12 +107,24 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
         let inputs = input_files(&invocation.args);
         let expected = execute(&reference, &invocation.cwd, &invocation.args)?;
         let actual = execute(&workflint, &invocation.cwd, &invocation.args)?;
+        let out_file = fixture
+            .expected
+            .as_deref()
+            .map(|path| layout.display(path).to_string())
+            .unwrap_or_default();
+        let out_lines = fixture.expected_lines();
+        let entries = allow_list.entries_for(&fixture.id);
+        let allowed = Allowed {
+            out_file: &out_file,
+            out_lines: &out_lines,
+            entries: &entries,
+        };
         runs.push(compare::compare(
             &fixture.id,
             &inputs,
             &expected,
             &actual,
-            &allow_list.entries_for(&fixture.id),
+            &allowed,
             map_kinds,
         ));
     }
@@ -139,7 +138,9 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
     };
 
     let report = Report {
-        description: description(options.self_check, fixtures.len(), corpus_files, skipped),
+        description: description(options.self_check, fixtures.len(), corpus_files),
+        self_check: options.self_check,
+        skipped,
         runs,
     };
     let directory = bench::target_directory(layout)?.join("oracle");
@@ -154,11 +155,44 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
 
     if !report.totals().clean() && !options.report_only {
         bail!(
-            "the allow-list does not explain every difference; see {}",
+            "{}; see {}",
+            failure(options.self_check),
             layout.display(&directory.join("report.md"))
         );
     }
     Ok(())
+}
+
+/// The fixtures that are not in [`VARYING`], and the IDs of those that are.
+/// Every run skips the varying fixtures, with or without `--self-check`.
+fn without_varying(fixtures: Vec<Fixture>) -> (Vec<Fixture>, Vec<String>) {
+    let (varying, kept): (Vec<_>, Vec<_>) = fixtures
+        .into_iter()
+        .partition(|fixture| VARYING.contains(&fixture.id.as_str()));
+    (
+        kept,
+        varying.into_iter().map(|fixture| fixture.id).collect(),
+    )
+}
+
+fn read_allow_list(layout: &Layout) -> Result<AllowList> {
+    let path = layout
+        .root()
+        .join("tests")
+        .join("conformance")
+        .join("allowed-differences.toml");
+    let text = fs::read_to_string(&path)
+        .with_context(|| format!("cannot read {}", layout.display(&path)))?;
+    AllowList::parse(&text).map_err(|error| anyhow::anyhow!("{}: {error}", layout.display(&path)))
+}
+
+/// The error when the report is not clean.
+fn failure(self_check: bool) -> &'static str {
+    if self_check {
+        "two runs of the reference printed different output, so the oracle cannot compare it with workflint"
+    } else {
+        "the allow-list does not explain every difference"
+    }
 }
 
 /// `path` as the selection sees it: under the repository root as `root`
@@ -264,11 +298,18 @@ fn corpus_run(
 
     let expected = execute(reference, &project, &args)?;
     let actual = execute(workflint, &project, &args)?;
-    let run = compare::compare("realworld", &names, &expected, &actual, &[], map_kinds);
+    let run = compare::compare(
+        "realworld",
+        &names,
+        &expected,
+        &actual,
+        &Allowed::default(),
+        map_kinds,
+    );
     Ok((run, names.len()))
 }
 
-fn description(self_check: bool, fixtures: usize, corpus: usize, skipped: usize) -> String {
+fn description(self_check: bool, fixtures: usize, corpus: usize) -> String {
     let short = &reference::COMMIT[..7];
     let sides = if self_check {
         format!(
@@ -290,18 +331,12 @@ fn description(self_check: bool, fixtures: usize, corpus: usize, skipped: usize)
     .into_iter()
     .flatten()
     .collect();
-    let mut text = format!(
-        "{sides}, run with `{flags}` and an empty config file on {}.",
+    let inputs = if inputs.is_empty() {
+        "no input".to_owned()
+    } else {
         inputs.join(" and ")
-    );
-    if let Some(skipped) = count(skipped, "fixture", "fixtures") {
-        let _ = write!(
-            text,
-            " It skipped {skipped} on which the reference's output varies between runs \
-             (`docs/differences.md#cached-metadata-errors`)."
-        );
-    }
-    text
+    };
+    format!("{sides}, run with `{flags}` and an empty config file on {inputs}.")
 }
 
 #[cfg(test)]
@@ -311,6 +346,7 @@ mod tests {
     #[test]
     fn the_fixture_command_line_starts_with_the_oracle_flags() {
         let fixture = fixture::discover(Origin::Actionlint)
+            .unwrap()
             .into_iter()
             .find(|fixture| fixture.id == "projects/paths_config")
             .unwrap();
@@ -353,7 +389,7 @@ mod tests {
 
     #[test]
     fn the_description_counts_the_inputs() {
-        let text = description(false, 260, 1503, 0);
+        let text = description(false, 260, 1503);
         assert!(
             text.starts_with("workflint against the reference at `011a6d1`"),
             "{text}"
@@ -362,12 +398,26 @@ mod tests {
             text.ends_with("on 260 fixtures and 1503 corpus files."),
             "{text}"
         );
-        assert!(description(true, 1, 0, 0).ends_with("on 1 fixture."));
-        assert!(description(true, 0, 1, 0).contains("against itself"));
-        assert!(description(true, 257, 1503, 3).ends_with(
-            "It skipped 3 fixtures on which the reference's output varies between runs \
-             (`docs/differences.md#cached-metadata-errors`)."
-        ));
+        assert!(description(true, 1, 0).ends_with("on 1 fixture."));
+        assert!(description(true, 0, 1).contains("against itself"));
+        assert!(description(false, 0, 0).ends_with("on no input."));
+    }
+
+    #[test]
+    fn the_varying_fixtures_are_skipped_and_named() {
+        let all = fixture::discover(Origin::Actionlint).unwrap();
+        let (kept, skipped) = without_varying(all.clone());
+        assert_eq!(skipped, VARYING);
+        assert_eq!(kept.len(), all.len() - VARYING.len());
+        assert!(!kept.iter().any(|f| VARYING.contains(&f.id.as_str())));
+    }
+
+    #[test]
+    fn the_self_check_failure_does_not_blame_the_allow_list() {
+        let message = failure(true);
+        assert!(!message.contains("allow-list"), "{message}");
+        assert!(message.contains("two runs of the reference"), "{message}");
+        assert!(failure(false).contains("allow-list"));
     }
 
     #[test]

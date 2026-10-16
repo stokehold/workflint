@@ -9,10 +9,16 @@ on:
       - xtask/goyaml-dump/**
       - xtask/src/yaml_parity.rs
       - xtask/src/yaml_parity/**
+      - xtask/src/reference.rs
       - xtask/src/reference/**
+      - xtask/src/vendor_testdata.rs
+      - xtask/src/main.rs
+      - xtask/Cargo.toml
       - tests/yaml-parity/**
       - tests/conformance/actionlint/**
       - .go-version
+      - Cargo.lock
+      - rust-toolchain.toml
       - .github/workflows/yaml-parity.yml
   pull_request:
     paths:
@@ -21,10 +27,16 @@ on:
       - xtask/goyaml-dump/**
       - xtask/src/yaml_parity.rs
       - xtask/src/yaml_parity/**
+      - xtask/src/reference.rs
       - xtask/src/reference/**
+      - xtask/src/vendor_testdata.rs
+      - xtask/src/main.rs
+      - xtask/Cargo.toml
       - tests/yaml-parity/**
       - tests/conformance/actionlint/**
       - .go-version
+      - Cargo.lock
+      - rust-toolchain.toml
       - .github/workflows/yaml-parity.yml
 
 permissions:

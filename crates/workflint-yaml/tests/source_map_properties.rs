@@ -4,8 +4,8 @@
 //! indentation, line folding, chomping, and escapes, and parses the result.
 //! The writer records the source offset that each decoded character comes
 //! from, and whether it is copied unchanged, so the tests compare the source
-//! map against it. For folded block scalars the writer does not predict the
-//! folding, and the tests check the general properties only.
+//! map against it. For a folded block scalar the writer predicts which line
+//! break each folded space and line feed comes from, as libyaml folds.
 
 #![allow(clippy::unwrap_used)]
 
@@ -20,11 +20,11 @@ struct Written {
     yaml: String,
     /// Where the scalar's node starts.
     start: usize,
-    /// The value the parser must decode, if the writer knows it.
-    value: Option<String>,
+    /// The value the parser must decode.
+    value: String,
     /// For each character of the value, the source offset it must map to
     /// and whether it is copied unchanged from there.
-    expected: Option<Vec<(usize, bool)>>,
+    expected: Vec<(usize, bool)>,
 }
 
 /// Random decisions for a writer, read in a cycle.
@@ -103,12 +103,12 @@ impl Out {
         at
     }
 
-    fn finish(self, start: usize, predicted: bool) -> Written {
+    fn finish(self, start: usize) -> Written {
         Written {
             yaml: self.yaml,
             start,
-            value: predicted.then_some(self.value),
-            expected: predicted.then_some(self.expected),
+            value: self.value,
+            expected: self.expected,
         }
     }
 }
@@ -217,7 +217,7 @@ fn write_plain(words: &[(String, Gap)], line_break: &'static str, choices: Vec<u
     out.line_break();
     out.raw("z: 1");
     out.line_break();
-    out.finish(start, true)
+    out.finish(start)
 }
 
 fn write_single(
@@ -261,7 +261,7 @@ fn write_single(
     out.line_break();
     out.raw("z: 1");
     out.line_break();
-    out.finish(start, true)
+    out.finish(start)
 }
 
 /// Returns the ways to escape `ch` in a double-quoted scalar.
@@ -394,7 +394,7 @@ fn write_double(content: &[char], line_break: &'static str, choices: Vec<u8>) ->
     out.line_break();
     out.raw("z: 1");
     out.line_break();
-    out.finish(start, true)
+    out.finish(start)
 }
 
 /// Block scalar content: its lines, the empty lines after them, and the
@@ -503,24 +503,37 @@ fn write_block(block: &Block, literal: bool) -> Written {
         out.raw(" # header");
     }
     out.line_break();
-    let mut breaks = Vec::new();
+    // The line break after the last line with content, which the next line
+    // with content decides about.
+    let mut leading = None;
+    // Whether the last line with content starts with a blank.
+    let mut leading_blank = false;
+    // The line breaks of the empty lines since then.
+    let mut empty = Vec::new();
     for (i, line) in lines.iter().enumerate() {
         if line.is_empty() {
             out.raw(&Choices::spaces(choices.pick(indent + 1)));
-        } else {
-            out.raw(&Choices::spaces(indent));
-            line.chars().for_each(|ch| out.copy(ch));
+            empty.push(out.line_break());
+            continue;
         }
-        if eof && i + 1 == lines.len() {
-            breaks.push(None);
-        } else {
-            breaks.push(Some(out.line_break()));
+        let blank = line.starts_with([' ', '\t']);
+        if let Some(at) = leading {
+            // Folding joins two lines that do not start with a blank. The
+            // break between them becomes a space, or is dropped if empty
+            // lines follow it. A literal scalar keeps every break.
+            if literal || leading_blank || blank {
+                out.produced('\n', at);
+            } else if empty.is_empty() {
+                out.produced(' ', at);
+            }
         }
-        if i + 1 < lines.len()
-            && let Some(at) = breaks[i]
-        {
+        for at in empty.drain(..) {
             out.produced('\n', at);
         }
+        out.raw(&Choices::spaces(indent));
+        line.chars().for_each(|ch| out.copy(ch));
+        leading_blank = blank;
+        leading = (!eof || i + 1 < lines.len()).then(|| out.line_break());
     }
     let mut trailing = Vec::new();
     for _ in 0..block.trailing {
@@ -528,9 +541,9 @@ fn write_block(block: &Block, literal: bool) -> Written {
         trailing.push(out.line_break());
     }
     if block.chomping != 1
-        && let Some(Some(at)) = breaks.last()
+        && let Some(at) = leading
     {
-        out.produced('\n', *at);
+        out.produced('\n', at);
     }
     if block.chomping == 2 {
         for at in trailing {
@@ -541,11 +554,7 @@ fn write_block(block: &Block, literal: bool) -> Written {
         out.raw(sibling);
         out.line_break();
     }
-    out.finish(start, literal)
-}
-
-fn is_break(ch: char) -> bool {
-    matches!(ch, '\n' | '\r' | '\u{85}' | '\u{2028}' | '\u{2029}')
+    out.finish(start)
 }
 
 /// Parses `written` and checks the source map of its scalar.
@@ -574,9 +583,7 @@ fn check(written: &Written) -> Result<(), TestCaseError> {
         _ => matches!(scalar.style, ScalarStyle::Plain),
     };
     prop_assert!(style, "unexpected style {:?}", scalar.style);
-    if let Some(value) = &written.value {
-        prop_assert_eq!(&scalar.value, value);
-    }
+    prop_assert_eq!(&scalar.value, &written.value);
     let map = node.source_map(&file).unwrap();
     prop_assert!(map.is_exact());
     let (start, end) = (node.span.start, node.span.end);
@@ -592,15 +599,10 @@ fn check(written: &Written) -> Result<(), TestCaseError> {
         );
         previous = mapped;
         let source = text[at..].chars().next().unwrap();
-        if let Some(expected) = &written.expected {
-            let (expected, copied) = expected[i];
-            prop_assert_eq!(at, expected, "decoded offset {}", offset);
-            if copied {
-                prop_assert_eq!(source, ch, "decoded offset {}", offset);
-            }
-        } else {
-            let folded = is_break(source) && (ch == ' ' || ch == '\n');
-            prop_assert!(source == ch || folded, "{offset} maps to {source:?}");
+        let (expected, copied) = written.expected[i];
+        prop_assert_eq!(at, expected, "decoded offset {}", offset);
+        if copied {
+            prop_assert_eq!(source, ch, "decoded offset {}", offset);
         }
         let span = map.source_span(offset..offset + ch.len_utf8());
         prop_assert_eq!(span.start, mapped);

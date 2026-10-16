@@ -31,3 +31,10 @@ path = "fuzz_targets/yaml_tree.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "render"
+path = "fuzz_targets/render.rs"
+test = false
+doc = false
+bench = false
