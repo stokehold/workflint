@@ -123,7 +123,7 @@ The runner fails:
 
 Every entry needs a matching section in `docs/differences.md`. Write that section first, then the entry.
 
-`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. The corpus files have no fixture ID, so no entry applies to them.
+`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. The corpus files have no fixture ID, so no entry applies to them yet (#49).
 
 ## Rule kinds
 
