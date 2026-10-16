@@ -4,3 +4,6 @@
 
 # The reference's output fixtures are compared byte for byte, so Windows checkouts must keep `\n`.
 /crates/workflint-diagnostics/tests/actionlint/** -text
+
+# The vendored reference test data must stay byte-identical to upstream, which marks it the same way.
+/tests/conformance/actionlint/** -text
