@@ -3,10 +3,11 @@
 //!
 //! The modules `semantics_check_ok`, `semantics_check_error`, `compare_operands_check`,
 //! `update_inputs_multiple_times`, `update_dispatch_inputs`, and `is_constant` port the
-//! reference's tests of the same names, without the cases that call a function: built-in
-//! functions arrive in M3.4. The cases that check context availability move to M3.6. The
-//! reference's error tests check that each message contains a fragment. These tests compare
-//! whole messages, the rule, and the byte offset where the reference reports each error.
+//! reference's tests of the same names. The cases that check context availability and where
+//! `success()` and the other special functions are allowed move to M3.6, and the cases that
+//! type a `fromJSON()` literal move to M3.9. The reference's error tests check that each
+//! message contains a fragment. These tests compare whole messages, the rule, and the byte
+//! offset where the reference reports each error.
 //!
 //! The reference's tests that call a test function, such as `test().foo.*.bar`, are ported in
 //! `function_results_from_matrix` with the function's result in `matrix` instead.
@@ -16,13 +17,18 @@
 use workflint_data::global_context;
 use workflint_diagnostics::RuleMeta;
 use workflint_expr::rules::{
-    INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS, INVALID_OBJECT_FILTER,
-    INVALID_PROPERTY_ACCESS, UNDEFINED_CONFIG_VARIABLE, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
+    CASE_ARGUMENT_COUNT, INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS,
+    INVALID_OBJECT_FILTER, INVALID_PROPERTY_ACCESS, MISSING_FORMAT_ARGUMENT,
+    UNDEFINED_CONFIG_VARIABLE, UNDEFINED_FUNCTION, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
+    UNUSED_FORMAT_ARGUMENT, WRONG_ARGUMENT_COUNT, WRONG_ARGUMENT_TYPE,
 };
 use workflint_expr::{Expr, ExprError, ObjectTy, Rest, Ty, TypeEnv, parse_expression};
 
 /// The names in the message of an undefined variable in the default environment.
 const GLOBAL_NAMES: &str = r#""env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars""#;
+
+/// The names in the message of an undefined function.
+const FUNCTION_NAMES: &str = r#""always", "cancelled", "case", "contains", "endswith", "failure", "format", "fromjson", "hashfiles", "join", "startswith", "success", "tojson""#;
 
 /// The printed type of the `runner` context.
 const RUNNER: &str = "{arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string}";
@@ -467,6 +473,127 @@ mod semantics_check_ok {
     fn double_not_operators_does_nothing_on_type_narrowing() {
         assert_eq!(ty("!!('foo' || 10) && 20"), Ty::Number);
     }
+    #[test]
+    fn function_call() {
+        assert_eq!(ty("contains('hello', 'll')"), Ty::Bool);
+    }
+
+    #[test]
+    fn function_call_overload() {
+        assert_eq!(ty("contains(github.event.labels, 'foo')"), Ty::Bool);
+    }
+
+    #[test]
+    fn function_call_zero_arguments() {
+        assert_eq!(ty("always()"), Ty::Bool);
+    }
+
+    #[test]
+    fn function_call_variable_length_parameters() {
+        assert_eq!(ty("format('hello {0} {1}', 42, true)"), Ty::String);
+    }
+
+    #[test]
+    fn arguments_of_format_is_not_checked_when_first_argument_is_not_a_literal() {
+        assert_eq!(ty("format(github.action, 1, 2, 3)"), Ty::String);
+    }
+
+    #[test]
+    fn number_is_coerced_into_string() {
+        assert_eq!(ty("startsWith('42foo', 42)"), Ty::Bool);
+    }
+
+    #[test]
+    fn case_insensitive_comparison_for_function_name() {
+        assert_eq!(ty("toJSON(fromjson(toJson(github)))"), Ty::String);
+    }
+
+    #[test]
+    fn format_function_arguments_validation() {
+        assert_eq!(
+            ty(
+                "format('{0}{0}{0} {1}{2}{1} {1}{2}{1}{2} {0} {1}{1}{1} {2}{2}{2} {0}{0}{0}{0} {0}', 1, 'foo', true)"
+            ),
+            Ty::String
+        );
+    }
+
+    #[test]
+    fn braces_not_for_placeholders_in_format_string_of_format_call() {
+        assert_eq!(ty("format('{0} {} {x} {', 1)"), Ty::String);
+    }
+
+    /// Without the special function availability of the reference's case (M3.6).
+    #[test]
+    fn special_function() {
+        assert_eq!(ty("success()"), Ty::Bool);
+    }
+
+    /// Without the special function availability of the reference's case (M3.6).
+    #[test]
+    fn non_special_function() {
+        assert_eq!(ty("contains('hello, world', 'o, w')"), Ty::Bool);
+    }
+
+    /// Without the special function availability of the reference's case (M3.6).
+    #[test]
+    fn case_insensitive_special_function_name() {
+        assert_eq!(ty("hashFiles('aaa.txt')"), Ty::String);
+    }
+
+    #[test]
+    fn escaped_braces_in_format_string() {
+        assert_eq!(ty("format('hello {{1}} {0}', 42)"), Ty::String);
+    }
+
+    /// The first `{{` is escaped, and `{0}` is not.
+    #[test]
+    fn format_specifier_is_escaped() {
+        assert_eq!(ty("format('hello {{{0}', 'world')"), Ty::String);
+    }
+
+    #[test]
+    fn case_with_single_predicate() {
+        assert_eq!(ty("case(true, 'a', 'b')"), Ty::Any);
+    }
+
+    #[test]
+    fn case_with_multiple_predicates() {
+        assert_eq!(ty("case(true, 1, false, 2, 3)"), Ty::Any);
+    }
+
+    #[test]
+    fn case_with_number_predicate_coerced_to_bool() {
+        assert_eq!(ty("case(1, 'a', 'b')"), Ty::Any);
+    }
+
+    #[test]
+    fn case_with_string_predicate_coerced_to_bool() {
+        assert_eq!(ty("case('yes', 'a', 'b')"), Ty::Any);
+    }
+
+    #[test]
+    fn case_with_null_predicate_coerced_to_bool() {
+        assert_eq!(ty("case(null, 'a', 'b')"), Ty::Any);
+    }
+
+    #[test]
+    fn case_case_insensitivity() {
+        assert_eq!(ty("CASE(true, 1, 2)"), Ty::Any);
+    }
+
+    #[test]
+    fn case_with_expression_as_predicate() {
+        assert_eq!(ty("case(startsWith('hello', 'he'), 'yes', 'no')"), Ty::Any);
+    }
+
+    #[test]
+    fn case_with_many_predicates() {
+        assert_eq!(
+            ty("case(false, 'a', false, 'b', false, 'c', true, 'd', 'default')"),
+            Ty::Any
+        );
+    }
 }
 
 /// The reference's cases that read the result of a test function, such as `test().foo`, with
@@ -633,6 +760,11 @@ mod function_results_from_matrix {
                 "index access of array must be type of number but got \"string\""
             )]
         );
+    }
+    #[test]
+    fn coerce_array_dereference_into_array_at_function_parameter() {
+        let result = Ty::array(Ty::loose([("x", Ty::Number)]));
+        assert_eq!(ty_with(result, "contains(matrix.test.*.x, 10)"), Ty::Bool);
     }
 }
 
@@ -974,6 +1106,256 @@ mod semantics_check_error {
             )]
         );
     }
+    #[test]
+    fn undefined_function() {
+        assert_eq!(
+            errors("foooo()"),
+            [error(
+                &UNDEFINED_FUNCTION,
+                0,
+                format!("undefined function \"foooo\". available functions are {FUNCTION_NAMES}")
+            )]
+        );
+    }
+
+    #[test]
+    fn wrong_number_of_arguments_at_function_call() {
+        assert_eq!(
+            errors("contains('foo')"),
+            [
+                error(
+                    &WRONG_ARGUMENT_COUNT,
+                    0,
+                    "number of arguments is wrong. function \"contains(string, string) -> bool\" takes 2 parameters but 1 arguments are given"
+                ),
+                error(
+                    &WRONG_ARGUMENT_COUNT,
+                    0,
+                    "number of arguments is wrong. function \"contains(array<any>, any) -> bool\" takes 2 parameters but 1 arguments are given"
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn wrong_number_of_arguments_at_function_call_for_variable_length_parameters() {
+        assert_eq!(
+            errors("hashFiles()"),
+            [error(
+                &WRONG_ARGUMENT_COUNT,
+                0,
+                "number of arguments is wrong. function \"hashFiles(string...) -> string\" takes at least 1 parameters but 0 arguments are given"
+            )]
+        );
+    }
+
+    #[test]
+    fn wrong_type_at_parameter() {
+        assert_eq!(
+            errors("startsWith('foo', null)"),
+            [error(
+                &WRONG_ARGUMENT_TYPE,
+                18,
+                "2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\". called function type is \"startsWith(string, string) -> bool\""
+            )]
+        );
+    }
+
+    #[test]
+    fn wrong_type_at_parameter_of_overloaded_function() {
+        assert_eq!(
+            errors("contains('foo', null)"),
+            [
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    16,
+                    "2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\". called function type is \"contains(string, string) -> bool\""
+                ),
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    9,
+                    "1st argument of function call is not assignable. \"string\" cannot be assigned to \"array<any>\". called function type is \"contains(array<any>, any) -> bool\""
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn wrong_type_at_rest_parameter() {
+        assert_eq!(
+            errors("hashFiles(null)"),
+            [error(
+                &WRONG_ARGUMENT_TYPE,
+                10,
+                "1st argument of function call is not assignable. \"null\" cannot be assigned to \"string\". called function type is \"hashFiles(string...) -> string\""
+            )]
+        );
+    }
+
+    #[test]
+    fn wrong_type_at_rest_parameter_part2() {
+        assert_eq!(
+            errors("hashFiles('foo', null)"),
+            [error(
+                &WRONG_ARGUMENT_TYPE,
+                17,
+                "2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\". called function type is \"hashFiles(string...) -> string\""
+            )]
+        );
+    }
+
+    #[test]
+    fn less_arguments_for_format_builtin_function_call() {
+        assert_eq!(
+            errors("format('format {0} {1}', 'foo')"),
+            [error(
+                &MISSING_FORMAT_ARGUMENT,
+                0,
+                "format string \"format {0} {1}\" contains placeholder {1} but only 1 arguments are given to format"
+            )]
+        );
+    }
+
+    #[test]
+    fn more_arguments_for_format_builtin_function_call() {
+        assert_eq!(
+            errors("format('format {0} {1} {2}', 'foo', 1, true, null)"),
+            [error(
+                &UNUSED_FORMAT_ARGUMENT,
+                0,
+                "format string \"format {0} {1} {2}\" does not contain placeholder {3}. remove argument which is unused in the format string"
+            )]
+        );
+    }
+
+    #[test]
+    fn unused_placeholder_in_format_string_of_format() {
+        assert_eq!(
+            errors("format('format {0} {2}', 1, 2, 3)"),
+            [error(
+                &UNUSED_FORMAT_ARGUMENT,
+                0,
+                "format string \"format {0} {2}\" does not contain placeholder {1}. remove argument which is unused in the format string"
+            )]
+        );
+    }
+
+    #[test]
+    fn missing_placeholder_and_less_argument_at_the_same_time_in_format_string_of_format() {
+        assert_eq!(
+            errors("format('format {0} {2}', 1, 2)"),
+            [
+                error(
+                    &UNUSED_FORMAT_ARGUMENT,
+                    0,
+                    "format string \"format {0} {2}\" does not contain placeholder {1}. remove argument which is unused in the format string"
+                ),
+                error(
+                    &MISSING_FORMAT_ARGUMENT,
+                    0,
+                    "format string \"format {0} {2}\" contains placeholder {2} but only 2 arguments are given to format"
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn zero_format_arguments_for_format_call() {
+        assert_eq!(
+            errors("format('hi')"),
+            [error(
+                &WRONG_ARGUMENT_COUNT,
+                0,
+                "number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+            )]
+        );
+    }
+
+    #[test]
+    fn function_name_of_format_call_check_is_case_insensitive() {
+        assert_eq!(
+            errors("Format('{0}', 1, 2)"),
+            [error(
+                &UNUSED_FORMAT_ARGUMENT,
+                0,
+                "format string \"{0}\" does not contain placeholder {1}. remove argument which is unused in the format string"
+            )]
+        );
+    }
+
+    #[test]
+    fn format_specifier_is_escaped() {
+        assert_eq!(
+            errors("format('hello {{0}}', 'world')"),
+            [error(
+                &UNUSED_FORMAT_ARGUMENT,
+                0,
+                "format string \"hello {{0}}\" does not contain placeholder {0}. remove argument which is unused in the format string"
+            )]
+        );
+    }
+
+    /// The first `{{` is escaped, and `{{0}}` is still escaped.
+    #[test]
+    fn format_specifier_is_still_escaped() {
+        assert_eq!(
+            errors("format('hello {{{{0}}', 'world')"),
+            [error(
+                &UNUSED_FORMAT_ARGUMENT,
+                0,
+                "format string \"hello {{{{0}}\" does not contain placeholder {0}. remove argument which is unused in the format string"
+            )]
+        );
+    }
+
+    #[test]
+    fn type_mismatch_in_matrix_value() {
+        let env = env_with_matrix(strict([("foo", Ty::Null)]));
+        assert_eq!(
+            errors_in(&env, "startsWith('hello', matrix.foo)"),
+            [error(
+                &WRONG_ARGUMENT_TYPE,
+                20,
+                "2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\". called function type is \"startsWith(string, string) -> bool\""
+            )]
+        );
+    }
+
+    #[test]
+    fn case_with_too_few_arguments() {
+        let message = |given| {
+            format!(
+                "number of arguments is wrong. function \"case(bool, any, any...) -> any\" takes at least 3 parameters but {given} arguments are given"
+            )
+        };
+        assert_eq!(
+            errors("case() || case(true) || case(true, 'a')"),
+            [
+                error(&WRONG_ARGUMENT_COUNT, 0, message(0)),
+                error(&WRONG_ARGUMENT_COUNT, 10, message(1)),
+                error(&WRONG_ARGUMENT_COUNT, 24, message(2)),
+            ]
+        );
+    }
+
+    #[test]
+    fn case_with_even_number_of_arguments() {
+        assert_eq!(
+            errors("case(true, 'a', false, 'b') || case(true, 'a', false, 'b', true, 'c')"),
+            [
+                error(
+                    &CASE_ARGUMENT_COUNT,
+                    0,
+                    "case() requires an odd number of arguments (pred/value pairs + default) but got 4"
+                ),
+                error(
+                    &CASE_ARGUMENT_COUNT,
+                    31,
+                    "case() requires an odd number of arguments (pred/value pairs + default) but got 6"
+                ),
+            ]
+        );
+    }
 }
 
 /// `TestExprCompareOperandsCheck`. `matrix` holds a value of each type, and `null` is the
@@ -1308,6 +1690,268 @@ mod environment_overrides {
 }
 
 /// Where workflint's checker differs from the reference's on purpose.
+/// Calls of built-in functions that the reference's tests do not cover. The reference's checker
+/// gives the same messages and offsets.
+mod function_calls {
+    use super::*;
+
+    #[test]
+    fn undefined_function_keeps_its_spelling_and_its_arguments_are_not_checked() {
+        assert_eq!(
+            errors("Foo_Bar(bar)"),
+            [error(
+                &UNDEFINED_FUNCTION,
+                0,
+                format!("undefined function \"Foo_Bar\". available functions are {FUNCTION_NAMES}")
+            )]
+        );
+    }
+
+    #[test]
+    fn arguments_of_a_defined_function_are_checked() {
+        let (ty, errors) = TypeEnv::new().check(&parse("contains(foo, 'a')"));
+        assert_eq!(ty, Ty::Bool);
+        let errors: Vec<Error> = errors
+            .iter()
+            .map(|err| (err.rule.id, err.start, err.message.clone()))
+            .collect();
+        assert_eq!(
+            errors,
+            [error(
+                &UNDEFINED_VARIABLE,
+                9,
+                format!("undefined variable \"foo\". available variables are {GLOBAL_NAMES}")
+            )]
+        );
+    }
+
+    #[test]
+    fn failed_call_has_type_any() {
+        let (ty, _) = TypeEnv::new().check(&parse("startsWith('foo', null)"));
+        assert_eq!(ty, Ty::Any);
+    }
+
+    #[test]
+    fn result_type_is_the_return_type_of_the_overload() {
+        assert_eq!(
+            errors("startsWith('a', 'b').foo"),
+            [error(
+                &INVALID_PROPERTY_ACCESS,
+                0,
+                "receiver of object dereference \"foo\" must be type of object but got \"bool\""
+            )]
+        );
+        assert_eq!(ty("join(github.event.labels.*.name)"), Ty::String);
+        assert_eq!(ty("fromJSON(github.event.body)"), Ty::Any);
+    }
+
+    #[test]
+    fn argument_count_of_a_function_without_variadic_parameters() {
+        assert_eq!(
+            errors("toJSON() || toJSON(1, 2) || always(1)"),
+            [
+                error(
+                    &WRONG_ARGUMENT_COUNT,
+                    0,
+                    "number of arguments is wrong. function \"toJSON(any) -> string\" takes 1 parameters but 0 arguments are given"
+                ),
+                error(
+                    &WRONG_ARGUMENT_COUNT,
+                    12,
+                    "number of arguments is wrong. function \"toJSON(any) -> string\" takes 1 parameters but 2 arguments are given"
+                ),
+                error(
+                    &WRONG_ARGUMENT_COUNT,
+                    28,
+                    "number of arguments is wrong. function \"always() -> bool\" takes 0 parameters but 1 arguments are given"
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn each_overload_reports_its_own_failure() {
+        assert_eq!(
+            errors("join('a')"),
+            [
+                error(
+                    &WRONG_ARGUMENT_COUNT,
+                    0,
+                    "number of arguments is wrong. function \"join(array<string>, string) -> string\" takes 2 parameters but 1 arguments are given"
+                ),
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    5,
+                    "1st argument of function call is not assignable. \"string\" cannot be assigned to \"array<string>\". called function type is \"join(array<string>) -> string\""
+                ),
+            ]
+        );
+        assert_eq!(
+            errors("join(null, ',')"),
+            [
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    5,
+                    "1st argument of function call is not assignable. \"null\" cannot be assigned to \"array<string>\". called function type is \"join(array<string>, string) -> string\""
+                ),
+                error(
+                    &WRONG_ARGUMENT_COUNT,
+                    0,
+                    "number of arguments is wrong. function \"join(array<string>) -> string\" takes 1 parameters but 2 arguments are given"
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn only_the_first_wrong_argument_of_an_overload_is_reported() {
+        assert_eq!(
+            errors("contains(null, null)"),
+            [
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    9,
+                    "1st argument of function call is not assignable. \"null\" cannot be assigned to \"string\". called function type is \"contains(string, string) -> bool\""
+                ),
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    9,
+                    "1st argument of function call is not assignable. \"null\" cannot be assigned to \"array<any>\". called function type is \"contains(array<any>, any) -> bool\""
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn wrong_argument_type_names_the_argument_with_an_ordinal() {
+        let message = |ordinal: &str| {
+            format!(
+                "{ordinal} argument of function call is not assignable. \"null\" cannot be assigned to \"string\". called function type is \"hashFiles(string...) -> string\""
+            )
+        };
+        assert_eq!(
+            errors("hashFiles('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', null)"),
+            [error(&WRONG_ARGUMENT_TYPE, 60, message("11th"))]
+        );
+        assert_eq!(
+            errors("hashFiles('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', null)"),
+            [error(&WRONG_ARGUMENT_TYPE, 65, message("12th"))]
+        );
+        assert_eq!(
+            errors(
+                "hashFiles('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', null)"
+            ),
+            [error(&WRONG_ARGUMENT_TYPE, 110, message("21st"))]
+        );
+    }
+
+    #[test]
+    fn wrong_argument_type_prints_the_argument_type() {
+        assert_eq!(
+            errors("startsWith(env, 'a') || fromJSON(1 == 2) || format(true, 1)"),
+            [
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    11,
+                    "1st argument of function call is not assignable. \"{string => string}\" cannot be assigned to \"string\". called function type is \"startsWith(string, string) -> bool\""
+                ),
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    33,
+                    "1st argument of function call is not assignable. \"bool\" cannot be assigned to \"string\". called function type is \"fromJSON(string) -> any\""
+                ),
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    51,
+                    "1st argument of function call is not assignable. \"bool\" cannot be assigned to \"string\". called function type is \"format(string, any...) -> string\""
+                ),
+            ]
+        );
+    }
+
+    /// The reference iterates a Go map here, so its order varies between runs. Diagnostics are
+    /// sorted before they are printed, so the order does not reach the output.
+    #[test]
+    fn placeholders_beyond_the_arguments_are_reported_in_ascending_order() {
+        assert_eq!(
+            errors("format('{10} {9} {0}', 1)"),
+            [
+                error(
+                    &MISSING_FORMAT_ARGUMENT,
+                    0,
+                    "format string \"{10} {9} {0}\" contains placeholder {9} but only 1 arguments are given to format"
+                ),
+                error(
+                    &MISSING_FORMAT_ARGUMENT,
+                    0,
+                    "format string \"{10} {9} {0}\" contains placeholder {10} but only 1 arguments are given to format"
+                ),
+            ]
+        );
+    }
+
+    /// Go's `strconv.Atoi` returns the largest `int` for a number beyond it.
+    #[test]
+    fn placeholder_beyond_the_largest_integer_is_the_largest_integer() {
+        assert_eq!(
+            errors("format('{99999999999999999999}', 1)"),
+            [
+                error(
+                    &UNUSED_FORMAT_ARGUMENT,
+                    0,
+                    "format string \"{99999999999999999999}\" does not contain placeholder {0}. remove argument which is unused in the format string"
+                ),
+                error(
+                    &MISSING_FORMAT_ARGUMENT,
+                    0,
+                    "format string \"{99999999999999999999}\" contains placeholder {9223372036854775807} but only 1 arguments are given to format"
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn placeholder_with_a_leading_zero_is_its_number() {
+        assert_eq!(
+            errors("format('{01}', 1, 2)"),
+            [error(
+                &UNUSED_FORMAT_ARGUMENT,
+                0,
+                "format string \"{01}\" does not contain placeholder {0}. remove argument which is unused in the format string"
+            )]
+        );
+    }
+
+    #[test]
+    fn case_with_a_default_in_place_of_the_last_value_has_an_even_count() {
+        assert_eq!(
+            errors("case(true, 'a', false, 'b', 'c', 'd')"),
+            [error(
+                &CASE_ARGUMENT_COUNT,
+                0,
+                "case() requires an odd number of arguments (pred/value pairs + default) but got 6"
+            )]
+        );
+    }
+
+    /// `docs/differences.md#bool-assignability`. GitHub converts the predicate to a boolean, so
+    /// it accepts every type, while a `bool` parameter of a reusable workflow does not.
+    #[test]
+    fn case_predicate_accepts_every_type() {
+        let env = env_with_matrix(strict([
+            ("object", Ty::empty_strict()),
+            ("array", Ty::array(Ty::Number)),
+        ]));
+        for input in [
+            "case(env, 1, 2)",
+            "case(matrix.object, 1, 2)",
+            "case(matrix.array, 1, 2)",
+        ] {
+            assert_eq!(ty_in(&env, input), Ty::Any, "{input}");
+        }
+    }
+}
+
 mod differences {
     use super::*;
 
@@ -1413,6 +2057,20 @@ mod error_ranges {
     }
 
     #[test]
+    fn argument_error_covers_the_argument() {
+        assert_eq!(
+            ranges(&TypeEnv::new(), "startsWith('foo', (null))"),
+            [(19, 23)]
+        );
+    }
+
+    #[test]
+    fn call_error_covers_the_call() {
+        assert_eq!(ranges(&TypeEnv::new(), "!toJSON()"), [(1, 9)]);
+        assert_eq!(ranges(&TypeEnv::new(), "!foo(1)"), [(1, 7)]);
+    }
+
+    #[test]
     fn errors_are_in_the_reference_order() {
         assert_eq!(
             errors("foo[bar] == baz.*"),
@@ -1437,7 +2095,7 @@ mod error_ranges {
     }
 }
 
-/// `TestExprIsConstant`, without the cases that call a function.
+/// `TestExprIsConstant`.
 mod is_constant {
     use super::*;
 
@@ -1479,5 +2137,18 @@ mod is_constant {
         logical_variable_third: "true && 42 || foo" => false,
         nested_compare_in_and: "true && ('foo' == 'bar') && null" => true,
         nested_compare_in_or: "false || (3.14 != null) || !null" => true,
+        constant_function: "startsWith('foo', 'f')" => true,
+        constant_function_with_variable: "startsWith(foo, 'f')" => false,
+        format_with_literals: "format('{0}{1}', 1.0, true)" => true,
+        format_with_constant_calls: "format('{0}{1}', startsWith('foo', 'f'), 1.0 == !null)" => true,
+        to_json_literal: "toJSON(true)" => true,
+        to_json_variable: "toJSON(foo)" => false,
+        success: "success()" => false,
+        failure: "failure()" => false,
+        hash_files: "hashFiles('foo', 'bar')" => false,
+        unknown_function_with_from_json: "conains(fromJSON('[\"foo\"]'), 'foo')" => false,
+        unknown_function: "unknownFunc(1, 2, 3)" => false,
+        from_json_literal: "fromJSON('[1]')" => false,
+        function_name_in_upper_case: "STARTSWITH('foo', 'f')" => true,
     }
 }

@@ -1,17 +1,22 @@
 //! The type checker of expressions.
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `ExprSemanticsChecker` in `expr_sema.go`,
-//! without function calls (M3.4), context availability (M3.6), and untrusted input (M3.7).
+//! without context availability (M3.6), untrusted input (M3.7), and the types of `fromJSON()`
+//! literals (M3.9).
 
 use workflint_diagnostics::RuleMeta;
-use workflint_diagnostics::quote::{quote, sorted_quotes};
+use workflint_diagnostics::quote::{ordinal, quote, sorted_quotes};
 
 use crate::ast::{CompareOp, Expr, ExprKind, LogicalOp, Name};
 use crate::env::TypeEnv;
 use crate::error::ExprError;
+use crate::format::placeholders;
+use crate::functions::{self, Function, Mismatch, Signature};
 use crate::rules::{
-    INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS, INVALID_OBJECT_FILTER,
-    INVALID_PROPERTY_ACCESS, UNDEFINED_CONFIG_VARIABLE, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
+    CASE_ARGUMENT_COUNT, INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS,
+    INVALID_OBJECT_FILTER, INVALID_PROPERTY_ACCESS, MISSING_FORMAT_ARGUMENT,
+    UNDEFINED_CONFIG_VARIABLE, UNDEFINED_FUNCTION, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
+    UNUSED_FORMAT_ARGUMENT, WRONG_ARGUMENT_COUNT, WRONG_ARGUMENT_TYPE,
 };
 use crate::types::Ty;
 
@@ -23,8 +28,10 @@ impl TypeEnv {
     ///
     /// Each error starts at the token that the reference reports it at and ends at the end of
     /// the node it is about. Its rule is one of the rules in [`rules`](crate::rules) besides
-    /// the syntax rules. Function calls have type `any` until M3.4 adds the built-in functions,
-    /// and their arguments are checked.
+    /// the syntax rules.
+    ///
+    /// A call of a built-in function has the return type of the first overload that accepts
+    /// its arguments, and `any` when no overload does or the function is not built in.
     #[must_use]
     pub fn check(&self, expr: &Expr) -> (Ty, Vec<ExprError>) {
         let mut checker = Checker {
@@ -41,7 +48,9 @@ impl Expr {
     /// `!null`, as the `if-cond` rule needs. The reference's `IsConstant`.
     ///
     /// Literals are constant, and contexts are not. An operator is constant when all its
-    /// operands are, even when it would short-circuit: `foo && false` is not constant.
+    /// operands are, even when it would short-circuit: `foo && false` is not constant. A call
+    /// is constant when its arguments are and the function returns the same value for the
+    /// same arguments, as `startsWith` does and `success` and `hashFiles` do not.
     ///
     /// ```
     /// use workflint_expr::parse_expression;
@@ -50,6 +59,8 @@ impl Expr {
     /// assert!(expr.is_constant());
     /// let (expr, _) = parse_expression("github.ref == 'main' }}").unwrap();
     /// assert!(!expr.is_constant());
+    /// let (expr, _) = parse_expression("format('{0}', startsWith('foo', 'f')) }}").unwrap();
+    /// assert!(expr.is_constant());
     /// ```
     #[must_use]
     pub fn is_constant(&self) -> bool {
@@ -59,13 +70,15 @@ impl Expr {
             | ExprKind::Int(_)
             | ExprKind::Float(_)
             | ExprKind::String(_) => true,
-            // TODO(#85): a call is constant when its arguments are and every overload of the
-            // function is constant.
             ExprKind::Variable(_)
             | ExprKind::Property { .. }
             | ExprKind::ObjectFilter { .. }
-            | ExprKind::Index { .. }
-            | ExprKind::Call { .. } => false,
+            | ExprKind::Index { .. } => false,
+            ExprKind::Call { callee, args } => {
+                args.iter().all(Expr::is_constant)
+                    && workflint_data::builtin_function(callee.as_str())
+                        .is_some_and(|function| function.constant)
+            }
             ExprKind::Not { operand } => operand.is_constant(),
             ExprKind::Compare { left, right, .. } | ExprKind::Logical { left, right, .. } => {
                 left.is_constant() && right.is_constant()
@@ -100,13 +113,7 @@ impl Checker<'_> {
             ExprKind::Property { receiver, name } => self.check_property(expr, receiver, name),
             ExprKind::ObjectFilter { receiver } => self.check_object_filter(expr, receiver),
             ExprKind::Index { operand, index } => self.check_index(expr, operand, index),
-            // TODO(#85): check calls against the built-in functions.
-            ExprKind::Call { args, .. } => {
-                for arg in args {
-                    self.check(arg);
-                }
-                Ty::Any
-            }
+            ExprKind::Call { callee, args } => self.check_call(expr, callee, args),
             // `!` converts its operand to a boolean, which every type allows
             // (`docs/differences.md#bool-assignability`).
             ExprKind::Not { operand } => {
@@ -377,6 +384,131 @@ impl Checker<'_> {
                 self.error(expr, &INVALID_INDEX_ACCESS, message);
                 Ty::Any
             }
+        }
+    }
+
+    /// The reference's `checkFuncCall`. The arguments of a function that is not built in are
+    /// not checked.
+    fn check_call(&mut self, expr: &Expr, callee: &Name, args: &[Expr]) -> Ty {
+        let Some(function) = functions::builtin(callee.as_str()) else {
+            let message = format!(
+                "undefined function {}. available functions are {}",
+                quote(callee.original()),
+                sorted_quotes(functions::keys()),
+            );
+            self.error(expr, &UNDEFINED_FUNCTION, message);
+            return Ty::Any;
+        };
+
+        let arg_tys: Vec<Ty> = args.iter().map(|arg| self.check(arg)).collect();
+        // The first overload that accepts the arguments wins. The messages are built only
+        // when every overload fails, and then every overload's error is reported.
+        if let Some(sig) = function
+            .overloads
+            .iter()
+            .find(|sig| sig.mismatch(&arg_tys).is_none())
+        {
+            return self.check_resolved_call(expr, function, sig, args);
+        }
+        for sig in &function.overloads {
+            if let Some(mismatch) = sig.mismatch(&arg_tys) {
+                self.report_mismatch(expr, sig, mismatch, args, &arg_tys);
+            }
+        }
+        Ty::Any
+    }
+
+    /// Reports why `sig` does not accept the arguments, as the reference's
+    /// `checkFuncSignature` does.
+    fn report_mismatch(
+        &mut self,
+        expr: &Expr,
+        sig: &Signature,
+        mismatch: Mismatch,
+        args: &[Expr],
+        arg_tys: &[Ty],
+    ) {
+        let sig_text = sig.to_string();
+        match mismatch {
+            Mismatch::Count => {
+                let at_least = if sig.is_variadic() { "at least " } else { "" };
+                let message = format!(
+                    "number of arguments is wrong. function {} takes {at_least}{} parameters but {} arguments are given",
+                    quote(&sig_text),
+                    sig.param_count(),
+                    args.len(),
+                );
+                self.error(expr, &WRONG_ARGUMENT_COUNT, message);
+            }
+            Mismatch::Type(index) => {
+                let (Some(arg), Some(arg_ty), Some(param)) =
+                    (args.get(index), arg_tys.get(index), sig.param(index))
+                else {
+                    return;
+                };
+                let message = format!(
+                    "{} argument of function call is not assignable. {} cannot be assigned to {}. called function type is {}",
+                    ordinal(index + 1),
+                    quote(&arg_ty.to_string()),
+                    quote(&param.to_string()),
+                    quote(&sig_text),
+                );
+                self.error(arg, &WRONG_ARGUMENT_TYPE, message);
+            }
+        }
+    }
+
+    /// The reference's `checkBuiltinFuncCall`: the checks of a call whose arguments `sig`
+    /// accepts. Returns the type of the call.
+    fn check_resolved_call(
+        &mut self,
+        expr: &Expr,
+        function: &Function,
+        sig: &Signature,
+        args: &[Expr],
+    ) -> Ty {
+        // TODO(#87): check where the special functions, such as `success()`, are allowed.
+        // TODO(#90): type a literal argument of `fromJSON()` and report broken JSON.
+        match function.key.as_str() {
+            "format" => self.check_format(expr, args),
+            "case" if args.len().is_multiple_of(2) => {
+                let message = format!(
+                    "case() requires an odd number of arguments (pred/value pairs + default) but got {}",
+                    args.len()
+                );
+                self.error(expr, &CASE_ARGUMENT_COUNT, message);
+            }
+            _ => {}
+        }
+        sig.ret.clone()
+    }
+
+    /// Checks the placeholders of `format()` against its arguments when the format string is
+    /// a literal. The reference reports the placeholders beyond the arguments in Go map order,
+    /// which varies. This reports them in ascending order.
+    fn check_format(&mut self, expr: &Expr, args: &[Expr]) {
+        let Some((first, values)) = args.split_first() else {
+            return;
+        };
+        let ExprKind::String(lit) = &first.kind else {
+            return;
+        };
+        let format = quote(lit.value());
+        let mut remaining = placeholders(lit.value());
+        let count = u64::try_from(values.len()).unwrap_or(u64::MAX);
+        for i in 0..count {
+            if !remaining.remove(&i) {
+                let message = format!(
+                    "format string {format} does not contain placeholder {{{i}}}. remove argument which is unused in the format string"
+                );
+                self.error(expr, &UNUSED_FORMAT_ARGUMENT, message);
+            }
+        }
+        for i in remaining {
+            let message = format!(
+                "format string {format} contains placeholder {{{i}}} but only {count} arguments are given to format"
+            );
+            self.error(expr, &MISSING_FORMAT_ARGUMENT, message);
         }
     }
 

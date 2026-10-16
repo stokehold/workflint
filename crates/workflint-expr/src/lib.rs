@@ -1,7 +1,7 @@
 //! The `${{ }}` expression language of workflint.
 //!
 //! This is an internal crate with no stability promise. It has the lexer, the parser, the
-//! type system, and the type checker, without built-in functions so far.
+//! type system, and the type checker.
 //!
 //! [`Lexer`] turns the text after `${{` into [`Token`]s up to the `}}` that ends the
 //! expression, and [`lex_expression`] collects them. Tokens are kinds and byte ranges, so
@@ -16,9 +16,9 @@
 //!
 //! [`TypeEnv`] holds the types of the contexts at one place in a workflow, and
 //! [`TypeEnv::check`] type-checks an [`Expr`] against them. It returns the expression's type
-//! and actionlint's semantic errors, such as an undefined variable or property, each with its
-//! rule from [`rules`]. [`Expr::is_constant`] tells whether an expression has the same value
-//! in every run.
+//! and actionlint's semantic errors, such as an undefined variable or property or a call of a
+//! built-in function with the wrong arguments, each with its rule from [`rules`].
+//! [`Expr::is_constant`] tells whether an expression has the same value in every run.
 //!
 //! ```
 //! use workflint_expr::Ty;
@@ -52,6 +52,8 @@ mod ast;
 mod check;
 mod env;
 mod error;
+mod format;
+mod functions;
 mod lexer;
 mod parser;
 pub mod rules;
