@@ -44,7 +44,7 @@ cargo xtask bench
 
 The command writes `target/bench/results.json` and `target/bench/results.md`, with wall time and peak memory for each scenario and binary and the ratio against each target. The output of every run and hyperfine's exports go to `target/bench/runs/`. Without shellcheck 0.11.0, the command skips the shellcheck scenario and says why.
 
-Each run has a time limit: 2 minutes for the corpus, 30 minutes for the corpus with shellcheck, and 10 seconds for `small.yaml`. When a run exceeds it, the command kills the run and the processes it started, records the run as timed out, and goes on with the next one. `--timeout SECONDS` sets one limit for all scenarios. On macOS the reference can hang with shellcheck on, so `cargo xtask bench --timeout 60` gives a quicker result there.
+Each run has a time limit: 2 minutes for the corpus, 10 minutes for the corpus with shellcheck, and 10 seconds for `small.yaml`. When a run exceeds it, the command kills the run and the processes it started, records the run as timed out, and goes on with the next one. `--timeout SECONDS` sets one limit for all scenarios. On macOS the reference can hang with shellcheck on, so `cargo xtask bench --timeout 60` gives a quicker result there.
 
 The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when workflint's wall time in a scenario grows by more than 10% against the previous run. `cargo xtask bench-history` does that comparison.
 

@@ -70,11 +70,12 @@ pub(crate) const SCENARIOS: [Scenario; 3] = [
         title: "Corpus, shellcheck on",
         input: Input::Corpus,
         shellcheck: true,
-        // The run before hyperfine starts warms the caches, and one run of
-        // the reference takes minutes.
+        // The run before hyperfine starts warms the caches. One run of the
+        // reference takes about 15 s on a GitHub-hosted Linux runner and
+        // minutes on macOS.
         warmup: 0,
         runs: 3,
-        timeout: Duration::from_mins(30),
+        timeout: Duration::from_mins(10),
         targets: &[
             Target::WallTimeRatio {
                 at_most: 0.2,
