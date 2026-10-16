@@ -125,8 +125,14 @@ pub static INCOMPLETE_CREDENTIALS: RuleMeta = syntax_check(
     "https://github.com/stokehold/workflint/blob/main/docs/rules/incomplete-credentials.md",
 );
 
+/// A step has neither `run` nor `uses`.
+pub static STEP_WITHOUT_RUN_OR_USES: RuleMeta = syntax_check(
+    "step-without-run-or-uses",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/step-without-run-or-uses.md",
+);
+
 /// Every rule in this module, in the order of their IDs.
-pub static ALL: [&RuleMeta; 18] = [
+pub static ALL: [&RuleMeta; 19] = [
     &DUPLICATE_KEY,
     &EMPTY_SECTION,
     &EMPTY_STRING,
@@ -142,6 +148,7 @@ pub static ALL: [&RuleMeta; 18] = [
     &NON_POSITIVE_NUMBER,
     &REUSABLE_CALL_KEY_WITHOUT_USES,
     &SCHEDULE_WITHOUT_CONFIG,
+    &STEP_WITHOUT_RUN_OR_USES,
     &TOO_MANY_YAML_NODES,
     &UNEXPECTED_KEY,
     &UNEXPECTED_NODE_KIND,

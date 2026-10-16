@@ -1,24 +1,27 @@
 //! The type checker of expressions.
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `ExprSemanticsChecker` in `expr_sema.go`,
-//! without context availability (M3.6), untrusted input (M3.7), and the types of `fromJSON()`
-//! literals (M3.9).
+//! without untrusted input (M3.7).
 
 use workflint_diagnostics::RuleMeta;
-use workflint_diagnostics::quote::{ordinal, quote, sorted_quotes};
+use workflint_diagnostics::quote::{ordinal, quote, quotes, sorted_quotes};
 
 use crate::ast::{CompareOp, Expr, ExprKind, LogicalOp, Name};
 use crate::env::TypeEnv;
 use crate::error::ExprError;
 use crate::format::placeholders;
 use crate::functions::{self, Function, Mismatch, Signature};
+use crate::json;
 use crate::rules::{
-    CASE_ARGUMENT_COUNT, INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS,
+    CASE_ARGUMENT_COUNT, CONTEXT_NOT_ALLOWED, FUNCTION_NOT_ALLOWED, INVALID_COMPARISON,
+    INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS, INVALID_JSON_LITERAL,
     INVALID_OBJECT_FILTER, INVALID_PROPERTY_ACCESS, MISSING_FORMAT_ARGUMENT,
     UNDEFINED_CONFIG_VARIABLE, UNDEFINED_FUNCTION, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
     UNUSED_FORMAT_ARGUMENT, WRONG_ARGUMENT_COUNT, WRONG_ARGUMENT_TYPE,
 };
 use crate::types::Ty;
+
+const CONTEXT_AVAILABILITY: &str = "see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details";
 
 const CONFIG_VARIABLE_CONVENTION: &str = "note: see the convention at https://docs.github.com/en/actions/learn-github-actions/variables#naming-conventions-for-configuration-variables";
 
@@ -140,6 +143,7 @@ impl Checker<'_> {
 
     fn check_variable(&mut self, expr: &Expr, name: &Name) -> Ty {
         if let Some(ty) = self.env.variable(name.as_str()) {
+            self.check_available_context(expr, name);
             return ty.clone();
         }
         let message = format!(
@@ -149,6 +153,28 @@ impl Checker<'_> {
         );
         self.error(expr, &UNDEFINED_VARIABLE, message);
         Ty::Any
+    }
+
+    /// The reference's `checkAvailableContext`. The message names the context in lower case,
+    /// as the reference does.
+    fn check_available_context(&mut self, expr: &Expr, name: &Name) {
+        let Some(availability) = self.env.availability() else {
+            return;
+        };
+        let context = name.as_str();
+        if availability.contexts.contains(&context) {
+            return;
+        }
+        let note = match availability.contexts {
+            [] => "no context is available here".to_owned(),
+            [only] => format!("available context is {}", quote(only)),
+            contexts => format!("available contexts are {}", quotes(contexts)),
+        };
+        let message = format!(
+            "context {} is not allowed here. {note}. {CONTEXT_AVAILABILITY}",
+            quote(context)
+        );
+        self.error(expr, &CONTEXT_NOT_ALLOWED, message);
     }
 
     /// The reference's `checkObjectDeref`.
@@ -161,7 +187,7 @@ impl Checker<'_> {
         match &receiver_ty {
             Ty::Any => Ty::Any,
             Ty::Object(object) => {
-                if let Some(ty) = object.prop(prop) {
+                if let Some(ty) = object.prop_ignore_case(prop) {
                     return ty.clone();
                 }
                 if let Some(ty) = object.unknown_prop_ty() {
@@ -180,7 +206,10 @@ impl Checker<'_> {
             Ty::Array(array) if array.is_filtered() => match array.elem() {
                 Ty::Any => receiver_ty.clone(),
                 Ty::Object(elem) => {
-                    if let Some(ty) = elem.prop(prop).or_else(|| elem.unknown_prop_ty()) {
+                    if let Some(ty) = elem
+                        .prop_ignore_case(prop)
+                        .or_else(|| elem.unknown_prop_ty())
+                    {
                         return Ty::filtered_array(ty.clone());
                     }
                     let message = format!(
@@ -355,7 +384,7 @@ impl Checker<'_> {
                         // The exact key first, for keys that are not lower case.
                         let prop = object
                             .prop(lit.value())
-                            .or_else(|| object.prop(lit.folded()));
+                            .or_else(|| object.prop_ignore_case(lit.folded()));
                         if let Some(ty) = prop.or_else(|| object.unknown_prop_ty()) {
                             return ty.clone();
                         }
@@ -408,7 +437,7 @@ impl Checker<'_> {
             .iter()
             .find(|sig| sig.mismatch(&arg_tys).is_none())
         {
-            return self.check_resolved_call(expr, function, sig, args);
+            return self.check_resolved_call(expr, callee, function, sig, args);
         }
         for sig in &function.overloads {
             if let Some(mismatch) = sig.mismatch(&arg_tys) {
@@ -463,14 +492,19 @@ impl Checker<'_> {
     fn check_resolved_call(
         &mut self,
         expr: &Expr,
+        callee: &Name,
         function: &Function,
         sig: &Signature,
         args: &[Expr],
     ) -> Ty {
-        // TODO(#87): check where the special functions, such as `success()`, are allowed.
-        // TODO(#90): type a literal argument of `fromJSON()` and report broken JSON.
+        self.check_special_function_availability(expr, callee);
         match function.key.as_str() {
             "format" => self.check_format(expr, args),
+            "fromjson" => {
+                if let Some(ty) = self.check_from_json(args) {
+                    return ty;
+                }
+            }
             "case" if args.len().is_multiple_of(2) => {
                 let message = format!(
                     "case() requires an odd number of arguments (pred/value pairs + default) but got {}",
@@ -481,6 +515,28 @@ impl Checker<'_> {
             _ => {}
         }
         sig.ret.clone()
+    }
+
+    /// The reference's `checkSpecialFunctionAvailability`. It runs only for a call whose
+    /// arguments an overload accepts, so a call with the wrong arguments gets one error. The
+    /// message keeps the spelling of the call.
+    fn check_special_function_availability(&mut self, expr: &Expr, callee: &Name) {
+        let Some(availability) = self.env.availability() else {
+            return;
+        };
+        let name = callee.as_str();
+        let Some(keys) = workflint_data::special_function_keys(name) else {
+            return;
+        };
+        if availability.special_functions.contains(&name) {
+            return;
+        }
+        let original = quote(callee.original());
+        let message = format!(
+            "calling function {original} is not allowed here. {original} is only available in {}. {CONTEXT_AVAILABILITY}",
+            quotes(keys)
+        );
+        self.error(expr, &FUNCTION_NOT_ALLOWED, message);
     }
 
     /// Checks the placeholders of `format()` against its arguments when the format string is
@@ -509,6 +565,26 @@ impl Checker<'_> {
                 "format string {format} contains placeholder {{{i}}} but only {count} arguments are given to format"
             );
             self.error(expr, &MISSING_FORMAT_ARGUMENT, message);
+        }
+    }
+
+    /// Returns the type of the JSON value when the argument of `fromJSON()` is a string
+    /// literal, or reports Go's syntax error at the literal when it is broken JSON.
+    fn check_from_json(&mut self, args: &[Expr]) -> Option<Ty> {
+        let arg = args.first()?;
+        let ExprKind::String(lit) = &arg.kind else {
+            return None;
+        };
+        match json::type_of(lit.value()) {
+            Ok(ty) => ty,
+            Err(err) => {
+                let message = format!(
+                    "broken JSON string is passed to fromJSON() at offset {}: {}",
+                    err.offset, err.message
+                );
+                self.error(arg, &INVALID_JSON_LITERAL, message);
+                None
+            }
         }
     }
 

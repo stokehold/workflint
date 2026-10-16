@@ -1,9 +1,10 @@
 //! Ports of the type tests in the reference's `expr_type_test.go`, plus the cases where
 //! workflint's types differ or the reference has no test.
 //!
-//! `TestExprTypeTypeOfJSONValue` and `TestExprTypePanicTypeOfJSONValue` move to M3.9 with
-//! `fromJSON` typing. The reference's `Merge` and `Assignable` take the receiver first, so a
-//! port of `a.Merge(b)` is `a.merge(&b)` and a port of `a.Assignable(b)` is `a.accepts(&b)`.
+//! `TestExprTypeTypeOfJSONValue` and `TestExprTypePanicTypeOfJSONValue` are ported in
+//! `from_json.rs`, through `fromJSON()`. The reference's `Merge` and `Assignable` take the
+//! receiver first, so a port of `a.Merge(b)` is `a.merge(&b)` and a port of
+//! `a.Assignable(b)` is `a.accepts(&b)`.
 
 #![allow(clippy::panic)]
 

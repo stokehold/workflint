@@ -320,14 +320,15 @@ impl StringLit {
 /// does. It differs from Rust's lowercase only for U+0130, which becomes a plain `i`.
 /// `workflint_yaml::simple_lowercase` does the same for YAML keys.
 fn simple_lowercase(text: &str) -> String {
-    text.chars()
-        .map(|ch| {
-            let mut lower = ch.to_lowercase();
-            match (lower.next(), lower.next()) {
-                (Some(lower), None) => lower,
-                _ if ch == '\u{130}' => 'i',
-                _ => ch,
-            }
-        })
-        .collect()
+    text.chars().map(simple_lower).collect()
+}
+
+/// Lowercases `ch` as Go's `unicode.ToLower` does. See [`simple_lowercase`].
+pub(crate) fn simple_lower(ch: char) -> char {
+    let mut lower = ch.to_lowercase();
+    match (lower.next(), lower.next()) {
+        (Some(lower), None) => lower,
+        _ if ch == '\u{130}' => 'i',
+        _ => ch,
+    }
 }
