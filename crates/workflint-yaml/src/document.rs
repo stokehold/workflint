@@ -455,6 +455,20 @@ pub enum Tag {
 }
 
 impl Tag {
+    /// Returns the tag that the YAML 1.2 core schema resolves for an
+    /// untagged plain scalar whose decoded value is `value`.
+    ///
+    /// ```
+    /// use workflint_yaml::Tag;
+    ///
+    /// assert_eq!(Tag::resolve_plain("1.5"), Tag::Float);
+    /// assert_eq!(Tag::resolve_plain("yes"), Tag::Str);
+    /// ```
+    #[must_use]
+    pub fn resolve_plain(value: &str) -> Self {
+        crate::resolve::plain(value)
+    }
+
     /// Returns the tag as messages print it, such as `!!str`.
     #[must_use]
     pub fn as_str(&self) -> &str {

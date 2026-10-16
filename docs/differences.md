@@ -198,12 +198,27 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="action-metadata-aliases"></a>
 ### Aliases and merge keys in `action.yml` inputs
 
-- Upstream: when an input in a local `action.yml` is an alias (`bar: *input`), the scan for `deprecationMessage` and for unknown keys sees nothing, so a deprecated aliased input is not reported. A `<<` merge key under `inputs` becomes an input named `<<`.
-- workflint: aliases are resolved before inputs are read, and a merge key under `inputs` merges the referenced inputs, as go-yaml already does for the rest of the file.
+- Upstream: when an input in a local `action.yml` is an alias (`bar: *input`), the scan for `deprecationMessage` and for unknown keys sees nothing, so a deprecated aliased input is not reported. An alias used as an input name (`*name: {}`) gives an input named after the anchor. A `<<` merge key under `inputs` becomes an input named `<<`.
+- workflint: aliases under `inputs` are resolved before inputs are read, both as input names and as input definitions. A merge key under `inputs` merges the referenced inputs, as go-yaml does for the rest of the file: the inputs written under `inputs` come first, and a merged input does not replace one with the same name. With a sequence of mappings, earlier mappings win. A merged input whose name differs from another only in case is a duplicate. A merge value that is not a mapping or a sequence of mappings, or that contains itself, is an error with go-yaml's text. A `<<` key inside one input's definition is still an unknown key.
 - Why: an alias should behave like the node it refers to.
 - Upstream issue: none.
 - Milestone: M2.
 - Status: planned.
+
+<a id="typed-decoding-edge-cases"></a>
+### Rare inputs to the typed decoding of local metadata
+
+- Upstream: go-yaml decodes local `action.yml` files and the `on:` section of local reusable workflows into Go types. A few inputs that no real file uses take paths that workflint does not reproduce:
+  - A scalar with an explicit `!!timestamp` tag must be a valid date, or decoding fails with `cannot decode !!str ... as a !!timestamp`.
+  - A mapping or sequence with an explicit `!!null` tag as the value of `inputs`, `outputs`, or `secrets` skips the reference's own code for these sections, and go-yaml decodes it by its generic rules.
+  - A plain `<<` key with an explicit `!!str` tag is an ordinary key.
+  - A mapping with many equal keys gives an error for every two of them, so 10,000 equal keys give about 50 million errors.
+  - In a `cannot use '...' as a map key` message, map keys of different Go types are printed in an order that depends on the address of their type.
+- workflint: an explicit `!!timestamp` tag is not checked. A `!!null` mapping or sequence is decoded like an untagged one. A plain `<<` key is a merge key whatever its tag. One duplicate key check reports at most 1,000 errors. Map keys of different types are printed nil first, then bools, integers, floats, and strings.
+- Why: these cases need go-yaml internals that no metadata file depends on, and the error count must stay bounded.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned. No fixture covers it.
 
 ## Expressions
 
