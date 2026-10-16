@@ -1,12 +1,28 @@
 //! The `${{ }}` expression language of workflint.
 //!
-//! This is an internal crate with no stability promise. It has the lexer and the parser so
-//! far. [`Lexer`] turns the text after `${{` into [`Token`]s up to the `}}` that ends the
+//! This is an internal crate with no stability promise. It has the lexer, the parser, and the
+//! type system so far.
+//!
+//! [`Lexer`] turns the text after `${{` into [`Token`]s up to the `}}` that ends the
 //! expression, and [`lex_expression`] collects them. Tokens are kinds and byte ranges, so
 //! lexing allocates nothing per token. [`parse_expression`] builds the syntax tree, an
 //! [`Expr`], with GitHub's operator precedence. Errors are [`ExprError`]s with actionlint's
 //! messages and byte ranges. They are diagnostics of [`rules::INVALID_EXPRESSION_SYNTAX`], or
 //! of [`rules::INVALID_NUMBER_LITERAL`] for a number beyond the range of a double.
+//!
+//! [`Ty`] is the type of an expression value, with actionlint's assignability, merge, and
+//! printed form. Types are immutable and can cross threads. `Ty::from` converts a type from
+//! `workflint-data`.
+//!
+//! ```
+//! use workflint_expr::Ty;
+//!
+//! let ty = Ty::strict([("os", Ty::String), ("count", Ty::Number)]);
+//! assert_eq!(ty.to_string(), "{count: number; os: string}");
+//! assert!(Ty::String.accepts(&Ty::Number));
+//! assert!(!Ty::Bool.accepts(&Ty::String));
+//! assert_eq!(Ty::Number.merge(&Ty::String), Ty::String);
+//! ```
 //!
 //! ```
 //! use workflint_expr::{Lexer, TokenKind};
@@ -32,9 +48,11 @@ mod lexer;
 mod parser;
 pub mod rules;
 mod token;
+mod types;
 
 pub use ast::{CompareOp, Expr, ExprKind, LogicalOp, Name, StringLit, Visit};
 pub use error::ExprError;
 pub use lexer::{Lexer, lex_expression};
 pub use parser::parse_expression;
 pub use token::{Token, TokenKind};
+pub use types::{ArrayTy, ObjectTy, Rest, Ty};
