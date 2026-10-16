@@ -96,12 +96,16 @@ impl SourceFile {
     ///
     /// The line breaks are the ones the YAML parser counts: `\n`, `\r\n`, a lone `\r`, U+0085,
     /// U+2028, and U+2029. A byte order mark at the start of the file takes up no column. An
-    /// offset past the end of the text is treated as the end of the text, and an offset inside a
-    /// multi-byte character is treated as the start of that character.
+    /// offset past the end of the text is treated as the end of the text. An offset inside a
+    /// multi-byte character is treated as the start of that character, and an offset on the `\n`
+    /// of a `\r\n` as the `\r`, because both bytes are one line break.
     #[must_use]
     pub fn line_col(&self, offset: u32) -> LineCol {
         let offset = usize::try_from(offset).unwrap_or(usize::MAX);
-        let offset = self.text.floor_char_boundary(offset.min(self.text.len()));
+        let mut offset = self.text.floor_char_boundary(offset.min(self.text.len()));
+        if offset > 0 && self.text.get(offset - 1..=offset) == Some("\r\n") {
+            offset -= 1;
+        }
         // `line_starts[0]` is 0, so at least one start is at or before `offset`.
         let line = self.line_starts.partition_point(|&start| start <= offset);
         let mut start = self
@@ -221,6 +225,14 @@ mod tests {
         assert_eq!(line_col(text, 6), (2, 1));
         assert_eq!(line_col(text, 9), (2, 4));
         assert_eq!(line_col(text, 12), (3, 1));
+    }
+
+    #[test]
+    fn an_offset_on_the_line_feed_of_a_crlf_points_at_the_carriage_return() {
+        let text = "ab\r\ncd";
+        assert_eq!(line_col(text, 2), (1, 3));
+        assert_eq!(line_col(text, 3), (1, 3));
+        assert_eq!(line_col(text, 4), (2, 1));
     }
 
     #[test]

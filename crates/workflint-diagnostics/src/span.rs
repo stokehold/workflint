@@ -2,8 +2,10 @@ use crate::FileId;
 
 /// A byte range in one source file.
 ///
-/// `start` is at most `end`, and both are byte offsets into [`SourceFile::text`](crate::SourceFile::text).
+/// `start` and `end` are byte offsets into [`SourceFile::text`](crate::SourceFile::text), and
 /// [`SourceFile::line_col`](crate::SourceFile::line_col) turns them into lines and columns.
+/// `start` should be at most `end`. The renderers draw a span whose `start` is after its `end`
+/// as an empty span at `start`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Span {
     /// The file the range is in.
