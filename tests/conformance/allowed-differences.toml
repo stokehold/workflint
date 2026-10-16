@@ -1,0 +1,9 @@
+# Expected lines that workflint replaces, removes, or adds on purpose. Each
+# entry names an anchor in docs/differences.md. See tests/conformance/README.md
+# for the format.
+#
+# [[difference]]
+# anchor = "yaml-error-positions"
+# fixture = "err/yaml_syntax_error"
+# upstream = "test.yaml:..."
+# workflint = "test.yaml:..."
