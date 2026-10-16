@@ -22,12 +22,16 @@ pub(crate) enum Label<'s> {
     /// A section, printed as `"name" section`. The reference's
     /// `parseSectionMapping`.
     Section(&'s str),
+    /// A place printed as written, such as `element of "schedule" section`.
+    /// The reference's `parseMappingAt`.
+    At(&'s str),
 }
 
 impl fmt::Display for Label<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Section(name) => write!(f, "{} section", quote(name)),
+            Self::At(place) => f.write_str(place),
         }
     }
 }

@@ -31,3 +31,15 @@ anchor = "unknown-anchor-position"
 fixture = "examples/dangling_alias"
 upstream = "test.yaml:0:0: could not parse as YAML: yaml: unknown anchor 'credentials' referenced [syntax-check]"
 workflint = "test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced [syntax-check]"
+
+[[difference]]
+anchor = "dispatch-input-key-list"
+fixture = "err/case_sensitive_keys"
+upstream = 'test.yaml:9:9: unexpected key "DESCRIPTION" for "inputs" section. expected one of "default", "description", "required" [syntax-check]'
+workflint = 'test.yaml:9:9: unexpected key "DESCRIPTION" for "inputs" section. expected one of "default", "description", "options", "required", "type" [syntax-check]'
+
+[[difference]]
+anchor = "dispatch-input-key-list"
+fixture = "err/unexpected_keys"
+upstream = 'test.yaml:6:9: unexpected key "invalid_key" for "inputs" section. expected one of "default", "description", "required" [syntax-check]'
+workflint = 'test.yaml:6:9: unexpected key "invalid_key" for "inputs" section. expected one of "default", "description", "options", "required", "type" [syntax-check]'

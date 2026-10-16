@@ -100,9 +100,11 @@ pub struct WebhookEvent<'a> {
 pub struct ScheduleEvent<'a> {
     /// The string `schedule`.
     pub name: Str<'a>,
-    /// The span of the sequence under the event's key, if any.
+    /// The span of the sequence under the event's key. The parser drops a
+    /// `schedule` with no sequence, so it is always present.
     pub body: Option<Span>,
-    /// The items of the sequence, in source order.
+    /// The items of the sequence whose `cron` is valid, in source order.
+    /// The parser drops the other items, as the reference does.
     pub schedules: Arc<[ScheduleEntry<'a>]>,
 }
 
@@ -111,7 +113,7 @@ pub struct ScheduleEvent<'a> {
 pub struct ScheduleEntry<'a> {
     /// The span of the item.
     pub span: Span,
-    /// `cron`.
+    /// `cron`. It is always valid.
     pub cron: Field<'a, Str<'a>>,
     /// `timezone`.
     pub timezone: Field<'a, Str<'a>>,
@@ -139,7 +141,7 @@ pub struct WorkflowDispatchInput<'a> {
     /// `default`. It may be empty.
     pub default: Field<'a, Str<'a>>,
     /// `type`. The reference's `WorkflowDispatchEventInputTypeNone` is
-    /// [`Field::Absent`].
+    /// [`Field::Absent`] or [`Field::Invalid`].
     pub input_type: Field<'a, WorkflowDispatchInputType>,
     /// `options`.
     pub options: Field<'a, Arc<[Str<'a>]>>,
@@ -182,6 +184,11 @@ pub struct WorkflowCallEvent<'a> {
     /// reference's `WorkflowCallEventInput.ID`.
     pub inputs: Field<'a, Keyed<'a, WorkflowCallEventInput<'a>>>,
     /// `secrets`, keyed by secret name.
+    ///
+    /// [`Field::Absent`] means the key is not written, which the
+    /// reference's `nil` map records, and a null value is an empty
+    /// collection. A value that is not a mapping is [`Field::Invalid`],
+    /// where the reference has an empty map.
     pub secrets: Field<'a, Keyed<'a, WorkflowCallEventSecret<'a>>>,
     /// `outputs`, keyed by output name.
     pub outputs: Field<'a, Keyed<'a, WorkflowCallEventOutput<'a>>>,

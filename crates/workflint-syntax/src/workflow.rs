@@ -24,7 +24,9 @@ pub struct Workflow<'a> {
     /// `on`: the events that trigger the workflow, in source order.
     ///
     /// The list is empty when `on` is written but names no valid event,
-    /// such as `on:` with a null value.
+    /// such as `on:` with a null value. `on` is invalid when its value is
+    /// an alias that stays unresolved, and the reference then reports it as
+    /// missing.
     pub on: Field<'a, Arc<[Event<'a>]>>,
     /// `permissions`. The reference's `Permissions.Pos` is this field's key.
     pub permissions: Field<'a, Permissions<'a>>,
