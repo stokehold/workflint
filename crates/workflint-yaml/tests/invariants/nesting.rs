@@ -2,10 +2,8 @@
 //! targets reach the parser's depth limit of 10,000 levels. libFuzzer keeps
 //! its inputs to a few kilobytes, and one level takes at least one byte.
 //!
-//! The `yaml_events` fuzz target and `fuzz_regressions.rs` include this file
-//! with `#[path]`. The `yaml_tree` target does not expand its input yet:
-//! `Document::dump` recurses once per level, and at 10,000 levels it
-//! overflows the stack under the address sanitizer (#51).
+//! The `yaml_events` and `yaml_tree` fuzz targets and `fuzz_regressions.rs`
+//! include this file with `#[path]`.
 
 use std::borrow::Cow;
 
