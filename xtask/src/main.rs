@@ -7,6 +7,7 @@
 
 mod bench;
 mod fuzz_seeds;
+mod oracle;
 mod reference;
 mod vendor_testdata;
 mod yaml_parity;
@@ -55,6 +56,28 @@ enum Command {
     /// the YAML files of the vendored test data, the corpus archive, the YAML
     /// test suite, and the fuzz regression inputs.
     FuzzSeeds,
+    /// Run workflint and the reference binary on the vendored fixtures and
+    /// the corpus, and report each difference that
+    /// tests/conformance/allowed-differences.toml does not explain. Writes
+    /// `target/oracle/report.md` and `summary.md`. Needs git and the Go
+    /// version in `.go-version` to build the reference.
+    ///
+    /// It exits with an error if a difference is not explained.
+    Oracle {
+        /// Fixture files, project directories, directories of fixtures, the
+        /// corpus archive, or files in `.reference/realworld`, to compare
+        /// instead of every input.
+        paths: Vec<PathBuf>,
+        /// Exit with success after writing the report, even if a difference
+        /// is not explained.
+        #[arg(long)]
+        report_only: bool,
+        /// Run the reference in place of workflint, without the kind mapping
+        /// or the allow-list. Any difference means the runs are not
+        /// deterministic.
+        #[arg(long, hide = true)]
+        self_check: bool,
+    },
     /// Recreate the actionlint checkout, reference binary, and corpus in
     /// `.reference/`. Needs git and the Go version in `.go-version`.
     Reference,
@@ -106,6 +129,18 @@ fn main() -> anyhow::Result<()> {
             bench::history::run(&history, &results, issue_body.as_deref())?;
         }
         Some(Command::FuzzSeeds) => fuzz_seeds::run(reference::Layout::repository().root())?,
+        Some(Command::Oracle {
+            paths,
+            report_only,
+            self_check,
+        }) => {
+            let options = oracle::Options {
+                paths,
+                report_only,
+                self_check,
+            };
+            oracle::run(&reference::Layout::repository(), &options)?;
+        }
         Some(Command::Reference) => reference::run(&reference::Layout::repository())?,
         Some(Command::VendorTestdata) => {
             vendor_testdata::run(&reference::Layout::repository())?;
@@ -142,6 +177,42 @@ mod tests {
     fn fuzz_seeds_selects_the_fuzz_seeds_subcommand() {
         let cli = Cli::try_parse_from(["xtask", "fuzz-seeds"]).unwrap();
         assert!(matches!(cli.command, Some(Command::FuzzSeeds)));
+    }
+
+    #[test]
+    fn oracle_takes_paths_and_report_only() {
+        let cli = Cli::try_parse_from(["xtask", "oracle", "--report-only", "a.yaml"]).unwrap();
+        let Some(Command::Oracle {
+            paths,
+            report_only,
+            self_check,
+        }) = cli.command
+        else {
+            panic!("{:?}", cli.command);
+        };
+        assert_eq!(paths, [PathBuf::from("a.yaml")]);
+        assert!(report_only);
+        assert!(!self_check);
+    }
+
+    #[test]
+    fn oracle_self_check_is_hidden_from_help() {
+        let mut command = Cli::command();
+        let help = command
+            .find_subcommand_mut("oracle")
+            .unwrap()
+            .render_long_help()
+            .to_string();
+        assert!(help.contains("--report-only"), "{help}");
+        assert!(!help.contains("--self-check"), "{help}");
+        let cli = Cli::try_parse_from(["xtask", "oracle", "--self-check"]).unwrap();
+        assert!(matches!(
+            cli.command,
+            Some(Command::Oracle {
+                self_check: true,
+                ..
+            })
+        ));
     }
 
     #[test]

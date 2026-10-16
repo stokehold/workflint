@@ -19,11 +19,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 
-use crate::reference::{Layout, corpus, go};
+use crate::reference::{CORPUS_FILES, Layout, corpus, go};
 use crate::vendor_testdata;
-
-/// The number of files in the corpus archive.
-const CORPUS_FILES: usize = 1_503;
 
 /// The inputs that the vendored test data lacks, relative to the repository
 /// root.

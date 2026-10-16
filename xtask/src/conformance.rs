@@ -4,8 +4,9 @@
 //! reference's `linter_test.go`. `tests/conformance/README.md` documents the
 //! command line the runner uses and the data files it reads.
 //!
-//! `cargo xtask oracle` (M1.10) reuses the output parsing, the matching and
-//! the allow-list on the reference binary's output.
+//! `cargo xtask oracle` reuses the command line, the output parsing, the
+//! matching, the kind mapping and the allow-list to compare workflint with the
+//! reference binary.
 
 pub mod allow_list;
 pub mod binary;

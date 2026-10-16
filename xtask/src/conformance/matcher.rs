@@ -44,32 +44,43 @@ pub fn check_errors(expected: &[String], actual: &[Diagnostic]) -> Result<(), St
     let mut report = String::new();
     for (index, (want, have)) in expected.iter().zip(&have).enumerate() {
         let number = index + 1;
-        match pattern(want) {
-            Some(source) => match Regex::new(&from_go(source)) {
-                Ok(regex) if regex.is_match(have) => {}
-                Ok(_) => write!(
-                    report,
-                    "\nerror {number} does not match the regular expression\n  want: /{source}/\n  have: {have:?}"
-                )
-                .expect("writing to a String succeeds"),
-                Err(error) => write!(
-                    report,
-                    "\nexpected line {number} is not a valid regular expression: /{source}/: {error}"
-                )
-                .expect("writing to a String succeeds"),
-            },
-            None if want == have => {}
-            None => write!(
+        match (pattern(want), line_matches(want, have)) {
+            (_, Ok(true)) => {}
+            (Some(source), Ok(false)) => write!(
+                report,
+                "\nerror {number} does not match the regular expression\n  want: /{source}/\n  have: {have:?}"
+            )
+            .expect("writing to a String succeeds"),
+            (None, Ok(false)) => write!(
                 report,
                 "\nerror {number} does not match exactly\n  want: {want:?}\n  have: {have:?}"
             )
             .expect("writing to a String succeeds"),
+            (_, Err(error)) => write!(report, "\nexpected line {number} {error}")
+                .expect("writing to a String succeeds"),
         }
     }
     if report.is_empty() {
         Ok(())
     } else {
         Err(report.trim_start().to_owned())
+    }
+}
+
+/// Whether the error line `have` matches the expected line `want`: equal to
+/// it, or, if `want` starts and ends with `/`, matched anywhere by the
+/// pattern between the slashes.
+///
+/// # Errors
+///
+/// Returns a message that quotes the pattern if it is not a valid regular
+/// expression.
+pub fn line_matches(want: &str, have: &str) -> Result<bool, String> {
+    match pattern(want) {
+        None => Ok(want == have),
+        Some(source) => Regex::new(&from_go(source))
+            .map(|regex| regex.is_match(have))
+            .map_err(|error| format!("is not a valid regular expression: /{source}/: {error}")),
     }
 }
 

@@ -26,6 +26,9 @@ pub(crate) const COMMIT: &str = "011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7";
 /// `actions/setup-go` reads it through `go-version-file`.
 pub(crate) const GO_VERSION_FILE: &str = ".go-version";
 
+/// The number of files in the corpus archive.
+pub(crate) const CORPUS_FILES: usize = 1_503;
+
 /// What a step did.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Outcome {
@@ -142,6 +145,17 @@ pub(crate) fn ensure_binary(layout: &Layout) -> Result<Outcome> {
     )
 }
 
+/// Runs [`ensure_binary`] and prints one line about it.
+pub(crate) fn report_binary(layout: &Layout) -> Result<()> {
+    let binary = layout.binary();
+    let path = layout.display(&binary);
+    match ensure_binary(layout)? {
+        Outcome::Created | Outcome::Updated => println!("binary: built {path}"),
+        Outcome::UpToDate => println!("binary: {path} is up to date"),
+    }
+    Ok(())
+}
+
 /// Step 3: unpacks the corpus into `.reference/realworld`. Call
 /// [`ensure_checkout`] first. Returns the number of files in the corpus too.
 pub(crate) fn ensure_corpus(layout: &Layout) -> Result<(Outcome, usize)> {
@@ -151,13 +165,7 @@ pub(crate) fn ensure_corpus(layout: &Layout) -> Result<(Outcome, usize)> {
 /// Runs the three steps and prints one line for each.
 pub(crate) fn run(layout: &Layout) -> Result<()> {
     report_checkout(layout)?;
-
-    let binary = layout.binary();
-    let path = layout.display(&binary);
-    match ensure_binary(layout)? {
-        Outcome::Created | Outcome::Updated => println!("binary: built {path}"),
-        Outcome::UpToDate => println!("binary: {path} is up to date"),
-    }
+    report_binary(layout)?;
 
     let corpus = layout.corpus();
     let path = layout.display(&corpus);
