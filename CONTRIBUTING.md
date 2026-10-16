@@ -46,7 +46,7 @@ The command writes `target/bench/results.json` and `target/bench/results.md`, wi
 
 Each run has a time limit: 2 minutes for the corpus, 10 minutes for the corpus with shellcheck, and 10 seconds for `small.yaml`. When a run exceeds it, the command kills the run and the processes it started, records the run as timed out, and goes on with the next one. `--timeout SECONDS` sets one limit for all scenarios. On macOS the reference can hang with shellcheck on, so `cargo xtask bench --timeout 60` gives a quicker result there.
 
-The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when workflint's wall time in a scenario grows by more than 10% against the previous run. `cargo xtask bench-history` does that comparison.
+The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when, in any scenario, workflint's wall time divided by the reference's from the same run grows by more than 10% against the previous run. Dividing by the reference cancels most of the speed difference between runners. `cargo xtask bench-history` does that comparison.
 
 The test suite does not need `.reference/`. It reads a copy of the reference's test data in `tests/conformance/actionlint/`, which is in git. `cargo xtask vendor-testdata` recreates that copy from the checkout, and the `README.md` there lists the files it holds.
 
