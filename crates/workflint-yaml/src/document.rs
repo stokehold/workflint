@@ -34,6 +34,7 @@ impl NodeId {
 pub struct Document {
     pub(crate) file: FileId,
     pub(crate) root: Option<NodeId>,
+    pub(crate) start: u32,
     pub(crate) nodes: Vec<Node>,
     pub(crate) items: Vec<NodeId>,
     pub(crate) entries: Vec<Entry>,
@@ -55,6 +56,14 @@ impl Document {
     #[must_use]
     pub fn root(&self) -> Option<NodeId> {
         self.root
+    }
+
+    /// Returns the byte offset where go-yaml reports the document node: the
+    /// start of the first directive or of the `---` marker, or else of the
+    /// root node, properties included. It is 0 for a file with no document.
+    #[must_use]
+    pub fn start(&self) -> u32 {
+        self.start
     }
 
     /// Returns the node with the ID `id`, or `None` if the ID comes from

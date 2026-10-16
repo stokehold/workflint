@@ -1,12 +1,14 @@
 //! The `${{ }}` expression language of workflint.
 //!
-//! This is an internal crate with no stability promise. It has the lexer and the type system
-//! so far.
+//! This is an internal crate with no stability promise. It has the lexer, the parser, and the
+//! type system so far.
 //!
 //! [`Lexer`] turns the text after `${{` into [`Token`]s up to the `}}` that ends the
 //! expression, and [`lex_expression`] collects them. Tokens are kinds and byte ranges, so
-//! lexing allocates nothing per token. Errors are [`ExprError`]s with actionlint's messages and
-//! byte ranges. Syntax errors are diagnostics of [`rules::INVALID_EXPRESSION_SYNTAX`].
+//! lexing allocates nothing per token. [`parse_expression`] builds the syntax tree, an
+//! [`Expr`], with GitHub's operator precedence. Errors are [`ExprError`]s with actionlint's
+//! messages and byte ranges. They are diagnostics of [`rules::INVALID_EXPRESSION_SYNTAX`], or
+//! of [`rules::INVALID_NUMBER_LITERAL`] for a number beyond the range of a double.
 //!
 //! [`Ty`] is the type of an expression value, with actionlint's assignability, merge, and
 //! printed form. Types are immutable and can cross threads. `Ty::from` converts a type from
@@ -40,13 +42,17 @@
 //! assert_eq!(lexer.offset(), 13);
 //! ```
 
+mod ast;
 mod error;
 mod lexer;
+mod parser;
 pub mod rules;
 mod token;
 mod types;
 
+pub use ast::{CompareOp, Expr, ExprKind, LogicalOp, Name, StringLit, Visit};
 pub use error::ExprError;
 pub use lexer::{Lexer, lex_expression};
+pub use parser::parse_expression;
 pub use token::{Token, TokenKind};
 pub use types::{ArrayTy, ObjectTy, Rest, Ty};

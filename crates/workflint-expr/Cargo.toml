@@ -1,6 +1,6 @@
 [package]
 name = "workflint-expr"
-description = "Expression engine of workflint: the lexer and the type system of `${{ }}` expressions. Internal crate with no stability promise."
+description = "Expression engine of workflint: the lexer, parser, and type system of `${{ }}` expressions. Internal crate with no stability promise."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

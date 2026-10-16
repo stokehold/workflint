@@ -20,6 +20,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | typed decoding | Reading YAML into fixed types with the rules of go-yaml's `Unmarshal`, which the reference uses for local action metadata, the `on.workflow_call` section of local reusable workflows, and its config file. A bool also takes the YAML 1.1 forms such as `yes`, exact duplicate keys are errors, and unknown keys are ignored. `workflint-syntax` does it for the first two. |
 | expression | The text inside `${{ }}`. |
 | context | A top-level expression variable such as `github`, `env`, `matrix`, or `steps`. |
+| object filter | `.*` in an expression, as in `labels.*.name`, which applies the rest of the expression to each element of an array or each value of an object (`ExprKind::ObjectFilter`). |
 | availability | Which contexts and functions a given workflow key allows. |
 | platform data | Facts about GitHub that change over time: runner labels, permissions, events, contexts, popular actions (ADR 0011). |
 | rule | One check with a stable ID and rule metadata, listed in the registry in `workflint-rules`. |
@@ -50,6 +51,10 @@ Use these words with these meanings in code, docs, and pull requests.
 | short form | A string written where a mapping is also accepted, such as `concurrency: ci` or `container: node:24`. The string fills one field of the mapping form, and that field has no key. |
 | keyed collection | Entries keyed by names that compare case-insensitively, such as jobs, `env`, or `with` (`Keyed`). It keeps source order, and each entry keeps its key as written and its folded key. |
 | folded key | A key lowercased as Go's `strings.ToLower` does. Keyed collections compare folded keys, and lookup returns the first entry with a name. |
+| section | A mapping of a workflow with a fixed set of keys, such as the workflow root, a job, or `defaults`. Messages call it `"name" section`. |
+| mapping walker | `Parser::parse_mapping` in `workflint-syntax`, the reference's `parseMapping`. It returns the entries of a mapping and reports a null or empty section, a node of the wrong kind, a key that is not a string, a merge key, and a duplicate key. |
+| key table | The keys of a section, each with the function that parses its value (`KeySpec`). The unexpected-key message lists the table's keys. |
+| YAML node limit | The 50,000 YAML nodes, aliases expanded, that GitHub reads in a workflow before it fails with `Maximum YAML nodes exceeded`. Past it, the parser reports `too-many-yaml-nodes` and parses nothing else. |
 | ignore comment | A `# workflint: ignore[...]` YAML comment that suppresses diagnostics (ADR 0009). |
 | project root | The directory that contains `.github/workflows` and a version control marker (ADR 0010). |
 | external tool | shellcheck, ruff, or pyflakes, run as a subprocess (ADR 0012). |

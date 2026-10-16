@@ -135,6 +135,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: planned.
 
+<a id="yaml-node-limit"></a>
+### Workflows over GitHub's YAML node limit
+
+- Upstream: the parser walks an anchored subtree again at each alias that uses it. Nested aliases multiply, so a "billion laughs" workflow, nine levels of anchors with ten aliases each, makes the parser walk 10^9 nodes, and actionlint does not finish.
+- workflint: before it parses, the parser counts the YAML events that GitHub's reader reads, with each alias expanded: the stream and document markers, each scalar, and the start and end of each collection. The reader is `YamlObjectReader` in `actions/runner` at `9abfe11`, and it stops past 50,000 events with `Maximum YAML nodes exceeded`. Past the same limit, workflint reports `workflow has more than 50000 YAML nodes when its aliases are expanded. GitHub rejects it with "Maximum YAML nodes exceeded"` at the start of the document, with the rule `too-many-yaml-nodes`, and parses nothing else. The count takes time in proportion to the size of the file. A recursive alias counts as one event, because the YAML layer reports it already.
+- Why: a linter must finish on any input, and GitHub rejects these files anyway.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned. No fixture covers it.
+
 <a id="container-volumes"></a>
 ### Container `volumes` is kept separate from `ports`
 
@@ -216,7 +226,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Integer literals beyond 32 bits
 
 - Upstream: integer literals are parsed as 32-bit integers, so `${{ 2147483648 }}` is an error: `parsing invalid integer literal "2147483648": strconv.ParseInt: parsing "2147483648": value out of range`.
-- workflint: integer literals are accepted in the range of a double, as the runner evaluates numbers as doubles.
+- workflint: integer literals are accepted in the range of a double, as the runner evaluates numbers as doubles. Decimal and `0x` hexadecimal literals become the nearest double, so `9007199254740993` is `9007199254740992`. A literal beyond the largest double, such as a 1 followed by 309 zeros, is still an error, with upstream's message: `parsing invalid integer literal "...": strconv.ParseInt: parsing "...": value out of range`.
 - Why: upstream rejects valid expressions.
 - Upstream issue: PR #733.
 - Milestone: M3.
@@ -236,11 +246,22 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Comparison operator precedence
 
 - Upstream: all six comparison operators share one precedence level and associate to the right. `'a' < 'b' == true` parses as `'a' < ('b' == true)` and reports `"string" value cannot be compared to "bool" value with "<" operator`.
-- workflint: `<`, `<=`, `>` and `>=` bind tighter than `==` and `!=`, and all associate to the left, following GitHub's documented operator order.
+- workflint: `<`, `<=`, `>` and `>=` bind tighter than `==` and `!=`, and all associate to the left, following GitHub's documented operator order. `'a' < 'b' == true` parses as `('a' < 'b') == true`. `&&` and `||` keep upstream's grouping to the right, which evaluates to the same value as any other grouping.
+- Confirmed against the expression parser in `actions/languageservices` (`expressions/src/parser.ts`) at commit `4043eda`. From the loosest: `||`, then `&&`, then `==` and `!=`, then `<`, `<=`, `>` and `>=`, then `!`, then property access and index access. The comparison and equality levels are left-associative loops. The `&&` and `||` levels collect any number of operands into one node.
 - Why: the tree must match how GitHub evaluates the expression, or type errors are wrong.
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned. Confirm the grammar against the `actions/languageservices` expression parser before implementing.
+- Status: planned.
+
+<a id="expression-nesting-limit"></a>
+### Nesting limit for expressions
+
+- Upstream: expressions can nest without limit.
+- workflint: an expression nested more than 128 levels deep is an error, `expression is nested more than 128 levels deep`, reported by `invalid-expression-syntax`. Each parenthesis, `!`, function call, property access, object filter, index access, and binary operator adds a level.
+- Why: the parser and the checks walk the tree recursively, and a limit keeps a crafted expression from overflowing the stack. The deepest expression in the corpus is 11 levels deep. GitHub's parser in `actions/languageservices` stops at 50 levels.
+- Upstream issue: none.
+- Milestone: M3.
+- Status: planned.
 
 <a id="bool-assignability"></a>
 ### `bool` no longer accepts every type
@@ -367,7 +388,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 - Upstream: go-yaml resolves some plain scalars with YAML 1.1 rules. `1_000` and `0b10` become integers that later fail Go's number parsing, and dates such as `2026-10-15` get the `!!timestamp` tag, which appears in messages. A plain `<<` gets the `!!merge` tag, so `timeout-minutes: <<` reports a `"!!merge" tag`, and `-0` is a float.
 - workflint: plain scalars are typed under the YAML 1.2 core schema (ADR 0005). `1_000`, `0b10`, `2026-10-15`, and `<<` are strings, so a numeric key such as `timeout-minutes: 1_000` reports a string where a number is expected, and no message names a `!!timestamp` or `!!merge` tag. `-0` is an integer.
-- Why: the 1.2 core schema matches how GitHub types plain scalars, so the diagnostic describes what GitHub does with the file. M2 confirms this against the scalar handling in `actions/runner` before the change ships.
+- Why: GitHub types plain scalars with the 1.2 core schema, so the diagnostic describes what GitHub does with the file. `YamlObjectReader` in `actions/runner` at `9abfe11` (`src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs`) tries null, boolean, integer, and float in turn, with the core schema's patterns, and reads any other plain scalar as a string. Its patterns match `crates/workflint-yaml/src/resolve.rs`: `True` is a boolean, `0o17` and `0x1F` are integers, `.inf` is a float, and `yes`, `1_000`, and `2026-10-15` are strings. Quoted and block scalars are strings.
 - Upstream issue: none.
 - Milestone: M1.
 - Status: planned. The conformance allow-list records each fixture whose message changes.
