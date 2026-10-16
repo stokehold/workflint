@@ -24,12 +24,19 @@ The decisions live in the ADRs in `docs/adr/`. When an ADR and a research report
 
 ## Recreating `.reference/`
 
-The reports cite files under `.reference/`. That directory is a local checkout and git ignores it. To recreate it, clone each project and check out the commit the research used.
+The reports cite files under `.reference/`. That directory is a local checkout and git ignores it.
+
+`cargo xtask reference` recreates the parts that the conformance tooling needs:
+
+- `.reference/actionlint`, a checkout of actionlint at commit `011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7`.
+- `.reference/bin/actionlint`, built from that checkout with the Go version in `.go-version`. That is go1.26.4, the version that built the binary in `00-baseline.md`.
+- `.reference/realworld`, the 1503 workflow files unpacked from the checkout's `testdata/realworld/dataset.zip`.
+
+The command needs git and that Go version. A second run skips every step that is already up to date. It leaves the other directories under `.reference/` alone.
+
+The other projects stay manual. Clone each one and check out the commit the research used.
 
 ```sh
-git clone https://github.com/rhysd/actionlint.git .reference/actionlint
-git -C .reference/actionlint checkout 011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7
-
 git clone https://github.com/jdx/jactionlint.git .reference/jactionlint
 git -C .reference/jactionlint checkout 1bcb2641337b5a92c2c07c4eafae61d64268e94b
 
@@ -42,14 +49,6 @@ git -C .reference/zizmor-action checkout 38c745a43764dcc8bcfd364e8295870e252e957
 git clone https://github.com/kjanat/actionlint.git .reference/kjanat-actionlint
 git -C .reference/kjanat-actionlint checkout 8ac13d23f49d0aeccae67d2c33022ef9ef44279c
 ```
-
-The real-world corpus of 1503 workflow files ships inside the actionlint repository. Unpack it with this command.
-
-```sh
-unzip .reference/actionlint/testdata/realworld/dataset.zip -d .reference/realworld
-```
-
-Some reports run `.reference/bin/actionlint`. That binary came from building the actionlint clone at the commit above, for example with `cd .reference/actionlint && go build -o ../bin/actionlint ./cmd/actionlint`.
 
 Some reports also cite raw GitHub issue and PR dumps in `.reference/research/raw/`. Those files stay local and are not in the repository.
 

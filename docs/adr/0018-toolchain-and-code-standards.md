@@ -32,7 +32,8 @@ Style:
 Testing:
 
 - Unit tests sit next to the code in `#[cfg(test)]` modules. Integration tests live in each crate's `tests/` directory.
-- Snapshot tests use `insta`. File-driven tests use `datatest-stable`. CI runs tests with `cargo-nextest`.
+- Snapshot tests use `insta`. File-driven tests use `datatest-stable`.
+- CI runs tests with `cargo-nextest`. It runs each test in its own process, so a test that aborts or overflows its stack fails on its own. Under `cargo test`, the same crash ends the run of every other test in that binary and hides their results. This matters for the parsers, whose tests run hundreds of fixture files. nextest also runs the tests of all test binaries in one parallel pool, where `cargo test` runs the binaries one at a time. `datatest-stable` comes from the nextest authors and is built to run under it.
 
 Platforms:
 
@@ -43,3 +44,5 @@ Platforms:
 Malformed workflows produce diagnostics, not crashes. Code style stays uniform across agents and sessions.
 
 The no-panic rule makes some code longer, because every fallible lookup needs explicit handling.
+
+nextest does not run doctests, so CI runs them in a separate `cargo test --doc` step. Contributors install one more tool to run the tests the way CI does.
