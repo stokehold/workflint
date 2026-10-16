@@ -464,7 +464,7 @@ Each section of upstream `docs/checks.md` has an `Example input` and an `Output`
 |---|---|---|---|---|---|
 | - [x] Unexpected keys | `checks.md#check-unexpected-keys` | `unexpected-key` | M2 | `examples/unexpected_keys` |  |
 | - [x] Missing required keys and key duplicates | `checks.md#check-missing-required-duplicate-keys` | `missing-required-key`, `duplicate-key` | M2 | `examples/missing_required_keys` |  |
-| - [ ] Unexpected empty mappings | `checks.md#check-empty-mapping` | `empty-section` | M2 | `err/no_job`, `err/empty_sequence_or_string` | No `examples/` file mirrors this section, so compare the checks.md Output block directly. |
+| - [x] Unexpected empty mappings | `checks.md#check-empty-mapping` | `empty-section` | M2 | `err/no_job`, `err/empty_sequence_or_string` | No `examples/` file mirrors this section, so compare the checks.md Output block directly. |
 | - [x] Unexpected mapping values | `checks.md#check-mapping-values` | `expected-single-expression`, `invalid-literal-value` | M2 | `examples/unexpected_mapping_values` |  |
 | - [ ] Syntax check for expression `${{ }}` | `checks.md#check-syntax-expression` | `invalid-expression-syntax`, `invalid-number-literal` | M3 | `examples/expression_syntax_error` |  |
 | - [ ] Type checks for expression syntax in `${{ }}` | `checks.md#check-type-check-expression` | `undefined-property`, `invalid-property-access`, `invalid-index-access`, `invalid-object-filter`, `wrong-expression-type`, `object-in-template` | M3 | `examples/type_checks`, `examples/expand_object` |  |
