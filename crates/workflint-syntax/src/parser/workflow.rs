@@ -4,7 +4,7 @@ use workflint_diagnostics::Span;
 
 use super::{KeySpec, Label, MAX_YAML_NODES, MapEntry, Parser, Section, yaml_node_count};
 use crate::rules::{EMPTY_WORKFLOW, MISSING_REQUIRED_KEY, TOO_MANY_YAML_NODES};
-use crate::{Field, Keyed, Value, Workflow};
+use crate::{Field, Value, Workflow};
 
 /// The keys of the workflow root.
 struct Root;
@@ -44,21 +44,12 @@ static ROOT_KEYS: [KeySpec<Root>; 8] = [
     },
     KeySpec {
         name: "jobs",
-        parse: parse_jobs,
+        parse: |p, w, e| w.jobs = p.parse_jobs(e.key, e.value),
     },
 ];
 
 fn parse_on<'a>(p: &mut Parser<'a, '_>, workflow: &mut Workflow<'a>, entry: &MapEntry<'a>) {
     workflow.on = p.parse_events(entry.key.string, entry.value);
-}
-
-// TODO(#70): parse the jobs.
-fn parse_jobs<'a>(_: &mut Parser<'a, '_>, workflow: &mut Workflow<'a>, entry: &MapEntry<'a>) {
-    workflow.jobs = Field::Valid {
-        key: entry.key.string,
-        span: entry.value.span,
-        value: Keyed::default(),
-    };
 }
 
 impl<'a> Parser<'a, '_> {
@@ -164,7 +155,7 @@ mod tests {
                 &[r#"3:1: "jobs" section is missing in workflow [missing-required-key]"#],
             ),
             (
-                "%YAML 1.1\n---\njobs: {}\n",
+                "%YAML 1.1\n---\njobs: {test: {runs-on: x, steps: [{run: a}]}}\n",
                 &[r#"1:1: "on" section is missing in workflow [missing-required-key]"#],
             ),
             (
@@ -242,7 +233,7 @@ mod tests {
     #[test]
     fn root_keys_are_case_sensitive_and_listed_when_unexpected() {
         assert_eq!(
-            check("on: push\njobs: {}\nName: x\n"),
+            check("on: push\njobs: {test: {runs-on: x, steps: [{run: a}]}}\nName: x\n"),
             [
                 r#"3:1: unexpected key "Name" for "workflow" section. expected one of "concurrency", "defaults", "env", "jobs", "name", "on", "permissions", "run-name" [unexpected-key]"#
             ]
@@ -252,7 +243,9 @@ mod tests {
     #[test]
     fn a_duplicate_root_key_is_reported_and_merge_keys_are_skipped() {
         assert_eq!(
-            check("on: push\njobs: {}\n\"<<\": x\n<<: y\non: pull\n"),
+            check(
+                "on: push\njobs: {test: {runs-on: x, steps: [{run: a}]}}\n\"<<\": x\n<<: y\non: pull\n"
+            ),
             [
                 r#"3:1: GitHub Actions does not support YAML merge key "<<" [merge-key-unsupported]"#,
                 r#"4:1: GitHub Actions does not support YAML merge key "<<" [merge-key-unsupported]"#,
@@ -264,14 +257,14 @@ mod tests {
     #[test]
     fn name_may_be_empty_and_run_name_may_not() {
         assert_eq!(
-            check("on: push\njobs: {}\nname:\nrun-name:\n"),
+            check("on: push\njobs: {test: {runs-on: x, steps: [{run: a}]}}\nname:\nrun-name:\n"),
             ["4:10: string should not be empty [empty-string]"]
         );
     }
 
     #[test]
     fn name_and_run_name_are_parsed() {
-        let text = "name: CI\nrun-name: Deploy ${{ inputs.env }}\non: push\njobs: {}\n";
+        let text = "name: CI\nrun-name: Deploy ${{ inputs.env }}\non: push\njobs: {test: {runs-on: x, steps: [{run: a}]}}\n";
         let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
         let document = workflint_yaml::parse(&file).document.unwrap();
         let parsed = parse(&file, &document);
@@ -299,7 +292,7 @@ defaults:
   run:
     shell: bash
 concurrency: ci
-jobs: {}
+jobs: {test: {runs-on: x, steps: [{run: a}]}}
 ";
         let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
         let document = workflint_yaml::parse(&file).document.unwrap();
@@ -334,7 +327,7 @@ jobs: {}
         assert_eq!(
             check(
                 "on: push
-jobs: {}
+jobs: {test: {runs-on: x, steps: [{run: a}]}}
 permissions:
 env:
 defaults:

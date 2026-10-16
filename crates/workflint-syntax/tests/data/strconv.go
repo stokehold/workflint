@@ -1,11 +1,13 @@
-// Prints how Go's strconv.Atoi and strconv.ParseFloat handle each input, for
-// the tests of src/strconv.rs. Regenerate the table with
+// Prints how Go's strconv.Atoi and strconv.ParseFloat handle each input, and
+// how fmt's %v prints each float that ParseFloat returns, for the tests of
+// src/strconv.rs. Regenerate the table with
 //
 //	go run crates/workflint-syntax/tests/data/strconv.go > crates/workflint-syntax/tests/data/strconv.tsv
 //
 // Each line is the function, the input, and either "ok" and the result or
 // "err" and the error text, separated by tabs. A float result is its IEEE 754
-// bits in hexadecimal. Inputs must not contain tabs or line breaks.
+// bits in hexadecimal. A FormatV line has the input of ParseFloat and the
+// text that %v prints. Inputs must not contain tabs or line breaks.
 package main
 
 import (
@@ -47,6 +49,16 @@ var parseFloat = []string{
 	"000000000000000000000000000001.5", "1.500000000000000000000000000000",
 }
 
+// More inputs for FormatV, around the points where %v switches between the
+// %f and %e forms.
+var formatV = []string{
+	"-3.5", "-0.5", "123456", "-123456", "999999", "1000000", "-1e6",
+	"1234567", "-1234567", "123456.7", "1e20", "1e21", "-1e21", "1e100",
+	"0.0001", "-0.0001", "0.00001", "-1e-5", "0.000123", "1.5e-7",
+	"123456789012", "-1.5e300", "5e-324", "-5e-324", "-0x1p-1074",
+	"100", "-100.25", "1.0000001", "0.1e7", "-12345.678",
+}
+
 func main() {
 	for _, s := range atoi {
 		if v, err := strconv.Atoi(s); err != nil {
@@ -60,6 +72,11 @@ func main() {
 			fmt.Printf("ParseFloat\t%s\terr\t%s\n", s, err)
 		} else {
 			fmt.Printf("ParseFloat\t%s\tok\t%016x\n", s, math.Float64bits(v))
+		}
+	}
+	for _, s := range append(parseFloat, formatV...) {
+		if v, err := strconv.ParseFloat(s, 64); err == nil && !math.IsNaN(v) {
+			fmt.Printf("FormatV\t%s\tok\t%v\n", s, v)
 		}
 	}
 }

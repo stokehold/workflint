@@ -35,7 +35,8 @@ pub struct Job<'a> {
     pub condition: Field<'a, Str<'a>>,
     /// `steps`, in source order.
     pub steps: Field<'a, Arc<[Step<'a>]>>,
-    /// `timeout-minutes`.
+    /// `timeout-minutes`. A literal that is zero or less stays a literal
+    /// after the parser reports it.
     pub timeout_minutes: Value<'a, f64>,
     /// `strategy`. The reference's `Strategy.Pos` is this field's key.
     pub strategy: Field<'a, Strategy<'a>>,
@@ -48,8 +49,10 @@ pub struct Job<'a> {
     pub services: Value<'a, Services<'a>>,
     /// The call of a reusable workflow, from `uses`, `with`, and `secrets`.
     ///
-    /// The reference sets it only when `uses` is written and no key that
-    /// only a job with steps may have is written.
+    /// It is set only when `uses` is written, valid or not, and no key that
+    /// only a job with steps may have is written, such as `runs-on` or
+    /// `services`. The reference does not count `services`
+    /// (`docs/differences.md#reusable-call-services`).
     pub workflow_call: Option<WorkflowCall<'a>>,
     /// `snapshot`. The reference's `snapshot` position is this field's key.
     pub snapshot: Field<'a, Snapshot<'a>>,
@@ -64,6 +67,10 @@ pub struct Job<'a> {
 pub struct Runner<'a> {
     /// `labels`, in source order. A string becomes a list of one. Labels
     /// that contain an expression among other text stay labels.
+    ///
+    /// An empty label is kept after the parser reports it, as in the
+    /// reference, where the `runner-label` rule reports it as an unknown
+    /// label too. A label that is not a scalar is reported and left out.
     pub labels: Value<'a, Arc<[Str<'a>]>>,
     /// `group`.
     pub group: Field<'a, Str<'a>>,

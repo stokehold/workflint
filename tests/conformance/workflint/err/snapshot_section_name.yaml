@@ -1,0 +1,8 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # An empty mapping. Upstream calls it the "on" section.
+    snapshot: {}
+    steps:
+      - run: echo hello

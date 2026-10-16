@@ -1,9 +1,11 @@
-//! Go's `strconv.Atoi` and `strconv.ParseFloat`, with their error texts.
+//! Go's `strconv.Atoi` and `strconv.ParseFloat`, with their error texts,
+//! and the text that Go's `%v` prints for a float.
 //!
 //! The reference embeds the error of these functions in its messages, as in
 //! `invalid integer value: "1.5": strconv.Atoi: parsing "1.5": invalid
-//! syntax`, so the parser needs the same results and the same texts. The
-//! tests compare both functions with a table that Go 1.26 printed, in
+//! syntax`, and prints numbers with `%v`, as in `must be greater than zero:
+//! -1e+06`. So the parser needs the same results and the same texts. The
+//! tests compare the functions with a table that Go 1.26 printed, in
 //! `tests/data/strconv.tsv`.
 
 use workflint_diagnostics::quote::quote;
@@ -27,6 +29,39 @@ pub(crate) fn atoi(s: &str) -> Result<i64, String> {
         };
         format!("strconv.Atoi: parsing {}: {reason}", quote(s))
     })
+}
+
+/// Formats `value` as Go's `fmt` package prints a `float64` with `%v`.
+///
+/// The digits are the fewest that read back as `value`. The exponent form,
+/// such as `-1.5e+06` or `1e-05`, is used when the decimal exponent is less
+/// than -4 or at least 6. Otherwise the number has no exponent, such as
+/// `-3.5` or `123456.7`. Infinities are `+Inf` and `-Inf`.
+pub(crate) fn format_float(value: f64) -> String {
+    if value.is_nan() {
+        return "NaN".to_owned();
+    }
+    if value.is_infinite() {
+        return if value > 0.0 { "+Inf" } else { "-Inf" }.to_owned();
+    }
+    // Rust's `{:e}` and `{}` both print the shortest digits that read back
+    // as the value, as Go does.
+    let scientific = format!("{:e}", value.abs());
+    let Some((mantissa, exponent)) = scientific.split_once('e') else {
+        return value.to_string();
+    };
+    let Ok(exponent) = exponent.parse::<i32>() else {
+        return value.to_string();
+    };
+    if (-4..6).contains(&exponent) {
+        return value.to_string();
+    }
+    let sign = if value.is_sign_negative() { "-" } else { "" };
+    let exponent_sign = if exponent < 0 { '-' } else { '+' };
+    format!(
+        "{sign}{mantissa}e{exponent_sign}{:02}",
+        exponent.unsigned_abs()
+    )
 }
 
 /// Parses `s` as Go's `strconv.ParseFloat(s, 64)` does.
@@ -338,5 +373,17 @@ mod tests {
             count += 1;
         }
         assert!(count > 100);
+    }
+
+    #[test]
+    fn format_float_matches_go() {
+        let mut count = 0;
+        for (input, _, result) in cases("FormatV") {
+            let value = parse_float(input).unwrap();
+            assert_eq!(format_float(value), result, "{input:?}");
+            count += 1;
+        }
+        assert!(count > 80);
+        assert_eq!(format_float(f64::NAN), "NaN");
     }
 }
