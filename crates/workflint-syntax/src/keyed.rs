@@ -87,6 +87,12 @@ impl<'a, T> Keyed<'a, T> {
     pub fn is_empty(&self) -> bool {
         self.inner.entries.is_empty()
     }
+
+    /// Returns the entries for changing their values, or `None` if a clone
+    /// shares them.
+    pub(crate) fn unique_entries_mut(&mut self) -> Option<&mut [KeyedEntry<'a, T>]> {
+        Arc::get_mut(&mut self.inner).map(|inner| inner.entries.as_mut_slice())
+    }
 }
 
 fn folded_at<'e, T>(entries: &'e [KeyedEntry<'_, T>], index: u32) -> &'e str {

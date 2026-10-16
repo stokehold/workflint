@@ -1,5 +1,6 @@
 //! `strategy.matrix` and the YAML values it holds.
 
+use std::mem;
 use std::sync::Arc;
 
 use workflint_diagnostics::Span;
@@ -80,13 +81,60 @@ pub enum RawValue<'a> {
     },
 }
 
-impl RawValue<'_> {
+impl<'a> RawValue<'a> {
     /// Returns the span of the value, the reference's `Pos()`.
     #[must_use]
     pub fn span(&self) -> Span {
         match self {
             Self::Scalar(scalar) => scalar.span(),
             Self::Sequence { span, .. } | Self::Mapping { span, .. } => *span,
+        }
+    }
+
+    /// Moves the items or entries of the value, if it has any, to `stack`.
+    fn take_children(&mut self, stack: &mut Vec<Children<'a>>) {
+        match self {
+            Self::Scalar(_) => {}
+            Self::Sequence { items, .. } => {
+                if !items.is_empty() {
+                    stack.push(Children::Items(mem::replace(items, Arc::new([]))));
+                }
+            }
+            Self::Mapping { entries, .. } => {
+                if !entries.is_empty() {
+                    stack.push(Children::Entries(mem::take(entries)));
+                }
+            }
+        }
+    }
+}
+
+/// The items or entries that [`RawValue`]'s `drop` has taken from a value.
+enum Children<'a> {
+    Items(Arc<[RawValue<'a>]>),
+    Entries(Keyed<'a, RawValue<'a>>),
+}
+
+/// Drops the nested values with a loop, so that a value nested as deep as
+/// the YAML layer allows (ADR 0022) cannot overflow the stack.
+impl Drop for RawValue<'_> {
+    fn drop(&mut self) {
+        let mut stack = Vec::new();
+        self.take_children(&mut stack);
+        while let Some(mut children) = stack.pop() {
+            // Shared children belong to a clone too, and only lose a count.
+            match &mut children {
+                Children::Items(items) => {
+                    for item in Arc::get_mut(items).into_iter().flatten() {
+                        item.take_children(&mut stack);
+                    }
+                }
+                Children::Entries(entries) => {
+                    for entry in entries.unique_entries_mut().into_iter().flatten() {
+                        entry.value.take_children(&mut stack);
+                    }
+                }
+            }
         }
     }
 }

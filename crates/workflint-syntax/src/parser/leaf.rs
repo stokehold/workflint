@@ -1,16 +1,5 @@
 //! The leaf parsers: strings, string sequences, booleans, numbers, and
 //! single expressions, as the reference's helpers in `parse.go:136-314`.
-//!
-//! The section parsers from M2.3 on call the helpers that the workflow root
-//! does not need yet.
-
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the section parsers from M2.3 on use these helpers"
-    )
-)]
 
 use std::sync::Arc;
 
@@ -279,9 +268,10 @@ impl<'a> Parser<'a, '_> {
         }
     }
 
-    /// Parses the `!!str` scalar `node` where a literal is expected as an
-    /// expression.
-    fn literal_expression<T>(
+    /// Parses `node`, the value of `key`, as a single expression, as
+    /// [`parse_expression`](Self::parse_expression) does, and returns an
+    /// invalid value if it is not one.
+    pub(crate) fn literal_expression<T>(
         &mut self,
         key: Option<Str<'a>>,
         node: &'a Node,

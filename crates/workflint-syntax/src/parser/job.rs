@@ -127,8 +127,7 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     },
     KeySpec {
         name: "strategy",
-        // TODO(#76): parse the strategy.
-        parse: |_, _, _| {},
+        parse: |p, b, e| b.job.strategy = p.parse_strategy(e),
     },
     KeySpec {
         name: "continue-on-error",
@@ -429,7 +428,7 @@ impl<'a> Parser<'a, '_> {
 
     /// Reports that the literal `value` of `node`, the value of `key`, is
     /// not greater than zero. `value` is the number as Go's `%v` prints it.
-    fn non_positive(&mut self, key: &str, node: &Node, value: &str) {
+    pub(super) fn non_positive(&mut self, key: &str, node: &Node, value: &str) {
         self.error(
             &NON_POSITIVE_NUMBER,
             node.span,
