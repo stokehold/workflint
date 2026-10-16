@@ -7,8 +7,8 @@
 
 mod binary;
 mod checkout;
-mod corpus;
-mod go;
+pub(crate) mod corpus;
+pub(crate) mod go;
 
 use std::env;
 use std::ffi::OsString;
@@ -124,10 +124,15 @@ pub(crate) fn report_checkout(layout: &Layout) -> Result<()> {
     Ok(())
 }
 
+/// The pinned Go version, for example `go1.26.4`.
+pub(crate) fn pinned_go_version(layout: &Layout) -> Result<String> {
+    go::read_pinned_version(&layout.go_version_file())
+}
+
 /// Step 2: builds `.reference/bin/actionlint` from the checkout with the
 /// pinned Go version. Call [`ensure_checkout`] first.
 pub(crate) fn ensure_binary(layout: &Layout) -> Result<Outcome> {
-    let go_version = go::read_pinned_version(&layout.go_version_file())?;
+    let go_version = pinned_go_version(layout)?;
     binary::ensure(
         &layout.checkout(),
         &layout.binary(),

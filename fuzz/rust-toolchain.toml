@@ -1,0 +1,4 @@
+# `cargo fuzz` needs nightly. CI uses this date; update it by hand.
+[toolchain]
+channel = "nightly-2026-10-15"
+profile = "minimal"

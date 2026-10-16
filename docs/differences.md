@@ -53,7 +53,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Exact positions inside multi-line and quoted strings
 
 - Upstream: the position of an error inside a string, such as an expression or glob error, is the scalar's start plus a byte offset, plus 1 if quoted. In a `run: |` block every error is reported on the indicator line. Escapes such as `\t` or `''` shift the column by one per escape. A bare `if: "foo"` ignores the quote and reports column 13 instead of 14. A `TODO` at `rule_expression.go:736` notes the problem.
-- workflint: errors are mapped through the scalar's source map (ADR 0005) to the exact line and column. Literal block scalars map exactly. Folded scalars fall back to the best available position.
+- workflint: errors are mapped through the scalar's source map (ADR 0005) to the exact line and column. The maps are exact in every scalar style, including escapes, `''`, line folding, and block indentation. A character that an escape produces maps to the escape's backslash.
 - Why: a position on the wrong line sends users to the wrong place.
 - Upstream issue: #330.
 - Milestone: M3, M4.

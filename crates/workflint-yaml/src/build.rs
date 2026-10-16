@@ -60,6 +60,9 @@ struct Frame {
     node: NodeId,
     mapping: bool,
     block: bool,
+    /// The column where the collection's content starts, which is the
+    /// scanner's indentation inside a block collection.
+    column: u64,
     /// Where the collection's children start in `Builder::scratch`.
     scratch_start: usize,
     /// The end of the last child as written, for the end of a block
@@ -306,11 +309,22 @@ impl<'a> Builder<'a> {
             ScalarStyle::Plain => resolve::plain(&value),
             _ => Tag::Str,
         });
+        let parent_indent = self
+            .frames
+            .iter()
+            .rev()
+            .find(|frame| frame.block)
+            .map_or(-1, |frame| i64::try_from(frame.column).unwrap_or(i64::MAX));
         let node = Node {
             span: self.span(start, end),
             content_start,
             anchor: self.anchor(anchor, event, start),
-            kind: NodeKind::Scalar(Scalar { value, style, tag }),
+            kind: NodeKind::Scalar(Scalar {
+                value,
+                style,
+                tag,
+                parent_indent,
+            }),
             comments: 0..0,
         };
         let id = self.add(node, event.start_mark.line, None);
@@ -377,9 +391,10 @@ impl<'a> Builder<'a> {
                 items: 0..0,
             })
         };
+        let content = event.node_marks.content.unwrap_or(event.start_mark);
         let node = Node {
             span: self.span(start, Self::offset(event.end_mark)),
-            content_start: event.node_marks.content.map_or(start, Self::offset),
+            content_start: Self::offset(content),
             anchor: self.anchor(anchor, event, start),
             kind,
             comments: 0..0,
@@ -389,6 +404,7 @@ impl<'a> Builder<'a> {
             node: id,
             mapping,
             block,
+            column: content.column,
             scratch_start: self.scratch.len(),
             last_end: None,
         });

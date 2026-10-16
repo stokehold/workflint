@@ -74,7 +74,7 @@ pub(crate) fn ensure(
         return Ok(Outcome::UpToDate);
     }
 
-    go::require_version(go, checkout, go_version)?;
+    go::require_version(go, checkout, go_version, "building the reference")?;
 
     // Without a stamp, a run that stops during the build builds again next time.
     match fs::remove_file(&stamp) {
