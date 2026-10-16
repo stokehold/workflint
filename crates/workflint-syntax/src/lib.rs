@@ -42,6 +42,16 @@
 //! assert_eq!(token.key.value(), "GITHUB_TOKEN");
 //! ```
 //!
+//! # Local metadata
+//!
+//! [`ActionMetadata::decode`] and [`ReusableWorkflowMetadata::decode`] read
+//! the files that calls to local actions and local reusable workflows are
+//! checked against. They follow the reference's typed decoding, not its
+//! workflow parser: a bool also takes the YAML 1.1 forms such as `yes`,
+//! exact duplicate keys are errors, and unknown keys are ignored. An error
+//! is the text that the reference puts in its message. The metadata owns
+//! its strings, so it outlives the file's tree.
+//!
 //! # Sharing
 //!
 //! After alias resolution the YAML tree is a directed acyclic graph: an
@@ -59,18 +69,22 @@
 //! comment says so. The key is the `key` of the [`Field`] or [`Value`], or
 //! of the [`KeyedEntry`].
 
+mod action_metadata;
 mod event;
 mod job;
 mod keyed;
 mod leaf;
 mod matrix;
+mod reusable_workflow;
 mod step;
+mod typed;
 mod value;
 mod workflow;
 
 #[cfg(test)]
 mod testing;
 
+pub use action_metadata::{ActionBranding, ActionInput, ActionMetadata, ActionOutput, ActionRuns};
 pub use event::{
     Event, ImageVersionEvent, RepositoryDispatchEvent, ScheduleEntry, ScheduleEvent, WebhookEvent,
     WorkflowCallEvent, WorkflowCallEventInput, WorkflowCallEventOutput, WorkflowCallEventSecret,
@@ -83,6 +97,10 @@ pub use job::{
 pub use keyed::{Keyed, KeyedEntry};
 pub use leaf::{Expr, Str};
 pub use matrix::{Matrix, MatrixCombination, MatrixRow, RawValue};
+pub use reusable_workflow::{
+    ReusableWorkflowInput, ReusableWorkflowMetadata, ReusableWorkflowOutput, ReusableWorkflowSecret,
+};
 pub use step::{Exec, ExecAction, ExecRun, Step};
+pub use typed::MetadataError;
 pub use value::{Field, Value};
 pub use workflow::{Concurrency, Defaults, DefaultsRun, Env, Permissions, Workflow};
