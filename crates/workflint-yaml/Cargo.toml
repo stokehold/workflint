@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
 readme = "README.md"
-# Keep the yaml-test-suite data out of the published package (ADR 0006).
+# Keep the yaml-test-suite data and the benchmarks out of the published package (ADR 0006).
 include = ["/src", "/README.md"]
 
 [dependencies]
@@ -17,6 +17,8 @@ workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
 
 [dev-dependencies]
 datatest-stable = "0.3.3"
+# divan's API, measured by CodSpeed in CI and by divan on `cargo bench` (ADR 0019).
+divan = { package = "codspeed-divan-compat", version = "5.0.3" }
 insta = "1.49.0"
 proptest = { version = "1.12.0", default-features = false, features = ["std"] }
 
@@ -26,6 +28,10 @@ harness = false
 
 [[test]]
 name = "fuzz_regressions"
+harness = false
+
+[[bench]]
+name = "parse"
 harness = false
 
 [lints]
