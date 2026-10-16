@@ -772,7 +772,7 @@ jobs:
         assert!(inputs.contains_key("mode"));
         assert_eq!(workflow_call.inputs.key().map(Str::value), Some("with"));
         let Some(WorkflowCallSecrets::Map(secrets)) = workflow_call.secrets.value() else {
-            panic!("{:?}", workflow_call.secrets);
+            panic!("`secrets` is not a valid mapping");
         };
         assert_eq!(keyed_strings(secrets), ["TOKEN=${{ secrets.TOKEN }}"]);
         assert!(!call.runs_on.is_present());
