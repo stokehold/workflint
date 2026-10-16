@@ -203,7 +203,7 @@ fn duplicate_keys_are_listed_under_the_chosen_comparison() {
     // never duplicates.
     assert_eq!(key_lines(KeyComparison::Exact), [(1, 3), (1, 7)]);
     assert_eq!(
-        key_lines(KeyComparison::AsciiCaseInsensitive),
+        key_lines(KeyComparison::CaseInsensitive),
         [(1, 2), (1, 3), (4, 5), (1, 7)]
     );
 }
@@ -247,6 +247,30 @@ fn a_comment_only_file_has_no_root() {
     check("comment_only_file", "# one\n  # two\n");
 }
 
+/// Lists each comment's text with the node it is attached to, as the node's
+/// kind and its 1-based start position.
+fn attachments(file: &SourceFile, document: &Document) -> Vec<(String, Option<String>)> {
+    document
+        .comments()
+        .iter()
+        .map(|comment| {
+            let text = &file.text()[comment.span.start as usize..comment.span.end as usize];
+            let node = comment.node.map(|id| {
+                let node = document.node(id).unwrap();
+                let pos = file.line_col(node.span.start);
+                let what = match &node.kind {
+                    NodeKind::Scalar(scalar) => format!("scalar {:?}", scalar.value),
+                    NodeKind::Mapping(_) => "mapping".to_owned(),
+                    NodeKind::Sequence(_) => "sequence".to_owned(),
+                    NodeKind::Alias(alias) => format!("alias {}", alias.name),
+                };
+                format!("{what} at {}:{}", pos.line, pos.column)
+            });
+            (text.to_owned(), node)
+        })
+        .collect()
+}
+
 #[test]
 fn comments_attach_to_nodes() {
     let (file, document) = check(
@@ -271,25 +295,7 @@ fn comments_attach_to_nodes() {
         ),
     );
     let document = document.unwrap();
-    let attached: Vec<(String, Option<String>)> = document
-        .comments()
-        .iter()
-        .map(|comment| {
-            let text = &file.text()[comment.span.start as usize..comment.span.end as usize];
-            let node = comment.node.map(|id| {
-                let node = document.node(id).unwrap();
-                let pos = file.line_col(node.span.start);
-                let what = match &node.kind {
-                    NodeKind::Scalar(scalar) => format!("scalar {:?}", scalar.value),
-                    NodeKind::Mapping(_) => "mapping".to_owned(),
-                    NodeKind::Sequence(_) => "sequence".to_owned(),
-                    NodeKind::Alias(alias) => format!("alias {}", alias.name),
-                };
-                format!("{what} at {}:{}", pos.line, pos.column)
-            });
-            (text.to_owned(), node)
-        })
-        .collect();
+    let attached = attachments(&file, &document);
     let want: [(&str, Option<&str>); 9] = [
         ("# before the first entry", Some("scalar \"on\" at 2:1")),
         (
@@ -328,6 +334,194 @@ fn comments_attach_to_nodes() {
             (CommentKind::OwnLine, "# before an entry"),
             (CommentKind::OwnLine, "#   in two lines"),
         ]
+    );
+}
+
+fn owned(pairs: &[(&str, Option<&str>)]) -> Vec<(String, Option<String>)> {
+    pairs
+        .iter()
+        .map(|&(text, node)| (text.to_owned(), node.map(str::to_owned)))
+        .collect()
+}
+
+#[test]
+fn an_own_line_comment_before_a_line_without_a_node_attaches_to_no_node() {
+    let file = source("a: [\n  x,\n  # c\n]\nb: 1\n");
+    let document = parse(&file).document.unwrap();
+    assert_eq!(attachments(&file, &document), owned(&[("# c", None)]));
+}
+
+#[test]
+fn an_own_line_comment_before_an_empty_line_attaches_to_no_node() {
+    let file = source("a: 1\n# c\n\nb: 2\n# d\n  \nc: 3\n");
+    let document = parse(&file).document.unwrap();
+    assert_eq!(
+        attachments(&file, &document),
+        owned(&[("# c", None), ("# d", None)])
+    );
+}
+
+#[test]
+fn own_line_comments_in_a_row_attach_to_the_line_after_the_last() {
+    let file = source("a: [\n  # c\n  # d\n  x]\n");
+    let document = parse(&file).document.unwrap();
+    assert_eq!(
+        attachments(&file, &document),
+        owned(&[
+            ("# c", Some("scalar \"x\" at 4:3")),
+            ("# d", Some("scalar \"x\" at 4:3")),
+        ])
+    );
+}
+
+#[test]
+fn comments_on_an_alias_item_are_reachable_through_the_written_items() {
+    let file = source("- &x 1\n# c\n- *x # t\n");
+    let document = parse(&file).document.unwrap();
+    assert_eq!(
+        attachments(&file, &document),
+        owned(&[
+            ("# c", Some("alias x at 3:3")),
+            ("# t", Some("alias x at 3:3"))
+        ])
+    );
+
+    let root = document.root().unwrap();
+    let NodeKind::Sequence(sequence) = &document.node(root).unwrap().kind else {
+        panic!("root is not a sequence");
+    };
+    let [anchored, alias] = document.written_items(root)[..] else {
+        panic!("the sequence does not have two items");
+    };
+    // `items` replaces the alias by the anchored node, which has no comment.
+    assert_eq!(document.items(sequence), [anchored, anchored]);
+    assert_eq!(document.node_comments(anchored).count(), 0);
+    let texts: Vec<_> = document
+        .node_comments(alias)
+        .map(|c| &file.text()[c.span.start as usize..c.span.end as usize])
+        .collect();
+    assert_eq!(texts, ["# c", "# t"]);
+}
+
+#[test]
+fn written_entries_keep_aliases_where_they_are_written() {
+    let file = source("a: &x [1, &k k]\nb: *x # t\n*k : [*x]\n");
+    let document = parse(&file).document.unwrap();
+    let root = document.root().unwrap();
+    let describe = |id| {
+        let node = document.node(id).unwrap();
+        let pos = file.line_col(node.span.start);
+        let what = match &node.kind {
+            NodeKind::Scalar(scalar) => format!("scalar {:?}", scalar.value),
+            NodeKind::Mapping(_) => "mapping".to_owned(),
+            NodeKind::Sequence(_) => "sequence".to_owned(),
+            NodeKind::Alias(alias) => format!("alias {}", alias.name),
+        };
+        format!("{what} at {}:{}", pos.line, pos.column)
+    };
+    let entries: Vec<_> = document
+        .written_entries(root)
+        .iter()
+        .map(|entry| (describe(entry.key), describe(entry.value)))
+        .collect();
+    assert_eq!(
+        entries,
+        [
+            ("scalar \"a\" at 1:1", "sequence at 1:4"),
+            ("scalar \"b\" at 2:1", "alias x at 2:4"),
+            ("alias k at 3:1", "sequence at 3:6"),
+        ]
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+    );
+    let last = document.written_entries(root)[2].value;
+    let items: Vec<_> = document
+        .written_items(last)
+        .into_iter()
+        .map(describe)
+        .collect();
+    assert_eq!(items, ["alias x at 3:7"]);
+    // A scalar has no written items, and a sequence has no written entries.
+    let key = document.written_entries(root)[0].key;
+    assert_eq!(document.written_items(key), []);
+    assert_eq!(document.written_entries(last), []);
+}
+
+#[test]
+fn duplicate_keys_compare_lowercase_characters_like_go() {
+    let file = source(concat!(
+        "Ä: 1\nä: 2\n",
+        // Go maps U+0130 to `i` alone, without the combining dot.
+        "İ: 3\ni: 4\n",
+        // The Kelvin sign lowercases to `k`.
+        "\u{212a}: 5\nk: 6\n",
+        // Final sigma has no case mapping of its own, so it stays apart.
+        "Σ: 7\nσ: 8\nς: 9\n",
+        "ǅ: 10\nǆ: 11\n",
+    ));
+    let document = parse(&file).document.unwrap();
+    let root = document.node(document.root().unwrap()).unwrap();
+    let NodeKind::Mapping(mapping) = &root.kind else {
+        panic!("root is not a mapping");
+    };
+    let lines: Vec<_> = document
+        .duplicate_keys(mapping, KeyComparison::CaseInsensitive)
+        .iter()
+        .map(|duplicate| {
+            let line = |id| file.line_col(document.node(id).unwrap().span.start).line;
+            (line(duplicate.first.key), line(duplicate.duplicate.key))
+        })
+        .collect();
+    assert_eq!(lines, [(1, 2), (3, 4), (5, 6), (7, 8), (10, 11)]);
+}
+
+#[test]
+fn merge_keys_are_never_duplicates() {
+    let file = source("<<: {a: 1}\n<<: {b: 2}\n'<<': {c: 3}\nx: 1\nX: 2\n");
+    let document = parse(&file).document.unwrap();
+    let root = document.node(document.root().unwrap()).unwrap();
+    let NodeKind::Mapping(mapping) = &root.kind else {
+        panic!("root is not a mapping");
+    };
+    assert_eq!(document.duplicate_keys(mapping, KeyComparison::Exact), []);
+    let duplicates = document.duplicate_keys(mapping, KeyComparison::CaseInsensitive);
+    let lines: Vec<_> = duplicates
+        .iter()
+        .map(|duplicate| {
+            let line = |id| file.line_col(document.node(id).unwrap().span.start).line;
+            (line(duplicate.first.key), line(duplicate.duplicate.key))
+        })
+        .collect();
+    assert_eq!(lines, [(4, 5)]);
+}
+
+/// go-yaml accepts this depth and rejects one level more.
+const MAX_DEPTH: usize = 10_000;
+
+#[test]
+fn a_document_at_the_depth_limit_dumps_on_a_two_mebibyte_stack() {
+    let dump = std::thread::Builder::new()
+        .stack_size(2 * 1024 * 1024)
+        .spawn(|| {
+            let file = source(&format!(
+                "{}{}\n",
+                "[".repeat(MAX_DEPTH),
+                "]".repeat(MAX_DEPTH)
+            ));
+            let document = parse(&file).document.unwrap();
+            document.dump(&file)
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    assert_eq!(dump.lines().count(), MAX_DEPTH);
+    let innermost = dump.lines().last().unwrap();
+    assert!(
+        innermost.starts_with(&format!(
+            "{}item #{} sequence flow",
+            "  ".repeat(MAX_DEPTH - 1),
+            MAX_DEPTH - 1
+        )),
+        "{innermost}"
     );
 }
 
