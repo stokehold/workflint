@@ -211,7 +211,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Integer literals beyond 32 bits
 
 - Upstream: integer literals are parsed as 32-bit integers, so `${{ 2147483648 }}` is an error: `parsing invalid integer literal "2147483648": strconv.ParseInt: parsing "2147483648": value out of range`.
-- workflint: integer literals are accepted in the range of a double, as the runner evaluates numbers as doubles.
+- workflint: integer literals are accepted in the range of a double, as the runner evaluates numbers as doubles. Decimal and `0x` hexadecimal literals become the nearest double, so `9007199254740993` is `9007199254740992`. A literal beyond the largest double, such as a 1 followed by 309 zeros, is still an error, with upstream's message: `parsing invalid integer literal "...": strconv.ParseInt: parsing "...": value out of range`.
 - Why: upstream rejects valid expressions.
 - Upstream issue: PR #733.
 - Milestone: M3.
@@ -231,11 +231,22 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Comparison operator precedence
 
 - Upstream: all six comparison operators share one precedence level and associate to the right. `'a' < 'b' == true` parses as `'a' < ('b' == true)` and reports `"string" value cannot be compared to "bool" value with "<" operator`.
-- workflint: `<`, `<=`, `>` and `>=` bind tighter than `==` and `!=`, and all associate to the left, following GitHub's documented operator order.
+- workflint: `<`, `<=`, `>` and `>=` bind tighter than `==` and `!=`, and all associate to the left, following GitHub's documented operator order. `'a' < 'b' == true` parses as `('a' < 'b') == true`. `&&` and `||` keep upstream's grouping to the right, which evaluates to the same value as any other grouping.
+- Confirmed against the expression parser in `actions/languageservices` (`expressions/src/parser.ts`) at commit `4043eda`. From the loosest: `||`, then `&&`, then `==` and `!=`, then `<`, `<=`, `>` and `>=`, then `!`, then property access and index access. The comparison and equality levels are left-associative loops. The `&&` and `||` levels collect any number of operands into one node.
 - Why: the tree must match how GitHub evaluates the expression, or type errors are wrong.
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned. Confirm the grammar against the `actions/languageservices` expression parser before implementing.
+- Status: planned.
+
+<a id="expression-nesting-limit"></a>
+### Nesting limit for expressions
+
+- Upstream: expressions can nest without limit.
+- workflint: an expression nested more than 128 levels deep is an error, `expression is nested more than 128 levels deep`, reported by `invalid-expression-syntax`. Each parenthesis, `!`, function call, property access, object filter, index access, and binary operator adds a level.
+- Why: the parser and the checks walk the tree recursively, and a limit keeps a crafted expression from overflowing the stack. The deepest expression in the corpus is 11 levels deep. GitHub's parser in `actions/languageservices` stops at 50 levels.
+- Upstream issue: none.
+- Milestone: M3.
+- Status: planned.
 
 <a id="bool-assignability"></a>
 ### `bool` no longer accepts every type
