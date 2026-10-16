@@ -68,7 +68,34 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+      - name: cargo deny check
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+      # fuzz/ is its own workspace. deny.toml at the root covers it too.
+      - name: cargo deny check (fuzz)
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          manifest-path: fuzz/Cargo.toml
+
+  # Checks that the workspace builds with the oldest toolchain that
+  # `rust-version` in Cargo.toml promises (ADR 0018).
+  msrv:
+    name: msrv
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: cargo check with the rust-version toolchain
+        run: |
+          msrv="$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)"
+          if [ -z "$msrv" ]; then
+            echo "::error::Cargo.toml has no rust-version."
+            exit 1
+          fi
+          rustup toolchain install "$msrv" --profile minimal
+          cargo "+$msrv" check --workspace --locked
 
   workflow-security:
     name: workflow-security
@@ -80,7 +107,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.2"
+          go-version-file: .go-version
           cache: false
       - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:

@@ -1,8 +1,10 @@
 //! `cargo xtask bench-history`: appends a run to the history file and compares
-//! it with the run before.
+//! it with the latest scheduled run before it.
 //!
 //! The history file has one `results.json` per line, oldest first. The nightly
-//! benchmark job keeps it on the `benchmarks` branch.
+//! benchmark job keeps it on the `benchmarks` branch. A run started by hand
+//! goes into the history too, but later runs are not compared with it, so a
+//! test run on a slow runner does not change the baseline.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -14,13 +16,13 @@ use anyhow::{Context, Result};
 use super::results::{Measurement, Results, SCHEMA_VERSION, ScenarioOutcome, format_seconds};
 
 /// A scenario regresses when its wall time grows by more than this factor
-/// against the previous run.
+/// against the previous scheduled run.
 pub(crate) const REGRESSION_FACTOR: f64 = 1.10;
 
 /// The first workflint version that the targets apply to (ADR 0019).
 const TARGETS_FROM: (u64, u64) = (0, 1);
 
-/// A scenario that got slower against the previous run.
+/// A scenario that got slower against the previous scheduled run.
 #[derive(Debug, PartialEq)]
 pub(crate) struct Regression {
     pub(crate) scenario: String,
@@ -38,7 +40,8 @@ pub(crate) enum RegressionKind {
         factor: f64,
         relative: bool,
     },
-    /// workflint completed in the previous run and timed out in this one.
+    /// workflint completed in the previous scheduled run and timed out in
+    /// this one.
     TimedOut,
 }
 
@@ -129,42 +132,86 @@ fn missed_targets(results: &Results) -> Vec<(&str, &str)> {
     missed
 }
 
-/// Parses the last entry of the history, if there is one and this version of
-/// the command can read it.
-fn last_entry(history: &str) -> Option<Results> {
-    let line = history.lines().rev().find(|line| !line.trim().is_empty())?;
-    let entry: Results = serde_json::from_str(line).ok()?;
-    (entry.schema_version == SCHEMA_VERSION).then_some(entry)
+/// The GitHub Actions event of the nightly run.
+const SCHEDULE: &str = "schedule";
+
+/// Parses the latest entry of the history that a scheduled run wrote and this
+/// version of the command can read.
+fn latest_scheduled(history: &str) -> Option<Results> {
+    history
+        .lines()
+        .rev()
+        .filter(|line| !line.trim().is_empty())
+        .filter_map(|line| serde_json::from_str::<Results>(line).ok())
+        .find(|entry| {
+            entry.schema_version == SCHEMA_VERSION && entry.event.as_deref() == Some(SCHEDULE)
+        })
+}
+
+/// The ids of the scenarios that `previous` has and `current` does not.
+fn missing_scenarios<'a>(previous: &'a Results, current: &Results) -> Vec<&'a str> {
+    previous
+        .scenarios
+        .iter()
+        .map(|scenario| scenario.id.as_str())
+        .filter(|id| !current.scenarios.iter().any(|scenario| scenario.id == *id))
+        .collect()
+}
+
+/// The measurements in `results` that failed, as `(scenario title, binary,
+/// reason)`.
+fn failed_measurements(results: &Results) -> Vec<(&str, &str, &str)> {
+    let mut failed = Vec::new();
+    for scenario in &results.scenarios {
+        let Some((workflint, reference)) = scenario.measurements() else {
+            continue;
+        };
+        for (binary, measurement) in [("workflint", workflint), ("reference", reference)] {
+            if let Measurement::Failed { reason } = measurement {
+                failed.push((scenario.title.as_str(), binary, reason.as_str()));
+            }
+        }
+    }
+    failed
 }
 
 /// What [`compare`] found.
 #[derive(Debug)]
 pub(crate) struct Report {
-    /// The comparison with the previous entry, as Markdown, for the job
-    /// summary.
+    /// The comparison with the previous scheduled run, as Markdown, for the
+    /// job summary.
     pub(crate) summary: String,
     /// The body of the `performance` issue, if there is something to report.
     pub(crate) issue: Option<String>,
 }
 
-/// Compares `current` with the last entry of `history`.
+/// Compares `current` with the latest scheduled run in `history`.
 pub(crate) fn compare(history: &str, current: &Results) -> Report {
-    let mut summary = String::from("## Compared with the previous run\n\n");
-    let previous = last_entry(history);
+    let mut summary = String::from("## Compared with the previous scheduled run\n\n");
+    let previous = latest_scheduled(history);
     let found = previous
         .as_ref()
         .map(|previous| regressions(previous, current))
         .unwrap_or_default();
     match &previous {
-        None => summary
-            .push_str("The history has no earlier entry that this version of the command reads.\n"),
+        None => summary.push_str(
+            "The history has no earlier scheduled run that this version of the command reads.\n",
+        ),
         Some(previous) => {
             let _ = writeln!(
                 summary,
-                "Previous run: {}, workflint commit {}.\n",
+                "Previous scheduled run: {}, workflint commit {}.\n",
                 previous.date,
                 previous.workflint.commit.as_deref().unwrap_or("unknown")
             );
+            let missing = missing_scenarios(previous, current);
+            if !missing.is_empty() {
+                let _ = writeln!(
+                    summary,
+                    "This run has no result for a scenario that the previous run had: {}.\n",
+                    missing.join(", ")
+                );
+            }
             if found.is_empty() {
                 let _ = writeln!(
                     summary,
@@ -182,15 +229,23 @@ pub(crate) fn compare(history: &str, current: &Results) -> Report {
     } else {
         Vec::new()
     };
-    let issue = (!found.is_empty() || !missed.is_empty()).then(|| {
+    let failed = failed_measurements(current);
+    let problem = !failed.is_empty() || !found.is_empty() || !missed.is_empty();
+    let issue = problem.then(|| {
         let mut body = format!(
             "The benchmark run of {} for workflint {} at commit {} found a problem.\n",
             current.date,
             current.workflint.version,
             current.workflint.commit.as_deref().unwrap_or("unknown")
         );
+        if !failed.is_empty() {
+            body.push_str("\n### Failed measurements\n\n");
+            for (scenario, binary, reason) in &failed {
+                let _ = writeln!(body, "- {scenario}, {binary}: {reason}");
+            }
+        }
         if !found.is_empty() {
-            body.push_str("\n### Regressions against the previous run\n\n");
+            body.push_str("\n### Regressions against the previous scheduled run\n\n");
             body.push_str(&render_regressions(&found));
         }
         if !missed.is_empty() {
@@ -237,10 +292,10 @@ fn render_regressions(found: &[Regression]) -> String {
     out
 }
 
-/// Runs `cargo xtask bench-history`: compares `results` with the last entry of
-/// `history`, appends `results` to `history`, prints the comparison, and
-/// writes the issue body to `issue_body` if there is something to report.
-/// Otherwise it removes `issue_body`.
+/// Runs `cargo xtask bench-history`: compares `results` with the latest
+/// scheduled run in `history`, appends `results` to `history`, prints the
+/// comparison, and writes the issue body to `issue_body` if there is something
+/// to report. Otherwise it removes `issue_body`.
 pub(crate) fn run(history: &Path, results: &Path, issue_body: Option<&Path>) -> Result<()> {
     let text = fs::read_to_string(results)
         .with_context(|| format!("cannot read {}", results.display()))?;
@@ -394,11 +449,86 @@ mod tests {
         assert!(report.summary.contains("+20.0%"));
     }
 
+    fn with_event(mut results: Results, event: Option<&str>) -> Results {
+        results.event = event.map(str::to_owned);
+        results
+    }
+
+    fn history(entries: &[Results]) -> String {
+        entries
+            .iter()
+            .map(|entry| serde_json::to_string(entry).unwrap() + "\n")
+            .collect()
+    }
+
+    #[test]
+    fn comparison_skips_runs_that_were_not_scheduled() {
+        let history = history(&[
+            sample(0.100, 1.0),
+            with_event(sample(0.050, 1.0), Some("workflow_dispatch")),
+            with_event(sample(0.050, 1.0), None),
+        ]);
+        let report = compare(&history, &sample(0.120, 1.0));
+        let issue = report.issue.unwrap();
+        assert!(
+            issue.contains("| corpus | 0.100 of the reference | 0.120 of the reference | +20.0% |"),
+            "{issue}"
+        );
+    }
+
+    #[test]
+    fn history_without_a_scheduled_run_reports_no_earlier_entry() {
+        let history = history(&[with_event(sample(0.050, 1.0), Some("workflow_dispatch"))]);
+        let report = compare(&history, &sample(0.120, 1.0));
+        assert!(
+            report.summary.contains("no earlier scheduled run"),
+            "{}",
+            report.summary
+        );
+        assert_eq!(report.issue, None);
+    }
+
+    #[test]
+    fn scenario_missing_from_this_run_is_named_in_the_summary() {
+        let mut previous = sample(0.100, 1.0);
+        let mut small = previous.scenarios[0].clone();
+        small.id = "small".to_owned();
+        small.title = "small.yaml, end to end".to_owned();
+        previous.scenarios.push(small);
+        let report = compare(&history(&[previous]), &sample(0.100, 1.0));
+        assert!(
+            report.summary.contains(
+                "This run has no result for a scenario that the previous run had: small."
+            ),
+            "{}",
+            report.summary
+        );
+    }
+
+    #[test]
+    fn failed_measurement_opens_an_issue_that_names_it() {
+        let mut current = sample(0.100, 1.0);
+        if let ScenarioOutcome::Measured { workflint, .. } = &mut current.scenarios[0].outcome {
+            *workflint = Measurement::Failed {
+                reason: "the first run exited with exit status: 101".to_owned(),
+            };
+        }
+        let issue = compare("", &current).issue.unwrap();
+        assert!(issue.contains("### Failed measurements"), "{issue}");
+        assert!(
+            issue.contains(
+                "- Corpus, external tools off, workflint: the first run exited with exit \
+                 status: 101"
+            ),
+            "{issue}"
+        );
+    }
+
     #[test]
     fn empty_history_reports_no_earlier_entry() {
         let report = compare("", &sample(0.1, 1.0));
         assert!(
-            report.summary.contains("no earlier entry"),
+            report.summary.contains("no earlier scheduled run"),
             "{}",
             report.summary
         );
@@ -429,7 +559,7 @@ mod tests {
         run(&history, &results, Some(&issue)).unwrap();
         let lines = fs::read_to_string(&history).unwrap();
         assert_eq!(lines.lines().count(), 2);
-        assert_eq!(last_entry(&lines), Some(sample(0.2, 1.0)));
+        assert_eq!(latest_scheduled(&lines), Some(sample(0.2, 1.0)));
         assert!(fs::read_to_string(&issue).unwrap().contains("+100.0%"));
 
         fs::write(

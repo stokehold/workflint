@@ -2,7 +2,8 @@ name: Benchmarks
 
 # ADR 0019: compares workflint with the reference every night, keeps the
 # results in history.jsonl on the benchmarks branch, and opens or updates a
-# performance issue when a scenario's wall time grows by more than 10%.
+# performance issue when a measurement fails, or when a scenario's wall time
+# grows by more than 10% against the previous scheduled run.
 
 on:
   schedule:
@@ -28,12 +29,13 @@ jobs:
   bench:
     name: cargo xtask bench
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # Every scenario timing out for both binaries, plus the setup, fits. A
+    # test in xtask/src/bench/scenario.rs checks it.
+    timeout-minutes: 200
     permissions:
       contents: write # appends to the history on the benchmarks branch
       issues: write # opens or updates the performance issue
     env:
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,26 +50,41 @@ jobs:
       - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: hyperfine@2.0.0,shellcheck@0.11.0
+      # A failed measurement fails this step after it writes the results. The
+      # next steps record the failure in the history and the issue, and the
+      # last step fails the job.
       - name: Run the benchmarks
+        id: bench
+        continue-on-error: true
         run: cargo xtask bench
       - name: Add the results to the job summary
         if: ${{ !cancelled() && hashFiles('target/bench/results.md') != '' }}
         run: cat target/bench/results.md >> "$GITHUB_STEP_SUMMARY"
       - name: Read the history
         id: history
+        if: ${{ hashFiles('target/bench/results.json') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           history="$RUNNER_TEMP/$HISTORY_FILE"
-          if parent="$(gh api "repos/$GH_REPO/git/ref/heads/$HISTORY_BRANCH" --jq .object.sha 2>/dev/null)"; then
+          error="$RUNNER_TEMP/history-error.txt"
+          if parent="$(gh api "repos/$GH_REPO/git/ref/heads/$HISTORY_BRANCH" --jq .object.sha 2> "$error")"; then
             gh api -H "Accept: application/vnd.github.raw+json" \
               "repos/$GH_REPO/contents/$HISTORY_FILE?ref=$parent" > "$history"
             echo "Read $(wc -l < "$history") entries from $HISTORY_BRANCH at $parent."
-          else
+          elif grep -q '(HTTP 404)' "$error"; then
             echo "The $HISTORY_BRANCH branch does not exist yet. This run creates it."
             parent=""
             : > "$history"
+          else
+            echo "::error::Cannot read the $HISTORY_BRANCH branch."
+            cat "$error" >&2
+            exit 1
           fi
           echo "parent=$parent" >> "$GITHUB_OUTPUT"
-      - name: Compare with the previous run
+      - name: Compare with the previous scheduled run
+        id: compare
+        if: ${{ steps.history.outcome == 'success' }}
         run: |
           echo >> "$GITHUB_STEP_SUMMARY"
           cargo xtask bench-history \
@@ -75,7 +92,9 @@ jobs:
             --issue-body "$RUNNER_TEMP/issue.md" | tee -a "$GITHUB_STEP_SUMMARY"
       # The GitHub API writes the commit, so the job needs no git credentials.
       - name: Append to the history
+        if: ${{ steps.compare.outcome == 'success' }}
         env:
+          GH_TOKEN: ${{ github.token }}
           PARENT: ${{ steps.history.outputs.parent }}
         run: |
           blob="$(jq -n --rawfile content "$RUNNER_TEMP/$HISTORY_FILE" \
@@ -102,10 +121,13 @@ jobs:
           fi
           echo "Committed $commit to $HISTORY_BRANCH."
       - name: Open or update the performance issue
+        if: ${{ steps.compare.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           body="$RUNNER_TEMP/issue.md"
           if [ ! -f "$body" ]; then
-            echo "No regression to report."
+            echo "No problem to report."
             exit 0
           fi
           printf '\nRun: %s/%s/actions/runs/%s\n' \
@@ -118,3 +140,8 @@ jobs:
           else
             gh issue create --title "$title" --label performance --body-file "$body"
           fi
+      - name: Fail the job if the benchmarks failed
+        if: ${{ steps.bench.outcome == 'failure' }}
+        run: |
+          echo "::error::cargo xtask bench failed. The step \"Run the benchmarks\" has its log."
+          exit 1

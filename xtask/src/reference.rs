@@ -133,7 +133,8 @@ pub(crate) fn pinned_go_version(layout: &Layout) -> Result<String> {
 }
 
 /// Step 2: builds `.reference/bin/actionlint` from the checkout with the
-/// pinned Go version. Call [`ensure_checkout`] first.
+/// pinned Go version. Call [`ensure_checkout`] first. It builds again when the
+/// commit, the Go version, or a Go build variable such as `GOFLAGS` changes.
 pub(crate) fn ensure_binary(layout: &Layout) -> Result<Outcome> {
     let go_version = pinned_go_version(layout)?;
     binary::ensure(
@@ -142,6 +143,7 @@ pub(crate) fn ensure_binary(layout: &Layout) -> Result<Outcome> {
         COMMIT,
         &OsString::from("go"),
         &go_version,
+        &binary::build_variables(),
     )
 }
 

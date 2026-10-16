@@ -70,6 +70,7 @@ pub struct Fixture {
     /// `examples/name`, `ok/name.yaml` and `projects/name`, with a
     /// `workflint/` prefix for workflint's own fixtures.
     pub id: String,
+    /// The suite the fixture belongs to.
     pub suite: Suite,
     /// The workflow file, or the project directory.
     pub source: PathBuf,
@@ -243,7 +244,9 @@ impl Fixture {
 /// The external tools found on `PATH`, or enabled for one fixture.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Tools {
+    /// The shellcheck executable, if there is one.
     pub shellcheck: Option<PathBuf>,
+    /// The pyflakes executable, if there is one.
     pub pyflakes: Option<PathBuf>,
 }
 
@@ -285,6 +288,7 @@ pub struct Invocation {
     /// directories so that both workflint and the reference take it as the
     /// project root.
     pub cwd: PathBuf,
+    /// The command-line arguments for the binary.
     pub args: Vec<OsString>,
     _temp: TempDir,
 }

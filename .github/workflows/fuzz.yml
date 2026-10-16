@@ -22,9 +22,12 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # The prebuilt cargo-fuzz is a musl binary and builds for musl by default,
-  # where the address sanitizer does not work.
+  # cargo fuzz builds for the target that cargo-fuzz itself was built for by
+  # default. The address sanitizer needs the gnu target, not musl.
   FUZZ_BUILD_TARGET: x86_64-unknown-linux-gnu
+  # install-action has no checksum for cargo-fuzz and would fall back to an
+  # unpinned cargo-binstall, so the jobs build it with cargo install.
+  CARGO_FUZZ_VERSION: 0.13.2
 
 jobs:
   build:
@@ -42,12 +45,12 @@ jobs:
       - name: Install the nightly toolchain from fuzz/rust-toolchain.toml
         working-directory: fuzz
         run: rustup toolchain install
+      # Also caches ~/.cargo/bin, so cargo install finds cargo-fuzz there.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: fuzz -> target
-      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
-        with:
-          tool: cargo-fuzz@0.13.2
+      - name: Install cargo-fuzz
+        run: cargo install --locked --version "$CARGO_FUZZ_VERSION" cargo-fuzz
       # cargo fuzz has no --locked flag, so this fails if fuzz/Cargo.lock is stale.
       - name: Check fuzz/Cargo.lock
         working-directory: fuzz
@@ -77,9 +80,8 @@ jobs:
           workspaces: |
             . -> target
             fuzz -> target
-      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
-        with:
-          tool: cargo-fuzz@0.13.2
+      - name: Install cargo-fuzz
+        run: cargo install --locked --version "$CARGO_FUZZ_VERSION" cargo-fuzz
       - name: Write the seed inputs
         run: cargo xtask fuzz-seeds
       - name: Check fuzz/Cargo.lock

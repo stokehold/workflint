@@ -56,6 +56,7 @@ pub(crate) fn run(layout: &Layout, timeout: Option<Duration>) -> Result<()> {
     }
 
     let output = target.join("bench");
+    remove_results(&output)?;
     let setup = Setup {
         workflint,
         reference: layout.binary(),
@@ -75,6 +76,7 @@ pub(crate) fn run(layout: &Layout, timeout: Option<Duration>) -> Result<()> {
     let results = Results {
         schema_version: results::SCHEMA_VERSION,
         date,
+        event: github_event(),
         workflint: Build {
             version: env!("CARGO_PKG_VERSION").to_owned(),
             commit: git_commit(layout.root()),
@@ -97,7 +99,13 @@ pub(crate) fn run(layout: &Layout, timeout: Option<Duration>) -> Result<()> {
         layout.display(&output.join("results.json")),
         layout.display(&output.join("results.md"))
     );
+    check_measurements(&results)
+}
 
+/// Fails when a measurement in `results` failed. The command calls it after
+/// writing the results, so that `cargo xtask bench-history` can record the
+/// failure.
+fn check_measurements(results: &Results) -> Result<()> {
     let failed = results
         .scenarios
         .iter()
@@ -109,6 +117,32 @@ pub(crate) fn run(layout: &Layout, timeout: Option<Duration>) -> Result<()> {
         bail!("{failed} measurements failed, see the results");
     }
     Ok(())
+}
+
+/// Removes the results of an earlier run from `output`, so that a run that
+/// stops before writing its own leaves none behind.
+fn remove_results(output: &Path) -> Result<()> {
+    for name in ["results.json", "results.md"] {
+        let path = output.join(name);
+        match fs::remove_file(&path) {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                return Err(error).with_context(|| format!("cannot remove {}", path.display()));
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// The GitHub Actions event that started the run, or `None` outside GitHub
+/// Actions.
+fn github_event() -> Option<String> {
+    if env::var("GITHUB_ACTIONS").ok()? != "true" {
+        return None;
+    }
+    env::var("GITHUB_EVENT_NAME")
+        .ok()
+        .filter(|event| !event.is_empty())
 }
 
 /// What [`measure_scenarios`] needs.
@@ -562,6 +596,49 @@ cat "$dir/export.json" > "$out""#,
                 .contains("| Corpus, shellcheck on | both | skipped: shellcheck is not installed"),
             "{markdown}"
         );
+    }
+
+    #[test]
+    fn failed_measurement_reaches_the_history_and_the_issue_before_the_command_fails() {
+        let fixture = Fixture::new("exit 1", "exit 101");
+        let mut results = results::tests::sample(0.1, 0.3);
+        results.scenarios = fixture.measure(&Shellcheck::Missing, Duration::from_secs(10));
+        let output = fixture.path("out");
+
+        write_results(&results, &output).unwrap();
+        let error = check_measurements(&results).unwrap_err();
+        assert!(
+            format!("{error:#}").contains("2 measurements failed"),
+            "{error:#}"
+        );
+
+        let history = fixture.path("history.jsonl");
+        let issue = fixture.path("issue.md");
+        history::run(&history, &output.join("results.json"), Some(&issue)).unwrap();
+        let entries = fs::read_to_string(&history).unwrap();
+        assert_eq!(entries.lines().count(), 1);
+        let entry: Results = serde_json::from_str(entries.trim()).unwrap();
+        assert_eq!(entry, results);
+        let body = fs::read_to_string(&issue).unwrap();
+        assert!(body.contains("### Failed measurements"), "{body}");
+        assert!(
+            body.contains("- Corpus, external tools off, workflint: the first run exited with"),
+            "{body}"
+        );
+    }
+
+    #[test]
+    fn results_of_an_earlier_run_are_removed_before_measuring() {
+        let fixture = Fixture::new("exit 0", "exit 0");
+        let output = fixture.path("out");
+        fs::write(output.join("results.json"), "{}").unwrap();
+        fs::write(output.join("results.md"), "old").unwrap();
+
+        remove_results(&output).unwrap();
+
+        assert!(!output.join("results.json").exists());
+        assert!(!output.join("results.md").exists());
+        remove_results(&output).unwrap();
     }
 
     #[test]

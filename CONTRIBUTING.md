@@ -31,7 +31,7 @@ Parity work also needs the reference checkout of actionlint, a reference binary 
 cargo xtask reference
 ```
 
-The command checks the Go version before it builds. With another Go 1.21 or later installed, `GOTOOLCHAIN=go1.26.4 cargo xtask reference` makes it download Go 1.26.4. `docs/research/README.md` lists the other projects under `.reference/`, which you clone by hand.
+The command checks the Go version before it builds. With another Go 1.21 or later installed, `GOTOOLCHAIN=go1.26.4 cargo xtask reference` makes it download Go 1.26.4. It stops with an error, and changes nothing, when the checkout has local changes or untracked files that its `.gitignore` does not ignore. It builds the binary again when the commit, the Go version, or a Go build variable such as `GOFLAGS`, `GOOS`, or `GOARCH` changes. The corpus is up to date when every file has the content of its archive entry. `docs/research/README.md` lists the other projects under `.reference/`, which you clone by hand.
 
 The test suite does not need `.reference/`. It reads a copy of the reference's test data in `tests/conformance/actionlint/`, which is in git. `cargo xtask vendor-testdata` recreates that copy from the checkout, and the `README.md` there lists the files it holds.
 
@@ -71,9 +71,13 @@ cargo xtask bench
 
 The command writes `target/bench/results.json` and `target/bench/results.md`, with wall time and peak memory for each scenario and binary and the ratio against each target. The output of every run and hyperfine's exports go to `target/bench/runs/`. Without shellcheck 0.11.0, the command skips the shellcheck scenario and says why.
 
-Each run has a time limit: 2 minutes for the corpus, 10 minutes for the corpus with shellcheck, and 10 seconds for `small.yaml`. When a run exceeds it, the command kills the run and the processes it started, records the run as timed out, and goes on with the next one. `--timeout SECONDS` sets one limit for all scenarios. On macOS the reference can hang with shellcheck on, so `cargo xtask bench --timeout 60` gives a quicker result there.
+Each run has a time limit: 2 minutes for the corpus, 10 minutes for the corpus with shellcheck, and 10 seconds for `small.yaml`. The binary first runs once on its own under that limit. When that run exceeds it, the command kills the run and the processes it started, records the binary as timed out, and goes on with the next one. Otherwise hyperfine runs the warmup and measured runs, and the limit applies to the whole series: hyperfine gets the limit once for each of its runs, so one slow run can use the time that the others leave unused. `--timeout SECONDS` sets one limit for all scenarios. On macOS the reference can hang with shellcheck on, so `cargo xtask bench --timeout 60` gives a quicker result there.
 
-The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when, in any scenario, workflint's wall time divided by the reference's from the same run grows by more than 10% against the previous run. Dividing by the reference cancels most of the speed difference between runners. `cargo xtask bench-history` does that comparison.
+When every scenario times out, one binary takes about 86 minutes. The nightly job has a 200-minute timeout, which covers both binaries and the builds, and a test in `xtask/src/bench/scenario.rs` fails if a change to the limits or the runs no longer fits.
+
+A measurement fails when a binary exits with a code other than 0 or 1, or when hyperfine fails. The command still writes the results, then exits with an error.
+
+The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when a measurement failed, or when, in any scenario, workflint's wall time divided by the reference's from the same run grows by more than 10% against the latest scheduled run in the history. Dividing by the reference cancels most of the speed difference between runners. A run started by hand goes into the history too, but later runs are not compared with it. `cargo xtask bench-history` does that comparison, and it says when a scenario of the previous scheduled run has no result in the new one. After a failed measurement, the job records the results and opens the issue, then fails.
 
 ## Micro-benchmarks
 
@@ -94,7 +98,7 @@ cargo bench -p workflint-yaml -- tree
 
 The last command runs only the benchmarks whose name contains `tree`. Locally, divan measures wall time and prints a table.
 
-The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchmark imports `divan` as usual. In CI, the `CodSpeed` workflow builds the benchmarks with `cargo codspeed build` and runs them under CodSpeed, which counts instructions instead of measuring wall time. It runs on every pull request and on every push to `main`, and CodSpeed comments on the pull request with the change against `main`. To add a benchmark target, add a `[[bench]]` section with `harness = false` to the crate's `Cargo.toml`.
+The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchmark imports `divan` as usual. In CI, the `CodSpeed` workflow builds the benchmarks with `cargo codspeed build` and runs them under CodSpeed, which counts instructions instead of measuring wall time. It runs on every pull request and on every push to `main`. The job reports results once the maintainer has added the CodSpeed action to the organization allowlist (#15). From then on, CodSpeed comments on each pull request with the change against `main`. To add a benchmark target, add a `[[bench]]` section with `harness = false` to the crate's `Cargo.toml`.
 
 ## Fuzzing
 

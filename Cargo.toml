@@ -12,6 +12,7 @@ homepage = "https://github.com/stokehold/workflint"
 authors = ["Mads Schiellerup <mads.schiellerup@amedia.no>"]
 
 [workspace.lints.rust]
+missing_docs = "warn"
 unsafe_code = "forbid"
 unreachable_pub = "warn"
 

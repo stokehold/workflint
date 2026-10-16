@@ -32,10 +32,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Also caches ~/.cargo/bin, so cargo install finds cargo-codspeed there.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
-        with:
-          tool: cargo-codspeed@5.0.3
+      # install-action has no checksum for cargo-codspeed and would fall back
+      # to an unpinned cargo-binstall, so the job builds it with cargo install.
+      - name: Install cargo-codspeed
+        run: cargo install --locked --version 5.0.3 cargo-codspeed
       - run: cargo codspeed build --workspace
       - uses: CodSpeedHQ/action@821a40cd6c80e3cfe387caf55668287addd808da # v5.5.0
         with:

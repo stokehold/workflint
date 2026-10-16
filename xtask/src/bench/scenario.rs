@@ -182,6 +182,7 @@ fn ratio_target(target: String, at_most: f64, pair: Option<(f64, f64)>) -> Targe
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bench::hyperfine;
     use crate::bench::results::tests::completed;
 
     #[test]
@@ -241,6 +242,46 @@ mod tests {
         assert_eq!(
             target.evaluate(&completed(0.010), &reference).met,
             Some(false)
+        );
+    }
+
+    /// The time the nightly job needs besides the scenarios: the tool
+    /// installs and the builds of both binaries.
+    const SETUP: Duration = Duration::from_mins(25);
+
+    /// `timeout-minutes` of the job in `.github/workflows/benchmarks.yml`.
+    fn job_timeout() -> Duration {
+        let workflow = std::fs::read_to_string(
+            crate::reference::Layout::repository()
+                .root()
+                .join(".github/workflows/benchmarks.yml"),
+        )
+        .unwrap();
+        let minutes: Vec<u64> = workflow
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("timeout-minutes:"))
+            .map(|value| value.trim().parse().unwrap())
+            .collect();
+        assert_eq!(minutes.len(), 1, "expected one job with timeout-minutes");
+        Duration::from_mins(minutes[0])
+    }
+
+    #[test]
+    fn nightly_job_timeout_covers_every_scenario_timing_out_for_both_binaries() {
+        // Per binary: the first run, then the hyperfine series.
+        let worst_case: Duration = SCENARIOS
+            .iter()
+            .map(|scenario| {
+                scenario.timeout
+                    + hyperfine::series_limit(scenario.timeout, scenario.warmup, scenario.runs)
+            })
+            .sum::<Duration>()
+            * 2;
+        assert!(
+            worst_case + SETUP <= job_timeout(),
+            "the scenarios can take {} minutes, plus {} for the setup",
+            worst_case.as_secs() / 60,
+            SETUP.as_secs() / 60
         );
     }
 

@@ -11,7 +11,12 @@ pub enum Verdict {
     /// The output matches.
     Passed,
     /// The output does not match, and the expected-failure list says so.
-    ExpectedFailure { milestone: String, reason: String },
+    ExpectedFailure {
+        /// The milestone that the expected-failure list gives.
+        milestone: String,
+        /// Why the test would fail without the entry.
+        reason: String,
+    },
 }
 
 /// Judges one fixture.

@@ -13,6 +13,7 @@ use super::{binary, conformance_dir, output, repository_root};
 /// How a fixture's test ends when it does not fail.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Outcome {
+    /// The fixture ran, and its output was compared.
     Judged(Verdict),
     /// A tool that the fixture needs is not installed.
     Skipped(String),
