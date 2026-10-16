@@ -60,6 +60,7 @@
 //! of the [`KeyedEntry`].
 
 mod event;
+pub mod glob;
 mod job;
 mod keyed;
 mod leaf;

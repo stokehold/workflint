@@ -63,7 +63,7 @@ workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <c
 - Standard input is empty.
 - Exit code 0 means no errors, and exit code 1 means errors were found. The fixture fails, with a message that names the cause, if the binary exits with 0 and prints output, exits with 1 and prints nothing, exits with any other code, or prints anything to standard error.
 
-The runner builds the binary with `cargo build -p workflint` before the first fixture in each test process.
+The runner builds the binary with `cargo build -p workflint` before the first fixture in each test process. Every `cargo build` deletes `target/debug/workflint` and links it again, so a test that started that path while another test process built could fail with "No such file or directory". The runner copies the binary to `target/conformance/workflint-<hash>` instead, where `<hash>` is a hash of the binary's content, and runs the copy. A change to `crates/workflint` gives a new copy. `cargo clean` deletes the old ones.
 
 ## Matching
 
