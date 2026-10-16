@@ -1,6 +1,6 @@
 # workflint-syntax
 
-This crate defines the typed AST of a GitHub Actions workflow: the workflow root, its events, jobs, and steps, and every section under them. Each key and value keeps its span and its YAML node, keyed collections keep source order, and values that may be `${{ }}` expressions tell an absent key, an invalid value, a literal, and an expression apart. The AST borrows from the span tree of `workflint-yaml`.
+This crate defines the typed AST of a GitHub Actions workflow: the workflow root, its events, jobs, and steps, and every section under them. Each key and value keeps its span and its YAML node, keyed collections keep source order, and values that may be `${{ }}` expressions tell an absent key, an invalid value, a literal, and an expression apart. The AST borrows from the span tree of `workflint-yaml`. `workflint_syntax::parse` builds it and reports the `syntax-check` diagnostics of the parser.
 
 The `glob` module validates branch, tag, and path filter patterns and returns each problem with its message and its byte range in the pattern. It does not depend on the AST.
 

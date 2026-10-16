@@ -2,8 +2,8 @@
 //! targets reach the parser's depth limit of 10,000 levels. libFuzzer keeps
 //! its inputs to a few kilobytes, and one level takes at least one byte.
 //!
-//! The `yaml_events` and `yaml_tree` fuzz targets and `fuzz_regressions.rs`
-//! include this file with `#[path]`.
+//! The `syntax`, `yaml_events`, and `yaml_tree` fuzz targets and
+//! `fuzz_regressions.rs` include this file with `#[path]`.
 
 use std::borrow::Cow;
 

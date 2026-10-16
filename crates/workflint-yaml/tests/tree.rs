@@ -238,6 +238,29 @@ fn an_empty_first_document_is_a_null_scalar() {
 }
 
 #[test]
+fn the_document_starts_at_its_first_token() {
+    // go-yaml reports a document at the start mark of its document start
+    // event: the first directive, the `---`, or else the first token of the
+    // root node, properties included.
+    let cases = [
+        ("on: push\n", (1, 1)),
+        ("# c\n\n  on: push\n", (3, 3)),
+        ("# c\n\n---\n\non: push\n", (3, 1)),
+        ("%YAML 1.1\n---\non: push\n", (1, 1)),
+        ("&a\non: *a\n", (1, 1)),
+        ("---\n", (1, 1)),
+        ("", (1, 1)),
+        ("# only\n", (1, 1)),
+    ];
+    for (text, want) in cases {
+        let file = source(text);
+        let document = parse(&file).document.unwrap();
+        let pos = file.line_col(document.start());
+        assert_eq!((pos.line, pos.column), want, "{text:?}");
+    }
+}
+
+#[test]
 fn an_empty_file_has_no_root() {
     check("empty_file", "");
 }

@@ -135,6 +135,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: planned.
 
+<a id="yaml-node-limit"></a>
+### Workflows over GitHub's YAML node limit
+
+- Upstream: the parser walks an anchored subtree again at each alias that uses it. Nested aliases multiply, so a "billion laughs" workflow, nine levels of anchors with ten aliases each, makes the parser walk 10^9 nodes, and actionlint does not finish.
+- workflint: before it parses, the parser counts the YAML events that GitHub's reader reads, with each alias expanded: the stream and document markers, each scalar, and the start and end of each collection. The reader is `YamlObjectReader` in `actions/runner` at `9abfe11`, and it stops past 50,000 events with `Maximum YAML nodes exceeded`. Past the same limit, workflint reports `workflow has more than 50000 YAML nodes when its aliases are expanded. GitHub rejects it with "Maximum YAML nodes exceeded"` at the start of the document, with the rule `too-many-yaml-nodes`, and parses nothing else. The count takes time in proportion to the size of the file. A recursive alias counts as one event, because the YAML layer reports it already.
+- Why: a linter must finish on any input, and GitHub rejects these files anyway.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned. No fixture covers it.
+
 <a id="container-volumes"></a>
 ### Container `volumes` is kept separate from `ports`
 
@@ -352,7 +362,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 - Upstream: go-yaml resolves some plain scalars with YAML 1.1 rules. `1_000` and `0b10` become integers that later fail Go's number parsing, and dates such as `2026-10-15` get the `!!timestamp` tag, which appears in messages. A plain `<<` gets the `!!merge` tag, so `timeout-minutes: <<` reports a `"!!merge" tag`, and `-0` is a float.
 - workflint: plain scalars are typed under the YAML 1.2 core schema (ADR 0005). `1_000`, `0b10`, `2026-10-15`, and `<<` are strings, so a numeric key such as `timeout-minutes: 1_000` reports a string where a number is expected, and no message names a `!!timestamp` or `!!merge` tag. `-0` is an integer.
-- Why: the 1.2 core schema matches how GitHub types plain scalars, so the diagnostic describes what GitHub does with the file. M2 confirms this against the scalar handling in `actions/runner` before the change ships.
+- Why: GitHub types plain scalars with the 1.2 core schema, so the diagnostic describes what GitHub does with the file. `YamlObjectReader` in `actions/runner` at `9abfe11` (`src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs`) tries null, boolean, integer, and float in turn, with the core schema's patterns, and reads any other plain scalar as a string. Its patterns match `crates/workflint-yaml/src/resolve.rs`: `True` is a boolean, `0o17` and `0x1F` are integers, `.inf` is a float, and `yes`, `1_000`, and `2026-10-15` are strings. Quoted and block scalars are strings.
 - Upstream issue: none.
 - Milestone: M1.
 - Status: planned. The conformance allow-list records each fixture whose message changes.

@@ -116,10 +116,11 @@ The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchm
 | --- | --- |
 | `glob` | `workflint_syntax::glob` validates the input as a branch or tag pattern and as a path pattern without panicking. Every problem has a message, each range covers one character of the input, and the ranges never move backwards. |
 | `render` | `workflint-diagnostics` builds a `SourceFile` from the input text and renders diagnostics with arbitrary spans in the default and one-line formats without panicking. The output is UTF-8, has one header per diagnostic and well-formed snippets, and differs between color on and off only in escape sequences. The comment at the top of `fuzz/fuzz_targets/render.rs` describes the input layout. |
+| `syntax` | `workflint_syntax::parse` parses the tree of the input without panicking. Every diagnostic has a span inside the input on character boundaries that converts to a line and column. The section parsers that later tasks add run under the same target. |
 | `yaml_events` | The event parser of `workflint-yaml` reads the input up to the end of the stream or the first error without panicking. Every event's marks lie inside the input on character boundaries. |
 | `yaml_tree` | `workflint_yaml::parse` builds the tree without panicking. Every span lies inside the input on character boundaries and converts to a line and column, and every node ID in the tree refers to a node. Every scalar's source map is exact and maps each character inside the scalar's span. |
 
-All four targets replace invalid UTF-8 with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
+All five targets replace invalid UTF-8 with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`, and `syntax` runs the check in `crates/workflint-syntax/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
 
 ```sh
 cargo xtask fuzz-seeds

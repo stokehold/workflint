@@ -1,6 +1,6 @@
 [package]
 name = "workflint-syntax"
-description = "Workflow AST of workflint. Internal crate with no stability promise."
+description = "Workflow AST and parser of workflint. Internal crate with no stability promise."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

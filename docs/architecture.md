@@ -22,7 +22,7 @@ workflint-diagnostics          Diagnostic, Span, Severity, renderers; every crat
 
 ADR 0006 has the full dependency table and the boundary rules, and ADR 0027 adds the dependency of `workflint-expr` on `workflint-data`. Only `workflint-linter` and `workflint` touch the file system, spawn processes, or read environment variables. Every other crate is a pure function of its inputs, so it compiles to WASM and needs no mocks in tests.
 
-Parse-stage rules are an exception to "rules live in `workflint-rules`". `workflint-yaml`, and later `workflint-syntax` and `workflint-expr`, report diagnostics while parsing and define the `RuleMeta` of those rules themselves. The registry in `workflint-rules` lists them with its own rules (ADR 0024).
+Parse-stage rules are an exception to "rules live in `workflint-rules`". `workflint-yaml`, `workflint-syntax`, and `workflint-expr` report diagnostics while parsing and define the `RuleMeta` of those rules themselves. The registry in `workflint-rules` lists them with its own rules (ADR 0024).
 
 ## Outside the crates
 
