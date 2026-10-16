@@ -10,3 +10,12 @@ pub static INVALID_EXPRESSION_SYNTAX: RuleMeta = RuleMeta {
     default_severity: Severity::Error,
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-expression-syntax.md",
 };
+
+/// A number literal in an expression has no value as a double, such as `1e400`.
+pub static INVALID_NUMBER_LITERAL: RuleMeta = RuleMeta {
+    id: "invalid-number-literal",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-number-literal.md",
+};

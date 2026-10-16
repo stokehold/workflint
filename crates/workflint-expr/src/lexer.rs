@@ -1,6 +1,7 @@
 use workflint_diagnostics::quote::quote_rune;
 
 use crate::error::ExprError;
+use crate::rules::INVALID_EXPRESSION_SYNTAX;
 use crate::token::{Token, TokenKind};
 
 const BOM: char = '\u{feff}';
@@ -153,6 +154,7 @@ impl<'src> Lexer<'src> {
                 message: message(),
                 start: to_u32(self.pos),
                 end: to_u32(self.pos + len),
+                rule: &INVALID_EXPRESSION_SYNTAX,
             });
         }
     }
