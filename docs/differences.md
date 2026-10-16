@@ -301,8 +301,28 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### A tag followed by a comma in a flow collection
 
 - Upstream: go-yaml allows `,`, `[`, and `]` in every tag. In `[!!str, x]` the tag is `!!str,`, and the sequence has one item, `x`.
-- workflint: the tag ends at the comma, as in libyaml and the YAML test suite (case WZ62). `[!!str, x]` has two items: an empty string tagged `!!str`, and `x`.
+- workflint: in a flow collection, a tag ends before `,`, `[`, and `]`, as in libyaml and the YAML test suite (case WZ62). `[!!str, x]` has two items: an empty string tagged `!!str`, and `x`. Outside flow collections, a tag takes these characters, as in go-yaml.
 - Why: a comma separates entries in a flow collection. go-yaml keeps a rule that libyaml dropped.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned. No fixture covers it.
+
+<a id="yaml-solidus-escape"></a>
+### The `\/` escape in double-quoted strings
+
+- Upstream: go-yaml rejects the escape `\/` in a double-quoted scalar with `found unknown escape character`, so `run: "echo \/"` does not parse.
+- workflint: `\/` is a `/`. YAML 1.2 defines this escape (section 5.7), and libyaml accepts it. Other escapes match go-yaml, including `\'`, which YAML does not define.
+- Why: upstream rejects valid YAML. ADR 0022 keeps go-yaml's behaviour except where go-yaml rejects valid YAML.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned. No fixture covers it.
+
+<a id="yaml-1-2-directive"></a>
+### The `%YAML 1.2` directive
+
+- Upstream: go-yaml accepts only `%YAML 1.1`. A file that starts with `%YAML 1.2` fails with `found incompatible YAML document`.
+- workflint: `%YAML 1.1` and `%YAML 1.2` are accepted. Other versions fail with the same message as upstream.
+- Why: upstream rejects valid YAML 1.2 documents, such as the YAML test suite cases 27NA and RTP8. ADR 0022 keeps go-yaml's behaviour except where go-yaml rejects valid YAML.
 - Upstream issue: none.
 - Milestone: M1.
 - Status: planned. No fixture covers it.
