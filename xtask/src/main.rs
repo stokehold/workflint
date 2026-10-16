@@ -5,6 +5,8 @@
 // never on user input.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod reference;
+
 use clap::{CommandFactory, Parser, Subcommand};
 
 /// Developer commands for the workflint repository.
@@ -17,13 +19,17 @@ struct Cli {
 
 /// Each subcommand lives in its own module in `xtask/src/`.
 #[derive(Debug, Subcommand)]
-enum Command {}
+enum Command {
+    /// Recreate the actionlint checkout, reference binary, and corpus in
+    /// `.reference/`. Needs git and the Go version in `.go-version`.
+    Reference,
+}
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         None => Cli::command().print_help()?,
-        Some(command) => match command {},
+        Some(Command::Reference) => reference::run(&reference::Layout::repository())?,
     }
     Ok(())
 }
@@ -47,5 +53,11 @@ mod tests {
     fn help_flag_requests_help() {
         let error = Cli::try_parse_from(["xtask", "--help"]).unwrap_err();
         assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
+    }
+
+    #[test]
+    fn reference_selects_the_reference_subcommand() {
+        let cli = Cli::try_parse_from(["xtask", "reference"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::Reference)));
     }
 }

@@ -6,7 +6,7 @@ workflint is a Rust rewrite of actionlint, the GitHub Actions workflow linter. I
 
 - Prose of any kind (docs, ADRs, rustdoc, comments, commit messages, pull request text): load the `unslop` skill first and apply every rule in `.claude/skills/unslop/SKILL.md`.
 - Any change to behaviour: find the ADR that covers it in `docs/adr/README.md`. Follow it, or write a superseding ADR in the same pull request.
-- Porting an actionlint check: the reference is rhysd/actionlint at `011a6d1`. Read its code and fixtures in `.reference/actionlint/` (recreate with `docs/research/README.md`) instead of guessing. Its behaviour is the spec, except where `docs/differences.md` says otherwise.
+- Porting an actionlint check: the reference is rhysd/actionlint at `011a6d1`. Read its code and fixtures in `.reference/actionlint/` (recreate with `cargo xtask reference`) instead of guessing. Its behaviour is the spec, except where `docs/differences.md` says otherwise.
 - New to a crate: read `docs/architecture.md` and `docs/glossary.md`, and use the glossary's terms.
 
 ## Doing a task
