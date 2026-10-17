@@ -11,7 +11,7 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0005](0005-yaml-layer.md) | YAML layer | accepted | [0022](0022-yaml-layer-revisions.md) |
 | [0006](0006-workspace-and-crates.md) | Workspace and crate boundaries | accepted | [0025](0025-fuzz-workspace.md), [0027](0027-expression-data-dependency.md), [0028](0028-revisions-after-the-m1-m3-review.md) |
 | [0007](0007-diagnostic-model.md) | Diagnostic model | accepted | |
-| [0008](0008-rule-registry-and-defaults.md) | Rule registry and default rule set | accepted | [0024](0024-parse-stage-rules.md), [0029](0029-rule-modules-and-descriptions.md) |
+| [0008](0008-rule-registry-and-defaults.md) | Rule registry and default rule set | accepted | [0024](0024-parse-stage-rules.md), [0029](0029-rule-modules-and-descriptions.md), [0030](0030-rule-pages-and-rules-index.md) |
 | [0009](0009-inline-ignore-comments.md) | Inline ignore comments | accepted | |
 | [0010](0010-configuration.md) | Configuration | accepted | |
 | [0011](0011-platform-data.md) | GitHub platform data | accepted | [0028](0028-revisions-after-the-m1-m3-review.md) |
@@ -33,3 +33,4 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0027](0027-expression-data-dependency.md) | Expression data dependency | accepted | |
 | [0028](0028-revisions-after-the-m1-m3-review.md) | Revisions after the M1–M3 review | accepted | |
 | [0029](0029-rule-modules-and-descriptions.md) | Rule modules and rule descriptions | accepted | |
+| [0030](0030-rule-pages-and-rules-index.md) | Rule pages and the rules index | accepted | |

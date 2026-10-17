@@ -173,8 +173,8 @@ pub static ALL: [&RuleMeta; 19] = [
     &UNEXPECTED_NODE_KIND,
 ];
 
-/// A parse-stage rule of kind `syntax-check`. `docs_url` is the page that
-/// M4.2 (#139) adds (ADR 0024).
+/// A parse-stage rule of kind `syntax-check`. `docs_url` is its page in
+/// `docs/rules/` (ADR 0024).
 const fn syntax_check(
     id: &'static str,
     description: &'static str,

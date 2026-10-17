@@ -1,0 +1,79 @@
+# Rules
+
+Each rule has a page here, `docs/rules/<id>.md`, named after its rule ID (ADR 0008). The diagnostics of a rule end with its ID in brackets, such as `[unexpected-key]`, where actionlint prints the kind (see [Rule ID in brackets instead of the kind](../differences.md#rule-id-in-brackets)). The `docs_url` of the rule's `RuleMeta` links the page.
+
+The test `rule_pages` in `crates/workflint-rules/tests/rule_pages.rs` reads every page. It runs each example through the YAML layer, the workflow parser, and the rules, as the binary does, and compares the result with the page. It also checks that every registered rule has a page, that every page belongs to a registered rule, and that the index below matches the registry. The rules of `workflint-expr` have no pages yet. M4.11 (#148) writes them.
+
+## Page format
+
+A page has these parts, in this order:
+
+1. The title, `# <rule-id>`.
+2. A table with the rule's kind, category, and default severity, as the registry has them:
+
+   ```markdown
+   | Kind | Category | Default severity |
+   |---|---|---|
+   | `syntax-check` | correctness | error |
+   ```
+
+3. The rule's description from its `RuleMeta`, with a final period, on one line. More paragraphs may follow to say what the rule reports.
+4. A `## Why` section that says why the rule reports it, such as what GitHub does with the workflow.
+5. `## Failing example`, or `## Failing examples` when there are several. Each example is a `yaml` block with a workflow, followed by a `text` block with the diagnostics that workflint gives for it in the one-line format (`-oneline`). The file is named `test.yaml`. Each example gives at least one diagnostic of the page's rule. It may give diagnostics of other rules only if the page links their pages, as in `[unexpected-node-kind](unexpected-node-kind.md)`. Prose may come between the examples.
+6. `## Passing example`, or `## Passing examples`, with one or more `yaml` blocks. Each workflow gives no diagnostic at all.
+7. `## Differences from actionlint`, only when the rule behaves differently from actionlint. It lists links to the entries in [differences.md](../differences.md), and the test checks that each anchor exists.
+
+A page whose examples need files beside the workflow, such as a local action or a reusable workflow, comes with the rule that reads those files. M4.18 (#155) and M4.25 (#162) give the test the in-memory files of M4.3 (#140) for them.
+
+## Index
+
+The test `the_rules_index_matches_the_registry` compares this table with the registry and prints the expected table when they differ. A rule ID links its page when the page exists.
+
+<!-- rules-index:start -->
+| Rule | Kind | Category | Default severity | Description |
+|---|---|---|---|---|
+| `case-argument-count` | `expression` | correctness | error | `case()` has an even number of arguments, so it has no default value |
+| `context-not-allowed` | `expression` | correctness | error | An expression reads a context that its workflow key does not allow |
+| [`duplicate-key`](duplicate-key.md) | `syntax-check` | correctness | error | A mapping repeats a key |
+| [`empty-section`](empty-section.md) | `syntax-check` | correctness | error | A mapping or sequence that must have entries is empty or null |
+| [`empty-string`](empty-string.md) | `syntax-check` | correctness | error | A string that must not be empty is empty |
+| [`empty-workflow`](empty-workflow.md) | `syntax-check` | correctness | error | The file has no YAML document, or only comments |
+| [`expected-single-expression`](expected-single-expression.md) | `syntax-check` | correctness | error | A value that must be a literal or a single `${{ }}` expression is other text |
+| `function-not-allowed` | `expression` | correctness | error | An expression calls a special function that its workflow key does not allow |
+| [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
+| `invalid-comparison` | `expression` | correctness | error | A comparison has operands that GitHub cannot compare |
+| `invalid-config-variable-name` | `expression` | correctness | error | The name in `vars.NAME` breaks GitHub's naming rules for configuration variables |
+| [`invalid-dispatch-input-type`](invalid-dispatch-input-type.md) | `syntax-check` | correctness | error | A `workflow_dispatch` input has an unknown `type` |
+| `invalid-expression-syntax` | `expression` | correctness | error | An expression in `${{ }}` cannot be lexed or parsed |
+| `invalid-index-access` | `expression` | correctness | error | An index has the wrong type, or its operand is neither an object nor an array |
+| `invalid-json-literal` | `expression` | correctness | error | The string literal passed to `fromJSON()` is not valid JSON |
+| [`invalid-literal-value`](invalid-literal-value.md) | `syntax-check` | correctness | error | A boolean, integer, or float value has the wrong tag or does not parse |
+| `invalid-number-literal` | `expression` | correctness | error | A number literal in an expression has no value as a double |
+| `invalid-object-filter` | `expression` | correctness | error | An object filter `.*` applies to a value without object elements |
+| `invalid-property-access` | `expression` | correctness | error | An expression reads a property with a dot from a value that is not an object |
+| [`invalid-reusable-call-key`](invalid-reusable-call-key.md) | `syntax-check` | correctness | error | A job that calls a reusable workflow has a key that only a job with steps may have |
+| [`invalid-workflow-call-input-type`](invalid-workflow-call-input-type.md) | `syntax-check` | correctness | error | A `workflow_call` input has an unknown `type` |
+| [`merge-key-unsupported`](merge-key-unsupported.md) | `syntax-check` | correctness | error | A mapping has a `<<` merge key, which GitHub Actions does not apply |
+| `missing-format-argument` | `expression` | correctness | error | The format string of `format()` has a placeholder beyond its arguments |
+| [`missing-required-key`](missing-required-key.md) | `syntax-check` | correctness | error | A required section or key is missing |
+| [`non-positive-number`](non-positive-number.md) | `syntax-check` | correctness | error | A literal `timeout-minutes` or `max-parallel` is zero or less |
+| [`recursive-alias`](recursive-alias.md) | `syntax-check` | correctness | error | An alias refers to a node that encloses it |
+| [`reusable-call-key-without-uses`](reusable-call-key-without-uses.md) | `syntax-check` | correctness | error | A job without `uses` has `with` or `secrets` |
+| [`schedule-without-config`](schedule-without-config.md) | `syntax-check` | correctness | error | `schedule` is named in a string or a sequence item of `on`, so it has no `cron` entries |
+| [`step-without-run-or-uses`](step-without-run-or-uses.md) | `syntax-check` | correctness | error | A step has neither `run` nor `uses` |
+| [`too-many-yaml-nodes`](too-many-yaml-nodes.md) | `syntax-check` | correctness | error | The workflow has more YAML nodes, with its aliases expanded, than GitHub reads |
+| `undefined-config-variable` | `expression` | correctness | error | `vars.NAME` reads a configuration variable that the configuration does not list |
+| `undefined-function` | `expression` | correctness | error | An expression calls a function that is not built in |
+| `undefined-property` | `expression` | correctness | error | An expression reads a property that its strict object type does not have |
+| `undefined-variable` | `expression` | correctness | error | An expression reads a variable that is not a context |
+| [`unexpected-key`](unexpected-key.md) | `syntax-check` | correctness | error | A mapping has a key that its section does not define |
+| [`unexpected-node-kind`](unexpected-node-kind.md) | `syntax-check` | correctness | error | A node has the wrong kind, such as a sequence where a mapping is expected |
+| [`unknown-anchor`](unknown-anchor.md) | `syntax-check` | correctness | error | An alias refers to an anchor that no earlier node defines |
+| `untrusted-input` | `expression` | correctness | error | A script reads a value that someone outside the repository can set |
+| `untrusted-object-filter` | `expression` | correctness | error | A script reads an object filter that extracts values that someone outside the repository can set |
+| [`unused-anchor`](unused-anchor.md) | `syntax-check` | correctness | error | No alias refers to an anchor |
+| `unused-format-argument` | `expression` | correctness | error | The format string of `format()` has no placeholder for an argument |
+| `wrong-argument-count` | `expression` | correctness | error | A call of a built-in function has the wrong number of arguments |
+| `wrong-argument-type` | `expression` | correctness | error | An argument of a built-in function has a type that its parameter does not accept |
+| [`yaml-syntax-error`](yaml-syntax-error.md) | `syntax-check` | correctness | error | The input is not valid YAML |
+<!-- rules-index:end -->

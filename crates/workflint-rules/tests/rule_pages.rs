@@ -66,6 +66,8 @@ struct Page {
     category: String,
     severity: String,
     description: String,
+    /// The `##` headings in page order.
+    headings: Vec<String>,
     failing: Vec<Failing>,
     passing: Vec<String>,
     /// The rule IDs of the pages that this page links, such as `unexpected-key` for
@@ -100,12 +102,12 @@ fn link_targets(line: &str) -> impl Iterator<Item = &str> {
 /// Parses a page. The error says what does not follow the format.
 fn parse_page(text: &str) -> Result<Page, String> {
     let mut page = Page::default();
-    let mut lines = text.lines().peekable();
-    page.title = lines
+    let mut lines = text.lines();
+    lines
         .next()
         .and_then(|line| line.strip_prefix("# "))
         .ok_or("the page does not start with `# <rule-id>`")?
-        .to_owned();
+        .clone_into(&mut page.title);
 
     let mut section = Section::Head;
     let mut head: Vec<&str> = Vec::new();
@@ -116,6 +118,7 @@ fn parse_page(text: &str) -> Result<Page, String> {
             if pending.is_some() {
                 return Err("a failing example has no `text` block".to_owned());
             }
+            page.headings.push(heading.to_owned());
             section = if heading.starts_with("Failing example") {
                 Section::Failing
             } else if heading.starts_with("Passing example") {
@@ -183,30 +186,31 @@ fn parse_page(text: &str) -> Result<Page, String> {
         return Err("a failing example has no `text` block".to_owned());
     }
 
-    // The head: the metadata table, then the description paragraph.
-    let mut head = head.into_iter().filter(|line| !line.trim().is_empty());
-    let header = head.next().and_then(cells);
-    let separator = head.next().and_then(cells);
-    let values = head.next().and_then(cells);
-    match (header.as_deref(), separator, values.as_deref()) {
-        (
-            Some(["Kind", "Category", "Default severity"]),
-            Some(_),
-            Some([kind, category, severity]),
-        ) => {
-            page.kind = kind.trim_matches('`').to_owned();
-            page.category = (*category).to_owned();
-            page.severity = (*severity).to_owned();
-        }
-        _ => {
-            return Err(
-                "the title is not followed by the table `| Kind | Category | Default severity |`"
-                    .to_owned(),
-            );
-        }
-    }
-    page.description = head.next().ok_or("the page has no description")?.to_owned();
+    parse_head(&head, &mut page)?;
     Ok(page)
+}
+
+/// Reads the lines between the title and the first `##` heading: the metadata table, then the
+/// description on one line.
+fn parse_head(head: &[&str], page: &mut Page) -> Result<(), String> {
+    let mut head = head.iter().filter(|line| !line.trim().is_empty());
+    let header = head.next().and_then(|line| cells(line));
+    let separator = head.next().and_then(|line| cells(line));
+    let values = head.next().and_then(|line| cells(line));
+    let (Some(["Kind", "Category", "Default severity"]), Some(_), Some([kind, category, severity])) =
+        (header.as_deref(), separator, values.as_deref())
+    else {
+        return Err(
+            "the title is not followed by the table `| Kind | Category | Default severity |`"
+                .to_owned(),
+        );
+    };
+    kind.trim_matches('`').clone_into(&mut page.kind);
+    (*category).clone_into(&mut page.category);
+    (*severity).clone_into(&mut page.severity);
+    let description = head.next().ok_or("the page has no description")?;
+    (*description).clone_into(&mut page.description);
+    Ok(())
 }
 
 /// Lints `workflow` as the binary does, without the file system: the YAML layer, the workflow
@@ -271,6 +275,9 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
                 page.description
             ));
         }
+    }
+    if !page.headings.iter().any(|heading| heading == "Why") {
+        problem("no `## Why` section".to_owned());
     }
     if page.failing.is_empty() {
         problem("no failing example".to_owned());
@@ -434,6 +441,10 @@ fn unexpected_key_page(workflow: &str, expected: &str, prose: &str) -> String {
 A mapping has a key that its section does not define.
 
 {prose}
+
+## Why
+
+GitHub rejects a workflow with an unknown key.
 
 ## Failing example
 
