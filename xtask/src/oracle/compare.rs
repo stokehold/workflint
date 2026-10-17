@@ -114,7 +114,7 @@ pub(crate) fn compare(
                 return kinds.keeps_kind(kind);
             }
             problems.insert(format!(
-                "rule ID {:?} has no actionlint kind in tests/conformance/rule-kinds.toml",
+                "rule ID {:?} has no actionlint kind in the rule registry or tests/conformance/rule-kinds.toml",
                 diagnostic.code
             ));
             true

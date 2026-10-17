@@ -31,11 +31,14 @@ Use these words with these meanings in code, docs, and pull requests.
 | availability | Which contexts and special functions a given workflow key allows (`Availability`). A key that the table does not list allows none, and so does a type environment without a workflow key. |
 | platform data | Facts about GitHub that change over time: runner labels, permissions, events, contexts, popular actions (ADR 0011). |
 | rule | One check with a stable ID and rule metadata, listed in the registry in `workflint-rules`. |
-| rule metadata | A rule's `RuleMeta`: its rule ID, kind, category, default severity, and docs URL. |
+| reference rule | One of the reference's rules, such as `events`, ported as one module and one `Rule` implementation in `workflint-rules`. It reports the rule IDs of one kind (ADR 0029). |
+| hook | One of the five methods of the `Rule` trait that the visitor calls: workflow pre, job pre, step, job post, and workflow post. The reference calls them `VisitWorkflowPre` and so on. |
+| creation order | The order in which the linter creates the reference rules for each file and calls their hooks, from `linter.go:558` (`CREATION_ORDER`). |
+| rule metadata | A rule's `RuleMeta`: its rule ID, description, kind, category, default severity, and docs URL. |
 | parse-stage rule | A rule whose diagnostics a parsing crate reports while parsing, such as `yaml-syntax-error` in `workflint-yaml`. The parsing crate defines its rule metadata, and the registry lists it (ADR 0024). |
 | checker rule | A rule such as `undefined-property`, whose diagnostics `TypeEnv::check` in `workflint-expr` reports when a rule in `workflint-rules` calls it. `workflint-expr` defines its rule metadata, and the registry lists it, as for a parse-stage rule (ADR 0028). |
 | rule ID | The kebab-case name of a rule, such as `undefined-property`. Users write it in config and ignore comments. |
-| kind | The actionlint error kind a rule maps to, such as `expression` or `syntax-check`. Used for conformance and accepted in config. |
+| kind | The actionlint error kind a rule maps to, such as `expression` or `syntax-check`: the name of a reference rule, or `syntax-check` for the reference parser's errors. Used for conformance and accepted in config. `workflint_rules::kind` has the reference's description of each. |
 | category | The rule set a rule belongs to: `correctness` (on by default), `pedantic`, `style`, `security-strict`, or `policy` (off by default). |
 | severity | `error`, `warning`, or `info`. |
 | diagnostic | One finding: rule, severity, message, span, optional labels and fix. |

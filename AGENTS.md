@@ -34,11 +34,11 @@ A task is done when all of these hold:
 
 ## Code conventions
 
-These come from ADR 0016, ADR 0018, ADR 0024, and ADR 0028. The ADRs have the reasons.
+These come from ADR 0016, ADR 0018, ADR 0024, ADR 0028, and ADR 0029. The ADRs have the reasons.
 
 - Malformed input produces diagnostics. Handle every fallible lookup explicitly; library code has no `unwrap`, `expect`, or `panic!`.
 - Platform facts (runner labels, permissions, events, contexts, action inputs) live only in `workflint-data`.
-- One rule per module in `workflint-rules`, with a page in `docs/rules/<id>.md` whose examples run as tests. A rule that another crate reports, while parsing (`yaml-syntax-error` in `workflint-yaml`) or while checking (`undefined-property` in `workflint-expr`), keeps its `RuleMeta` in that crate and is listed in the registry.
+- One module per reference rule in `workflint-rules`, with a `RuleMeta` and a page in `docs/rules/<id>.md` for each rule ID it reports, whose examples run as tests (ADR 0029). A rule that another crate reports, while parsing (`yaml-syntax-error` in `workflint-yaml`) or while checking (`undefined-property` in `workflint-expr`), keeps its `RuleMeta` in that crate and is listed in the registry.
 - Only `workflint-linter` and `workflint` touch the file system, processes, the network, or the environment.
 - Output is deterministic: iterate in source or sorted order, never hash order, and never depend on the clock.
 - Name tests after the behaviour they check.

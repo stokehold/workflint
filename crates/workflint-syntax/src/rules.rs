@@ -8,6 +8,7 @@ use workflint_diagnostics::{Category, RuleMeta, Severity};
 /// The file has no YAML document, or only comments: `workflow is empty`.
 pub static EMPTY_WORKFLOW: RuleMeta = syntax_check(
     "empty-workflow",
+    "The file has no YAML document, or only comments",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/empty-workflow.md",
 );
 
@@ -15,6 +16,7 @@ pub static EMPTY_WORKFLOW: RuleMeta = syntax_check(
 /// YAML merge keys, so the entry is skipped.
 pub static MERGE_KEY_UNSUPPORTED: RuleMeta = syntax_check(
     "merge-key-unsupported",
+    "A mapping has a `<<` merge key, which GitHub Actions does not apply",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/merge-key-unsupported.md",
 );
 
@@ -22,12 +24,14 @@ pub static MERGE_KEY_UNSUPPORTED: RuleMeta = syntax_check(
 /// workflow root, or `type` of a `workflow_call` input.
 pub static MISSING_REQUIRED_KEY: RuleMeta = syntax_check(
     "missing-required-key",
+    "A required section or key is missing",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/missing-required-key.md",
 );
 
 /// A mapping has a key that its section does not define.
 pub static UNEXPECTED_KEY: RuleMeta = syntax_check(
     "unexpected-key",
+    "A mapping has a key that its section does not define",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/unexpected-key.md",
 );
 
@@ -35,18 +39,21 @@ pub static UNEXPECTED_KEY: RuleMeta = syntax_check(
 /// value is not parsed.
 pub static DUPLICATE_KEY: RuleMeta = syntax_check(
     "duplicate-key",
+    "A mapping repeats a key",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/duplicate-key.md",
 );
 
 /// A mapping or sequence that must have entries is empty or null.
 pub static EMPTY_SECTION: RuleMeta = syntax_check(
     "empty-section",
+    "A mapping or sequence that must have entries is empty or null",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/empty-section.md",
 );
 
 /// A string that must not be empty is empty.
 pub static EMPTY_STRING: RuleMeta = syntax_check(
     "empty-string",
+    "A string that must not be empty is empty",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/empty-string.md",
 );
 
@@ -54,12 +61,14 @@ pub static EMPTY_STRING: RuleMeta = syntax_check(
 /// expected.
 pub static UNEXPECTED_NODE_KIND: RuleMeta = syntax_check(
     "unexpected-node-kind",
+    "A node has the wrong kind, such as a sequence where a mapping is expected",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/unexpected-node-kind.md",
 );
 
 /// A boolean, integer, or float value has the wrong tag or does not parse.
 pub static INVALID_LITERAL_VALUE: RuleMeta = syntax_check(
     "invalid-literal-value",
+    "A boolean, integer, or float value has the wrong tag or does not parse",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-literal-value.md",
 );
 
@@ -67,6 +76,7 @@ pub static INVALID_LITERAL_VALUE: RuleMeta = syntax_check(
 /// text.
 pub static EXPECTED_SINGLE_EXPRESSION: RuleMeta = syntax_check(
     "expected-single-expression",
+    "A value that must be a literal or a single `${{ }}` expression is other text",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/expected-single-expression.md",
 );
 
@@ -74,6 +84,7 @@ pub static EXPECTED_SINGLE_EXPRESSION: RuleMeta = syntax_check(
 /// reads. GitHub rejects it with `Maximum YAML nodes exceeded`.
 pub static TOO_MANY_YAML_NODES: RuleMeta = syntax_check(
     "too-many-yaml-nodes",
+    "The workflow has more YAML nodes, with its aliases expanded, than GitHub reads",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/too-many-yaml-nodes.md",
 );
 
@@ -81,6 +92,7 @@ pub static TOO_MANY_YAML_NODES: RuleMeta = syntax_check(
 /// `boolean`, `choice`, or `environment`.
 pub static INVALID_DISPATCH_INPUT_TYPE: RuleMeta = syntax_check(
     "invalid-dispatch-input-type",
+    "A `workflow_dispatch` input has an unknown `type`",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-dispatch-input-type.md",
 );
 
@@ -88,6 +100,7 @@ pub static INVALID_DISPATCH_INPUT_TYPE: RuleMeta = syntax_check(
 /// `string`.
 pub static INVALID_WORKFLOW_CALL_INPUT_TYPE: RuleMeta = syntax_check(
     "invalid-workflow-call-input-type",
+    "A `workflow_call` input has an unknown `type`",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-workflow-call-input-type.md",
 );
 
@@ -95,6 +108,7 @@ pub static INVALID_WORKFLOW_CALL_INPUT_TYPE: RuleMeta = syntax_check(
 /// `cron` entries.
 pub static SCHEDULE_WITHOUT_CONFIG: RuleMeta = syntax_check(
     "schedule-without-config",
+    "`schedule` is named in a string or a sequence item of `on`, so it has no `cron` entries",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/schedule-without-config.md",
 );
 
@@ -102,6 +116,7 @@ pub static SCHEDULE_WITHOUT_CONFIG: RuleMeta = syntax_check(
 /// job with steps may have, such as `runs-on` or `services`.
 pub static INVALID_REUSABLE_CALL_KEY: RuleMeta = syntax_check(
     "invalid-reusable-call-key",
+    "A job that calls a reusable workflow has a key that only a job with steps may have",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-reusable-call-key.md",
 );
 
@@ -109,12 +124,14 @@ pub static INVALID_REUSABLE_CALL_KEY: RuleMeta = syntax_check(
 /// calls a reusable workflow may have.
 pub static REUSABLE_CALL_KEY_WITHOUT_USES: RuleMeta = syntax_check(
     "reusable-call-key-without-uses",
+    "A job without `uses` has `with` or `secrets`",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/reusable-call-key-without-uses.md",
 );
 
 /// A literal `timeout-minutes` or `max-parallel` is zero or less.
 pub static NON_POSITIVE_NUMBER: RuleMeta = syntax_check(
     "non-positive-number",
+    "A literal `timeout-minutes` or `max-parallel` is zero or less",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/non-positive-number.md",
 );
 
@@ -122,12 +139,14 @@ pub static NON_POSITIVE_NUMBER: RuleMeta = syntax_check(
 /// `username` or `password`. The parser drops the credentials.
 pub static INCOMPLETE_CREDENTIALS: RuleMeta = syntax_check(
     "incomplete-credentials",
+    "`credentials` of a container or service lacks `username` or `password`",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/incomplete-credentials.md",
 );
 
 /// A step has neither `run` nor `uses`.
 pub static STEP_WITHOUT_RUN_OR_USES: RuleMeta = syntax_check(
     "step-without-run-or-uses",
+    "A step has neither `run` nor `uses`",
     "https://github.com/stokehold/workflint/blob/main/docs/rules/step-without-run-or-uses.md",
 );
 
@@ -156,9 +175,14 @@ pub static ALL: [&RuleMeta; 19] = [
 
 /// A parse-stage rule of kind `syntax-check`. `docs_url` is the page that
 /// M4.2 (#139) adds (ADR 0024).
-const fn syntax_check(id: &'static str, docs_url: &'static str) -> RuleMeta {
+const fn syntax_check(
+    id: &'static str,
+    description: &'static str,
+    docs_url: &'static str,
+) -> RuleMeta {
     RuleMeta {
         id,
+        description,
         kind: "syntax-check",
         category: Category::Correctness,
         default_severity: Severity::Error,

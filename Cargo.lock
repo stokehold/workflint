@@ -935,6 +935,7 @@ name = "workflint"
 version = "0.0.1"
 dependencies = [
  "workflint-diagnostics",
+ "workflint-rules",
  "workflint-syntax",
  "workflint-yaml",
 ]
@@ -963,6 +964,17 @@ dependencies = [
  "datatest-stable",
  "workflint-data",
  "workflint-diagnostics",
+]
+
+[[package]]
+name = "workflint-rules"
+version = "0.0.1"
+dependencies = [
+ "workflint-data",
+ "workflint-diagnostics",
+ "workflint-expr",
+ "workflint-syntax",
+ "workflint-yaml",
 ]
 
 [[package]]
@@ -1005,6 +1017,7 @@ dependencies = [
  "workflint-data",
  "workflint-diagnostics",
  "workflint-expr",
+ "workflint-rules",
  "workflint-syntax",
  "workflint-yaml",
  "zip",

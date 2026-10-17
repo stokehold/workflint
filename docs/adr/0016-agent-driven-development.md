@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-15
-- Amended by: ADR 0020, which replaces the "Work items" section and the roadmap-ticking part of "Definition of done", and ADR 0028, which limits allow-list records in "Definition of done" to differences that change output.
+- Amended by: ADR 0020, which replaces the "Work items" section and the roadmap-ticking part of "Definition of done", ADR 0028, which limits allow-list records in "Definition of done" to differences that change output, and ADR 0029, which puts one module per reference rule in `workflint-rules`.
 
 ## Context
 

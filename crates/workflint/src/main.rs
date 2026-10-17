@@ -1,9 +1,9 @@
 //! The `workflint` command-line tool.
 //!
 //! This is the minimal binary that the conformance suite runs, with the command line in
-//! `tests/conformance/README.md`. It lints the files given as arguments with the YAML layer and
-//! the workflow parser, and prints the diagnostics. M5.6 replaces it with the full command-line
-//! interface.
+//! `tests/conformance/README.md`. It lints the files given as arguments with the YAML layer, the
+//! workflow parser, and the rules, and prints the diagnostics. M5.6 replaces it with the full
+//! command-line interface.
 
 mod path;
 
@@ -197,13 +197,15 @@ fn lint(
     Ok((file, diagnostics))
 }
 
-/// Parses `file` with the YAML layer and, if it gives a document, with the workflow parser, and
-/// returns the diagnostics of both.
+/// Parses `file` with the YAML layer and, if it gives a document, with the workflow parser, runs
+/// the rules on the workflow, and returns the diagnostics of all three.
 fn parse_file(file: &SourceFile) -> Vec<Diagnostic> {
     let parsed = workflint_yaml::parse(file);
     let mut diagnostics = parsed.diagnostics;
     if let Some(document) = &parsed.document {
-        diagnostics.extend(workflint_syntax::parse(file, document).diagnostics);
+        let syntax = workflint_syntax::parse(file, document);
+        diagnostics.extend(syntax.diagnostics);
+        diagnostics.extend(workflint_rules::run(file, &syntax.workflow));
     }
     diagnostics
 }

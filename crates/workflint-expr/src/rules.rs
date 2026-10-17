@@ -6,6 +6,7 @@ use workflint_diagnostics::{Category, RuleMeta, Severity};
 /// An expression in `${{ }}` cannot be lexed or parsed.
 pub static INVALID_EXPRESSION_SYNTAX: RuleMeta = RuleMeta {
     id: "invalid-expression-syntax",
+    description: "An expression in `${{ }}` cannot be lexed or parsed",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -15,6 +16,7 @@ pub static INVALID_EXPRESSION_SYNTAX: RuleMeta = RuleMeta {
 /// A number literal in an expression has no value as a double, such as `1e400`.
 pub static INVALID_NUMBER_LITERAL: RuleMeta = RuleMeta {
     id: "invalid-number-literal",
+    description: "A number literal in an expression has no value as a double",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -24,6 +26,7 @@ pub static INVALID_NUMBER_LITERAL: RuleMeta = RuleMeta {
 /// An expression reads a variable that is not a context, such as `fooooo`.
 pub static UNDEFINED_VARIABLE: RuleMeta = RuleMeta {
     id: "undefined-variable",
+    description: "An expression reads a variable that is not a context",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -34,6 +37,7 @@ pub static UNDEFINED_VARIABLE: RuleMeta = RuleMeta {
 /// `github.foo` or `steps.missing`.
 pub static UNDEFINED_PROPERTY: RuleMeta = RuleMeta {
     id: "undefined-property",
+    description: "An expression reads a property that its strict object type does not have",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -44,6 +48,7 @@ pub static UNDEFINED_PROPERTY: RuleMeta = RuleMeta {
 /// `true.foo`.
 pub static INVALID_PROPERTY_ACCESS: RuleMeta = RuleMeta {
     id: "invalid-property-access",
+    description: "An expression reads a property with a dot from a value that is not an object",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -54,6 +59,7 @@ pub static INVALID_PROPERTY_ACCESS: RuleMeta = RuleMeta {
 /// array, such as `env[0]` or `true[0]`.
 pub static INVALID_INDEX_ACCESS: RuleMeta = RuleMeta {
     id: "invalid-index-access",
+    description: "An index has the wrong type, or its operand is neither an object nor an array",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -63,6 +69,7 @@ pub static INVALID_INDEX_ACCESS: RuleMeta = RuleMeta {
 /// An object filter `.*` applies to a value without object elements, such as `env.*`.
 pub static INVALID_OBJECT_FILTER: RuleMeta = RuleMeta {
     id: "invalid-object-filter",
+    description: "An object filter `.*` applies to a value without object elements",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -72,6 +79,7 @@ pub static INVALID_OBJECT_FILTER: RuleMeta = RuleMeta {
 /// A comparison has operands that GitHub cannot compare, such as an object and a number.
 pub static INVALID_COMPARISON: RuleMeta = RuleMeta {
     id: "invalid-comparison",
+    description: "A comparison has operands that GitHub cannot compare",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -81,6 +89,7 @@ pub static INVALID_COMPARISON: RuleMeta = RuleMeta {
 /// The name in `vars.NAME` breaks GitHub's naming rules for configuration variables.
 pub static INVALID_CONFIG_VARIABLE_NAME: RuleMeta = RuleMeta {
     id: "invalid-config-variable-name",
+    description: "The name in `vars.NAME` breaks GitHub's naming rules for configuration variables",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -90,6 +99,7 @@ pub static INVALID_CONFIG_VARIABLE_NAME: RuleMeta = RuleMeta {
 /// `vars.NAME` reads a configuration variable that the configuration does not list.
 pub static UNDEFINED_CONFIG_VARIABLE: RuleMeta = RuleMeta {
     id: "undefined-config-variable",
+    description: "`vars.NAME` reads a configuration variable that the configuration does not list",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -99,6 +109,7 @@ pub static UNDEFINED_CONFIG_VARIABLE: RuleMeta = RuleMeta {
 /// An expression calls a function that is not built in, such as `foo()`.
 pub static UNDEFINED_FUNCTION: RuleMeta = RuleMeta {
     id: "undefined-function",
+    description: "An expression calls a function that is not built in",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -109,6 +120,7 @@ pub static UNDEFINED_FUNCTION: RuleMeta = RuleMeta {
 /// `contains('foo')`.
 pub static WRONG_ARGUMENT_COUNT: RuleMeta = RuleMeta {
     id: "wrong-argument-count",
+    description: "A call of a built-in function has the wrong number of arguments",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -119,6 +131,7 @@ pub static WRONG_ARGUMENT_COUNT: RuleMeta = RuleMeta {
 /// `startsWith('foo', null)`.
 pub static WRONG_ARGUMENT_TYPE: RuleMeta = RuleMeta {
     id: "wrong-argument-type",
+    description: "An argument of a built-in function has a type that its parameter does not accept",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -129,6 +142,7 @@ pub static WRONG_ARGUMENT_TYPE: RuleMeta = RuleMeta {
 /// `format('{0}', 1, 2)`.
 pub static UNUSED_FORMAT_ARGUMENT: RuleMeta = RuleMeta {
     id: "unused-format-argument",
+    description: "The format string of `format()` has no placeholder for an argument",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -139,6 +153,7 @@ pub static UNUSED_FORMAT_ARGUMENT: RuleMeta = RuleMeta {
 /// `format('{0} {1}', 1)`.
 pub static MISSING_FORMAT_ARGUMENT: RuleMeta = RuleMeta {
     id: "missing-format-argument",
+    description: "The format string of `format()` has a placeholder beyond its arguments",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -149,6 +164,7 @@ pub static MISSING_FORMAT_ARGUMENT: RuleMeta = RuleMeta {
 /// `case(true, 'a', false, 'b')`.
 pub static CASE_ARGUMENT_COUNT: RuleMeta = RuleMeta {
     id: "case-argument-count",
+    description: "`case()` has an even number of arguments, so it has no default value",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -159,6 +175,7 @@ pub static CASE_ARGUMENT_COUNT: RuleMeta = RuleMeta {
 /// `jobs.<job_id>.if`.
 pub static CONTEXT_NOT_ALLOWED: RuleMeta = RuleMeta {
     id: "context-not-allowed",
+    description: "An expression reads a context that its workflow key does not allow",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -169,6 +186,7 @@ pub static CONTEXT_NOT_ALLOWED: RuleMeta = RuleMeta {
 /// `success()` in `jobs.<job_id>.env`.
 pub static FUNCTION_NOT_ALLOWED: RuleMeta = RuleMeta {
     id: "function-not-allowed",
+    description: "An expression calls a special function that its workflow key does not allow",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -178,6 +196,7 @@ pub static FUNCTION_NOT_ALLOWED: RuleMeta = RuleMeta {
 /// The string literal passed to `fromJSON()` is not valid JSON, such as `fromJSON('[1,')`.
 pub static INVALID_JSON_LITERAL: RuleMeta = RuleMeta {
     id: "invalid-json-literal",
+    description: "The string literal passed to `fromJSON()` is not valid JSON",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -188,6 +207,7 @@ pub static INVALID_JSON_LITERAL: RuleMeta = RuleMeta {
 /// `github.event.issue.title`, so the value can inject code.
 pub static UNTRUSTED_INPUT: RuleMeta = RuleMeta {
     id: "untrusted-input",
+    description: "A script reads a value that someone outside the repository can set",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,
@@ -198,6 +218,7 @@ pub static UNTRUSTED_INPUT: RuleMeta = RuleMeta {
 /// values that someone outside the repository can set.
 pub static UNTRUSTED_OBJECT_FILTER: RuleMeta = RuleMeta {
     id: "untrusted-object-filter",
+    description: "A script reads an object filter that extracts values that someone outside the repository can set",
     kind: "expression",
     category: Category::Correctness,
     default_severity: Severity::Error,

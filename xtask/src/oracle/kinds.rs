@@ -21,7 +21,7 @@ pub(crate) struct Kinds {
 
 impl Kinds {
     /// The kinds named `names`, each one of the kinds in
-    /// `tests/conformance/rule-kinds.toml`.
+    /// `workflint_rules::kind`.
     ///
     /// # Errors
     ///
@@ -31,7 +31,7 @@ impl Kinds {
         if let Some(unknown) = names.iter().find(|name| !known.contains(name.as_str())) {
             let known: Vec<&str> = known.into_iter().collect();
             bail!(
-                "unknown kind {unknown:?}; the kinds in tests/conformance/rule-kinds.toml are {}",
+                "unknown kind {unknown:?}; the kinds are {}",
                 known.join(", ")
             );
         }
