@@ -18,6 +18,9 @@
 //! `runs-on`, [`PERMISSION_SCOPES`] for `permissions:`, [`shell_names`] for `shell:`, and
 //! [`DEPRECATED_COMMANDS`] for `run:`. [`RUNS_USING_VALUES`], [`BRANDING_COLORS`],
 //! [`BRANDING_ICONS`], and [`DOCKER_REGISTRY_PREFIXES`] for action metadata.
+//! [`POPULAR_ACTIONS`] and [`popular_action`] for the inputs and outputs of popular actions,
+//! and [`OUTDATED_POPULAR_ACTION_SPECS`] and [`is_outdated_popular_action`] for those whose
+//! runner GitHub no longer has.
 //!
 //! Every table is `static` data, so reading one allocates nothing. The crate reads no files,
 //! environment variables, or clocks: it is `no_std`.
@@ -37,6 +40,7 @@ mod functions;
 mod global_contexts;
 mod go_case;
 mod permissions;
+mod popular_actions;
 mod runner_labels;
 mod runs_using;
 mod shells;
@@ -59,6 +63,10 @@ pub use functions::{BUILTIN_FUNCTIONS, Function, Signature, builtin_function};
 pub use global_contexts::{BUILT_IN_SECRETS, Context, GLOBAL_CONTEXTS, global_context};
 pub use permissions::{
     PERMISSION_SCOPES, PERMISSIONS_FOR_ALL_SCOPES, PermissionScope, permission_scope,
+};
+pub use popular_actions::{
+    ActionInput, ActionOutput, OUTDATED_POPULAR_ACTION_SPECS, POPULAR_ACTIONS, PopularAction,
+    is_outdated_popular_action, popular_action,
 };
 pub use runner_labels::{
     GITHUB_HOSTED_RUNNER_LABELS, RUNNER_LABEL_OS_COMPATS, RunnerLabelOsCompat, RunnerOsCompat,

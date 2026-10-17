@@ -48,6 +48,10 @@ const RULE_RUNNER_LABEL_GO: &str =
 const RULE_SHELL_NAME_GO: &str =
     include_str!("../../../../tests/conformance/actionlint/rule_shell_name.go");
 
+/// The reference's `popular_actions.go`.
+const POPULAR_ACTIONS_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/popular_actions.go");
+
 /// The reference's `cmd/actionlint/main.go`.
 pub(crate) const MAIN_GO: &str =
     include_str!("../../../../tests/conformance/actionlint/cmd/actionlint/main.go");
@@ -964,4 +968,141 @@ pub(crate) fn go_time_zones() -> (String, Vec<String>) {
         .map(str::to_owned)
         .collect();
     (version, names)
+}
+
+/// Decodes the escapes `\"`, `\\`, `\n`, and `\t` of a Go interpreted string literal, and
+/// panics on any other escape.
+fn unescape(literal: &str) -> String {
+    let mut decoded = String::with_capacity(literal.len());
+    let mut chars = literal.chars();
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            decoded.push(c);
+            continue;
+        }
+        match chars.next() {
+            Some('"') => decoded.push('"'),
+            Some('\\') => decoded.push('\\'),
+            Some('n') => decoded.push('\n'),
+            Some('t') => decoded.push('\t'),
+            other => panic!("the reader does not know the escape {other:?} in {literal:?}"),
+        }
+    }
+    decoded
+}
+
+/// An input of an action in the reference's `PopularActions`: its key, which is the lowercased
+/// name, and the fields of its `ActionMetadataInput`.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct GoActionInput {
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) required: bool,
+    pub(crate) deprecated: bool,
+    pub(crate) deprecation_message: String,
+}
+
+/// An entry of the reference's `PopularActions`. Outputs are pairs of the key, which is the
+/// lowercased name, and the name.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(crate) struct GoPopularAction {
+    pub(crate) spec: String,
+    pub(crate) name: String,
+    pub(crate) inputs: Vec<GoActionInput>,
+    pub(crate) outputs: Vec<(String, String)>,
+    pub(crate) skip_inputs: bool,
+    pub(crate) skip_outputs: bool,
+}
+
+impl Parser<'_> {
+    /// `{"name", required, deprecated, "message"}`, an `ActionMetadataInput` literal whose type
+    /// is elided.
+    fn action_input(&mut self, id: String) -> GoActionInput {
+        self.expect(&Token::Punct('{'));
+        let name = unescape(self.str());
+        self.expect(&Token::Punct(','));
+        let required = self.bool();
+        self.expect(&Token::Punct(','));
+        let deprecated = self.bool();
+        self.expect(&Token::Punct(','));
+        let deprecation_message = unescape(self.str());
+        self.expect(&Token::Punct('}'));
+        GoActionInput {
+            id,
+            name,
+            required,
+            deprecated,
+            deprecation_message,
+        }
+    }
+
+    /// `{Name: "name", Inputs: ActionMetadataInputs{...}, Outputs: ..., SkipInputs: true, ...}`.
+    /// The spec is left empty for the caller to fill in.
+    fn popular_action(&mut self) -> GoPopularAction {
+        self.expect(&Token::Punct('{'));
+        let mut action = GoPopularAction::default();
+        loop {
+            let field = match self.next() {
+                Token::Punct('}') => return action,
+                Token::Ident(field) => field,
+                token => panic!("expected a field or `}}`, got {token:?}"),
+            };
+            self.expect(&Token::Punct(':'));
+            match field {
+                "Name" => action.name = unescape(self.str()),
+                "Inputs" => {
+                    self.expect_all(&[Token::Ident("ActionMetadataInputs"), Token::Punct('{')]);
+                    while !self.eat(&Token::Punct('}')) {
+                        let id = unescape(self.str());
+                        self.expect(&Token::Punct(':'));
+                        let input = self.action_input(id);
+                        action.inputs.push(input);
+                        self.eat(&Token::Punct(','));
+                    }
+                }
+                "Outputs" => {
+                    self.expect_all(&[Token::Ident("ActionMetadataOutputs"), Token::Punct('{')]);
+                    while !self.eat(&Token::Punct('}')) {
+                        let id = unescape(self.str());
+                        self.expect_all(&[Token::Punct(':'), Token::Punct('{')]);
+                        let name = unescape(self.str());
+                        self.expect(&Token::Punct('}'));
+                        action.outputs.push((id, name));
+                        self.eat(&Token::Punct(','));
+                    }
+                }
+                "SkipInputs" => action.skip_inputs = self.bool(),
+                "SkipOutputs" => action.skip_outputs = self.bool(),
+                other => panic!("the reader does not know the field {other}"),
+            }
+            self.expect(&Token::Punct(','));
+        }
+    }
+}
+
+/// The reference's `PopularActions` in source order.
+pub(crate) fn popular_actions() -> Vec<GoPopularAction> {
+    Parser::after(POPULAR_ACTIONS_GO, "var PopularActions = ")
+        .ordered_map(
+            &[Token::Punct('*'), Token::Ident("ActionMetadata")],
+            Parser::popular_action,
+        )
+        .into_iter()
+        .map(|(spec, action)| GoPopularAction {
+            spec: unescape(&spec),
+            ..action
+        })
+        .collect()
+}
+
+/// The reference's `OutdatedPopularActionSpecs` in source order.
+pub(crate) fn outdated_popular_action_specs() -> Vec<String> {
+    Parser::after(POPULAR_ACTIONS_GO, "var OutdatedPopularActionSpecs = ")
+        .ordered_map(
+            &[Token::Ident("struct"), Token::Punct('{'), Token::Punct('}')],
+            |parser| parser.expect_all(&[Token::Punct('{'), Token::Punct('}')]),
+        )
+        .into_iter()
+        .map(|(spec, ())| spec)
+        .collect()
 }
