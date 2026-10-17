@@ -220,9 +220,14 @@ fn check_written(document: &Document, children: &[NodeId], written: &[NodeId], w
 /// entries, the first one earlier, with scalar keys that compare equal.
 fn check_duplicate_keys(document: &Document, mapping: &workflint_yaml::Mapping, what: &str) {
     let entries = document.entries(mapping);
-    let key = |id: NodeId| match document.node(id).map(|node| &node.kind) {
-        Some(NodeKind::Scalar(scalar)) => scalar.value.clone(),
-        other => panic!("{what}: a duplicate key is {other:?}"),
+    let key = |id: NodeId| {
+        let kind = document.node(id).map(|node| &node.kind);
+        let value = match kind {
+            Some(NodeKind::Scalar(scalar)) => Some(scalar.value.clone()),
+            _ => None,
+        };
+        assert!(value.is_some(), "{what}: a duplicate key is {kind:?}");
+        value.unwrap_or_default()
     };
     for comparison in [KeyComparison::Exact, KeyComparison::CaseInsensitive] {
         for duplicate in document.duplicate_keys(mapping, comparison) {
