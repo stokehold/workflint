@@ -13,8 +13,8 @@ pub mod kind;
 pub mod registry;
 mod rule;
 mod rules;
-mod visit;
+mod visitor;
 
 pub use rule::{Context, Rule};
 pub use rules::{CREATION_ORDER, create_rules};
-pub use visit::{run, visit};
+pub use visitor::{run, visit};
