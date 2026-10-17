@@ -62,7 +62,7 @@ pub struct TagDirective {
 /// The stream encoding.
 ///
 /// The parser reads Rust strings, so the encoding is always UTF-8.
-/// [`decode`](crate::decode) turns UTF-16 input into a string first.
+/// [`decode()`](crate::decode()) turns UTF-16 input into a string first.
 #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[non_exhaustive]
 pub enum Encoding {

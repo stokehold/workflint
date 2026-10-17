@@ -59,8 +59,8 @@ fn a_billion_laughs_finishes_in_under_one_second() {
     sort_and_dedup(&file, &mut diagnostics);
     let elapsed = start.elapsed();
 
-    // One second is the bound in a release build. A debug build is about
-    // ten times slower.
+    // One second is the bound in a release build, which CI checks. A debug
+    // build is about ten times slower.
     let limit = if cfg!(debug_assertions) {
         Duration::from_secs(10)
     } else {

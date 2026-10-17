@@ -1,6 +1,6 @@
-# The policy for both workspaces: the root and fuzz/. CI runs
-# `cargo deny check` and `cargo deny --manifest-path fuzz/Cargo.toml check`,
-# and both find this file.
+# The policy for the root workspace. CI runs `cargo deny check`. The fuzz/
+# workspace has its own copy in fuzz/deny.toml, which allows the licenses its
+# dependencies use. Keep the two in step.
 
 [graph]
 all-features = true
@@ -11,27 +11,19 @@ yanked = "deny"
 
 [licenses]
 version = 2
+# The licenses that the dependencies use, from the list in ADR 0017. ADR 0017
+# also permits BSD-2-Clause, BSD-3-Clause, and ISC. Add one here when a
+# dependency needs it, as cargo deny warns about an allowance nothing uses.
 allow = [
     "Apache-2.0",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "ISC",
     "MIT",
     "Unicode-3.0",
     "Zlib",
 ]
 
-# libfuzzer-sys bundles LLVM's libFuzzer, which is under NCSA. Only the fuzz
-# workspace uses it, and no published crate depends on it (ADR 0025).
-[[licenses.exceptions]]
-crate = "libfuzzer-sys"
-allow = ["NCSA"]
-
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-# The fuzz crate is not published, so its path dependencies need no version.
-allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"

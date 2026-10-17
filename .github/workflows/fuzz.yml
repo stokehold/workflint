@@ -1,27 +1,20 @@
 name: Fuzz
 
-# Every night, each fuzz target in fuzz/ runs for five minutes (ADR 0018). On
-# pull requests that could break them, the targets are only built.
+# Every night, each fuzz target in fuzz/ runs for five minutes (ADR 0018). It
+# starts from the corpus that the last run on main kept, plus the seeds. When a
+# scheduled run fails, the report job opens or updates an issue. Pull requests
+# build and lint the targets in the Gate workflow.
 on:
   schedule:
     - cron: "23 3 * * *"
   workflow_dispatch:
-  pull_request:
-    paths:
-      - crates/workflint-data/**
-      - crates/workflint-diagnostics/**
-      - crates/workflint-expr/**
-      - crates/workflint-syntax/**
-      - crates/workflint-yaml/**
-      - fuzz/**
-      - .github/workflows/fuzz.yml
 
 permissions:
   contents: read
 
 concurrency:
   group: fuzz-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -29,48 +22,24 @@ env:
   # default. The address sanitizer needs the gnu target, not musl.
   FUZZ_BUILD_TARGET: x86_64-unknown-linux-gnu
   # install-action has no checksum for cargo-fuzz and would fall back to an
-  # unpinned cargo-binstall, so the jobs build it with cargo install.
+  # unpinned cargo-binstall, so the job builds it with cargo install. Keep it
+  # in step with gate.yml.
   CARGO_FUZZ_VERSION: 0.13.2
 
 jobs:
-  build:
-    name: cargo fuzz build
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # `cargo fmt --all` in the main workspace skips fuzz/.
-      - name: Check formatting
-        run: rustfmt --check --edition 2024 fuzz/fuzz_targets/*.rs
-      - name: Install the nightly toolchain from fuzz/rust-toolchain.toml
-        working-directory: fuzz
-        run: rustup toolchain install
-      # Also caches ~/.cargo/bin, so cargo install finds cargo-fuzz there.
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        with:
-          workspaces: fuzz -> target
-      - name: Install cargo-fuzz
-        run: cargo install --locked --version "$CARGO_FUZZ_VERSION" cargo-fuzz
-      # cargo fuzz has no --locked flag, so this fails if fuzz/Cargo.lock is stale.
-      - name: Check fuzz/Cargo.lock
-        working-directory: fuzz
-        run: cargo fetch --locked
-      - name: Build the fuzz targets
-        working-directory: fuzz
-        run: cargo fuzz build --target "$FUZZ_BUILD_TARGET"
-
   run:
     name: cargo fuzz run (${{ matrix.target }})
-    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
         target: [expr_check, expr_json, expr_lex, expr_parse, glob, metadata, render, syntax, yaml_events, yaml_tree]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read # downloads the corpus of the last run
+    env:
+      TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -85,6 +54,24 @@ jobs:
             fuzz -> target
       - name: Install cargo-fuzz
         run: cargo install --locked --version "$CARGO_FUZZ_VERSION" cargo-fuzz
+      # Before the seeds, because gh run download does not overwrite files
+      # and cargo xtask fuzz-seeds does. Without a corpus to restore, the
+      # target starts from the seeds alone.
+      - name: Restore the corpus of the last run on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          artifact="fuzz-corpus-$TARGET"
+          run_id="$(gh api "repos/$GH_REPO/actions/artifacts?name=$artifact&per_page=20" \
+            --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "main")][0].workflow_run.id // empty')"
+          if [ -z "$run_id" ]; then
+            echo "No run on main kept a corpus for $TARGET. It starts from the seeds."
+          elif gh run download "$run_id" --name "$artifact" --dir "fuzz/corpus/$TARGET"; then
+            echo "Restored $(find "fuzz/corpus/$TARGET" -type f | wc -l) inputs from run $run_id."
+          else
+            echo "::warning::Cannot download $artifact from run $run_id. $TARGET starts from the seeds."
+          fi
       - name: Write the seed inputs
         run: cargo xtask fuzz-seeds
       - name: Check fuzz/Cargo.lock
@@ -95,8 +82,6 @@ jobs:
       - name: Fuzz for five minutes
         working-directory: fuzz
         run: cargo fuzz run --target "$FUZZ_BUILD_TARGET" "$TARGET" -- -max_total_time=300 -timeout=10
-        env:
-          TARGET: ${{ matrix.target }}
       - name: Upload the failing input
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -104,3 +89,49 @@ jobs:
           name: fuzz-${{ matrix.target }}
           path: fuzz/artifacts/${{ matrix.target }}/
           if-no-files-found: ignore
+      # A failed run keeps its corpus too: the inputs that libFuzzer found
+      # before the failure are still valid. A run more than 14 days after the
+      # last one starts from the seeds again.
+      - name: Keep the corpus for the next run
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-corpus-${{ matrix.target }}
+          path: fuzz/corpus/${{ matrix.target }}/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  report:
+    name: report the failure
+    needs: run
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read # lists the failed jobs of this run
+      issues: write # opens or updates the fuzzing issue
+    steps:
+      - name: Open or update the fuzzing issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          body="$RUNNER_TEMP/issue.md"
+          {
+            echo "The nightly fuzzing run failed in these jobs:"
+            echo
+            gh run view "$GITHUB_RUN_ID" --json jobs \
+              --jq '.jobs[] | select(.conclusion == "failure") | "- \(.name)"'
+            echo
+            echo "A target that found a failing input uploads it as the artifact \`fuzz-<target>\`. The section \"Fuzzing\" of CONTRIBUTING.md says how to turn it into a regression test."
+            printf '\nRun: %s/%s/actions/runs/%s\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } > "$body"
+          title="Nightly fuzzing found a failure"
+          number="$(gh issue list --label bug --state open \
+            --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file "$body"
+          else
+            gh issue create --title "$title" --label bug --body-file "$body"
+          fi

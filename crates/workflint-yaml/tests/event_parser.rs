@@ -268,9 +268,15 @@ fn deeply_nested_flow_sequences_parse_in_well_under_a_second() {
     let parsed = parse(&file);
     let elapsed = start.elapsed();
     assert!(parsed.document.is_some());
-    // The bound is loose so that a debug build on a slow machine passes. A
-    // quadratic scanner takes minutes here.
-    assert!(elapsed < Duration::from_secs(5), "took {elapsed:?}");
+    // One second is the bound in a release build, which CI checks. The debug
+    // bound is loose so that a slow machine passes. A quadratic scanner takes
+    // minutes here.
+    let limit = if cfg!(debug_assertions) {
+        Duration::from_secs(5)
+    } else {
+        Duration::from_secs(1)
+    };
+    assert!(elapsed < limit, "took {elapsed:?}");
 }
 
 // Anchor and alias names.
