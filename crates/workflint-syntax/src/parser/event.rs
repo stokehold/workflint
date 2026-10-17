@@ -428,7 +428,7 @@ impl<'a> Parser<'a, '_> {
         }
         Some(ScheduleEvent {
             name,
-            body: Some(node.span),
+            body: node.span,
             schedules: schedules.into(),
         })
     }

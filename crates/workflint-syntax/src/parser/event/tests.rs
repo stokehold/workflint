@@ -409,6 +409,20 @@ fn schedule_entries_have_cron_and_timezone() {
 }
 
 #[test]
+fn schedule_body_is_the_span_of_its_sequence() {
+    with_workflow(
+        "on:\n  schedule:\n    - cron: '0 0 * * *'\n",
+        |file, workflow, _| {
+            let Some(Event::Schedule(schedule)) = workflow.on.value().unwrap().iter().next() else {
+                panic!("no schedule event");
+            };
+            let body: Span = schedule.body;
+            assert_eq!(at(file, body), "3:5");
+        },
+    );
+}
+
+#[test]
 fn schedule_entries_without_a_valid_cron_are_dropped() {
     assert_eq!(
         check(

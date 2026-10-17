@@ -288,6 +288,11 @@ fn a_repository_workflow_has_an_owner_a_repo_a_path_and_a_ref() {
             ("v1", 32)
         )
     );
+    // `err/workflow_call_job`, a path without a directory.
+    assert_eq!(
+        job("org/repo/workflow.yml@v1"),
+        workflow(("org", 0), ("repo", 4), ("workflow.yml", 9), ("v1", 22))
+    );
     assert_eq!(
         job("o/r/w.yml@a@b"),
         workflow(("o", 0), ("r", 2), ("w.yml", 4), ("a@b", 10))
