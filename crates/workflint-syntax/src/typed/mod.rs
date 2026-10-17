@@ -25,6 +25,7 @@
 
 mod go_value;
 mod scalar;
+mod walk;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -37,6 +38,7 @@ use workflint_yaml::{Document, Entry, Node, NodeId, NodeKind, Scalar, ScalarStyl
 use go_value::{GoValue, Key, KeyError};
 pub(crate) use scalar::Resolved;
 use scalar::{resolve, yaml_1_1_bool};
+use walk::{Output, Request};
 
 /// The text of the error that the reference reports for a local action or
 /// reusable workflow whose metadata cannot be decoded.
@@ -447,32 +449,53 @@ impl<'s> Decoder<'s> {
         id: NodeId,
         decode: impl FnOnce(&mut Self, NodeId, &'s Node) -> Result<T, Fatal>,
     ) -> Result<T, Fatal> {
-        self.enter()?;
-        let Some(node) = self.source.node(id) else {
-            return Err(Fatal::new("yaml: node not found".to_owned()));
-        };
-        let NodeKind::Alias(alias) = &node.kind else {
-            return decode(self, id, node);
-        };
-        if self.expanding.contains(&id) {
-            return Err(Fatal::new(format!(
-                "yaml: anchor '{}' value contains itself",
-                alias.name
-            )));
-        }
-        let target = self.source.resolve_alias(id);
-        if target == id {
-            return Err(Fatal::new(format!(
-                "yaml: unknown anchor '{}' referenced",
-                alias.name
-            )));
-        }
-        self.expanding.push(id);
-        self.alias_depth += 1;
-        let result = self.unmarshal(target, decode);
-        self.alias_depth -= 1;
-        self.expanding.pop();
+        let (id, node, aliases) = self.enter_node(id)?;
+        let result = decode(self, id, node);
+        self.leave_aliases(aliases);
         result
+    }
+
+    /// Counts the decoding step for `id` and follows it if it is an alias,
+    /// as `unmarshal` does. Returns the node with aliases resolved and the
+    /// number of aliases entered, which the caller leaves with
+    /// [`leave_aliases`](Self::leave_aliases) once that node is decoded.
+    fn enter_node(&mut self, mut id: NodeId) -> Result<(NodeId, &'s Node, u32), Fatal> {
+        let mut aliases = 0;
+        loop {
+            self.enter()?;
+            let Some(node) = self.source.node(id) else {
+                return Err(Fatal::new("yaml: node not found".to_owned()));
+            };
+            let NodeKind::Alias(alias) = &node.kind else {
+                return Ok((id, node, aliases));
+            };
+            if self.expanding.contains(&id) {
+                return Err(Fatal::new(format!(
+                    "yaml: anchor '{}' value contains itself",
+                    alias.name
+                )));
+            }
+            let target = self.source.resolve_alias(id);
+            if target == id {
+                return Err(Fatal::new(format!(
+                    "yaml: unknown anchor '{}' referenced",
+                    alias.name
+                )));
+            }
+            self.expanding.push(id);
+            self.alias_depth += 1;
+            aliases += 1;
+            id = target;
+        }
+    }
+
+    /// Leaves the innermost `count` aliases that
+    /// [`enter_node`](Self::enter_node) entered.
+    fn leave_aliases(&mut self, count: u32) {
+        for _ in 0..count {
+            self.alias_depth = self.alias_depth.saturating_sub(1);
+            self.expanding.pop();
+        }
     }
 
     /// Records a type error for decoding `id` into the Go type `go_type`:
@@ -654,7 +677,17 @@ impl<'s> Decoder<'s> {
     /// reference never reads.
     pub(crate) fn any_map(&mut self, id: NodeId) -> Result<bool, Fatal> {
         self.unmarshal(id, |d, id, node| match &node.kind {
-            NodeKind::Mapping(_) => d.mapping(id, true, None),
+            NodeKind::Mapping(_) => {
+                if !d.unique_keys(id) {
+                    return Ok(false);
+                }
+                d.walk(Request::Entries {
+                    id,
+                    string_keys: true,
+                    build: false,
+                })?;
+                Ok(true)
+            }
             NodeKind::Scalar(scalar) if resolve(scalar)? == Resolved::Null => Ok(true),
             _ => {
                 d.collection_mismatch(id, node, "map[string]interface {}");
@@ -666,34 +699,10 @@ impl<'s> Decoder<'s> {
     /// Decodes `id` into an `interface{}`. Builds the value only if
     /// `build`, which is needed for map keys.
     fn any(&mut self, id: NodeId, build: bool) -> Result<Option<GoValue>, Fatal> {
-        self.unmarshal(id, |d, id, node| match &node.kind {
-            NodeKind::Scalar(scalar) => {
-                let resolved = resolve(scalar)?;
-                Ok(build.then_some(GoValue::Scalar(resolved)))
-            }
-            NodeKind::Sequence(_) => {
-                let mut items = Vec::new();
-                for &item in d.source.written(id) {
-                    if let Some(value) = d.any(item, build)? {
-                        items.push(value);
-                    }
-                }
-                Ok(build.then_some(GoValue::Slice(items)))
-            }
-            NodeKind::Mapping(_) => {
-                let string_keys = d.is_string_map(id);
-                let mut entries = build.then(Vec::new);
-                if !d.mapping(id, string_keys, entries.as_mut())? {
-                    // go-yaml leaves the interface nil.
-                    return Ok(build.then_some(GoValue::Scalar(Resolved::Null)));
-                }
-                Ok(entries.map(|entries| GoValue::Map {
-                    string_keys,
-                    entries,
-                }))
-            }
-            NodeKind::Alias(_) => Ok(None),
-        })
+        match self.walk(Request::Any { id, build })? {
+            Output::Value(value) => Ok(value),
+            Output::Entries(_) => Ok(None),
+        }
     }
 
     /// Returns whether go-yaml decodes the mapping `id` into a
@@ -751,70 +760,6 @@ impl<'s> Decoder<'s> {
         false
     }
 
-    /// Decodes the mapping `id` into a map: a `map[string]interface{}` if
-    /// `string_keys`, else a `map[interface{}]interface{}`. Adds the
-    /// entries to `out` if it is given. Returns false if the duplicate key
-    /// check failed.
-    fn mapping(
-        &mut self,
-        id: NodeId,
-        string_keys: bool,
-        mut out: Option<&mut Vec<(GoValue, GoValue)>>,
-    ) -> Result<bool, Fatal> {
-        if !self.unique_keys(id) {
-            return Ok(false);
-        }
-        let mut merged = self.merged.take();
-        let mut merge = None;
-        let entries: Vec<Entry> = self.source.written_entries(id).collect();
-        for entry in entries {
-            if self.source.is_merge_key(entry.key) {
-                merge = Some(entry.value);
-                continue;
-            }
-            let key = if string_keys {
-                let mut key = String::new();
-                if !self.string(entry.key, &mut key)? {
-                    continue;
-                }
-                GoValue::Scalar(Resolved::Str(key))
-            } else {
-                self.any(entry.key, true)?
-                    .unwrap_or(GoValue::Scalar(Resolved::Null))
-            };
-            if let Some(seen) = &mut merged {
-                match key.key() {
-                    Ok(key) => {
-                        if !seen.insert(key) {
-                            continue;
-                        }
-                    }
-                    Err(KeyError::NaN) => {}
-                    Err(KeyError::Unhashable(go_type)) => return Err(unhashable(go_type)),
-                }
-            }
-            if key.is_collection() {
-                return Err(Fatal::new(format!(
-                    "yaml: cannot use '{}' as a map key; try decoding into yaml.Node",
-                    key.go_syntax()
-                )));
-            }
-            let value = self.any(entry.value, out.is_some())?;
-            if let (Some(out), Some(value)) = (out.as_deref_mut(), value) {
-                insert(out, key, value);
-            }
-        }
-        self.merged = merged;
-        if let Some(merge) = merge {
-            self.merge(id, merge, &mut |d, node| {
-                d.unmarshal(node, |d, id, _| {
-                    d.mapping(id, string_keys, out.as_deref_mut())
-                })
-            })?;
-        }
-        Ok(true)
-    }
-
     /// Decodes `id` into a struct with the fields `fields`, named by their
     /// YAML keys. `decode` decodes the value of the field with the given
     /// index. `go_type` names the struct in messages.
@@ -830,7 +775,8 @@ impl<'s> Decoder<'s> {
                 if !d.unique_keys(id) {
                     return Ok(false);
                 }
-                d.struct_entries(id, go_type, fields, decode)
+                d.struct_mappings(id, go_type, fields, decode)?;
+                Ok(true)
             }
             NodeKind::Scalar(scalar) => d.scalar_mismatch(id, scalar, go_type),
             _ => {
@@ -840,21 +786,70 @@ impl<'s> Decoder<'s> {
         })
     }
 
+    /// Decodes the mapping `id` into a struct, and then each mapping that
+    /// its `<<` keys merge into the same struct, as go-yaml's
+    /// `mappingStruct` and `merge` do. go-yaml recurses for each nested
+    /// `<<`. This loops over a stack of the work left instead, so that
+    /// merges nested as deep as the YAML layer allows (ADR 0022) cannot
+    /// overflow the stack.
+    fn struct_mappings(
+        &mut self,
+        id: NodeId,
+        go_type: &str,
+        fields: &[&str],
+        decode: &mut dyn FnMut(&mut Self, usize, NodeId) -> Result<(), Fatal>,
+    ) -> Result<(), Fatal> {
+        let mut work = Vec::new();
+        self.struct_entries(id, go_type, fields, decode, &mut work)?;
+        while let Some(next) = work.pop() {
+            match next {
+                StructWork::Merge { parent, value } => {
+                    let outermost = self.merged.is_none();
+                    if outermost {
+                        self.merged = Some(self.merge_keys(parent)?);
+                    }
+                    work.push(StructWork::EndMerge { outermost });
+                    let items = self.merge_items(value)?;
+                    work.extend(items.into_iter().rev().map(StructWork::Mapping));
+                }
+                StructWork::Mapping(item) => {
+                    if !self.source.is_mapping(item) {
+                        return Err(want_map());
+                    }
+                    let (item, _, aliases) = self.enter_node(item)?;
+                    work.push(StructWork::LeaveAliases(aliases));
+                    if self.unique_keys(item) {
+                        self.struct_entries(item, go_type, fields, decode, &mut work)?;
+                    }
+                }
+                StructWork::LeaveAliases(count) => self.leave_aliases(count),
+                StructWork::EndMerge { outermost } => {
+                    if outermost {
+                        self.merged = None;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Decodes the entries of the mapping `id` into a struct, as go-yaml's
-    /// `mappingStruct` does.
+    /// `mappingStruct` does, and pushes the merge of its `<<` key, if it has
+    /// one, to `work`.
     fn struct_entries(
         &mut self,
         id: NodeId,
         go_type: &str,
         fields: &[&str],
         decode: &mut dyn FnMut(&mut Self, usize, NodeId) -> Result<(), Fatal>,
-    ) -> Result<bool, Fatal> {
+        work: &mut Vec<StructWork>,
+    ) -> Result<(), Fatal> {
         let mut merged = self.merged.take();
         let mut merge = None;
         let mut done = vec![false; fields.len()];
-        let entries: Vec<Entry> = self.source.written_entries(id).collect();
-        for entry in entries {
-            if self.source.is_merge_key(entry.key) {
+        let source = self.source;
+        for entry in source.written_entries(id) {
+            if source.is_merge_key(entry.key) {
                 merge = Some(entry.value);
                 continue;
             }
@@ -883,73 +878,64 @@ impl<'s> Decoder<'s> {
             decode(self, field, entry.value)?;
         }
         self.merged = merged;
-        if let Some(merge) = merge {
-            self.merge(id, merge, &mut |d, node| {
-                d.structure(node, go_type, fields, decode)
-            })?;
-        }
-        Ok(true)
-    }
-
-    /// Merges the value `merge` of a `<<` key in the mapping `parent`, as
-    /// go-yaml's `merge` does: `target` decodes each merged mapping into
-    /// the same target, which keeps the keys it already has.
-    fn merge(
-        &mut self,
-        parent: NodeId,
-        merge: NodeId,
-        target: &mut dyn FnMut(&mut Self, NodeId) -> Result<bool, Fatal>,
-    ) -> Result<(), Fatal> {
-        let outermost = self.merged.is_none();
-        if outermost {
-            let mut seen = BTreeSet::new();
-            let keys: Vec<NodeId> = self
-                .source
-                .written_entries(parent)
-                .map(|entry| entry.key)
-                .collect();
-            for key in keys {
-                let value = self
-                    .any(key, true)?
-                    .unwrap_or(GoValue::Scalar(Resolved::Null));
-                match value.key() {
-                    Ok(key) => {
-                        seen.insert(key);
-                    }
-                    Err(KeyError::NaN) => {}
-                    Err(KeyError::Unhashable(go_type)) => return Err(unhashable(go_type)),
-                }
-            }
-            self.merged = Some(seen);
-        }
-        let want_map = || {
-            Fatal::new("yaml: map merge requires map or sequence of maps as the value".to_owned())
-        };
-        match self.source.node(merge).map(|node| &node.kind) {
-            Some(NodeKind::Mapping(_)) => {
-                target(self, merge)?;
-            }
-            Some(NodeKind::Alias(_)) => {
-                if !self.source.is_mapping(merge) {
-                    return Err(want_map());
-                }
-                target(self, merge)?;
-            }
-            Some(NodeKind::Sequence(_)) => {
-                let items = self.source.written(merge).to_vec();
-                for item in items {
-                    if !self.source.is_mapping(item) {
-                        return Err(want_map());
-                    }
-                    target(self, item)?;
-                }
-            }
-            _ => return Err(want_map()),
-        }
-        if outermost {
-            self.merged = None;
+        if let Some(value) = merge {
+            work.push(StructWork::Merge { parent: id, value });
         }
         Ok(())
+    }
+
+    /// Returns the keys of the mapping `parent`, which the mappings that its
+    /// `<<` key merges in do not override, as go-yaml's `merge` collects
+    /// them.
+    fn merge_keys(&mut self, parent: NodeId) -> Result<BTreeSet<Key>, Fatal> {
+        let mut seen = BTreeSet::new();
+        let source = self.source;
+        for entry in source.written_entries(parent) {
+            let key = self.any(entry.key, true)?;
+            add_merged_key(&mut seen, key)?;
+        }
+        Ok(seen)
+    }
+
+    /// Returns the mappings that the `<<` value `merge` names: itself if it
+    /// is a mapping or an alias, or else its items if it is a sequence. The
+    /// caller checks that each one is a mapping just before it merges it,
+    /// as go-yaml does.
+    fn merge_items(&self, merge: NodeId) -> Result<Vec<NodeId>, Fatal> {
+        match self.source.node(merge).map(|node| &node.kind) {
+            Some(NodeKind::Mapping(_) | NodeKind::Alias(_)) => Ok(vec![merge]),
+            Some(NodeKind::Sequence(_)) => Ok(self.source.written(merge).to_vec()),
+            _ => Err(want_map()),
+        }
+    }
+}
+
+/// The work left in [`Decoder::struct_mappings`], last first.
+enum StructWork {
+    /// Merge the `<<` value `value` of the mapping `parent`.
+    Merge { parent: NodeId, value: NodeId },
+    /// Check that a node that a `<<` key merges is a mapping, and decode it.
+    Mapping(NodeId),
+    /// Leave the aliases that the decoding of a merged mapping entered.
+    LeaveAliases(u32),
+    /// End a merge. The outermost merge forgets the keys already set.
+    EndMerge { outermost: bool },
+}
+
+fn want_map() -> Fatal {
+    Fatal::new("yaml: map merge requires map or sequence of maps as the value".to_owned())
+}
+
+/// Adds the map key `key`, or nil if it is `None`, to the keys that a merge
+/// does not override.
+fn add_merged_key(seen: &mut BTreeSet<Key>, key: Option<GoValue>) -> Result<(), Fatal> {
+    match key.unwrap_or(GoValue::Scalar(Resolved::Null)).key() {
+        Ok(key) => {
+            seen.insert(key);
+            Ok(())
+        }
+        Err(KeyError::NaN) => Ok(()),
+        Err(KeyError::Unhashable(go_type)) => Err(unhashable(go_type)),
     }
 }
 

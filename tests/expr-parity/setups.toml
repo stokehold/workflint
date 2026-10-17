@@ -1,0 +1,54 @@
+# The environments of the expression checker for `cargo xtask expr-parity`.
+# README.md describes the fields.
+
+# A step's `run:` in a job with a matrix, earlier steps, needed jobs,
+# declared secrets, configured variables, and the inputs of both
+# `workflow_call` and `workflow_dispatch`. The untrusted-input check is on.
+[[setup]]
+name = "step-run"
+key = "jobs.<job_id>.steps.run"
+expressions = ["reference", "generated", "cases"]
+untrusted = true
+config_vars = ["deploy_env", "Region", "github_x"]
+matrix = "{arch: string; include: object; node: number; os: string; targets: array<{name: string}>}"
+steps = "{build: {conclusion: string; outcome: string; outputs: {string => string}}; checkout: {conclusion: string; outcome: string; outputs: {commit: string; ref: string}}}"
+needs = "{lint: {outputs: {}; result: string}; setup: {outputs: {cache-key: string; version: string}; result: string}}"
+secrets = "{deploy_token: string; npm_token: string}"
+inputs = ["{count: number; dry-run: bool; name: string}"]
+dispatch_inputs = "{environment: string; verbose: bool}"
+
+# A step's `if:` with only the global contexts, as in a workflow without a
+# matrix or inputs. The untrusted-input check is off.
+[[setup]]
+name = "step-if"
+key = "jobs.<job_id>.steps.if"
+expressions = ["reference", "generated", "cases"]
+
+# A job's `if:`, which allows fewer contexts, with needed jobs and the inputs
+# of `workflow_dispatch` alone.
+[[setup]]
+name = "job-if"
+key = "jobs.<job_id>.if"
+expressions = ["reference", "cases"]
+needs = "{build: {outputs: {artifact: string}; result: string}}"
+dispatch_inputs = "{environment: string; verbose: bool}"
+
+# An output of a reusable workflow, the only place that can read `jobs`.
+[[setup]]
+name = "workflow-call-output"
+key = "on.workflow_call.outputs.<output_id>.value"
+expressions = ["reference", "cases"]
+config_vars = []
+jobs = "{build: {outputs: {digest: string; tag: string}; result: string}; test: {outputs: {}; result: string}}"
+inputs = ["{image: string; push: bool}"]
+
+# Every context and special function under every workflow key, and under a
+# key that no table lists.
+[[setup]]
+name = "availability"
+key = "*"
+expressions = ["availability"]
+matrix = "{os: string}"
+steps = "{build: {conclusion: string; outcome: string; outputs: {string => string}}}"
+needs = "{build: {outputs: {artifact: string}; result: string}}"
+jobs = "{build: {outputs: {digest: string}; result: string}}"

@@ -41,6 +41,7 @@ jobs:
         crates/**
         xtask/**
         tests/conformance/**
+        tests/expr-parity/**
         .go-version
         Cargo.lock
         Cargo.toml
@@ -159,6 +160,10 @@ jobs:
           go-version-file: .go-version
           cache: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # Fails on a difference between the expression checkers that
+      # tests/expr-parity/allowed-differences.toml does not explain.
+      - name: The expression checker matches the reference
+        run: cargo xtask expr-parity
       # The conformance runner lints the fixtures that need shellcheck or
       # pyflakes only when the tool is installed. nextest runs the corpus
       # tests.

@@ -11,6 +11,7 @@
 pub mod allow_list;
 pub mod binary;
 pub mod checklist;
+pub mod checks_md;
 pub mod expected_failures;
 pub mod fixture;
 pub mod matcher;

@@ -1,6 +1,6 @@
 [package]
 name = "workflint-yaml"
-description = "YAML layer of workflint: a span tree built on a vendored libyaml-safer event parser"
+description = "YAML layer of workflint: a span tree built on a vendored libyaml-safer event parser. Internal crate with no stability promise."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

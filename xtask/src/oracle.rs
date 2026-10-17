@@ -17,12 +17,14 @@ mod select;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
+use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use xtask::conformance::allow_list::AllowList;
 use xtask::conformance::binary;
 use xtask::conformance::fixture::{self, Fixture, Origin, Tools};
+use xtask::process::{self, Finished};
 
 use crate::bench;
 use crate::reference::{self, CORPUS_FILES, Layout, corpus};
@@ -43,6 +45,10 @@ const VARYING: [&str; 3] = [
     "projects/broken_reusable_workflow",
     "projects/workflow_call_not_found",
 ];
+
+/// How long one binary may take on the corpus. A debug build of workflint
+/// takes seconds and the reference less.
+const CORPUS_TIME_LIMIT: Duration = Duration::from_mins(10);
 
 /// What the path arguments and flags ask for.
 #[derive(Debug, Default)]
@@ -209,15 +215,11 @@ fn input_files(args: &[OsString]) -> Vec<String> {
         .collect()
 }
 
-/// Runs `program` with `args` in `cwd`. The project directory in its output
-/// becomes `<project>`, since each run has another temporary directory.
-fn execute(program: &Path, cwd: &Path, args: &[OsString]) -> Result<Output> {
-    let output = Command::new(program)
-        .args(args)
-        .current_dir(cwd)
-        .stdin(Stdio::null())
-        .output()
-        .with_context(|| format!("cannot run {}", program.display()))?;
+/// Runs `program` with `args` in `cwd`, and kills it after `limit`. The
+/// project directory in its output becomes `<project>`, since each run has
+/// another temporary directory.
+fn execute(program: &Path, cwd: &Path, args: &[OsString], limit: Duration) -> Result<Output> {
+    let output = process::output(Command::new(program).args(args).current_dir(cwd), limit)?;
     let mut projects = vec![cwd.to_string_lossy().into_owned()];
     if let Ok(canonical) = fs::canonicalize(cwd) {
         projects.insert(0, canonical.to_string_lossy().into_owned());
@@ -229,10 +231,15 @@ fn execute(program: &Path, cwd: &Path, args: &[OsString]) -> Result<Output> {
                 text.replace(path.as_str(), "<project>")
             })
     };
+    let (code, timed_out) = match output.finished {
+        Finished::Exited(status) => (status.code(), false),
+        Finished::TimedOut => (None, true),
+    };
     Ok(Output {
         stdout: clean(&output.stdout),
         stderr: clean(&output.stderr),
-        code: output.status.code(),
+        code,
+        timed_out,
     })
 }
 
@@ -256,8 +263,9 @@ fn fixture_run(
         .prepare(&Tools::default())
         .with_context(|| format!("cannot prepare {}", fixture.id))?;
     let inputs = input_files(&invocation.args);
-    let expected = execute(sides.reference, &invocation.cwd, &invocation.args)?;
-    let actual = execute(sides.workflint, &invocation.cwd, &invocation.args)?;
+    let limit = binary::TIME_LIMIT;
+    let expected = execute(sides.reference, &invocation.cwd, &invocation.args, limit)?;
+    let actual = execute(sides.workflint, &invocation.cwd, &invocation.args, limit)?;
     let out_file = fixture
         .expected
         .as_deref()
@@ -326,8 +334,8 @@ fn corpus_run(
     args.push(config.into_os_string());
     args.extend(names.iter().map(OsString::from));
 
-    let expected = execute(sides.reference, &project, &args)?;
-    let actual = execute(sides.workflint, &project, &args)?;
+    let expected = execute(sides.reference, &project, &args, CORPUS_TIME_LIMIT)?;
+    let actual = execute(sides.workflint, &project, &args, CORPUS_TIME_LIMIT)?;
     let run = compare::compare(
         "realworld",
         &names,
@@ -412,10 +420,26 @@ mod tests {
         let script = dir.path().join("print-cwd");
         fs::write(&script, "#!/bin/sh\npwd\npwd >&2\nexit 3\n").unwrap();
         fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
-        let output = execute(&script, dir.path(), &[]).unwrap();
+        let output = execute(&script, dir.path(), &[], Duration::from_secs(10)).unwrap();
         assert_eq!(output.stdout, "<project>\n");
         assert_eq!(output.stderr, "<project>\n");
         assert_eq!(output.code, Some(3));
+        assert!(!output.timed_out);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_binary_that_hangs_is_recorded_as_timed_out() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("hang");
+        fs::write(&script, "#!/bin/sh\necho partial\nsleep 30\n").unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        let output = execute(&script, dir.path(), &[], Duration::from_millis(500)).unwrap();
+        assert!(output.timed_out);
+        assert_eq!(output.code, None);
+        assert_eq!(output.stdout, "partial\n");
     }
 
     #[test]

@@ -1,11 +1,14 @@
 # Fixtures that do not pass yet, each with the milestone expected to make it
 # pass: the latest milestone of the docs/parity-checklist.md rows that cite the
-# fixture, or M5 if no row cites it. The binary has linted for real since M2.0,
-# so this file lists only fixtures that still fail. Adding a fixture back means
-# a regression; fix it instead. The runner reports a listed fixture that fails
-# as an expected failure, and fails the test of a listed fixture that passes.
-# The pull request that makes a fixture pass removes its line. See
-# tests/conformance/README.md.
+# fixture, leaving out rows whose notes say they wait on it, or M5 if no row
+# cites it. No entry may name a milestone listed in milestones.toml. The test
+# expected_failures::expected-failures.toml checks both.
+#
+# The binary has linted for real since M2.0, so this file lists only fixtures
+# that still fail. Adding a fixture back means a regression; fix it instead.
+# The runner reports a listed fixture that fails as an expected failure, and
+# fails the test of a listed fixture that passes. The pull request that makes
+# a fixture pass removes its line. See tests/conformance/README.md.
 
 "err/case_sensitive_keys" = "M4"
 "err/context_availability" = "M4"
@@ -22,19 +25,19 @@
 "err/expr_check_in_matrix_row_assign" = "M4"
 "err/expr_check_in_services" = "M4"
 "err/expr_in_default_input" = "M4"
-"err/github_script_untrusted_input" = "M3"
+"err/github_script_untrusted_input" = "M4"
 "err/glob_more" = "M4"
 "err/if_cond_constants" = "M4"
 "err/if_cond_edge_cases_trailing_leading_chars" = "M4"
 "err/inputs_without_workflow_call_event" = "M4"
-"err/invalid_comparisons" = "M3"
+"err/invalid_comparisons" = "M4"
 "err/invalid_container_syntax" = "M4"
 "err/invalid_event_filters" = "M4"
 "err/invalid_id" = "M4"
 "err/invalid_json_in_fromjson" = "M4"
 "err/invalid_permissions" = "M4"
 "err/invalid_runner_labels" = "M4"
-"err/invalid_snapshot" = "M3"
+"err/invalid_snapshot" = "M4"
 "err/issue151_child_of_child_job" = "M4"
 "err/issue155_env_in_job_level_if" = "M4"
 "err/issue170_empty_permissions" = "M4"
@@ -44,9 +47,9 @@
 "err/matrix_exclude_mismatch" = "M4"
 "err/matrix_exclude_no_match" = "M4"
 "err/minimal_cycle_in_needs" = "M4"
-"err/nested_untrusted_input" = "M3"
+"err/nested_untrusted_input" = "M4"
 "err/object_at_runner_label" = "M4"
-"err/one_error" = "M3"
+"err/one_error" = "M4"
 "err/outdated_actions" = "M4"
 "err/outdated_popular_action" = "M4"
 "err/outputs_map_object" = "M5"
@@ -56,7 +59,7 @@
 "err/pyflakes_workflow_default_shell" = "M5"
 "err/random_order_cycle_in_needs" = "M4"
 "err/reusable_workflow_empty_secrets" = "M4"
-"err/run_name_check_expr" = "M3"
+"err/run_name_check_expr" = "M4"
 "err/runner_labels_conflict_matrix" = "M4"
 "err/schedule_invalid_timezone" = "M4"
 "err/shell_key_context_availability" = "M4"
@@ -74,8 +77,8 @@
 "err/workflow_dispatch_type_check_inputs" = "M4"
 "examples/action_metadata_syntax_validation" = "M4"
 "examples/builtin_func_special_checks" = "M4"
-"examples/comparison_strict_checks" = "M3"
-"examples/contexts_and_builtin_funcs" = "M3"
+"examples/comparison_strict_checks" = "M4"
+"examples/contexts_and_builtin_funcs" = "M4"
 "examples/contexts_special_functions_availability" = "M4"
 "examples/contextual_matrix_values" = "M4"
 "examples/contextual_needs_object" = "M4"
@@ -109,7 +112,7 @@
 "examples/shell_name_validation" = "M4"
 "examples/shellcheck_integration" = "M5"
 "examples/type_checks" = "M4"
-"examples/untrusted_input" = "M3"
+"examples/untrusted_input" = "M4"
 "examples/webhook_checks" = "M4"
 "examples/workflow_call_definitions" = "M4"
 "examples/workflow_call_jobs" = "M4"

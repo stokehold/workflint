@@ -6,7 +6,6 @@
 
 pub(crate) mod history;
 mod hyperfine;
-mod process;
 mod results;
 mod scenario;
 mod tools;
@@ -15,11 +14,12 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::{Duration, SystemTime};
 
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
+use xtask::conformance::binary;
 
 use crate::reference::{self, Layout};
 use crate::vendor_testdata;
@@ -36,7 +36,7 @@ pub(crate) fn run(layout: &Layout, timeout: Option<Duration>) -> Result<()> {
     let reference_version = first_line_of(&layout.binary(), "-version")?;
 
     let target = target_directory(layout)?;
-    let workflint = build_workflint(layout, &target)?;
+    let workflint = build_workflint(layout)?;
     println!("bench: built {}", layout.display(&workflint));
 
     let hyperfine = tools::hyperfine()?;
@@ -164,16 +164,39 @@ struct Setup<'a> {
 
 /// Runs every scenario for the reference and then for workflint. A scenario
 /// that needs the pinned shellcheck is skipped without it.
+///
+/// The binaries run in copies of the inputs, as the oracle runs them: each
+/// in a project with `.git` and `.github/workflows` directories, with an
+/// empty config file. So neither binary takes the workflint repository as
+/// the project root, which would make it read the repository's config file
+/// and resolve local actions there.
+///
+/// The corpus scenarios pass every corpus file on the command line, which
+/// is about 78,000 characters long. Windows limits a command line to 32,767
+/// characters, so they run only on Unix.
 fn measure_scenarios(setup: &Setup<'_>) -> Result<Vec<ScenarioResult>> {
     let runs = setup.output.join("runs");
     fs::create_dir_all(&runs).with_context(|| format!("cannot create {}", runs.display()))?;
     let corpus = corpus_files(&setup.corpus)?;
+    let projects = setup.output.join("projects");
+    let corpus_project = copy_project(&projects.join("corpus"), &setup.corpus, &corpus)?;
+    let bench_names: Vec<String> = SCENARIOS
+        .iter()
+        .filter_map(|scenario| match scenario.input {
+            Input::BenchFile(name) => Some(name.to_owned()),
+            Input::Corpus => None,
+        })
+        .collect();
+    let bench_project = copy_project(&projects.join("bench"), &setup.bench_files, &bench_names)?;
+    // `scenario::CONFIG_FILE` names this file from inside each project.
+    let config = projects.join("config.yaml");
+    fs::write(&config, "").with_context(|| format!("cannot write {}", config.display()))?;
 
     let mut measured = Vec::new();
     for scenario in &SCENARIOS {
         let (cwd, files) = match scenario.input {
-            Input::Corpus => (setup.corpus.clone(), corpus.clone()),
-            Input::BenchFile(name) => (setup.bench_files.clone(), vec![name.to_owned()]),
+            Input::Corpus => (corpus_project.clone(), corpus.clone()),
+            Input::BenchFile(name) => (bench_project.clone(), vec![name.to_owned()]),
         };
         let flags = scenario.flags(setup.shellcheck.pinned());
         let timeout = setup.timeout.unwrap_or(scenario.timeout);
@@ -248,6 +271,30 @@ fn report(scenario: &Scenario, binary: &str, measurement: &Measurement, timeout:
     }
 }
 
+/// Makes `project` a fresh project with copies of `files` from `source`, and
+/// `.git` and `.github/workflows` directories so that the binaries take it
+/// as the project root. Returns `project`.
+fn copy_project(project: &Path, source: &Path, files: &[String]) -> Result<PathBuf> {
+    match fs::remove_dir_all(project) {
+        Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+            return Err(error).with_context(|| format!("cannot remove {}", project.display()));
+        }
+        _ => {}
+    }
+    for directory in [
+        project.join(".git"),
+        project.join(".github").join("workflows"),
+    ] {
+        fs::create_dir_all(&directory)
+            .with_context(|| format!("cannot create {}", directory.display()))?;
+    }
+    for file in files {
+        fs::copy(source.join(file), project.join(file))
+            .with_context(|| format!("cannot copy {} into {}", file, project.display()))?;
+    }
+    Ok(project.to_path_buf())
+}
+
 /// The names of the workflow files in `corpus`, sorted.
 fn corpus_files(corpus: &Path) -> Result<Vec<String>> {
     let mut files = Vec::new();
@@ -310,19 +357,34 @@ pub(crate) fn target_directory(layout: &Layout) -> Result<PathBuf> {
     Ok(metadata.target_directory)
 }
 
-/// Builds workflint in release mode and returns the path of the binary.
-fn build_workflint(layout: &Layout, target: &Path) -> Result<PathBuf> {
-    let status = Command::new(cargo())
-        .args(["build", "--release", "--locked", "--package", "workflint"])
+/// Builds workflint in release mode and returns the path of the binary, as
+/// cargo reports it. A `build.target` in the cargo config would put it
+/// elsewhere than `target/release/`.
+fn build_workflint(layout: &Layout) -> Result<PathBuf> {
+    let output = Command::new(cargo())
+        .args([
+            "build",
+            "--release",
+            "--locked",
+            "--package",
+            "workflint",
+            "--bin",
+            "workflint",
+            "--message-format=json-render-diagnostics",
+        ])
         .current_dir(layout.root())
-        .status()
+        .stdin(Stdio::null())
+        .stderr(Stdio::inherit())
+        .output()
         .context("cannot run `cargo build`")?;
-    if !status.success() {
-        bail!("`cargo build --release` of workflint failed with {status}");
+    if !output.status.success() {
+        bail!(
+            "`cargo build --release` of workflint failed with {}",
+            output.status
+        );
     }
-    Ok(target
-        .join("release")
-        .join(format!("workflint{}", env::consts::EXE_SUFFIX)))
+    binary::executable(&String::from_utf8_lossy(&output.stdout))
+        .context("`cargo build --release` reported no workflint executable")
 }
 
 /// The first line that `program argument` prints.
@@ -515,19 +577,27 @@ cat "$dir/export.json" > "$out""#,
         assert_eq!(
             commands.lines().collect::<Vec<_>>(),
             [
-                format!("{reference} -shellcheck= -pyflakes= a.yml b.yaml"),
                 format!(
-                    "{} -shellcheck= -pyflakes= a.yml b.yaml",
+                    "{reference} -shellcheck= -pyflakes= -config-file ../config.yaml a.yml b.yaml"
+                ),
+                format!(
+                    "{} -shellcheck= -pyflakes= -config-file ../config.yaml a.yml b.yaml",
                     fixture.path("workflint").display()
                 ),
-                format!("{reference} -shellcheck=/usr/bin/shellcheck -pyflakes= a.yml b.yaml"),
                 format!(
-                    "{} -shellcheck=/usr/bin/shellcheck -pyflakes= a.yml b.yaml",
+                    "{reference} -shellcheck=/usr/bin/shellcheck -pyflakes= -config-file \
+                     ../config.yaml a.yml b.yaml"
+                ),
+                format!(
+                    "{} -shellcheck=/usr/bin/shellcheck -pyflakes= -config-file ../config.yaml \
+                     a.yml b.yaml",
                     fixture.path("workflint").display()
                 ),
-                format!("{reference} -shellcheck= -pyflakes= small.yaml"),
                 format!(
-                    "{} -shellcheck= -pyflakes= small.yaml",
+                    "{reference} -shellcheck= -pyflakes= -config-file ../config.yaml small.yaml"
+                ),
+                format!(
+                    "{} -shellcheck= -pyflakes= -config-file ../config.yaml small.yaml",
                     fixture.path("workflint").display()
                 ),
             ]
@@ -567,6 +637,29 @@ cat "$dir/export.json" > "$out""#,
         // hyperfine never started for the reference.
         let commands = fs::read_to_string(fixture.path("commands.txt")).unwrap();
         assert!(!commands.contains("reference"), "{commands}");
+    }
+
+    #[test]
+    fn binaries_run_in_a_project_of_their_own_with_an_empty_config_file() {
+        // Exits 1, as on the real inputs, only in a project with `.git`, the
+        // input files, and an empty config file next to it.
+        let isolated = "test -d .git && test -d .github/workflows && test -f ../config.yaml \
+                        && test ! -s ../config.yaml && { test -f a.yml || test -f small.yaml; } \
+                        || exit 3; exit 1";
+        let fixture = Fixture::new(isolated, isolated);
+        let scenarios = fixture.measure(&Shellcheck::Missing, Duration::from_secs(10));
+        assert_eq!(
+            statuses(&scenarios),
+            [
+                ("corpus", "completed", "completed"),
+                ("corpus-shellcheck", "skipped", "skipped"),
+                ("small", "completed", "completed"),
+            ]
+        );
+        let corpus = fixture.path("out/projects/corpus");
+        assert!(corpus.join("a.yml").is_file());
+        assert!(!corpus.join("README.md").exists());
+        assert!(fixture.path("out/projects/bench/small.yaml").is_file());
     }
 
     #[test]

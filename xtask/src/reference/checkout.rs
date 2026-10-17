@@ -163,11 +163,44 @@ fn git_untrimmed(dir: &Path, args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-fn run(dir: &Path, args: &[&str]) -> Result<std::process::Output> {
-    Command::new("git")
+/// The variables that point git at another repository, index or object
+/// store, as `git rev-parse --local-env-vars` lists them. A git hook or a
+/// `git rebase --exec` sets some of them, and then a git command in the
+/// checkout would act on the workflint repository instead.
+const LOCATION_VARIABLES: [&str; 15] = [
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_CONFIG",
+    "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_DIR",
+    "GIT_GRAFT_FILE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_PREFIX",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_SHALLOW_FILE",
+    "GIT_WORK_TREE",
+];
+
+/// A git command that runs in `dir`, whatever repository the environment
+/// names.
+fn command(dir: &Path) -> Command {
+    let mut command = Command::new("git");
+    for variable in LOCATION_VARIABLES {
+        command.env_remove(variable);
+    }
+    command
         .arg("-C")
         .arg(dir)
-        .args(["-c", "advice.detachedHead=false"])
+        .args(["-c", "advice.detachedHead=false"]);
+    command
+}
+
+fn run(dir: &Path, args: &[&str]) -> Result<std::process::Output> {
+    command(dir)
         .args(args)
         .output()
         .context("cannot run git. Install git and make sure it is on PATH.")
@@ -244,6 +277,27 @@ mod tests {
 
     fn checkout_path(parent: &tempfile::TempDir) -> PathBuf {
         parent.path().join("actionlint")
+    }
+
+    #[test]
+    fn git_commands_drop_every_variable_that_names_another_repository() {
+        let listed = Command::new("git")
+            .args(["rev-parse", "--local-env-vars"])
+            .output()
+            .unwrap();
+        assert!(listed.status.success());
+        let command = command(Path::new("."));
+        let removed: Vec<String> = command
+            .get_envs()
+            .filter(|(_, value)| value.is_none())
+            .map(|(name, _)| name.to_string_lossy().into_owned())
+            .collect();
+        for variable in String::from_utf8(listed.stdout).unwrap().lines() {
+            assert!(
+                removed.iter().any(|name| name == variable),
+                "{variable} is not removed: {removed:?}"
+            );
+        }
     }
 
     #[test]

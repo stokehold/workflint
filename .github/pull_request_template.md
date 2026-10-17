@@ -20,7 +20,7 @@ Closes #
 
 - [ ] The pull request title follows Conventional Commits.
 - [ ] Tests were written before the change and pass.
-- [ ] Behaviour that differs from actionlint has an entry in `docs/differences.md` and the conformance allow-list.
+- [ ] Behaviour that differs from actionlint has an entry in `docs/differences.md`. A difference that changes the output of a fixture or of the corpus also has records in the conformance allow-list.
 - [ ] Parity checklist rows whose fixtures now pass are ticked.
 - [ ] Each new dependency has a line under "Dependencies".
 - [ ] Each new third-party action is listed under "Dependencies". The maintainer must add it to the organization allowlist before CI can run it.

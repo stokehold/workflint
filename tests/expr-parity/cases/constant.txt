@@ -1,0 +1,33 @@
+# The expressions of the reference's IsConstant test.
+true
+42
+3.14
+null
+'hello'
+foo
+foo.bar
+foo.*
+foo[0]
+!true
+!null
+!foo
+1 == 2
+'foo' != 'bar'
+foo == 2
+1 == foo
+true && 42 || 13
+foo && 42 || 13
+true && foo || 13
+true && 42 || foo
+true && ('foo' == 'bar') && null
+false || (3.14 != null) || !null
+startsWith('foo', 'f')
+startsWith(foo, 'f')
+format('{0}{1}', 1.0, true)
+format('{0}{1}', startsWith('foo', 'f'), 1.0 == !null)
+toJSON(true)
+toJSON(foo)
+success()
+failure()
+hashFiles('foo', 'bar')
+unknownFunc(1, 2, 3)

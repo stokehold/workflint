@@ -45,6 +45,14 @@ cargo xtask yaml-parity
 
 It builds a small Go program with go-yaml, the YAML library of the reference, and compares the trees of both parsers on the vendored test data, the 1,503 corpus files, and `tests/yaml-parity/`. Every node must have the same kind, position, explicit tag, anchor, and alias name, and every scalar the same style and decoded value. A file that go-yaml rejects must fail in workflint too, at any position, with the same message after the prefixes `yaml:`, `line N:`, and `could not parse as YAML:`. The one exception is an encoding error that workflint reports where go-yaml reports a syntax error (`docs/differences.md#yaml-error-positions`). A few files in `tests/yaml-parity/` differ as an entry of `docs/differences.md` describes, and its `README.md` lists them. The command prints a diff for each file that differs and exits with an error. It needs Go 1.26.4, not `.reference/`. Pass file or directory paths to compare only those. CI runs it when these paths change.
 
+After a change to `crates/workflint-expr/` or `crates/workflint-data/`, run:
+
+```sh
+cargo xtask expr-parity
+```
+
+It builds `xtask/expr-check`, a small Go program around the reference's expression checker, inside `.reference/actionlint`, and runs about 14,000 expressions through it and through `workflint-expr`: the reference's real-world expressions, 2,000 generated ones, and the hand-written cases in `tests/expr-parity/`, each in several setups of workflow key, contexts, and the untrusted-input check. It compares the parse error or the type, whether the expression is constant, and each error with its line and column, in order. The command prints each difference that `tests/expr-parity/allowed-differences.toml` does not explain and exits with an error, as it does for a record that explains no difference. `tests/expr-parity/README.md` describes the inputs. It needs git and Go 1.26.4, and clones `.reference/actionlint` if it is missing. The `cargo xtask oracle` job of CI runs it first when a change touches `crates/`, `xtask/`, `tests/conformance/`, or `tests/expr-parity/`, and fails on a difference.
+
 ## Oracle
 
 `cargo xtask oracle` runs workflint and the reference binary on the same inputs and compares their output (ADR 0004). It needs git and Go 1.26.4 to build the reference, and builds it first if `.reference/` lacks it.
@@ -55,6 +63,8 @@ cargo xtask oracle tests/conformance/actionlint/testdata/err/one_error.yaml
 ```
 
 The inputs are the vendored `err`, `examples`, `ok`, and `projects` fixtures and the 1,503 corpus files. Both binaries run with `-oneline -no-color -shellcheck= -pyflakes=` and an empty config file, in a temporary project, as the conformance runner runs them (`tests/conformance/README.md`). Each fixture is one run, and the corpus is one run over all its files. The command groups the output by file, replaces each rule ID in workflint's output with its actionlint kind from `tests/conformance/rule-kinds.toml`, applies `tests/conformance/allowed-differences.toml` to the reference's output, and compares the lines and the exit codes.
+
+A run of the reference that exits with a code other than 0 or 1, is stopped by a signal, or prints to standard error is a problem in the report, even when workflint does the same, because its output then says nothing about the input. Output of workflint on standard error is a difference, and the report shows the standard error of both binaries. Each binary gets 60 seconds for a fixture and 10 minutes for the corpus. A binary that runs longer is killed, with its child processes on Unix, and the run is a problem.
 
 It prints a summary and a diff for each file that differs, and writes the same Markdown to `target/oracle/report.md`, with the summary alone in `target/oracle/summary.md`. It exits with an error if a difference is not in the allow-list. `--report-only` exits with success after writing the report.
 
@@ -89,6 +99,8 @@ cargo install --locked hyperfine@2.0.0
 cargo xtask bench
 ```
 
+Both binaries run in copies of the inputs under `target/bench/projects/`, each a project with `.git` and `.github/workflows` directories, with `-config-file` and an empty config file, as the oracle runs them. So neither binary reads the repository's config file or resolves local actions in the repository. The corpus scenarios pass the 1,503 file names on one command line of about 78,000 characters, longer than Windows allows, so run the command on Linux or macOS.
+
 The command writes `target/bench/results.json` and `target/bench/results.md`, with wall time and peak memory for each scenario and binary and the ratio against each target. The output of every run and hyperfine's exports go to `target/bench/runs/`. Without shellcheck 0.11.0, the command skips the shellcheck scenario and says why.
 
 Each run has a time limit: 2 minutes for the corpus, 10 minutes for the corpus with shellcheck, and 10 seconds for `small.yaml`. The binary first runs once on its own under that limit. When that run exceeds it, the command kills the run and the processes it started, records the binary as timed out, and goes on with the next one. Otherwise hyperfine runs the warmup and measured runs, and the limit applies to the whole series: hyperfine gets the limit once for each of its runs, so one slow run can use the time that the others leave unused. `--timeout SECONDS` sets one limit for all scenarios. On macOS the reference can hang with shellcheck on, so `cargo xtask bench --timeout 60` gives a quicker result there.
@@ -97,7 +109,7 @@ When every scenario times out, one binary takes about 86 minutes. The nightly jo
 
 A measurement fails when a binary exits with a code other than 0 or 1, or when hyperfine fails. The command still writes the results, then exits with an error.
 
-The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when a measurement failed, or when, in any scenario, workflint's wall time divided by the reference's from the same run grows by more than 10% against the latest scheduled run in the history. Dividing by the reference cancels most of the speed difference between runners. A run started by hand goes into the history too, but later runs are not compared with it. `cargo xtask bench-history` does that comparison, and it says when a scenario of the previous scheduled run has no result in the new one. After a failed measurement, the job records the results and opens the issue, then fails.
+The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when a measurement failed, or when, in any scenario, workflint's wall time divided by the reference's from the same run grows by more than 10% against the latest scheduled run in the history. Dividing by the reference cancels most of the speed difference between runners. A run started by hand goes into the history too, but later runs are not compared with it. `cargo xtask bench-history` does that comparison. A scenario that the previous scheduled run measured and the new one skipped or lacks is a problem in the issue too. The command fails on a history line that is not a result, or that has the current schema version and does not parse. After a failed measurement, the job records the results and opens the issue, then fails.
 
 ## Micro-benchmarks
 
@@ -135,19 +147,20 @@ The crates depend on `codspeed-divan-compat` under the name `divan`, so a benchm
 | `expr_lex` | The expression lexer of `workflint-expr` reads the input as the text after `${{` up to the `}}` that ends it or the first error, without panicking and without looping. Every token and error range lies inside the input on character boundaries, tokens never overlap, and `lex_expression` returns the same tokens and error. |
 | `expr_parse` | `workflint_expr::parse_expression` parses the input as the text after `${{` without panicking. Every node's range lies inside its parent's on character boundaries, and so do its token and names. The visitor enters and leaves each node once. An error range covers at most one character or one token. |
 | `glob` | `workflint_syntax::glob` validates the input as a branch or tag pattern and as a path pattern without panicking. Every problem has a message, each range covers one character of the input, and the ranges never move backwards. |
-| `render` | `workflint-diagnostics` builds a `SourceFile` from the input text and renders diagnostics with arbitrary spans in the default and one-line formats without panicking. The output is UTF-8, has one header per diagnostic and well-formed snippets, and differs between color on and off only in escape sequences. The comment at the top of `fuzz/fuzz_targets/render.rs` describes the input layout. |
+| `metadata` | `workflint_syntax::ActionMetadata::decode` and `ReusableWorkflowMetadata::decode` decode the input as a local action's `action.yml` and as a local reusable workflow without panicking or overflowing the stack. A second decode gives the same result, every error has a message, and every input, output, and secret is keyed by its name in lowercase. |
+| `render` | `workflint-diagnostics` builds a `SourceFile` from the input text and renders diagnostics with arbitrary spans in the default and one-line formats without panicking. The output is UTF-8, has one header per diagnostic and well-formed snippets, and differs between color on and off only in escape sequences. `check_render` in `crates/workflint-diagnostics/tests/invariants/mod.rs` describes the input layout. |
 | `syntax` | `workflint_syntax::parse` parses the tree of the input without panicking. Every diagnostic has a span inside the input on character boundaries that converts to a line and column. The section parsers that later tasks add run under the same target. |
 | `yaml_events` | The event parser of `workflint-yaml` reads the input up to the end of the stream or the first error without panicking. Every event's marks lie inside the input on character boundaries. |
 | `yaml_tree` | `workflint_yaml::parse` builds the tree without panicking. Every span lies inside the input on character boundaries and converts to a line and column, and every node ID in the tree refers to a node. Every scalar's source map is exact and maps each character, and each range of characters, inside the scalar's span. The written items and entries, the duplicate keys, and the comments of each node agree with the tree. |
 
-The two YAML targets first decode the input with `workflint_yaml::decode`, as the linter reads a file, so UTF-16 input and encoding errors are covered. An input that does not decode, and the input of the other seven targets, has invalid UTF-8 replaced with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`, `syntax` runs the check in `crates/workflint-syntax/tests/invariants/mod.rs`, and the four expression targets run the checks in `crates/workflint-expr/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
+The two YAML targets first decode the input with `workflint_yaml::decode`, as the linter reads a file, so UTF-16 input and encoding errors are covered. An input that does not decode, and the input of the other eight targets, has invalid UTF-8 replaced with U+FFFD. The two YAML targets run the checks in `crates/workflint-yaml/tests/invariants/mod.rs`. `syntax` and `metadata` run the checks in `crates/workflint-syntax/tests/invariants/mod.rs`, where the `syntax` check runs the `metadata` check first. `glob` runs the check in `crates/workflint-syntax/tests/invariants/glob.rs`, `render` the one in `crates/workflint-diagnostics/tests/invariants/mod.rs`, and the four expression targets the checks in `crates/workflint-expr/tests/invariants/mod.rs`. Write the seed inputs first, then start a target from the repository root:
 
 ```sh
 cargo xtask fuzz-seeds
 cargo +nightly fuzz run yaml_tree -- -max_total_time=300
 ```
 
-`cargo xtask fuzz-seeds` copies the YAML files of the vendored test data, the 1,503 workflows in its corpus archive, the YAML test suite inputs, and the fuzz regression inputs into `fuzz/corpus/<target>/`, which git ignores. The expression targets get other seeds: each line of `testdata/bench/expressions.txt` followed by `}}`, the text after each `${{` in the YAML files of the vendored test data, and the inputs in `crates/workflint-expr/tests/fuzz-regressions/`. `expr_json` gets the value of each `fromJSON('…')` string literal in `expressions.txt` and in the YAML files of the vendored test data, and the inputs in `crates/workflint-expr/tests/json-fuzz-regressions/`. `cargo fuzz` keeps the inputs it finds in the same directory. `fuzz/rust-toolchain.toml` pins the nightly that CI uses. Run `cargo fuzz` inside `fuzz/` without `+nightly` to use it.
+`cargo xtask fuzz-seeds` copies the YAML files of the vendored test data, the 1,503 workflows in its corpus archive, the YAML test suite inputs, and the fuzz regression inputs of `workflint-yaml`, `workflint-syntax`, and `workflint-diagnostics` into `fuzz/corpus/<target>/`, which git ignores. The expression targets get other seeds: each line of `testdata/bench/expressions.txt` followed by `}}`, the text after each `${{` in the YAML files of the vendored test data, and the inputs in `crates/workflint-expr/tests/fuzz-regressions/`. `expr_json` gets the value of each `fromJSON('…')` string literal in `expressions.txt` and in the YAML files of the vendored test data, and the inputs in `crates/workflint-expr/tests/json-fuzz-regressions/`. `cargo fuzz` keeps the inputs it finds in the same directory. `fuzz/rust-toolchain.toml` pins the nightly that CI uses. Run `cargo fuzz` inside `fuzz/` without `+nightly` to use it.
 
 CI checks the formatting of the targets, runs clippy on them, and builds them when a change touches `workflint-data`, `workflint-diagnostics`, `workflint-expr`, `workflint-syntax`, `workflint-yaml`, `fuzz/`, or the root `Cargo.toml`. Every night the `Fuzz` workflow runs each target for five minutes. A target fails the run when an input panics or takes longer than 10 seconds, and the run uploads that input as the artifact `fuzz-<target>`. A scheduled run that fails opens an issue titled "Nightly fuzzing found a failure", or comments on the open one.
 
@@ -157,8 +170,20 @@ To turn a failing input into a regression test:
 
 1. Download the artifact, or take the input from `fuzz/artifacts/<target>/` after a local run. `cargo fuzz` names it `crash-<hash>` for a panic and `timeout-<hash>` for a hang.
 2. Reproduce the failure with `cargo +nightly fuzz run yaml_tree <input>`. `cargo +nightly fuzz tmin yaml_tree <input>` writes a smaller input that fails the same way.
-3. Copy the input into `crates/workflint-yaml/tests/fuzz-regressions/`, under a name that says what it covers, such as `tab-before-flow-key`. `cargo nextest run -p workflint-yaml fuzz_regression` runs both targets' checks on every file there, so it now fails. An input of an expression target goes into `crates/workflint-expr/tests/fuzz-regressions/` instead, and `cargo nextest run -p workflint-expr fuzz_regression` runs the three expression checks on it. An input of `expr_json` goes into `crates/workflint-expr/tests/json-fuzz-regressions/`, and the same command runs its check.
-4. Fix the bug in the crate, or fix the check in its `tests/invariants/mod.rs` if the check is wrong. The file stays as a regression test, and `cargo xtask fuzz-seeds` adds it to the seed inputs.
+3. Copy the input into the directory of its target, under a name that says what it covers, such as `tab-before-flow-key`. Then `cargo nextest run -p <crate> fuzz_regression` runs the target's checks on every file there, so it now fails.
+
+   | Target | Directory | Crate |
+   | --- | --- | --- |
+   | `yaml_events`, `yaml_tree` | `crates/workflint-yaml/tests/fuzz-regressions/` | `workflint-yaml` |
+   | `syntax` | `crates/workflint-syntax/tests/fuzz-regressions/syntax/` | `workflint-syntax` |
+   | `metadata` | `crates/workflint-syntax/tests/fuzz-regressions/metadata/` | `workflint-syntax` |
+   | `glob` | `crates/workflint-syntax/tests/fuzz-regressions/glob/` | `workflint-syntax` |
+   | `render` | `crates/workflint-diagnostics/tests/fuzz-regressions/` | `workflint-diagnostics` |
+   | `expr_check`, `expr_lex`, `expr_parse` | `crates/workflint-expr/tests/fuzz-regressions/` | `workflint-expr` |
+   | `expr_json` | `crates/workflint-expr/tests/json-fuzz-regressions/` | `workflint-expr` |
+
+   The YAML and the three expression directories run every check of their targets on each file.
+4. Fix the bug in the crate, or fix the check in its `tests/invariants/` if the check is wrong. The file stays as a regression test, and `cargo xtask fuzz-seeds` adds it to the seed inputs.
 
 ## Continuous integration
 
