@@ -348,14 +348,22 @@ fn a_missing_reusable_workflow_is_an_error_on_the_first_lookup_only() {
     let local = linting_ci(&cache);
     let spec = "./.github/workflows/missing.yaml";
     let err = error(local.reusable_workflow(spec));
+    // Go's message for a missing file: its own on Unix, the OS's on Windows.
+    let missing = if cfg!(windows) {
+        "The system cannot find the file specified."
+    } else {
+        "no such file or directory"
+    };
+    let path = project
+        .root()
+        .join(".github")
+        .join("workflows")
+        .join("missing.yaml");
     assert_eq!(
         err.to_string(),
         format!(
-            "could not read reusable workflow file for \"{spec}\": open {}: no such file or directory",
-            project
-                .root()
-                .join(".github/workflows/missing.yaml")
-                .display()
+            "could not read reusable workflow file for \"{spec}\": open {}: {missing}",
+            path.display()
         )
     );
     assert_eq!(local.reusable_workflow(spec), Lookup::None);

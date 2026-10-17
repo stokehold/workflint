@@ -218,8 +218,9 @@ fn from_slash(path: &str) -> PathBuf {
 /// Returns Go's text of the error that `os.ReadFile` returns for `path`, such as
 /// `open /repo/x.yaml: no such file or directory`.
 ///
-/// Go names the system call that failed and prints the OS's message in lowercase. A directory
-/// opens, and fails when it is read.
+/// Go names the system call that failed, then the OS's message. On Unix, Go's own table of
+/// messages is the C library's in lowercase. On Windows, Go prints the message that Windows
+/// gives, as Rust does. A directory opens, and fails when it is read.
 fn go_read_error(path: &Path, err: &io::Error) -> String {
     let op = if err.kind() == io::ErrorKind::IsADirectory {
         "read"
@@ -235,10 +236,14 @@ fn go_read_error(path: &Path, err: &io::Error) -> String {
             .to_owned(),
         None => message,
     };
-    let mut chars = message.chars();
-    let message = match chars.next() {
-        Some(first) => first.to_lowercase().chain(chars).collect(),
-        None => message,
+    let message = if cfg!(windows) {
+        message
+    } else {
+        let mut chars = message.chars();
+        match chars.next() {
+            Some(first) => first.to_lowercase().chain(chars).collect(),
+            None => message,
+        }
     };
     format!("{op} {}: {message}", path.display())
 }
