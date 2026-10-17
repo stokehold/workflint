@@ -519,6 +519,7 @@ mod tests {
     }
 
     /// `setup` with `fixture` listed as an expected failure until M4.
+    #[cfg(unix)]
     fn listing(mut setup: Setup, fixture: &str) -> Setup {
         setup
             .listings
