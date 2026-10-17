@@ -30,7 +30,7 @@ ADR 0022, parity with go-yaml:
 ADR 0024, where rule metadata lives:
 
 - The crate that reports a diagnostic defines the `RuleMeta` of its rule, whether the rule runs while parsing or while checking. Today these crates are `workflint-yaml`, `workflint-syntax`, and `workflint-expr`.
-- The rules that `workflint-expr` defines are checker rules: `TypeEnv::check` reports them when a rule in `workflint-rules`, such as `expression`, calls it. Like parse-stage rules, they have no module in `workflint-rules`, the registry in `workflint-rules` lists them, and each gets a page in `docs/rules/<id>.md`. M4.2 (#139) writes the pages of the parse-stage rules and M4.11 (#148) those of the `workflint-expr` rules.
+- The rules whose diagnostics `TypeEnv::check` reports are checker rules. `TypeEnv::check` reports them when a rule in `workflint-rules`, such as `expression`, calls it. Like parse-stage rules, they have no module in `workflint-rules`, the registry in `workflint-rules` lists them, and each gets a page in `docs/rules/<id>.md`. M4.2 (#139) writes the pages of the parse-stage rules and M4.11 (#148) those of the `workflint-expr` rules.
 
 ADR 0019, the nightly regression check:
 
@@ -46,13 +46,13 @@ ADR 0016, definition of done:
 
 ADR 0006 and ADR 0011, `cargo xtask codegen`:
 
-- `cargo xtask codegen` is planned for M7, with the data generators. Until then, the tables in `workflint-data` are ported by hand from the reference, and their tests compare them with the reference's tables or fixtures. The other `xtask` commands that ADR 0006 names exist.
+- `cargo xtask codegen` is planned for M7, with the data generators. Until then, the tables in `workflint-data` are ported by hand from the reference's tables. The other `xtask` commands that ADR 0006 names exist.
 
 ## Consequences
 
 The ADRs agree with the code again, and each amended ADR names this one in its header. Agents that read ADR 0024 put the rule metadata of a checker rule in the crate that reports it, and M4.1 (#138) lists those rules in the registry.
 
-A hand-written error implementation is a few more lines to review than a derive, and it keeps `thiserror` out of crates that would use it for a few lines.
+A hand-written error implementation is a few more lines to review than a derive.
 
 ## Alternatives considered
 
