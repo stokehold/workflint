@@ -226,16 +226,50 @@ impl<'a> JobUses<'a> {
 
 /// Calls `classify` with a function that turns a byte range of the value of
 /// `template` into a span in `file`.
+///
+/// Most values are written as they are decoded, so a byte range is an
+/// offset from the start of the content. Only other values need the
+/// scalar's source map, which decodes the scalar again.
 fn with_spans<T>(
     template: &Template<'_>,
     file: &SourceFile,
     classify: impl FnOnce(&dyn Fn(usize, usize) -> Span) -> T,
 ) -> T {
+    if let Some(start) = verbatim_start(template, file) {
+        let at = |offset: usize| {
+            u32::try_from(offset)
+                .ok()
+                .and_then(|offset| start.checked_add(offset))
+                .unwrap_or(start)
+        };
+        return classify(&|from, to| Span::new(file.id(), at(from), at(to)));
+    }
     let span = template.span();
     match template.source.source_map(file) {
         Some(map) => classify(&|start, end| map.source_span(start..end)),
         None => classify(&|_, _| span),
     }
+}
+
+/// Returns the offset in `file` where the value of `template` starts, if
+/// the source there is the value byte for byte.
+///
+/// The source must not contain a character that an escape, a `''`, or line
+/// folding comes from, so that equal bytes also map one to one. A block
+/// scalar's content starts with its indentation and never matches.
+fn verbatim_start(template: &Template<'_>, file: &SourceFile) -> Option<u32> {
+    let source = &template.source;
+    let node = source.node();
+    if node.span.file != file.id() {
+        return None;
+    }
+    let start = node
+        .content_start
+        .checked_add(u32::from(source.is_quoted()))?;
+    let value = source.value();
+    let from = usize::try_from(start).ok()?;
+    let raw = file.text().get(from..from.checked_add(value.len())?)?;
+    (raw == value && !raw.contains(['\\', '\'', '\n', '\r'])).then_some(start)
 }
 
 /// Classifies a step's `uses` value, as the reference's

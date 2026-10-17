@@ -381,3 +381,55 @@ fn a_job_uses_part_span_points_into_the_source_file() {
     assert_eq!(text_at(&file, &path), ".github/workflows/ci.yml");
     assert_eq!(text_at(&file, &git_ref), "v1");
 }
+
+/// Returns the byte range of `part` in `value`, of which it is a slice.
+fn range_in(value: &str, part: &UsesPart<'_>) -> std::ops::Range<usize> {
+    let start = part.value.as_ptr() as usize - value.as_ptr() as usize;
+    start..start + part.value.len()
+}
+
+#[test]
+fn part_spans_match_the_source_map_in_every_scalar_style() {
+    let cases = [
+        "uses: o/r/p@v1\n",
+        "uses: &a o/r/p@v1\n",
+        "uses: !!str o/r/p@v1\n",
+        "uses: 'o/r/p@v1'\n",
+        "uses: \"o/r/p@v1\"\n",
+        "uses: 'o''r/p@v1'\n",
+        "uses: \"o/\\u0072/p@v1\"\n",
+        "uses: \"o/\\\\/p@v1\"\n",
+        "uses: o/r/p\n  @v1\n",
+        "uses: 'o/r/p\n\n  @v1'\n",
+        "uses: >-\n  o/r/p@v1\n",
+        "uses: |-\n  o/r/p@v1\n",
+        "uses: docker://é:ü\n",
+    ];
+    for text in cases {
+        let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+        let document = document(text);
+        let source = Str::new(node_at(&document, &["uses"])).unwrap();
+        let uses = StepUses::new(Template::new(source), &file);
+        let parts: Vec<UsesPart<'_>> = match uses.kind {
+            StepUsesKind::Repository {
+                owner,
+                repo,
+                path,
+                git_ref,
+            } => [Some(owner), Some(repo), path, Some(git_ref)]
+                .into_iter()
+                .flatten()
+                .collect(),
+            StepUsesKind::Docker { image, tag } => {
+                [Some(image), tag].into_iter().flatten().collect()
+            }
+            kind => panic!("{text:?}: {kind:?}"),
+        };
+        for part in parts {
+            let expected = source
+                .source_span(&file, range_in(source.value(), &part))
+                .unwrap();
+            assert_eq!(part.span, expected, "{text:?}: {part:?}");
+        }
+    }
+}
