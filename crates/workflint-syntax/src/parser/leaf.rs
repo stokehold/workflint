@@ -98,8 +98,9 @@ impl<'a> Parser<'a, '_> {
     /// Parses `node`, the value of `key`, as a sequence of strings. The
     /// reference's `parseStringSequence`.
     ///
-    /// An item that is not a valid string is reported and left out. The
-    /// reference keeps it as `""`, which no rule checks.
+    /// An item that is not a valid string is reported and kept as `None`,
+    /// so the sequence keeps its length. The reference keeps it as `""`,
+    /// and its rules report that string again. Rules skip `None`.
     pub(crate) fn parse_string_sequence(
         &mut self,
         key: Option<Str<'a>>,
@@ -107,17 +108,15 @@ impl<'a> Parser<'a, '_> {
         node: &'a Node,
         allow_empty: bool,
         allow_item_empty: bool,
-    ) -> Field<'a, Arc<[Str<'a>]>> {
+    ) -> Field<'a, Arc<[Option<Str<'a>>]>> {
         let span = node.span;
         let Some(items) = self.check_sequence(section, node, allow_empty) else {
             return Field::Invalid { key, span };
         };
         let mut strings = Vec::with_capacity(items.len());
         for &id in items {
-            if let Some(item) = self.node(id)
-                && let Some(string) = self.check_string(item, allow_item_empty)
-            {
-                strings.push(string);
+            if let Some(item) = self.node(id) {
+                strings.push(self.check_string(item, allow_item_empty));
             }
         }
         Field::Valid {
@@ -131,7 +130,9 @@ impl<'a> Parser<'a, '_> {
     /// strings. The reference's `parseStringOrStringSequence`.
     ///
     /// A null scalar is an empty sequence if `allow_empty`. Any other
-    /// scalar is a sequence of one string.
+    /// scalar is a sequence of one item, which is `None` if the scalar is
+    /// not a valid string, as in
+    /// [`parse_string_sequence`](Self::parse_string_sequence).
     pub(crate) fn parse_string_or_string_sequence(
         &mut self,
         key: Option<Str<'a>>,
@@ -139,7 +140,7 @@ impl<'a> Parser<'a, '_> {
         node: &'a Node,
         allow_empty: bool,
         allow_item_empty: bool,
-    ) -> Field<'a, Arc<[Str<'a>]>> {
+    ) -> Field<'a, Arc<[Option<Str<'a>>]>> {
         let span = node.span;
         match &node.kind {
             NodeKind::Scalar(scalar) if allow_empty && scalar.tag == Tag::Null => Field::Valid {
@@ -147,13 +148,10 @@ impl<'a> Parser<'a, '_> {
                 span,
                 value: Arc::new([]),
             },
-            NodeKind::Scalar(_) => match self.check_string(node, allow_item_empty) {
-                Some(string) => Field::Valid {
-                    key,
-                    span,
-                    value: Arc::new([string]),
-                },
-                None => Field::Invalid { key, span },
+            NodeKind::Scalar(_) => Field::Valid {
+                key,
+                span,
+                value: Arc::new([self.check_string(node, allow_item_empty)]),
             },
             NodeKind::Sequence(_) | NodeKind::Mapping(_) | NodeKind::Alias(_) => {
                 self.parse_string_sequence(key, section, node, allow_empty, allow_item_empty)
@@ -229,7 +227,7 @@ impl<'a> Parser<'a, '_> {
         node: &'a Node,
         allow_empty: bool,
         allow_item_empty: bool,
-    ) -> Field<'a, Arc<[Template<'a>]>> {
+    ) -> Field<'a, Arc<[Option<Template<'a>>]>> {
         self.parse_string_sequence(key, section, node, allow_empty, allow_item_empty)
             .map(|strings| self.templates(&strings))
     }
@@ -244,16 +242,16 @@ impl<'a> Parser<'a, '_> {
         node: &'a Node,
         allow_empty: bool,
         allow_item_empty: bool,
-    ) -> Field<'a, Arc<[Template<'a>]>> {
+    ) -> Field<'a, Arc<[Option<Template<'a>>]>> {
         self.parse_string_or_string_sequence(key, section, node, allow_empty, allow_item_empty)
             .map(|strings| self.templates(&strings))
     }
 
-    /// Parses the placeholders of each of `strings`.
-    pub(crate) fn templates(&mut self, strings: &[Str<'a>]) -> Arc<[Template<'a>]> {
+    /// Parses the placeholders of each valid item of `strings`.
+    fn templates(&mut self, strings: &[Option<Str<'a>>]) -> Arc<[Option<Template<'a>>]> {
         strings
             .iter()
-            .map(|&string| self.template(string))
+            .map(|string| string.map(|string| self.template(string)))
             .collect()
     }
 
@@ -536,7 +534,7 @@ mod tests {
     }
 
     #[test]
-    fn a_string_sequence_keeps_its_valid_items() {
+    fn a_string_sequence_keeps_an_invalid_item_as_none() {
         assert_eq!(
             leaf("v: [a, '', [b], 1]\n", |p, n| strings(
                 &p.parse_string_sequence(None, "branches", n, false, false)
@@ -544,7 +542,7 @@ mod tests {
             [
                 "1:8: string should not be empty [empty-string]",
                 r#"1:12: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
-                r#"valid ["a", "1"]"#,
+                r#"valid ["a", "-", "-", "1"]"#,
             ]
         );
     }
@@ -588,12 +586,19 @@ mod tests {
         assert_eq!(parse("v: [a, b]\n"), [r#"valid ["a", "b"]"#]);
         // A null scalar is an empty list only when empty is allowed.
         assert_eq!(parse("v:\n"), ["valid []"]);
-        assert_eq!(
-            leaf("v:\n", |p, n| strings(&p.parse_string_or_string_sequence(
-                None, "needs", n, false, false
-            ))),
-            ["1:3: string should not be empty [empty-string]", "invalid"]
-        );
+        // Otherwise it is a list of one invalid item, as `""` is.
+        for (text, column) in [("v:\n", 3), ("v: ''\n", 4)] {
+            assert_eq!(
+                leaf(text, |p, n| strings(&p.parse_string_or_string_sequence(
+                    None, "needs", n, false, false
+                ))),
+                [
+                    format!("1:{column}: string should not be empty [empty-string]"),
+                    r#"valid ["-"]"#.to_owned()
+                ],
+                "{text:?}"
+            );
+        }
         assert_eq!(
             leaf("v: {a: b}\n", |p, n| strings(
                 &p.parse_string_or_string_sequence(None, "needs", n, true, false)
