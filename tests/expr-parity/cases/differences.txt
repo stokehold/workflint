@@ -24,3 +24,12 @@ fromJSON('{"Foo":1}').foo
 fromJSON('{"foo":1,"Foo":"x"}').Foo
 # object-filter-mutation
 format('{0}{1}', matrix.targets.*.name, matrix.targets.name)
+# expression-nesting-limit
+(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!true
+# bom-before-string-literal changes only the value of a string literal after a
+# byte order mark, which no outcome shows. These have no record, and check the
+# positions after the mark.
+﻿'x'
+﻿github.foo
+﻿'x' == fromJSON('1').a

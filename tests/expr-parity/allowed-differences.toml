@@ -156,3 +156,15 @@ workflint = '''
 type: string, constant: false
 1:41: receiver of object dereference "name" must be type of object but got "array<{name: string}>"
 '''
+
+[[difference]]
+anchor = "expression-nesting-limit"
+expression = "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+upstream = "type: number, constant: true"
+workflint = "parse error at 1:129: expression is nested more than 128 levels deep"
+
+[[difference]]
+anchor = "expression-nesting-limit"
+expression = "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!true"
+upstream = "type: bool, constant: true"
+workflint = "parse error at 1:129: expression is nested more than 128 levels deep"
