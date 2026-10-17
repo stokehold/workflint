@@ -3,6 +3,7 @@
 use workflint_diagnostics::{Diagnostic, SourceFile};
 use workflint_syntax::Workflow;
 
+use crate::local::{LocalMetadata, NoProject};
 use crate::{Context, Rule, create_rules};
 
 /// Calls the hooks of `rules` over `workflow`, each hook for every rule in the order of `rules`.
@@ -44,12 +45,23 @@ pub fn visit<'a>(
     }
 }
 
-/// Creates the rules for `file` with [`create_rules`], visits `workflow` with them, and returns
-/// their diagnostics, unsorted.
+/// Creates the rules for `file` with [`create_rules`], visits `workflow` with them outside any
+/// project, and returns their diagnostics, unsorted.
 #[must_use]
 pub fn run<'a>(file: &SourceFile, workflow: &'a Workflow<'a>) -> Vec<Diagnostic> {
+    run_in_project(file, workflow, &NoProject)
+}
+
+/// Does what [`run`] does, for a file whose project has the local actions and local reusable
+/// workflows in `local`.
+#[must_use]
+pub fn run_in_project<'a>(
+    file: &SourceFile,
+    workflow: &'a Workflow<'a>,
+    local: &dyn LocalMetadata,
+) -> Vec<Diagnostic> {
     let mut rules = create_rules();
-    let mut cx = Context::new(file);
+    let mut cx = Context::with_local_metadata(file, local);
     visit(workflow, &mut rules, &mut cx);
     cx.into_diagnostics()
 }

@@ -14,6 +14,7 @@ categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
+workflint-linter = { path = "../workflint-linter", version = "0.0.1" }
 workflint-rules = { path = "../workflint-rules", version = "0.0.1" }
 workflint-syntax = { path = "../workflint-syntax", version = "0.0.1" }
 workflint-yaml = { path = "../workflint-yaml", version = "0.0.1" }

@@ -603,7 +603,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the same input must give the same output.
 - Upstream issue: none.
 - Milestone: M5.
-- Status: planned.
+- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The rules that report the errors arrive in M4.9, M4.10, M4.18, and M4.25, and the order by file path with M5.3.
 - Fixtures: `projects/broken_local_action`, `projects/broken_reusable_workflow`, `projects/workflow_call_not_found`.
 
 ## Configuration and project discovery
@@ -622,11 +622,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Project root checks compare whole path components
 
 - Upstream: `Project.Knows` and the reusable workflow path conversion use a string prefix test, so a project at `/work/repo` claims files in `/work/repo-other/` (`project.go:66`, `reusable_workflow.go:244`).
-- workflint: paths are compared by whole components.
+- workflint: paths are compared by whole components. Each file gets the project of its own nearest root, so a file in `/work/repo-other/` never uses the caches of `/work/repo`.
 - Why: files from a sibling directory got the wrong config and caches.
 - Upstream issue: #750.
-- Milestone: M5.
-- Status: planned.
+- Milestone: M4 for the caches, M5 for the config.
+- Status: implemented for the caches of local actions and local reusable workflows. No fixture covers it. The config is planned for M5.
 
 <a id="project-root-detection"></a>
 ### Project root without `.git`
