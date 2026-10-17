@@ -8,7 +8,9 @@ The conformance suite runs every fixture in this directory through the `workflin
 cargo nextest run -p xtask --test conformance
 ```
 
-Each fixture is one test, named after its path, such as `actionlint::err/action_metadata_syntax_validation.yaml`. Three more tests check the data files described below, and `skipped_fixtures::README.md` prints how many fixtures the runner skips and why. `.config/nextest.toml` shows its output at the end of every nextest run.
+Each fixture is one test, named after its path, such as `actionlint::err/action_metadata_syntax_validation.yaml`. Three more tests check the data files described below, `parity_checklist::parity-checklist.md` and `checks_md::checks.md` check the boxes of `docs/parity-checklist.md`, and `skipped_fixtures::README.md` prints how many fixtures the runner skips and why. `.config/nextest.toml` shows its output at the end of every nextest run, and fails a conformance test that runs longer than 5 minutes.
+
+The runner finds the reference's fixtures by listing `actionlint/testdata/`. It fails every test that reads them if a suite directory is missing or holds another number of fixtures than the reference has at its commit (`ACTIONLINT_FIXTURES` in `xtask/src/conformance/fixture.rs`), so a missing copy cannot pass with no tests.
 
 ## Contents
 
@@ -17,6 +19,7 @@ Each fixture is one test, named after its path, such as `actionlint::err/action_
 | `actionlint/` | The reference's test data, vendored by `cargo xtask vendor-testdata`. Do not edit. |
 | `workflint/` | workflint's own fixtures, with the same layout as `actionlint/testdata/`. |
 | `expected-failures.toml` | Fixtures that do not pass yet, with the milestone expected to make them pass. |
+| `milestones.toml` | The milestones whose work is done, which no expected failure may name. |
 | `allowed-differences.toml` | Expected lines that workflint changes on purpose, each tied to `docs/differences.md`. |
 | `rule-kinds.toml` | The actionlint kind of each workflint rule ID. |
 
@@ -61,9 +64,10 @@ workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <c
   - `projects` turn both off.
   - A fixture whose file name contains a tool's name is skipped, with a message, if the tool is not on `PATH`. The Linux legs of the CI test job install shellcheck 0.11.0 and the pyflakes version in `requirements.txt`, so these fixtures run there.
 - Standard input is empty.
-- Exit code 0 means no errors, and exit code 1 means errors were found. The fixture fails, with a message that names the cause, if the binary exits with 0 and prints output, exits with 1 and prints nothing, exits with any other code, or prints anything to standard error.
+- Exit code 0 means no errors, and exit code 1 means errors were found. The fixture fails, with a message that names the cause, if the binary exits with 0 and prints output, exits with 1 and prints nothing, exits with any other code, is stopped by a signal, or prints anything to standard error. It fails this way even when `expected-failures.toml` lists it, because that file excuses wrong diagnostics, not a crash.
+- The runner kills the binary, and its child processes on Unix, after 60 seconds, and fails the fixture.
 
-The runner builds the binary with `cargo build -p workflint` before the first fixture in each test process. Every `cargo build` deletes `target/debug/workflint` and links it again, so a test that started that path while another test process built could fail with "No such file or directory". The runner copies the binary to `target/conformance/workflint-<hash>` instead, where `<hash>` is a hash of the binary's content, and runs the copy. A change to `crates/workflint` gives a new copy. `cargo clean` deletes the old ones.
+The runner builds the binary with `cargo build -p workflint` before the first fixture in each test process. Every `cargo build` deletes `target/debug/workflint` and links it again, so a test that started that path while another test process built could fail with "No such file or directory". The runner copies the binary to `target/conformance/workflint-<hash>` instead, where `<hash>` is a hash of the binary's content, and runs the copy. A change to `crates/workflint` gives a new copy, and the runner then deletes the older copies.
 
 ## Matching
 
@@ -97,14 +101,19 @@ A relative path is relative to the repository root. In this mode the runner does
 "ok/minimal.yaml" = "M5"
 ```
 
-The milestone is the latest one among the `docs/parity-checklist.md` rows that cite the fixture, or M5 if no row cites it.
+The milestone is the latest one among the `docs/parity-checklist.md` rows that cite the fixture, or M5 if no row cites it. A row whose notes say it waits on the fixture, as in ``the row waits on `err/name` (M4)``, does not count: its own check is done, and its milestone is the one of its last fixture. Its note gives the fixture's milestone in brackets, and that milestone must match this file.
+
+`milestones.toml` lists the milestones whose work is done. No entry may name one of them: a fixture that a done milestone should have fixed is a bug, or the checklist gives the wrong milestone. A follow-up issue filed in a done milestone does not take the milestone out of the list.
 
 The binary has linted for real since M2.0, so the file lists only fixtures that still fail. A task that makes a fixture fail again, and adds the fixture back to this file, introduces a regression. Fix the regression instead.
 
 - A listed fixture that fails passes its test and prints `expected failure until <milestone>` with the first line of the reason.
 - A listed fixture that passes fails its test, with a message that says to remove its line. The pull request that makes a fixture pass removes the line.
 - A fixture that is not listed must pass.
-- The test `expected_failures::expected-failures.toml` fails if a line names a fixture that does not exist.
+- A listed fixture whose binary crashes, hangs, or prints to standard error fails its test.
+- The test `expected_failures::expected-failures.toml` fails if a line names a fixture that does not exist, names another milestone than the rule above gives, or names a milestone in `milestones.toml`. It also fails if a note in the checklist says a row waits on a fixture that passes, or gives another milestone than this file.
+- The test `parity_checklist::parity-checklist.md` fails if a ticked row cites a fixture that does not exist or is listed here, if an open row with a milestone in `milestones.toml` cites a listed fixture, or if a row has more or fewer cells than its table's header.
+- The test `checks_md::checks.md` lints the `Example input` of each ticked row of the "docs/checks.md sections" table in the default output format, and compares the output with the section's `Output` block. It changes each rule ID to its kind and leaves out the `^~~~` lines, which differ by `docs/differences.md#column-units`.
 
 To see the full reason a listed fixture fails, remove its line and run its test.
 
@@ -148,4 +157,4 @@ workflint prints rule IDs in brackets, and the `.out` files have actionlint kind
 undefined-variable = "expression"
 ```
 
-It holds the "Rule ID (kind)" column of `docs/parity-checklist.md`. The test `rule_kinds::rule-kinds.toml` fails if the two disagree, so a pull request that adds or renames a rule ID in the checklist updates this file too. M4.1 replaces the table with the rule registry.
+It holds the "Rule ID (kind)" column of `docs/parity-checklist.md`. The test `rule_kinds::rule-kinds.toml` fails if the two disagree, or if a rule in the `ALL` list of `workflint-yaml`, `workflint-syntax` or `workflint-expr` is missing from the table or has another kind there. So a pull request that adds or renames a rule ID updates the checklist and this file too. M4.1 replaces the table with the rule registry.

@@ -5,18 +5,18 @@
 //! without the kind mapping, the expected failures or the allow-list, so that
 //! a runner that passes fixtures it should fail shows up.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 use super::allow_list::{self, AllowList};
-use super::expected_failures::ExpectedFailures;
+use super::expected_failures::{self, ExpectedFailures};
 use super::fixture::{self, Fixture, Tools};
-use super::rule_kinds;
 use super::verdict::{Listing, Verdict, judge};
 use super::{binary, conformance_dir, output, repository_root};
+use super::{checklist, checks_md, rule_kinds};
 
 /// The environment variable that names the reference binary to lint with in
 /// place of workflint. A relative path is relative to the repository root.
@@ -159,9 +159,19 @@ impl Setup {
         let invocation = fixture
             .prepare(&tools)
             .map_err(|error| format!("preparing {}: {error}", fixture.id))?;
-        let actual: Result<Vec<_>, String> = binary::run(self.program.path(), &invocation)
-            .and_then(|stdout| output::parse_output(&stdout))
-            .and_then(|diagnostics| {
+        // A crash, a hang, another exit code or output on standard error
+        // fails the fixture even when a list expects it to fail: the lists
+        // excuse wrong diagnostics, not a broken binary.
+        let stdout = binary::run(self.program.path(), &invocation).map_err(|reason| {
+            match self.listings.get(&fixture.id) {
+                Some(_) => format!(
+                    "{reason}\nThe fixture is listed as an expected failure, but that covers only the diagnostics, not how the binary ran."
+                ),
+                None => reason,
+            }
+        })?;
+        let actual: Result<Vec<_>, String> =
+            output::parse_output(&stdout).and_then(|diagnostics| {
                 if self.map_kinds {
                     rule_kinds::to_kinds(diagnostics)
                 } else {
@@ -177,6 +187,38 @@ impl Setup {
             self.listings.get(&fixture.id),
         )
         .map(Outcome::Judged)
+    }
+
+    /// Lints `input` as `test.yaml` in the default output format, as the
+    /// reference did for the `Output` blocks of `docs/checks.md`, and
+    /// compares the output with `output`. See [`checks_md::compare`].
+    ///
+    /// # Errors
+    ///
+    /// Returns the reason the comparison fails.
+    pub fn check_example(&self, input: &str, output: &str) -> Result<(), String> {
+        let temp = tempfile::tempdir().map_err(|error| format!("creating a directory: {error}"))?;
+        let suite = temp.path().join("err");
+        let path = suite.join("example.yaml");
+        fs::create_dir(&suite)
+            .and_then(|()| fs::write(&path, input))
+            .map_err(|error| format!("writing {}: {error}", path.display()))?;
+        let mut invocation = Fixture::new(fixture::Origin::Workflint, &path)
+            .prepare(&Tools::default())
+            .map_err(|error| format!("preparing {}: {error}", path.display()))?;
+        invocation.args.retain(|arg| arg != "-oneline");
+        let stdout = binary::run(self.program.path(), &invocation)?;
+        checks_md::compare(output, &stdout, |code| {
+            if self.map_kinds {
+                rule_kinds::actionlint_kind(code)
+                    .map(str::to_owned)
+                    .ok_or_else(|| {
+                        format!("rule ID {code:?} has no actionlint kind in tests/conformance/rule-kinds.toml")
+                    })
+            } else {
+                Ok(code.to_owned())
+            }
+        })
     }
 
     /// How many of `fixtures` the runner skips and why, with one line per
@@ -282,15 +324,25 @@ pub fn check_allow_list() -> Result<(), String> {
     }
 }
 
+/// The milestones in `tests/conformance/milestones.toml`.
+fn closed() -> Result<BTreeSet<u32>, String> {
+    expected_failures::closed_milestones(&read("tests/conformance/milestones.toml"))
+        .map_err(|error| format!("tests/conformance/milestones.toml: {error}"))
+}
+
 /// Checks that every fixture listed in `expected-failures.toml` and
-/// [`REFERENCE_FAILURES`] exists.
+/// [`REFERENCE_FAILURES`] exists, and that each entry names the milestone
+/// that the parity checklist gives and that is not closed. See
+/// [`ExpectedFailures::check_milestones`].
 ///
 /// # Errors
 ///
-/// Returns one line per unknown fixture.
+/// Returns one line per problem.
 pub fn check_expected_failures() -> Result<(), String> {
     let ids = fixture::all_ids()?;
     EXPECTED_FAILURES.validate(&ids)?;
+    let items = checklist::items(&read("docs/parity-checklist.md"))?;
+    EXPECTED_FAILURES.check_milestones(&items, &closed()?)?;
     let unknown: Vec<String> = REFERENCE_FAILURES
         .iter()
         .filter(|(id, _)| !ids.contains(*id))
@@ -303,8 +355,62 @@ pub fn check_expected_failures() -> Result<(), String> {
     }
 }
 
+/// Checks every ticked row of the "docs/checks.md sections" table in
+/// `docs/parity-checklist.md`: the binary's output for the section's
+/// `Example input` matches its `Output` block. See [`Setup::check_example`].
+///
+/// # Errors
+///
+/// Returns one block per section that differs.
+pub fn check_checks_md() -> Result<(), String> {
+    let items = checklist::items(&read("docs/parity-checklist.md"))?;
+    let sections = checks_md::sections(&read("tests/conformance/actionlint/docs/checks.md"));
+    let mut problems = Vec::new();
+    for item in items.iter().filter(|item| item.ticked) {
+        let Some(anchor) = &item.anchor else {
+            continue;
+        };
+        let result = match sections.get(anchor) {
+            Some(checks_md::Section {
+                input: Some(input),
+                output: Some(output),
+            }) => SETUP.check_example(input, output),
+            Some(_) => Err("the section has no Example input or no Output block".to_owned()),
+            None => Err("docs/checks.md has no such section".to_owned()),
+        };
+        if let Err(reason) = result {
+            problems.push(format!(
+                "docs/parity-checklist.md:{}: checks.md#{anchor}: {reason}",
+                item.line
+            ));
+        }
+    }
+    if problems.is_empty() {
+        Ok(())
+    } else {
+        Err(problems.join("\n\n"))
+    }
+}
+
+/// Checks the boxes of `docs/parity-checklist.md` against the fixtures and
+/// `expected-failures.toml`. See [`checklist::check_items`].
+///
+/// # Errors
+///
+/// Returns one line per problem.
+pub fn check_parity_checklist() -> Result<(), String> {
+    let items = checklist::items(&read("docs/parity-checklist.md"))?;
+    let failing: BTreeSet<&str> = EXPECTED_FAILURES
+        .fixtures
+        .keys()
+        .map(String::as_str)
+        .collect();
+    checklist::check_items(&items, &fixture::all_ids()?, &failing, &closed()?)
+}
+
 /// Checks that `rule-kinds.toml` has exactly the rule IDs and kinds of the
-/// "Rule ID (kind)" column of `docs/parity-checklist.md`.
+/// "Rule ID (kind)" column of `docs/parity-checklist.md`, and the kind of
+/// every rule that a crate defines (see [`rule_kinds::defined_rules`]).
 ///
 /// # Errors
 ///
@@ -337,6 +443,10 @@ pub fn check_rule_kinds() -> Result<(), String> {
             "{rule} is in rule-kinds.toml but not in the parity checklist"
         ));
     }
+    problems.extend(rule_kinds::check_rules(
+        &table,
+        &rule_kinds::defined_rules(),
+    ));
     if problems.is_empty() {
         Ok(())
     } else {
@@ -406,6 +516,77 @@ mod tests {
         let ok = fixture(Origin::Actionlint, "ok/minimal.yaml");
         let error = setup(fake).run(&ok).unwrap_err();
         assert!(error.contains("exited with code 2"), "{error}");
+    }
+
+    /// `setup` with `fixture` listed as an expected failure until M4.
+    fn listing(mut setup: Setup, fixture: &str) -> Setup {
+        setup
+            .listings
+            .insert(fixture.to_owned(), Listing::Until("M4".to_owned()));
+        setup
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_crashing_binary_fails_a_listed_fixture() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = fake_binary(
+            dir.path(),
+            "echo 'thread main panicked at src/main.rs:1:1' >&2\nexit 101",
+        );
+        let listed = fixture(Origin::Actionlint, "err/one_error.yaml");
+        let error = listing(setup(fake), "err/one_error")
+            .run(&listed)
+            .unwrap_err();
+        assert!(error.contains("exited with code 101"), "{error}");
+        assert!(error.contains("panicked"), "{error}");
+        assert!(error.contains("listed as an expected failure"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_binary_killed_by_a_signal_fails_a_listed_fixture() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = fake_binary(dir.path(), "kill -SEGV $$");
+        let listed = fixture(Origin::Actionlint, "err/one_error.yaml");
+        let error = listing(setup(fake), "err/one_error")
+            .run(&listed)
+            .unwrap_err();
+        assert!(error.contains("stopped by a signal"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_binary_that_prints_to_stderr_fails_a_listed_fixture() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = fake_binary(
+            dir.path(),
+            "echo 'test.yaml:1:1: other [syntax-check]'\necho 'warning' >&2\nexit 1",
+        );
+        let listed = fixture(Origin::Actionlint, "err/one_error.yaml");
+        let error = listing(setup(fake), "err/one_error")
+            .run(&listed)
+            .unwrap_err();
+        assert!(error.contains("printed to standard error"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn wrong_diagnostics_from_a_binary_that_ran_normally_are_an_expected_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = fake_binary(
+            dir.path(),
+            "echo 'test.yaml:1:1: other [syntax-check]'\nexit 1",
+        );
+        let listed = fixture(Origin::Actionlint, "err/one_error.yaml");
+        let outcome = listing(setup(fake), "err/one_error").run(&listed);
+        assert!(
+            matches!(
+                outcome,
+                Ok(Outcome::Judged(Verdict::ExpectedFailure { .. }))
+            ),
+            "{outcome:?}"
+        );
     }
 
     #[cfg(unix)]

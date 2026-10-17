@@ -34,13 +34,15 @@ pub(crate) struct Totals {
     /// Lines that only one side has, over every differing file.
     pub(crate) unexplained: usize,
     pub(crate) exit_codes: usize,
+    /// Runs in which workflint printed to standard error.
+    pub(crate) stderr: usize,
     pub(crate) problems: usize,
 }
 
 impl Totals {
     /// Whether every difference is covered by the allow-list.
     pub(crate) fn clean(&self) -> bool {
-        self.unexplained == 0 && self.exit_codes == 0 && self.problems == 0
+        self.unexplained == 0 && self.exit_codes == 0 && self.stderr == 0 && self.problems == 0
     }
 }
 
@@ -54,6 +56,7 @@ impl Report {
             totals.applied += run.applied;
             totals.problems += run.problems.len();
             totals.exit_codes += usize::from(self.codes_differ(run));
+            totals.stderr += usize::from(workflint_stderr(run));
             for file in &run.files {
                 totals.files += 1;
                 if file.identical {
@@ -101,6 +104,10 @@ impl Report {
             ("Allow-list entries applied", totals.applied),
             ("Unexplained lines", totals.unexplained),
             ("Runs with another exit code", totals.exit_codes),
+            (
+                "Runs with workflint output on standard error",
+                totals.stderr,
+            ),
             ("Problems", totals.problems),
             ("Skipped fixtures", self.skipped.len()),
         ] {
@@ -165,6 +172,8 @@ fn section(run: &Run, codes_differ: bool) -> Option<String> {
             exit(run.expected_code),
             exit(run.actual_code)
         ));
+    }
+    if codes_differ || run.stderr.iter().any(|stderr| !stderr.trim().is_empty()) {
         for (tool, stderr) in ["The reference", "workflint"].iter().zip(&run.stderr) {
             let stderr = stderr.trim_end();
             if !stderr.is_empty() {
@@ -181,6 +190,12 @@ fn section(run: &Run, codes_differ: bool) -> Option<String> {
         blocks.push(format!("```diff\n{}```\n", diff(file)));
     }
     (!blocks.is_empty()).then(|| format!("## {}\n\n{}", run.name, blocks.join("\n")))
+}
+
+/// Whether workflint printed to standard error in `run`. workflint prints
+/// nothing there when it lints, so any output counts as a difference.
+fn workflint_stderr(run: &Run) -> bool {
+    !run.stderr[1].trim().is_empty()
 }
 
 fn exit(code: Option<i32>) -> String {
@@ -272,7 +287,7 @@ mod tests {
             files,
             expected_code: Some(codes.0),
             actual_code: Some(codes.1),
-            stderr: [String::new(), "workflint: oops\n".to_owned()],
+            stderr: [String::new(), String::new()],
             applied: 0,
             problems: Vec::new(),
         }
@@ -308,18 +323,21 @@ mod tests {
                     ],
                     (0, 0),
                 ),
-                run(
-                    "realworld",
-                    vec![
-                        file(
-                            Some("a.yml"),
-                            &["a.yml:1:1: a [action]"],
-                            &["a.yml:1:1: a [action]"],
-                        ),
-                        file(Some("b.yml"), &[], &[]),
-                    ],
-                    (1, 0),
-                ),
+                Run {
+                    stderr: [String::new(), "workflint: oops\n".to_owned()],
+                    ..run(
+                        "realworld",
+                        vec![
+                            file(
+                                Some("a.yml"),
+                                &["a.yml:1:1: a [action]"],
+                                &["a.yml:1:1: a [action]"],
+                            ),
+                            file(Some("b.yml"), &[], &[]),
+                        ],
+                        (1, 0),
+                    )
+                },
             ],
         }
     }
@@ -336,6 +354,7 @@ mod tests {
                 applied: 0,
                 unexplained: 3,
                 exit_codes: 1,
+                stderr: 1,
                 problems: 0,
             }
         );
@@ -356,6 +375,56 @@ mod tests {
         };
         assert!(report.totals().clean());
         assert!(!self::report().totals().clean());
+    }
+
+    #[test]
+    fn workflint_output_on_standard_error_is_a_difference_with_equal_exit_codes() {
+        let noisy = Run {
+            stderr: [String::new(), "warning: x\n".to_owned()],
+            ..run(
+                "ok/fine.yaml",
+                vec![file(Some("test.yaml"), &[], &[])],
+                (0, 0),
+            )
+        };
+        let report = Report {
+            runs: vec![noisy],
+            ..Report::default()
+        };
+        assert_eq!(report.totals().stderr, 1);
+        assert!(!report.totals().clean());
+        let rendered = report.render();
+        assert!(
+            rendered.contains(
+                "## ok/fine.yaml\n\nworkflint's standard error:\n\n```text\nwarning: x\n```\n"
+            ),
+            "{rendered}"
+        );
+        assert!(
+            rendered.contains("| Runs with workflint output on standard error | 1 |"),
+            "{rendered}"
+        );
+    }
+
+    #[test]
+    fn reference_output_on_standard_error_is_shown_with_its_problem() {
+        let mut noisy = run("err/x", vec![file(Some("test.yaml"), &[], &[])], (3, 3));
+        noisy.stderr[0] = "could not read test.yaml\n".to_owned();
+        noisy
+            .problems
+            .push("the reference exited with code 3; only 0 and 1 are normal".to_owned());
+        let report = Report {
+            runs: vec![noisy],
+            ..Report::default()
+        };
+        assert!(!report.totals().clean());
+        let rendered = report.render();
+        assert!(
+            rendered.contains(
+                "The reference's standard error:\n\n```text\ncould not read test.yaml\n```"
+            ),
+            "{rendered}"
+        );
     }
 
     #[test]

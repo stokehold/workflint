@@ -11,6 +11,7 @@ use std::time::Duration;
 use serde::Deserialize;
 
 use super::fixture::Invocation;
+use crate::process::{self, Finished};
 
 /// The path of a copy of the `workflint` binary, built from the workspace.
 ///
@@ -24,8 +25,8 @@ use super::fixture::Invocation;
 /// another process builds can fail with "No such file or directory". So the
 /// runner copies the binary to `target/conformance/workflint-<hash>`, where
 /// `<hash>` is a hash of its content, and returns the path of the copy. No
-/// build deletes the copy, and a change to `crates/workflint` gives a new
-/// hash and a new copy. `cargo clean` deletes the old copies.
+/// build deletes the copy. A change to `crates/workflint` gives a new hash
+/// and a new copy, and the runner then deletes the older copies.
 ///
 /// # Panics
 ///
@@ -119,7 +120,10 @@ fn stable_copy(source: &Path, directory: &Path) -> Result<PathBuf, String> {
         .and_then(|()| temporary.as_file().set_permissions(permissions))
         .map_err(|error| format!("writing {}: {error}", temporary.path().display()))?;
     match temporary.persist_noclobber(&copy) {
-        Ok(_) => Ok(copy),
+        Ok(_) => {
+            prune(directory, &copy);
+            Ok(copy)
+        }
         // Another test process made the same copy first.
         Err(error) if error.error.kind() == ErrorKind::AlreadyExists => Ok(copy),
         Err(error) => Err(format!(
@@ -127,6 +131,25 @@ fn stable_copy(source: &Path, directory: &Path) -> Result<PathBuf, String> {
             copy.display(),
             error.error
         )),
+    }
+}
+
+/// Deletes the copies in `directory` other than `keep`, so that each build
+/// of a changed binary does not leave another copy behind. A copy that
+/// cannot be deleted, such as one that runs on Windows, stays.
+fn prune(directory: &Path, keep: &Path) {
+    let Ok(entries) = std::fs::read_dir(directory) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_copy = entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| name.starts_with("workflint-"));
+        if is_copy && path != keep {
+            let _ = std::fs::remove_file(&path);
+        }
     }
 }
 
@@ -150,8 +173,10 @@ fn open_relinked(path: &Path) -> Result<File, String> {
     }
 }
 
-/// Finds the `workflint` executable in the JSON messages of `cargo build`.
-fn executable(messages: &str) -> Option<PathBuf> {
+/// Finds the `workflint` executable in the JSON messages of `cargo build
+/// --message-format=json`.
+#[must_use]
+pub fn executable(messages: &str) -> Option<PathBuf> {
     messages
         .lines()
         .filter_map(|line| serde_json::from_str::<Message>(line).ok())
@@ -165,24 +190,47 @@ fn executable(messages: &str) -> Option<PathBuf> {
         .find_map(|message| message.executable)
 }
 
+/// How long one run of a binary on one fixture may take. A debug build of
+/// workflint lints a fixture in milliseconds, and the reference in less.
+pub const TIME_LIMIT: Duration = Duration::from_secs(60);
+
 /// Runs `program` as `invocation` describes and returns its standard output.
 ///
 /// # Errors
 ///
-/// Returns a message if the program cannot start, or if [`check`] rejects
-/// what it did.
+/// Returns a message if the program cannot start, if it runs longer than
+/// [`TIME_LIMIT`], or if [`check`] rejects what it did.
 pub fn run(program: &Path, invocation: &Invocation) -> Result<String, String> {
-    let output = Command::new(program)
-        .args(&invocation.args)
-        .current_dir(&invocation.cwd)
-        .stdin(Stdio::null())
-        .output()
-        .map_err(|error| format!("running {}: {error}", program.display()))?;
+    run_with_limit(program, invocation, TIME_LIMIT)
+}
+
+fn run_with_limit(
+    program: &Path,
+    invocation: &Invocation,
+    limit: Duration,
+) -> Result<String, String> {
+    let captured = process::output(
+        Command::new(program)
+            .args(&invocation.args)
+            .current_dir(&invocation.cwd),
+        limit,
+    )
+    .map_err(|error| format!("{error:#}"))?;
+    let code = match captured.finished {
+        Finished::Exited(status) => status.code(),
+        Finished::TimedOut => {
+            return Err(format!(
+                "{} did not finish within {} s and was killed",
+                program.display(),
+                limit.as_secs()
+            ));
+        }
+    };
     check(
         &program.display().to_string(),
-        output.status.code(),
-        output.stdout,
-        &output.stderr,
+        code,
+        captured.stdout,
+        &captured.stderr,
     )
 }
 
@@ -292,6 +340,44 @@ mod tests {
             done.store(true, Ordering::Relaxed);
             result.unwrap();
         });
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_new_copy_deletes_the_older_copies() {
+        let temp = tempfile::tempdir().unwrap();
+        let copies = temp.path().join("conformance");
+        let first = temp.path().join("first");
+        std::fs::write(&first, "#!/bin/sh\nexit 0\n").unwrap();
+        let old = stable_copy(&first, &copies).unwrap();
+        let second = temp.path().join("second");
+        std::fs::write(&second, "#!/bin/sh\nexit 1\n").unwrap();
+        let new = stable_copy(&second, &copies).unwrap();
+        assert_ne!(old, new);
+        assert!(!old.exists(), "{} is still there", old.display());
+        assert!(new.is_file());
+        assert_eq!(stable_copy(&second, &copies).unwrap(), new);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_binary_that_hangs_is_killed_at_the_time_limit() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        use crate::conformance::fixture::{Fixture, Origin, Tools};
+
+        let temp = tempfile::tempdir().unwrap();
+        let script = temp.path().join("hang");
+        std::fs::write(&script, "#!/bin/sh\nsleep 30\n").unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let ok = Origin::Actionlint.root().join("ok/minimal.yaml");
+        let invocation = Fixture::new(Origin::Actionlint, &ok)
+            .prepare(&Tools::default())
+            .unwrap();
+        let start = std::time::Instant::now();
+        let error = run_with_limit(&script, &invocation, Duration::from_millis(500)).unwrap_err();
+        assert!(error.contains("did not finish within"), "{error}");
+        assert!(start.elapsed() < Duration::from_secs(10));
     }
 
     #[test]

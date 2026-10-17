@@ -56,6 +56,8 @@ cargo xtask oracle tests/conformance/actionlint/testdata/err/one_error.yaml
 
 The inputs are the vendored `err`, `examples`, `ok`, and `projects` fixtures and the 1,503 corpus files. Both binaries run with `-oneline -no-color -shellcheck= -pyflakes=` and an empty config file, in a temporary project, as the conformance runner runs them (`tests/conformance/README.md`). Each fixture is one run, and the corpus is one run over all its files. The command groups the output by file, replaces each rule ID in workflint's output with its actionlint kind from `tests/conformance/rule-kinds.toml`, applies `tests/conformance/allowed-differences.toml` to the reference's output, and compares the lines and the exit codes.
 
+A run of the reference that exits with a code other than 0 or 1, is stopped by a signal, or prints to standard error is a problem in the report, even when workflint does the same, because its output then says nothing about the input. Output of workflint on standard error is a difference, and the report shows the standard error of both binaries. Each binary gets 60 seconds for a fixture and 10 minutes for the corpus. A binary that runs longer is killed, with its child processes on Unix, and the run is a problem.
+
 It prints a summary and a diff for each file that differs, and writes the same Markdown to `target/oracle/report.md`, with the summary alone in `target/oracle/summary.md`. It exits with an error if a difference is not in the allow-list. `--report-only` exits with success after writing the report.
 
 `--kind KIND` compares only the diagnostics of that actionlint kind, and repeating it adds kinds. A milestone uses it to show that workflint matches the reference on the checks it has built, while the checks of other kinds are still missing:
@@ -77,6 +79,8 @@ cargo install --locked hyperfine@2.0.0
 cargo xtask bench
 ```
 
+Both binaries run in copies of the inputs under `target/bench/projects/`, each a project with `.git` and `.github/workflows` directories, with `-config-file` and an empty config file, as the oracle runs them. So neither binary reads the repository's config file or resolves local actions in the repository. The corpus scenarios pass the 1,503 file names on one command line of about 78,000 characters, longer than Windows allows, so run the command on Linux or macOS.
+
 The command writes `target/bench/results.json` and `target/bench/results.md`, with wall time and peak memory for each scenario and binary and the ratio against each target. The output of every run and hyperfine's exports go to `target/bench/runs/`. Without shellcheck 0.11.0, the command skips the shellcheck scenario and says why.
 
 Each run has a time limit: 2 minutes for the corpus, 10 minutes for the corpus with shellcheck, and 10 seconds for `small.yaml`. The binary first runs once on its own under that limit. When that run exceeds it, the command kills the run and the processes it started, records the binary as timed out, and goes on with the next one. Otherwise hyperfine runs the warmup and measured runs, and the limit applies to the whole series: hyperfine gets the limit once for each of its runs, so one slow run can use the time that the others leave unused. `--timeout SECONDS` sets one limit for all scenarios. On macOS the reference can hang with shellcheck on, so `cargo xtask bench --timeout 60` gives a quicker result there.
@@ -85,7 +89,7 @@ When every scenario times out, one binary takes about 86 minutes. The nightly jo
 
 A measurement fails when a binary exits with a code other than 0 or 1, or when hyperfine fails. The command still writes the results, then exits with an error.
 
-The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when a measurement failed, or when, in any scenario, workflint's wall time divided by the reference's from the same run grows by more than 10% against the latest scheduled run in the history. Dividing by the reference cancels most of the speed difference between runners. A run started by hand goes into the history too, but later runs are not compared with it. `cargo xtask bench-history` does that comparison, and it says when a scenario of the previous scheduled run has no result in the new one. After a failed measurement, the job records the results and opens the issue, then fails.
+The `Benchmarks` workflow runs the command every night on Linux and appends the results to `history.jsonl` on the `benchmarks` branch. It opens or updates an issue labelled `performance` when a measurement failed, or when, in any scenario, workflint's wall time divided by the reference's from the same run grows by more than 10% against the latest scheduled run in the history. Dividing by the reference cancels most of the speed difference between runners. A run started by hand goes into the history too, but later runs are not compared with it. `cargo xtask bench-history` does that comparison. A scenario that the previous scheduled run measured and the new one skipped or lacks is a problem in the issue too. The command fails on a history line that is not a result, or that has the current schema version and does not parse. After a failed measurement, the job records the results and opens the issue, then fails.
 
 ## Micro-benchmarks
 

@@ -342,6 +342,16 @@ fn copy_dir(from: &Path, to: &Path) -> io::Result<()> {
     Ok(())
 }
 
+/// The number of fixtures in each suite of the reference's test data at the
+/// reference commit. Discovery fails when the vendored copy has another
+/// number, so that a missing or partial copy cannot pass with fewer tests.
+pub const ACTIONLINT_FIXTURES: [(Suite, usize); 4] = [
+    (Suite::Err, 95),
+    (Suite::Examples, 51),
+    (Suite::Ok, 84),
+    (Suite::Projects, 30),
+];
+
 /// Every fixture of `origin`, found the way the conformance target finds
 /// them.
 ///
@@ -352,13 +362,16 @@ pub fn discover(origin: Origin) -> Result<Vec<Fixture>, String> {
     discover_in(origin, &origin.root())
 }
 
-/// Every fixture of `origin` in the suite directories under `root`. A suite
-/// directory that does not exist has no fixtures.
+/// Every fixture of `origin` in the suite directories under `root`. For
+/// workflint's own fixtures, a suite directory that does not exist has no
+/// fixtures.
 ///
 /// # Errors
 ///
 /// Returns a message that names the directory if a suite directory exists
-/// but cannot be read.
+/// but cannot be read. For the reference's fixtures, it also returns one if
+/// a suite directory is missing or holds another number of fixtures than
+/// [`ACTIONLINT_FIXTURES`] says.
 pub fn discover_in(origin: Origin, root: &Path) -> Result<Vec<Fixture>, String> {
     let mut fixtures = Vec::new();
     for suite in [Suite::Err, Suite::Examples, Suite::Ok, Suite::Projects] {
@@ -367,7 +380,11 @@ pub fn discover_in(origin: Origin, root: &Path) -> Result<Vec<Fixture>, String> 
             |error: io::Error| format!("cannot read {}: {error}", directory.display());
         let entries = match fs::read_dir(&directory) {
             Ok(entries) => entries,
-            Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+            Err(error)
+                if error.kind() == io::ErrorKind::NotFound && origin == Origin::Workflint =>
+            {
+                continue;
+            }
             Err(error) => return Err(cannot_read(error)),
         };
         let mut paths = Vec::new();
@@ -378,6 +395,20 @@ pub fn discover_in(origin: Origin, root: &Path) -> Result<Vec<Fixture>, String> 
             }
         }
         paths.sort();
+        let expected = ACTIONLINT_FIXTURES
+            .iter()
+            .find(|(of, _)| *of == suite)
+            .map(|(_, count)| *count);
+        if let (Origin::Actionlint, Some(expected)) = (origin, expected)
+            && paths.len() != expected
+        {
+            return Err(format!(
+                "{} holds {} fixtures, but the reference has {expected}. Run `cargo xtask \
+                 vendor-testdata` to restore the copy.",
+                directory.display(),
+                paths.len()
+            ));
+        }
         fixtures.extend(paths.iter().map(|path| Fixture::new(origin, path)));
     }
     Ok(fixtures)
@@ -475,6 +506,28 @@ mod tests {
         assert_eq!(count(Suite::Examples), 51);
         assert_eq!(count(Suite::Ok), 84);
         assert_eq!(count(Suite::Projects), 30);
+    }
+
+    #[test]
+    fn a_missing_suite_directory_of_the_reference_is_an_error() {
+        let root = tempfile::tempdir().unwrap();
+        let error = discover_in(Origin::Actionlint, root.path()).unwrap_err();
+        assert!(error.starts_with("cannot read "), "{error}");
+        assert!(error.contains("err"), "{error}");
+    }
+
+    #[test]
+    fn a_reference_suite_with_fewer_fixtures_is_an_error() {
+        let root = tempfile::tempdir().unwrap();
+        for suite in ["err", "examples", "ok", "projects"] {
+            fs::create_dir(root.path().join(suite)).unwrap();
+        }
+        fs::write(root.path().join("err").join("a.yaml"), "").unwrap();
+        let error = discover_in(Origin::Actionlint, root.path()).unwrap_err();
+        assert!(
+            error.contains("holds 1 fixtures, but the reference has 95"),
+            "{error}"
+        );
     }
 
     fn installed() -> Tools {

@@ -9,8 +9,8 @@ use std::time::Duration;
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
-use super::process::{self, Finished};
 use super::results::{Measurement, Stats};
+use xtask::process::{self, Finished};
 
 /// The exit code with which both binaries report that they found problems.
 /// Every scenario's input has some, so hyperfine accepts it.

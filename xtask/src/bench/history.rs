@@ -12,6 +12,7 @@ use std::io::ErrorKind;
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use serde::Deserialize;
 
 use super::results::{Measurement, Results, SCHEMA_VERSION, ScenarioOutcome, format_seconds};
 
@@ -135,26 +136,60 @@ fn missed_targets(results: &Results) -> Vec<(&str, &str)> {
 /// The GitHub Actions event of the nightly run.
 const SCHEDULE: &str = "schedule";
 
-/// Parses the latest entry of the history that a scheduled run wrote and this
-/// version of the command can read.
-fn latest_scheduled(history: &str) -> Option<Results> {
-    history
-        .lines()
-        .rev()
-        .filter(|line| !line.trim().is_empty())
-        .filter_map(|line| serde_json::from_str::<Results>(line).ok())
-        .find(|entry| {
-            entry.schema_version == SCHEMA_VERSION && entry.event.as_deref() == Some(SCHEDULE)
-        })
+/// The part of a history entry that every schema version has.
+#[derive(Deserialize)]
+struct Version {
+    schema_version: u32,
 }
 
-/// The ids of the scenarios that `previous` has and `current` does not.
-fn missing_scenarios<'a>(previous: &'a Results, current: &Results) -> Vec<&'a str> {
+/// Parses the latest entry of the history that a scheduled run wrote with
+/// this version's schema. Entries of other schema versions are skipped.
+///
+/// # Errors
+///
+/// Fails on a line that is not a JSON object with a `schema_version`, or
+/// that has this schema version but does not parse. Skipping such a line
+/// could compare with an older run without a word.
+fn latest_scheduled(history: &str) -> Result<Option<Results>> {
+    let mut latest = None;
+    for (index, line) in history.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let number = index + 1;
+        let version: Version = serde_json::from_str(line).with_context(|| {
+            format!("history line {number} is not a benchmark result with a schema_version")
+        })?;
+        if version.schema_version != SCHEMA_VERSION {
+            continue;
+        }
+        let entry: Results = serde_json::from_str(line).with_context(|| {
+            format!(
+                "history line {number} has schema version {SCHEMA_VERSION} but does not parse \
+                 as one"
+            )
+        })?;
+        if entry.event.as_deref() == Some(SCHEDULE) {
+            latest = Some(entry);
+        }
+    }
+    Ok(latest)
+}
+
+/// The titles of the scenarios that `previous` measured and `current` did
+/// not, because it skipped them or has no result for them.
+fn lost_scenarios<'a>(previous: &'a Results, current: &Results) -> Vec<&'a str> {
     previous
         .scenarios
         .iter()
-        .map(|scenario| scenario.id.as_str())
-        .filter(|id| !current.scenarios.iter().any(|scenario| scenario.id == *id))
+        .filter(|scenario| scenario.measurements().is_some())
+        .filter(|scenario| {
+            !current
+                .scenarios
+                .iter()
+                .any(|now| now.id == scenario.id && now.measurements().is_some())
+        })
+        .map(|scenario| scenario.title.as_str())
         .collect()
 }
 
@@ -186,9 +221,17 @@ pub(crate) struct Report {
 }
 
 /// Compares `current` with the latest scheduled run in `history`.
-pub(crate) fn compare(history: &str, current: &Results) -> Report {
+///
+/// # Errors
+///
+/// Fails if a line of `history` cannot be read. See [`latest_scheduled`].
+pub(crate) fn compare(history: &str, current: &Results) -> Result<Report> {
     let mut summary = String::from("## Compared with the previous scheduled run\n\n");
-    let previous = latest_scheduled(history);
+    let previous = latest_scheduled(history)?;
+    let lost = previous
+        .as_ref()
+        .map(|previous| lost_scenarios(previous, current))
+        .unwrap_or_default();
     let found = previous
         .as_ref()
         .map(|previous| regressions(previous, current))
@@ -204,12 +247,11 @@ pub(crate) fn compare(history: &str, current: &Results) -> Report {
                 previous.date,
                 previous.workflint.commit.as_deref().unwrap_or("unknown")
             );
-            let missing = missing_scenarios(previous, current);
-            if !missing.is_empty() {
+            if !lost.is_empty() {
                 let _ = writeln!(
                     summary,
-                    "This run has no result for a scenario that the previous run had: {}.\n",
-                    missing.join(", ")
+                    "This run measured no result for a scenario that the previous run measured: {}.\n",
+                    lost.join(", ")
                 );
             }
             if found.is_empty() {
@@ -230,7 +272,7 @@ pub(crate) fn compare(history: &str, current: &Results) -> Report {
         Vec::new()
     };
     let failed = failed_measurements(current);
-    let problem = !failed.is_empty() || !found.is_empty() || !missed.is_empty();
+    let problem = !failed.is_empty() || !found.is_empty() || !missed.is_empty() || !lost.is_empty();
     let issue = problem.then(|| {
         let mut body = format!(
             "The benchmark run of {} for workflint {} at commit {} found a problem.\n",
@@ -242,6 +284,15 @@ pub(crate) fn compare(history: &str, current: &Results) -> Report {
             body.push_str("\n### Failed measurements\n\n");
             for (scenario, binary, reason) in &failed {
                 let _ = writeln!(body, "- {scenario}, {binary}: {reason}");
+            }
+        }
+        if !lost.is_empty() {
+            body.push_str("\n### Scenarios without a result\n\n");
+            body.push_str(
+                "The previous scheduled run measured these scenarios, and this run did not:\n\n",
+            );
+            for scenario in &lost {
+                let _ = writeln!(body, "- {scenario}");
             }
         }
         if !found.is_empty() {
@@ -256,7 +307,7 @@ pub(crate) fn compare(history: &str, current: &Results) -> Report {
         }
         body
     });
-    Report { summary, issue }
+    Ok(Report { summary, issue })
 }
 
 fn render_regressions(found: &[Regression]) -> String {
@@ -309,7 +360,8 @@ pub(crate) fn run(history: &Path, results: &Path, issue_body: Option<&Path>) -> 
         }
     };
 
-    let report = compare(&past, &current);
+    let report = compare(&past, &current)
+        .with_context(|| format!("cannot compare with {}", history.display()))?;
     print!("{}", report.summary);
 
     let mut updated = past;
@@ -422,7 +474,7 @@ mod tests {
     fn missed_target_before_0_1_0_opens_no_issue() {
         // workflint at 0.5 of the reference misses the 1/3 target.
         let current = sample(0.5, 1.0);
-        let report = compare("", &current);
+        let report = compare("", &current).unwrap();
         assert_eq!(report.issue, None);
     }
 
@@ -430,7 +482,7 @@ mod tests {
     fn missed_target_from_0_1_0_opens_an_issue() {
         let mut current = sample(0.5, 1.0);
         current.workflint.version = "0.1.0".to_owned();
-        let issue = compare("", &current).issue.unwrap();
+        let issue = compare("", &current).unwrap().issue.unwrap();
         assert!(issue.contains("### Missed targets"), "{issue}");
         assert!(issue.contains("wall time at most 1/3 of the reference"));
     }
@@ -440,7 +492,7 @@ mod tests {
         let older = serde_json::to_string(&sample(0.050, 1.0)).unwrap();
         let previous = serde_json::to_string(&sample(0.100, 1.0)).unwrap();
         let history = format!("{older}\n{previous}\n");
-        let report = compare(&history, &sample(0.120, 1.0));
+        let report = compare(&history, &sample(0.120, 1.0)).unwrap();
         let issue = report.issue.unwrap();
         assert!(
             issue.contains("| corpus | 0.100 of the reference | 0.120 of the reference | +20.0% |"),
@@ -468,7 +520,7 @@ mod tests {
             with_event(sample(0.050, 1.0), Some("workflow_dispatch")),
             with_event(sample(0.050, 1.0), None),
         ]);
-        let report = compare(&history, &sample(0.120, 1.0));
+        let report = compare(&history, &sample(0.120, 1.0)).unwrap();
         let issue = report.issue.unwrap();
         assert!(
             issue.contains("| corpus | 0.100 of the reference | 0.120 of the reference | +20.0% |"),
@@ -479,7 +531,7 @@ mod tests {
     #[test]
     fn history_without_a_scheduled_run_reports_no_earlier_entry() {
         let history = history(&[with_event(sample(0.050, 1.0), Some("workflow_dispatch"))]);
-        let report = compare(&history, &sample(0.120, 1.0));
+        let report = compare(&history, &sample(0.120, 1.0)).unwrap();
         assert!(
             report.summary.contains("no earlier scheduled run"),
             "{}",
@@ -489,20 +541,86 @@ mod tests {
     }
 
     #[test]
-    fn scenario_missing_from_this_run_is_named_in_the_summary() {
+    fn scenario_missing_from_this_run_is_a_problem_in_the_issue() {
         let mut previous = sample(0.100, 1.0);
         let mut small = previous.scenarios[0].clone();
         small.id = "small".to_owned();
         small.title = "small.yaml, end to end".to_owned();
         previous.scenarios.push(small);
-        let report = compare(&history(&[previous]), &sample(0.100, 1.0));
+        let report = compare(&history(&[previous]), &sample(0.100, 1.0)).unwrap();
         assert!(
             report.summary.contains(
-                "This run has no result for a scenario that the previous run had: small."
+                "This run measured no result for a scenario that the previous run measured: \
+                 small.yaml, end to end."
             ),
             "{}",
             report.summary
         );
+        let issue = report.issue.unwrap();
+        assert!(
+            issue.contains("### Scenarios without a result\n"),
+            "{issue}"
+        );
+        assert!(issue.contains("- small.yaml, end to end\n"), "{issue}");
+    }
+
+    #[test]
+    fn scenario_measured_before_and_skipped_now_is_a_problem_in_the_issue() {
+        let previous = sample(0.100, 1.0);
+        let mut current = sample(0.100, 1.0);
+        current.scenarios[0].outcome = ScenarioOutcome::Skipped {
+            reason: "shellcheck is not installed".to_owned(),
+        };
+        let issue = compare(&history(&[previous]), &current)
+            .unwrap()
+            .issue
+            .unwrap();
+        assert!(issue.contains("### Scenarios without a result"), "{issue}");
+        assert!(issue.contains("- Corpus, external tools off\n"), "{issue}");
+    }
+
+    #[test]
+    fn scenario_skipped_in_both_runs_is_no_problem() {
+        let mut previous = sample(0.100, 1.0);
+        let skipped = ScenarioOutcome::Skipped {
+            reason: "shellcheck is not installed".to_owned(),
+        };
+        previous.scenarios[0].outcome = skipped.clone();
+        let mut current = sample(0.100, 1.0);
+        current.scenarios[0].outcome = skipped;
+        let report = compare(&history(&[previous]), &current).unwrap();
+        assert_eq!(report.issue, None);
+    }
+
+    #[test]
+    fn a_history_line_of_this_schema_that_does_not_parse_is_an_error() {
+        let good = serde_json::to_string(&sample(0.100, 1.0)).unwrap();
+        let broken = format!("{{\"schema_version\":{SCHEMA_VERSION},\"date\":3}}");
+        let error = compare(&format!("{good}\n{broken}\n"), &sample(0.100, 1.0)).unwrap_err();
+        assert!(
+            format!("{error:#}").contains("history line 2 has schema version"),
+            "{error:#}"
+        );
+    }
+
+    #[test]
+    fn a_history_line_that_is_not_a_result_is_an_error() {
+        let good = serde_json::to_string(&sample(0.100, 1.0)).unwrap();
+        let error = compare(&format!("not json\n{good}\n"), &sample(0.100, 1.0)).unwrap_err();
+        assert!(
+            format!("{error:#}").contains("history line 1 is not a benchmark result"),
+            "{error:#}"
+        );
+    }
+
+    #[test]
+    fn a_history_line_of_another_schema_is_skipped() {
+        let older = format!(
+            "{{\"schema_version\":{},\"anything\":true}}",
+            SCHEMA_VERSION + 1
+        );
+        let report = compare(&format!("{older}\n"), &sample(0.100, 1.0)).unwrap();
+        assert!(report.summary.contains("no earlier scheduled run"));
     }
 
     #[test]
@@ -513,7 +631,7 @@ mod tests {
                 reason: "the first run exited with exit status: 101".to_owned(),
             };
         }
-        let issue = compare("", &current).issue.unwrap();
+        let issue = compare("", &current).unwrap().issue.unwrap();
         assert!(issue.contains("### Failed measurements"), "{issue}");
         assert!(
             issue.contains(
@@ -526,7 +644,7 @@ mod tests {
 
     #[test]
     fn empty_history_reports_no_earlier_entry() {
-        let report = compare("", &sample(0.1, 1.0));
+        let report = compare("", &sample(0.1, 1.0)).unwrap();
         assert!(
             report.summary.contains("no earlier scheduled run"),
             "{}",
@@ -559,7 +677,7 @@ mod tests {
         run(&history, &results, Some(&issue)).unwrap();
         let lines = fs::read_to_string(&history).unwrap();
         assert_eq!(lines.lines().count(), 2);
-        assert_eq!(latest_scheduled(&lines), Some(sample(0.2, 1.0)));
+        assert_eq!(latest_scheduled(&lines).unwrap(), Some(sample(0.2, 1.0)));
         assert!(fs::read_to_string(&issue).unwrap().contains("+100.0%"));
 
         fs::write(
