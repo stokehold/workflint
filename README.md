@@ -42,6 +42,7 @@ A GitHub Action (`stokehold/workflint-action`), a pre-commit hook, and install s
 | [docs/glossary.md](docs/glossary.md) | Terms used across the project. |
 | [docs/research/](docs/research/README.md) | The research behind the decisions. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute. |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability. |
 
 ## License
 
