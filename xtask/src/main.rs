@@ -91,8 +91,8 @@ enum Command {
         #[arg(long, hide = true)]
         self_check: bool,
         /// Compare only the diagnostics of this actionlint kind, such as
-        /// `syntax-check`. Repeat it for more kinds. The kinds are the values
-        /// in tests/conformance/rule-kinds.toml. Exit codes 0 and 1 are not
+        /// `syntax-check`. Repeat it for more kinds. The kinds are the names
+        /// in `workflint_rules::kind`. Exit codes 0 and 1 are not
         /// compared, because the lines of the other kinds decide them.
         #[arg(long = "kind", value_name = "KIND")]
         kinds: Vec<String>,

@@ -1,0 +1,81 @@
+//! The rule trait and the context its hooks report through.
+
+use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
+use workflint_syntax::{Job, KeyedEntry, Step, Workflow};
+
+/// A rule: the reference's `Rule`, which implements some of the five hooks of its `Pass`.
+///
+/// Every hook does nothing by default, so a rule implements only the hooks it needs. A rule is
+/// created fresh for each file (see [`create_rules`](crate::create_rules)), so it may keep state
+/// from one hook to the next. The lifetime `'a` is the lifetime of the workflow, so a rule can
+/// keep references into it until [`workflow_post`](Self::workflow_post).
+///
+/// A rule reports its diagnostics through the [`Context`], each with the [`RuleMeta`] of the rule
+/// ID it reports. One rule may report several rule IDs, as the reference's `events` rule does.
+pub trait Rule<'a> {
+    /// Runs before any job is visited, the reference's `VisitWorkflowPre`.
+    fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
+        let _ = (workflow, cx);
+    }
+
+    /// Runs for each job before its steps, the reference's `VisitJobPre`. The entry's key is the
+    /// job ID.
+    fn job_pre(&mut self, job: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
+        let _ = (job, cx);
+    }
+
+    /// Runs for each step of a job, the reference's `VisitStep`.
+    fn step(&mut self, step: &'a Step<'a>, cx: &mut Context<'_>) {
+        let _ = (step, cx);
+    }
+
+    /// Runs for each job after its steps, the reference's `VisitJobPost`.
+    fn job_post(&mut self, job: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
+        let _ = (job, cx);
+    }
+
+    /// Runs after every job is visited, the reference's `VisitWorkflowPost`.
+    fn workflow_post(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
+        let _ = (workflow, cx);
+    }
+}
+
+/// What the hooks of a rule get besides the node: the file being linted and the list of
+/// diagnostics that the rules report.
+///
+/// The project's local actions and reusable workflows (M4.3) and the config (M5.2) become fields
+/// of this type, so the signature of the hooks stays the same when they arrive.
+#[derive(Debug)]
+pub struct Context<'f> {
+    file: &'f SourceFile,
+    diagnostics: Vec<Diagnostic>,
+}
+
+impl<'f> Context<'f> {
+    /// Creates the context for linting `file`, with no diagnostics.
+    #[must_use]
+    pub fn new(file: &'f SourceFile) -> Self {
+        Self {
+            file,
+            diagnostics: Vec::new(),
+        }
+    }
+
+    /// Returns the file being linted. Its text and line index turn spans into positions, and a
+    /// node's source map into spans inside a scalar.
+    #[must_use]
+    pub fn file(&self) -> &'f SourceFile {
+        self.file
+    }
+
+    /// Reports a diagnostic of `rule` at `span` with the rule's default severity.
+    pub fn report(&mut self, rule: &'static RuleMeta, span: Span, message: impl Into<String>) {
+        self.diagnostics.push(Diagnostic::new(rule, span, message));
+    }
+
+    /// Returns the reported diagnostics in the order they were reported.
+    #[must_use]
+    pub fn into_diagnostics(self) -> Vec<Diagnostic> {
+        self.diagnostics
+    }
+}

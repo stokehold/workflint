@@ -213,7 +213,7 @@ impl Setup {
                 rule_kinds::actionlint_kind(code)
                     .map(str::to_owned)
                     .ok_or_else(|| {
-                        format!("rule ID {code:?} has no actionlint kind in tests/conformance/rule-kinds.toml")
+                        format!("rule ID {code:?} has no actionlint kind in the rule registry or tests/conformance/rule-kinds.toml")
                     })
             } else {
                 Ok(code.to_owned())
@@ -408,13 +408,14 @@ pub fn check_parity_checklist() -> Result<(), String> {
     checklist::check_items(&items, &fixture::all_ids()?, &failing, &closed()?)
 }
 
-/// Checks that `rule-kinds.toml` has exactly the rule IDs and kinds of the
-/// "Rule ID (kind)" column of `docs/parity-checklist.md`, and the kind of
-/// every rule that a crate defines (see [`rule_kinds::defined_rules`]).
+/// Checks that every rule ID of the "Rule ID (kind)" column of
+/// `docs/parity-checklist.md` is either in the rule registry or in
+/// `rule-kinds.toml`, with the checklist's kind (see
+/// [`rule_kinds::check_rules`]).
 ///
 /// # Errors
 ///
-/// Returns one line per rule ID that differs.
+/// Returns one line per problem.
 ///
 /// # Panics
 ///
@@ -426,27 +427,7 @@ pub fn check_rule_kinds() -> Result<(), String> {
             .unwrap_or_else(|error| panic!("reading {}: {error}", table_path.display())),
     )?;
     let checklist = rule_kinds::checklist_kinds(&read("docs/parity-checklist.md"))?;
-    let mut problems = Vec::new();
-    for (rule, kind) in &checklist {
-        match table.get(rule) {
-            Some(found) if found == kind => {}
-            Some(found) => problems.push(format!(
-                "{rule}: rule-kinds.toml says {found}, the parity checklist says {kind}"
-            )),
-            None => problems.push(format!(
-                "{rule} ({kind}) is in the parity checklist but not in rule-kinds.toml"
-            )),
-        }
-    }
-    for rule in table.keys().filter(|rule| !checklist.contains_key(*rule)) {
-        problems.push(format!(
-            "{rule} is in rule-kinds.toml but not in the parity checklist"
-        ));
-    }
-    problems.extend(rule_kinds::check_rules(
-        &table,
-        &rule_kinds::defined_rules(),
-    ));
+    let problems = rule_kinds::check_rules(&table, &checklist, workflint_rules::registry::rules());
     if problems.is_empty() {
         Ok(())
     } else {

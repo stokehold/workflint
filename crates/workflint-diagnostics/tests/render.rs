@@ -14,6 +14,7 @@ use workflint_diagnostics::{
 const fn rule(id: &'static str) -> RuleMeta {
     RuleMeta {
         id,
+        description: "",
         kind: "expression",
         category: Category::Correctness,
         default_severity: Severity::Error,

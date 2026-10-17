@@ -122,6 +122,7 @@ mod tests {
     const fn rule(id: &'static str) -> RuleMeta {
         RuleMeta {
             id,
+            description: "",
             kind: "syntax-check",
             category: Category::Correctness,
             default_severity: Severity::Error,

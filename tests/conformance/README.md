@@ -152,10 +152,10 @@ Every entry needs a matching section in `docs/differences.md`. Write that sectio
 
 ## Rule kinds
 
-workflint prints rule IDs in brackets, and the `.out` files have actionlint kinds (`docs/differences.md#rule-id-in-brackets`). `rule-kinds.toml` maps each rule ID to its kind:
+workflint prints rule IDs in brackets, and the `.out` files have actionlint kinds (`docs/differences.md#rule-id-in-brackets`). The runner and `cargo xtask oracle` take a rule ID's kind from the `RuleMeta` in the rule registry of `workflint-rules`. `rule-kinds.toml` maps each rule ID of the parity checklist that has no rule yet to its kind:
 
 ```toml
-undefined-variable = "expression"
+cron-too-frequent = "events"
 ```
 
-It holds the "Rule ID (kind)" column of `docs/parity-checklist.md`. The test `rule_kinds::rule-kinds.toml` fails if the two disagree, or if a rule in the `ALL` list of `workflint-yaml`, `workflint-syntax` or `workflint-expr` is missing from the table or has another kind there. So a pull request that adds or renames a rule ID updates the checklist and this file too. M4.1 replaces the table with the rule registry.
+The test `rule_kinds::rule-kinds.toml` fails if a rule ID of the "Rule ID (kind)" column of `docs/parity-checklist.md` is in both the registry and the table, or in neither, or if its kind there differs from the checklist. It also fails if a registered rule or a table entry is missing from the checklist. So a pull request that adds a rule moves its rule IDs out of this file, and one that adds or renames a rule ID updates the checklist too.

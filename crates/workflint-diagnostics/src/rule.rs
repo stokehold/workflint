@@ -62,6 +62,9 @@ impl Category {
 pub struct RuleMeta {
     /// The kebab-case rule ID, such as `undefined-property`.
     pub id: &'static str,
+    /// What the rule reports, in one line without a final period, such as "An expression reads a
+    /// variable that is not a context". `workflint rules` and SARIF output show it.
+    pub description: &'static str,
     /// The actionlint error kind the rule maps to, such as `expression` or `syntax-check`.
     pub kind: &'static str,
     /// The rule set the rule belongs to.

@@ -13,6 +13,7 @@ use workflint_diagnostics::{
 
 static RULE: RuleMeta = RuleMeta {
     id: "fuzz",
+    description: "",
     kind: "syntax-check",
     category: Category::Correctness,
     default_severity: Severity::Error,

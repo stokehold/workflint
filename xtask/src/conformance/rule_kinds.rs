@@ -1,10 +1,11 @@
 //! Maps workflint rule IDs to actionlint kinds, so that workflint's output
 //! compares with the reference's `.out` files (ADR 0003, ADR 0008).
 //!
-//! Until the rule registry exists (M4.1), the map is the table in
-//! `tests/conformance/rule-kinds.toml`, copied from the "Rule ID (kind)"
-//! column of `docs/parity-checklist.md`. The conformance target checks that
-//! the two agree.
+//! A rule ID's kind comes from the rule registry in `workflint-rules`. The
+//! rule IDs of the parity checklist that no crate defines yet keep their kind
+//! in `tests/conformance/rule-kinds.toml`, and each task that adds a rule
+//! moves its IDs out of the table. The conformance target checks that every
+//! checklist rule ID is in exactly one of the two, with the checklist's kind.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
@@ -21,15 +22,23 @@ static TABLE: LazyLock<BTreeMap<String, String>> = LazyLock::new(|| {
 
 /// The actionlint kind that `rule_id` maps to, or `None` for an unknown ID.
 ///
-/// This is the only place that knows the mapping. M4.1 replaces the table
-/// with a lookup in the rule registry.
+/// This is the only place that knows the mapping: the registry, then the
+/// table of the rule IDs that have no rule yet.
+#[must_use]
 pub fn actionlint_kind(rule_id: &str) -> Option<&'static str> {
-    TABLE.get(rule_id).map(String::as_str)
+    workflint_rules::registry::find(rule_id)
+        .map(|rule| rule.kind)
+        .or_else(|| TABLE.get(rule_id).map(String::as_str))
 }
 
-/// Every actionlint kind that a rule ID maps to, sorted.
+/// Every actionlint kind, sorted: the kinds that `workflint_rules::kind`
+/// describes.
+#[must_use]
 pub fn kinds() -> BTreeSet<&'static str> {
-    TABLE.values().map(String::as_str).collect()
+    workflint_rules::kind::ALL
+        .iter()
+        .map(|kind| kind.name)
+        .collect()
 }
 
 /// Replaces the rule ID in each diagnostic's brackets with its kind.
@@ -50,7 +59,7 @@ fn to_kinds_with<'a>(
         .map(|mut diagnostic| {
             let found = kind(&diagnostic.code).ok_or_else(|| {
                 format!(
-                    "rule ID {:?} has no actionlint kind in tests/conformance/rule-kinds.toml: {diagnostic}",
+                    "rule ID {:?} has no actionlint kind in the rule registry or tests/conformance/rule-kinds.toml: {diagnostic}",
                     diagnostic.code
                 )
             })?;
@@ -79,36 +88,56 @@ pub fn parse_table(text: &str) -> Result<BTreeMap<String, String>, String> {
         .collect()
 }
 
-/// Every rule that the crates define so far: the `ALL` lists of
-/// `workflint-yaml`, `workflint-syntax` and `workflint-expr`.
+/// One line for each way that `table`, the rule IDs that have no rule yet,
+/// and `rules`, the registry, disagree with `checklist`, the rule IDs and
+/// kinds of the parity checklist.
+///
+/// Every checklist rule ID is in exactly one of `table` and `rules`, with the
+/// checklist's kind, and every rule ID of `table` and `rules` is in the
+/// checklist.
 #[must_use]
-pub fn defined_rules() -> Vec<&'static RuleMeta> {
-    workflint_yaml::rules::ALL
-        .iter()
-        .chain(&workflint_syntax::rules::ALL)
-        .chain(&workflint_expr::rules::ALL)
-        .copied()
-        .collect()
-}
-
-/// One line for each of `rules` that `table` does not map to the rule's
-/// kind.
-#[must_use]
-pub fn check_rules(table: &BTreeMap<String, String>, rules: &[&RuleMeta]) -> Vec<String> {
-    rules
-        .iter()
-        .filter_map(|rule| match table.get(rule.id) {
-            Some(kind) if kind == rule.kind => None,
-            Some(kind) => Some(format!(
-                "{}: its RuleMeta says {}, rule-kinds.toml says {kind}",
-                rule.id, rule.kind
+pub fn check_rules(
+    table: &BTreeMap<String, String>,
+    checklist: &BTreeMap<String, String>,
+    rules: &[&RuleMeta],
+) -> Vec<String> {
+    let registered: BTreeMap<&str, &str> = rules.iter().map(|rule| (rule.id, rule.kind)).collect();
+    let mut problems = Vec::new();
+    for (rule, kind) in checklist {
+        match (registered.get(rule.as_str()), table.get(rule)) {
+            (Some(_), Some(_)) => problems.push(format!(
+                "{rule} is in the rule registry, so remove it from rule-kinds.toml"
             )),
-            None => Some(format!(
-                "{} ({}) has a RuleMeta but is not in rule-kinds.toml",
-                rule.id, rule.kind
+            (Some(found), None) if found != kind => problems.push(format!(
+                "{rule}: its RuleMeta says {found}, the parity checklist says {kind}"
             )),
-        })
-        .collect()
+            (None, Some(found)) if found != kind => problems.push(format!(
+                "{rule}: rule-kinds.toml says {found}, the parity checklist says {kind}"
+            )),
+            (None, None) => problems.push(format!(
+                "{rule} ({kind}) is in the parity checklist but neither in the rule registry nor in rule-kinds.toml"
+            )),
+            _ => {}
+        }
+    }
+    for rule in table.keys().filter(|rule| !checklist.contains_key(*rule)) {
+        problems.push(format!(
+            "{rule} is in rule-kinds.toml but not in the parity checklist"
+        ));
+    }
+    for (rule, kind) in registered {
+        if !checklist.contains_key(rule) {
+            problems.push(format!(
+                "{rule} ({kind}) is in the rule registry but not in the parity checklist"
+            ));
+            if table.contains_key(rule) {
+                problems.push(format!(
+                    "{rule} is in the rule registry, so remove it from rule-kinds.toml"
+                ));
+            }
+        }
+    }
+    problems
 }
 
 /// Collects the rule IDs and kinds from every "Rule ID (kind)" cell in the
@@ -156,7 +185,14 @@ mod tests {
     }
 
     #[test]
-    fn the_kinds_are_the_values_of_the_table() {
+    fn a_rule_id_without_a_rule_takes_its_kind_from_the_table() {
+        let (rule, kind) = TABLE.iter().next().unwrap();
+        assert!(workflint_rules::registry::find(rule).is_none());
+        assert_eq!(actionlint_kind(rule), Some(kind.as_str()));
+    }
+
+    #[test]
+    fn the_kinds_are_the_kinds_of_the_registry() {
         let kinds = kinds();
         assert!(kinds.contains("syntax-check"));
         assert!(kinds.contains("workflow-call"));
@@ -193,6 +229,7 @@ mod tests {
     fn meta(id: &'static str, kind: &'static str) -> RuleMeta {
         RuleMeta {
             id,
+            description: "",
             kind,
             category: workflint_diagnostics::Category::Correctness,
             default_severity: workflint_diagnostics::Severity::Error,
@@ -201,32 +238,48 @@ mod tests {
     }
 
     #[test]
-    fn a_rule_meta_missing_from_the_table_or_with_another_kind_is_reported() {
-        let table = parse_table("a-rule = \"expression\"\nb-rule = \"action\"\n").unwrap();
-        let (a, b, c) = (
-            meta("a-rule", "expression"),
-            meta("b-rule", "syntax-check"),
-            meta("c-rule", "syntax-check"),
-        );
+    fn a_checklist_rule_id_is_in_exactly_one_of_the_registry_and_the_table() {
+        let checklist = parse_table(
+            "a-rule = \"expression\"\nb-rule = \"action\"\nc-rule = \"events\"\nd-rule = \"glob\"\n",
+        )
+        .unwrap();
+        let table = parse_table("b-rule = \"action\"\nc-rule = \"events\"\n").unwrap();
+        let (a, c) = (meta("a-rule", "expression"), meta("c-rule", "events"));
         assert_eq!(
-            check_rules(&table, &[&a, &b, &c]),
+            check_rules(&table, &checklist, &[&a, &c]),
             [
-                "b-rule: its RuleMeta says syntax-check, rule-kinds.toml says action",
-                "c-rule (syntax-check) has a RuleMeta but is not in rule-kinds.toml",
+                "c-rule is in the rule registry, so remove it from rule-kinds.toml",
+                "d-rule (glob) is in the parity checklist but neither in the rule registry nor in rule-kinds.toml",
             ]
         );
     }
 
     #[test]
-    fn the_defined_rules_include_every_crate() {
-        let ids: Vec<&str> = defined_rules().iter().map(|rule| rule.id).collect();
-        for id in [
-            "yaml-syntax-error",
-            "too-many-yaml-nodes",
-            "undefined-variable",
-        ] {
-            assert!(ids.contains(&id), "{id} is missing from {ids:?}");
-        }
+    fn a_kind_that_differs_from_the_checklist_is_reported() {
+        let checklist = parse_table("a-rule = \"expression\"\nb-rule = \"action\"\n").unwrap();
+        let table = parse_table("b-rule = \"events\"\n").unwrap();
+        let a = meta("a-rule", "syntax-check");
+        assert_eq!(
+            check_rules(&table, &checklist, &[&a]),
+            [
+                "a-rule: its RuleMeta says syntax-check, the parity checklist says expression",
+                "b-rule: rule-kinds.toml says events, the parity checklist says action",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rule_id_missing_from_the_checklist_is_reported() {
+        let checklist = BTreeMap::new();
+        let table = parse_table("b-rule = \"action\"\n").unwrap();
+        let a = meta("a-rule", "expression");
+        assert_eq!(
+            check_rules(&table, &checklist, &[&a]),
+            [
+                "b-rule is in rule-kinds.toml but not in the parity checklist",
+                "a-rule (expression) is in the rule registry but not in the parity checklist",
+            ]
+        );
     }
 
     #[test]
