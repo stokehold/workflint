@@ -50,7 +50,8 @@ impl Section for JobBody<'static> {
 ///
 /// `runs-on`, `environment`, `outputs`, `env`, `defaults`, `steps`,
 /// `timeout-minutes`, `continue-on-error`, `container`, and `services` are
-/// only for a job with steps. The reference does not count `services`
+/// only for a job with steps. The reference does not count `services`, so
+/// workflint reports it but keeps the call
 /// (`docs/differences.md#reusable-call-services`). `uses`, `with`, and
 /// `secrets` are only for a job that calls a reusable workflow.
 static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
@@ -257,7 +258,8 @@ impl<'a> Parser<'a, '_> {
     ///
     /// After the keys come the checks of research section 3.6. With `uses`,
     /// each key that only a job with steps may have is reported, and the
-    /// job then has no [`workflow_call`](Job::workflow_call). Without
+    /// job then has no [`workflow_call`](Job::workflow_call), unless that
+    /// key is `services` alone. Without
     /// `uses`, a missing `runs-on` or `steps` is reported at the job ID, and
     /// each of `with` and `secrets` is reported at its key. An invalid
     /// `steps` counts as missing, as in the reference. The reference
@@ -288,7 +290,9 @@ impl<'a> Parser<'a, '_> {
                     ),
                 );
             }
-            if steps_only.is_empty() {
+            // The reference keeps the call when `services` is the only such
+            // key, because it does not count `services`.
+            if steps_only.iter().all(|key| key.value() == "services") {
                 job.workflow_call = Some(call);
             }
             return job;
