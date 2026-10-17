@@ -110,7 +110,7 @@ impl TypeEnv {
     }
 
     /// Sets `secrets` to a strict object of the declared secrets and the
-    /// [`BUILT_IN_SECRETS`](workflint_data::BUILT_IN_SECRETS) that every workflow can read. A
+    /// [`BUILT_IN_SECRETS`] that every workflow can read. A
     /// declared secret replaces a built-in one of the same name. This is the reference's
     /// `UpdateSecrets`.
     pub fn set_secrets(&mut self, declared: impl Into<Arc<ObjectTy>>) {

@@ -219,72 +219,83 @@ fn key_text<'s>(d: &Decoder<'s>, key: NodeId) -> &'s str {
 /// override a key that is already there. Aliases are resolved
 /// (docs/differences.md#action-metadata-aliases).
 fn merged_entries(d: &Decoder<'_>, id: NodeId) -> Result<Vec<(String, NodeId)>, DecodeError> {
-    fn collect(
-        d: &Decoder<'_>,
-        id: NodeId,
-        merged: bool,
-        seen: &mut BTreeSet<String>,
-        expanding: &mut Vec<NodeId>,
-        out: &mut Vec<(String, NodeId)>,
-    ) -> Result<(), DecodeError> {
-        let source = d.source();
-        if expanding.contains(&id) {
-            let name = source
-                .node(id)
-                .and_then(|node| node.anchor.as_ref())
-                .map_or("", |anchor| anchor.name.as_str());
-            return Err(DecodeError::Other(format!(
-                "yaml: anchor '{name}' value contains itself"
-            )));
-        }
-        expanding.push(id);
-        let mut merge_values = Vec::new();
-        for entry in source.written_entries(id) {
-            if source.is_merge_key(entry.key) {
-                merge_values.push(entry.value);
-                continue;
-            }
-            let name = key_text(d, entry.key).to_owned();
-            if seen.insert(name.clone()) || !merged {
-                out.push((name, entry.value));
-            }
-        }
-        for merge in merge_values {
-            let want_map = || {
-                DecodeError::Other(
-                    "yaml: map merge requires map or sequence of maps as the value".to_owned(),
-                )
-            };
-            let merge = source.resolve_alias(merge);
-            let mappings: Vec<NodeId> = match source.node(merge).map(|node| &node.kind) {
-                Some(NodeKind::Mapping(_)) => vec![merge],
-                Some(NodeKind::Sequence(_)) => source
-                    .written(merge)
-                    .iter()
-                    .map(|&item| source.resolve_alias(item))
-                    .collect(),
-                _ => return Err(want_map()),
-            };
-            if !mappings.iter().all(|&mapping| source.is_mapping(mapping)) {
-                return Err(want_map());
-            }
-            for mapping in mappings {
-                collect(d, mapping, true, seen, expanding, out)?;
-            }
-        }
-        expanding.pop();
-        Ok(())
+    /// The work left, last first. A stack instead of recursion, so that
+    /// merges nested as deep as the YAML layer allows (ADR 0022) cannot
+    /// overflow the stack.
+    enum Work {
+        /// List the entries of a mapping. `merged` is true for a mapping
+        /// that a `<<` key merges in.
+        Mapping { id: NodeId, merged: bool },
+        /// List the mappings that a `<<` value names.
+        Merge(NodeId),
+        /// Leave the innermost mapping.
+        Leave,
     }
 
+    let source = d.source();
+    let want_map = || {
+        DecodeError::Other(
+            "yaml: map merge requires map or sequence of maps as the value".to_owned(),
+        )
+    };
     let mut out = Vec::new();
-    collect(
-        d,
-        id,
-        false,
-        &mut BTreeSet::new(),
-        &mut Vec::new(),
-        &mut out,
-    )?;
+    let mut seen = BTreeSet::new();
+    // The mappings being listed, outermost first.
+    let mut expanding = Vec::new();
+    let mut work = vec![Work::Mapping { id, merged: false }];
+    while let Some(next) = work.pop() {
+        match next {
+            Work::Mapping { id, merged } => {
+                if expanding.contains(&id) {
+                    let name = source
+                        .node(id)
+                        .and_then(|node| node.anchor.as_ref())
+                        .map_or("", |anchor| anchor.name.as_str());
+                    return Err(DecodeError::Other(format!(
+                        "yaml: anchor '{name}' value contains itself"
+                    )));
+                }
+                expanding.push(id);
+                work.push(Work::Leave);
+                let mut merge_values = Vec::new();
+                for entry in source.written_entries(id) {
+                    if source.is_merge_key(entry.key) {
+                        merge_values.push(entry.value);
+                        continue;
+                    }
+                    let name = key_text(d, entry.key).to_owned();
+                    if seen.insert(name.clone()) || !merged {
+                        out.push((name, entry.value));
+                    }
+                }
+                work.extend(merge_values.into_iter().rev().map(Work::Merge));
+            }
+            Work::Merge(merge) => {
+                let merge = source.resolve_alias(merge);
+                let mappings: Vec<NodeId> = match source.node(merge).map(|node| &node.kind) {
+                    Some(NodeKind::Mapping(_)) => vec![merge],
+                    Some(NodeKind::Sequence(_)) => source
+                        .written(merge)
+                        .iter()
+                        .map(|&item| source.resolve_alias(item))
+                        .collect(),
+                    _ => return Err(want_map()),
+                };
+                if !mappings.iter().all(|&mapping| source.is_mapping(mapping)) {
+                    return Err(want_map());
+                }
+                work.extend(
+                    mappings
+                        .into_iter()
+                        .rev()
+                        .map(|id| Work::Mapping { id, merged: true }),
+                );
+            }
+            Work::Leave => {
+                expanding.pop();
+            }
+        }
+    }
     Ok(out)
 }
 

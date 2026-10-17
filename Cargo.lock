@@ -948,6 +948,7 @@ name = "workflint-diagnostics"
 version = "0.0.1"
 dependencies = [
  "codspeed-divan-compat",
+ "datatest-stable",
  "insta",
  "thiserror",
  "unicode-general-category",
@@ -969,6 +970,7 @@ name = "workflint-syntax"
 version = "0.0.1"
 dependencies = [
  "codspeed-divan-compat",
+ "datatest-stable",
  "workflint-diagnostics",
  "workflint-expr",
  "workflint-yaml",

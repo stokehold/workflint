@@ -444,3 +444,22 @@ fn syntax_errors_give_go_yaml_texts() {
         "error: yaml: unknown anchor 'x' referenced\n"
     );
 }
+
+#[test]
+fn deeply_nested_merges_decode_on_a_small_stack() {
+    let merges = |inner: &str| format!("{}{inner}{}", "{<<: ".repeat(5000), "}".repeat(5000));
+    let text = format!(
+        "on:\n  workflow_call: {}\n",
+        merges("{inputs: {a: {type: string, required: true}}}")
+    );
+    let decoded = std::thread::Builder::new()
+        .stack_size(2 << 20)
+        .spawn(move || decode(&text))
+        .unwrap()
+        .join()
+        .unwrap();
+    assert_eq!(
+        decoded,
+        "input \"a\": name=\"a\" required=true type=string\n"
+    );
+}

@@ -88,6 +88,12 @@ impl<'a, T> Keyed<'a, T> {
         self.inner.entries.is_empty()
     }
 
+    /// Returns whether `other` is a clone of the collection, which shares
+    /// its entries.
+    pub(crate) fn shares_entries(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+
     /// Returns the entries for changing their values, or `None` if a clone
     /// shares them.
     pub(crate) fn unique_entries_mut(&mut self) -> Option<&mut [KeyedEntry<'a, T>]> {

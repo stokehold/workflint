@@ -1,5 +1,5 @@
-//! Runs the check of the `syntax` fuzz target on every YAML file of the
-//! reference.
+//! Runs the check of the `syntax` fuzz target, which includes the check of
+//! the `metadata` target, on every YAML file of the reference.
 //!
 //! The first test reads the fixtures vendored in
 //! `tests/conformance/actionlint/testdata/`. The second reads the corpus in
