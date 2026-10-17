@@ -7,7 +7,8 @@ Rules for this file:
 - Add an entry before or in the same pull request as the change. Each allow-list record names the anchor and the fixture.
 - Keep anchors stable. Other documents and the allow-list link to them.
 - An entry describes behaviour that users can observe: output, exit codes, files read or written. Internal design choices that do not change output belong in the ADRs.
-- Status is `planned` until the change ships, then `done` with the version.
+- Status is `planned` until the change is built, `implemented` once `main` has it but no release does, and then `done in <version>`. When only part of an entry is built, the status says which part.
+- Tasks of workflint are named by their task ID, such as M4.6. `docs/roadmap.md` links each one to its issue.
 - Issue numbers refer to `rhysd/actionlint`.
 
 The last section lists behaviour that was investigated and deliberately kept.
@@ -22,7 +23,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: ignore comments and per-rule config need a stable, specific ID (ADR 0008, ADR 0009). The upstream problem matcher regex still matches, and its `code` group now captures the rule ID.
 - Upstream issue: #71, #75.
 - Milestone: M1 (diagnostic model), M5 (output).
-- Status: planned. The `.Kind` and `.Rule` split for templates is a proposal to confirm in M5.
+- Status: implemented in the default and `-oneline` output. The `.Kind` and `.Rule` split for templates is a proposal to confirm in M5.
 - Fixtures: every `.out` line differs in the bracket only. The conformance runner maps rule IDs back to kinds before comparing.
 
 <a id="sort-order"></a>
@@ -33,7 +34,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the order of findings at one position should not depend on message wording.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned.
+- Status: implemented.
 
 <a id="column-units"></a>
 ### Columns are always Unicode code points
@@ -47,7 +48,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: one consistent unit. ASCII-only files without tabs report the same columns as upstream. Their indicator differs only where the span is not the run up to the next space, for example a message about a quoted string that contains spaces.
 - Upstream issue: none.
 - Milestone: M1, M3.
-- Status: planned.
+- Status: implemented in the default and `-oneline` output. The other formats follow in M5.
 
 <a id="positions-inside-scalars"></a>
 ### Exact positions inside multi-line and quoted strings
@@ -57,7 +58,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a position on the wrong line sends users to the wrong place.
 - Upstream issue: #330.
 - Milestone: M2, M3, M4. Expression syntax errors use the exact positions from M2.
-- Status: planned.
+- Status: implemented for expression syntax errors. Other errors inside strings follow with the M4 rules that report them.
 - Fixtures: `.out` lines for errors inside multi-line or escaped strings.
 
 <a id="script-finding-positions"></a>
@@ -79,7 +80,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the upstream position is off by one column and sometimes on the wrong line.
 - Upstream issue: #519.
 - Milestone: M1.
-- Status: planned.
+- Status: implemented.
 - Fixtures: `err/yaml_syntax_error`, `examples/broken_yaml`.
 
 <a id="empty-scalar-past-last-line"></a>
@@ -90,7 +91,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a position must point into the file.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned. No fixture covers it.
+- Status: implemented. No fixture covers it.
 
 <a id="unknown-anchor-position"></a>
 ### Undefined alias position and message prefix
@@ -100,7 +101,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: `0:0` is not a position, and other YAML errors drop the inner prefix.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned.
+- Status: implemented.
 - Fixtures: `err/undefined_anchor`, `examples/dangling_alias`.
 
 <a id="long-line-snippets"></a>
@@ -111,7 +112,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the limit is an artefact of the Go reader.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned.
+- Status: implemented.
 
 <a id="snippet-line-breaks"></a>
 ### Snippet lines end at every YAML line break
@@ -121,7 +122,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the snippet must show the line the diagnostic is on.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned.
+- Status: implemented.
 
 ## Workflow parser
 
@@ -133,17 +134,17 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a crash loses every other result.
 - Upstream issue: #753.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented in the parser. The `internal-error` diagnostic for a rule that panics is planned for M5.
 
 <a id="yaml-node-limit"></a>
 ### Workflows over GitHub's YAML node limit
 
 - Upstream: the parser walks an anchored subtree again at each alias that uses it. Nested aliases multiply, so a "billion laughs" workflow, nine levels of anchors with ten aliases each, makes the parser walk 10^9 nodes, and actionlint does not finish.
-- workflint: before it parses, the parser counts the YAML events that GitHub's reader reads, with each alias expanded: the stream and document markers, each scalar, and the start and end of each collection. The reader is `YamlObjectReader` in `actions/runner` at `9abfe11`, and it stops past 50,000 events with `Maximum YAML nodes exceeded`. Past the same limit, workflint reports `workflow has more than 50000 YAML nodes when its aliases are expanded. GitHub rejects it with "Maximum YAML nodes exceeded"` at the start of the document, with the rule `too-many-yaml-nodes`, and parses nothing else. The count takes time in proportion to the size of the file. A recursive alias counts as one event, because the YAML layer reports it already.
+- workflint: before it parses, the parser counts the YAML events that GitHub's reader reads, with each alias expanded: the stream and document markers, each scalar, and the start and end of each collection. The reader is `YamlObjectReader` in `actions/runner` at `9abfe11`, and it stops past 50,000 events with `Maximum YAML nodes exceeded`. It counts only when its parse options allow anchors (`m_allowAnchors` in `MoveNext`). Without them, it rejects every anchor and counts nothing. GitHub accepts anchors in workflows, so workflint counts in every workflow. Past the same limit, workflint reports `workflow has more than 50000 YAML nodes when its aliases are expanded. GitHub rejects it with "Maximum YAML nodes exceeded"` at the start of the document, with the rule `too-many-yaml-nodes`, and parses nothing else. The count takes time in proportion to the size of the file. A recursive alias counts as one event, because the YAML layer reports it already.
 - Why: a linter must finish on any input, and GitHub rejects these files anyway.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned. No fixture covers it.
+- Status: implemented. No fixture covers it.
 
 <a id="container-volumes"></a>
 ### Container `volumes` is kept separate from `ports`
@@ -153,7 +154,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the field assignment is a copy-paste mistake.
 - Upstream issue: #747.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented in the parser. The expressions in both lists are checked from M4.6.
+- Fixtures: `ok/container_syntax.yaml` (lines 16-24), `err/empty_sequence_or_string` (lines 25-30), and `err/invalid_container_syntax` (lines 51-54) have both keys. Their output does not change, because neither list holds an expression.
 
 <a id="capitalized-booleans"></a>
 ### `True` and `TRUE` are true
@@ -163,7 +165,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the value contradicts the YAML type actionlint itself assigned.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented.
 
 <a id="reusable-call-services"></a>
 ### `services` on a reusable workflow call job
@@ -173,17 +175,19 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: GitHub does not allow `services` on a job that calls a reusable workflow. The upstream message itself lists the allowed keys, and `services` is not among them.
 - Upstream issue: #748.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented.
+- Fixtures: `workflint/err/reusable_call_keys`.
 
 <a id="reusable-call-keys"></a>
 ### Every misplaced key of a reusable workflow call job is reported
 
 - Upstream: a job with `uses` reports only the last key written that only a job with steps may have, such as `runs-on` or `env` (`parse.go:1461`). A job without `uses` reports only the last of `with` and `secrets` (`parse.go:1479`). After fixing that key, the next run reports the one before it.
 - workflint: each such key gets its own error, at its key.
-- Why: one run should show every key to remove. No fixture and no corpus file has a job with two such keys, so no expected output changes.
+- Why: one run should show every key to remove. No fixture of the reference and no corpus file has a job with two such keys, so no expected output of the reference changes.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented.
+- Fixtures: `workflint/err/reusable_call_keys`.
 
 <a id="snapshot-section-name"></a>
 ### `snapshot` errors name the right section
@@ -193,7 +197,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the section name is a copy-paste mistake.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented.
+- Fixtures: `workflint/err/snapshot_section_name`.
 
 <a id="dispatch-input-key-list"></a>
 ### Complete key list for `workflow_dispatch` inputs
@@ -203,7 +208,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the hint should list every valid key.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented.
 - Fixtures: `err/case_sensitive_keys`, `err/unexpected_keys`.
 - Corpus: `netdata_netdata_.github_workflows_dashboard-pr.yml`, `netdata_netdata_.github_workflows_docker.yml`, `netdata_netdata_.github_workflows_packaging.yml`. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
 
@@ -215,7 +220,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: `%q` is an unformatted verb, not a section name.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented.
 - Fixtures: `workflint/err/empty_event_name`.
 
 <a id="action-metadata-aliases"></a>
@@ -226,7 +231,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: an alias should behave like the node it refers to.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented in the decoder. The `action` rule reads the decoded inputs from M4.18.
 
 <a id="non-scalar-keys"></a>
 ### Keys that are not strings in `permissions` and `env`
@@ -236,7 +241,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the second error repeats the first and names a scope that is not in the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned. No fixture covers it.
+- Status: implemented in the parser. The `permissions` rule follows in M4.22. No fixture covers it.
 
 <a id="typed-decoding-edge-cases"></a>
 ### Rare inputs to the typed decoding of local metadata
@@ -251,7 +256,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: these cases need go-yaml internals that no metadata file depends on, and the error count must stay bounded.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned. No fixture covers it.
+- Status: implemented. No fixture covers it.
 
 ## Expressions
 
@@ -263,7 +268,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: upstream rejects valid expressions.
 - Upstream issue: PR #733.
 - Milestone: M3.
-- Status: planned.
+- Status: implemented.
 
 <a id="exponent-plus-sign"></a>
 ### `+` in a number's exponent
@@ -273,7 +278,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: upstream rejects valid expressions.
 - Upstream issue: PR #708.
 - Milestone: M3.
-- Status: planned.
+- Status: implemented.
 
 <a id="comparison-precedence"></a>
 ### Comparison operator precedence
@@ -284,7 +289,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the tree must match how GitHub evaluates the expression, or type errors are wrong.
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned.
+- Status: implemented in `workflint-expr`. Its type errors reach the output from M4.6.
 
 <a id="expression-nesting-limit"></a>
 ### Nesting limit for expressions
@@ -294,7 +299,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the parser and the checks walk the tree recursively, and a limit keeps a crafted expression from overflowing the stack. The deepest expression in the corpus is 11 levels deep. GitHub's parser in `actions/languageservices` stops at 50 levels.
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned.
+- Status: implemented.
 
 <a id="bool-assignability"></a>
 ### `bool` no longer accepts every type
@@ -304,7 +309,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: GitHub rejects a non-boolean value for a `boolean` input of a reusable workflow at run time.
 - Upstream issue: none.
 - Milestone: M3, M4.
-- Status: planned.
+- Status: implemented in `workflint-expr`. Its type errors reach the output from M4.6, and the `with:` check follows in M4.10.
 
 <a id="literal-index-case"></a>
 ### Case-insensitive literal index keys
@@ -314,7 +319,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: GitHub treats both forms the same.
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned.
+- Status: implemented in `workflint-expr`. It reaches the output from M4.6.
 
 <a id="fromjson-key-case"></a>
 ### Case-insensitive keys from `fromJSON` literals
@@ -324,7 +329,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: upstream rejects valid code. Property access is case-insensitive at run time.
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned.
+- Status: implemented in `workflint-expr`. It reaches the output from M4.6.
 
 <a id="fromjson-nesting"></a>
 ### Deeply nested `fromJSON` literals
@@ -334,7 +339,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: printing, merging, and comparing types recurse, and a type 10,000 levels deep could overflow the stack. The expression parser has the same limit of 128 levels.
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned. No fixture covers it.
+- Status: implemented in `workflint-expr`. It reaches the output from M4.6. No fixture covers it.
 
 <a id="object-filter-mutation"></a>
 ### Object filters do not change shared types
@@ -344,7 +349,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the result of one expression must not depend on an earlier one.
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned.
+- Status: implemented in `workflint-expr`. It reaches the output from M4.6.
 
 <a id="object-merge-order"></a>
 ### Merged object types do not depend on map order
@@ -354,7 +359,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: output must not vary between runs (ADR 0013).
 - Upstream issue: none.
 - Milestone: M3.
-- Status: planned.
+- Status: implemented in `workflint-expr`. It reaches the output from M4.6.
 
 <a id="matrix-include-expressions"></a>
 ### Expressions in `matrix.include` elements are checked
@@ -364,7 +369,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the upstream code reads the wrong variable.
 - Upstream issue: none.
 - Milestone: M2, M4.
-- Status: planned.
+- Status: implemented for syntax errors. The type check and the merge follow in M4.8.
 
 <a id="all-expressions-in-string"></a>
 ### Every `${{ }}` in a string is checked
@@ -374,7 +379,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: users fix one error, rerun, and find the next one.
 - Upstream issue: none.
 - Milestone: M2, M4.
-- Status: planned.
+- Status: implemented for syntax errors. Type and context errors follow in M4.6.
 
 <a id="invalid-if-condition"></a>
 ### An empty or non-string `if`
@@ -384,7 +389,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the second error is about the empty string that upstream puts in place of the value, not about the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned. No fixture covers it.
+- Status: planned for M4.6, which skips the value that the parser marks invalid. No fixture covers it.
 
 <a id="jobs-context-result"></a>
 ### `jobs.<job_id>.result` in reusable workflow outputs
@@ -401,8 +406,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 - Upstream: when `on.workflow_call.secrets` exists, `secrets` only has the declared secrets for every job, even when the workflow also runs on `push` or `workflow_dispatch`, where every repository secret is available (`rule_expression.go:152-158`).
 - workflint: `secrets` is limited to the declared secrets only when `workflow_call` is the only trigger. Otherwise any secret name is accepted.
-- Why: upstream rejects valid workflows that have more than one trigger.
-- Upstream issue: #701, #148, PR #703.
+- Why: upstream rejects valid workflows that have more than one trigger. When `workflow_call` is the only trigger, an undeclared secret stays an error, as upstream reports it, although a caller may pass it with `secrets: inherit` (#148). workflint cannot see the callers, and a typo in a secret name is the more common mistake.
+- Upstream issue: #701, PR #703.
 - Milestone: M4.
 - Status: planned.
 
@@ -414,7 +419,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a comma separates entries in a flow collection. go-yaml keeps a rule that libyaml dropped.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned. No fixture covers it.
+- Status: implemented. No fixture covers it.
 
 <a id="yaml-solidus-escape"></a>
 ### The `\/` escape in double-quoted strings
@@ -424,7 +429,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: upstream rejects valid YAML. ADR 0022 keeps go-yaml's behaviour except where go-yaml rejects valid YAML.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned. No fixture covers it.
+- Status: implemented. No fixture covers it.
 
 <a id="yaml-1-2-directive"></a>
 ### The `%YAML 1.2` directive
@@ -434,17 +439,21 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: upstream rejects valid YAML 1.2 documents, such as the YAML test suite cases 27NA and RTP8. ADR 0022 keeps go-yaml's behaviour except where go-yaml rejects valid YAML.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned. No fixture covers it.
+- Status: implemented. No fixture covers it.
 
 <a id="yaml-core-schema"></a>
 ### Plain scalars follow the YAML 1.2 core schema
 
 - Upstream: go-yaml resolves some plain scalars with YAML 1.1 rules. `1_000` and `0b10` become integers that later fail Go's number parsing, and dates such as `2026-10-15` get the `!!timestamp` tag, which appears in messages. A plain `<<` gets the `!!merge` tag, so `timeout-minutes: <<` reports a `"!!merge" tag`, and `-0` is a float.
 - workflint: plain scalars are typed under the YAML 1.2 core schema (ADR 0005). `1_000`, `0b10`, `2026-10-15`, and `<<` are strings, so a numeric key such as `timeout-minutes: 1_000` reports a string where a number is expected, and no message names a `!!timestamp` or `!!merge` tag. `-0` is an integer.
+- Numbers that overflow get other messages too. go-yaml resolves a plain scalar as a number only when Go can parse it, while the core schema types it by its pattern alone. With the value at `timeout-minutes`, `continue-on-error`, and `max-parallel`:
+  - `1e400` is a string for go-yaml and a float for workflint. Upstream reports `expecting a single ${{...}} expression or float number literal, but found plain text node` at `timeout-minutes`, `... or boolean literal "true" or "false", but found plain text node` at `continue-on-error`, and `... or integer literal, but found plain text node` at `max-parallel`. workflint reports, at the same keys, `invalid float value: "1e400": strconv.ParseFloat: parsing "1e400": value out of range`, `expected bool value but found scalar node with "!!float" tag`, and `expected scalar node for integer value but found scalar node with "!!float" tag`.
+  - `99999999999999999999` is a float for go-yaml and an integer for workflint. Neither reports it at `timeout-minutes`. Upstream reports `expected bool value but found scalar node with "!!float" tag` at `continue-on-error` and `expected scalar node for integer value but found scalar node with "!!float" tag` at `max-parallel`. workflint reports `expected bool value but found scalar node with "!!int" tag` and `invalid integer value: "99999999999999999999": strconv.Atoi: parsing "99999999999999999999": value out of range`.
+  - `0x1FFFFFFFFFFFFFFFFF` is a string for go-yaml and an integer for workflint. Upstream reports the three `plain text node` messages above. workflint reports `invalid float value: "0x1FFFFFFFFFFFFFFFFF": strconv.ParseFloat: parsing "0x1FFFFFFFFFFFFFFFFF": invalid syntax`, `expected bool value but found scalar node with "!!int" tag`, and `invalid integer value: "0x1FFFFFFFFFFFFFFFFF": strconv.Atoi: parsing "0x1FFFFFFFFFFFFFFFFF": invalid syntax`.
 - Why: GitHub types plain scalars with the 1.2 core schema, so the diagnostic describes what GitHub does with the file. `YamlObjectReader` in `actions/runner` at `9abfe11` (`src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs`) tries null, boolean, integer, and float in turn, with the core schema's patterns, and reads any other plain scalar as a string. Its patterns match `crates/workflint-yaml/src/resolve.rs`: `True` is a boolean, `0o17` and `0x1F` are integers, `.inf` is a float, and `yes`, `1_000`, and `2026-10-15` are strings. Quoted and block scalars are strings.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned. The conformance allow-list records each fixture whose message changes.
+- Status: implemented. No fixture that passes today shows it, so the allow-list has no records for it.
 
 <a id="quoted-scalar-types"></a>
 ### Quoted values are strings
@@ -476,7 +485,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the message names the wrong character.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned.
+- Status: implemented in the validator. The `glob` rule reports it from M4.15.
 - Fixtures: none. The `workflint-syntax` test `an_escaped_special_character_in_a_ref_glob_reports_that_character` covers it.
 
 <a id="branding-color-message"></a>
@@ -692,7 +701,9 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 These upstream behaviours were reported as bugs or looked suspicious, and workflint keeps them unchanged for now. Changing one needs a new entry above.
 
-- A multi-line `if: |` whose only content is `${{ ... }}` is reported as always true, because the block scalar adds a trailing newline (#517). Upstream documents this in `docs/checks.md#if-cond-constant` as the runner's behaviour, and `examples/if_cond_always_true` and `err/if_cond_edge_cases_trailing_leading_chars` pin it.
+- A multi-line `if: |` whose only content is `${{ ... }}` is reported as always true, because the block scalar adds a trailing newline (#517). Upstream documents this in `docs/checks.md#if-cond-constant` as the runner's behaviour, and `examples/if_cond_always_true` and `err/if_cond_edge_cases_trailing_leading_chars` pin it. The runner confirms it: `TemplateReader.ParseScalar` in `actions/runner` at `9abfe11` does not trim the value, so the line break becomes text after the expression, and the condition becomes a `format()` call that returns a non-empty string.
 - The schedule timezone `UTC` is rejected, although `UTC` is an IANA name. Whether GitHub accepts it is not confirmed.
 - Values in `matrix.exclude` are checked against values added by `include` too (#634). How GitHub orders `include` and `exclude` for this check is not confirmed.
+- In a branch, tag, or path filter, `[!a]` is a character match of `!` and `a`, not a negated match. GitHub's filter pattern cheat sheet documents `!` only at the start of a pattern, and workflint reads `[!...]` as the reference does, so no difference exists.
+- The reference's glob validator reports Go's `invalid UTF-8 encoding` scanner error, and workflint's validator, which takes a Rust string, does not. No workflow can reach that error: go-yaml rejects a file with invalid UTF-8, and its escapes always produce valid UTF-8.
 - Messages that embed Go library errors, such as `strconv.ParseFloat: parsing "x": invalid syntax` and robfig/cron errors, keep that text.

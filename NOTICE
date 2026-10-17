@@ -47,8 +47,11 @@ go-yaml v4.0.0-rc.3
   limits and error messages, so that workflint accepts and rejects the
   same files. go-yaml's NOTICE file places its internal/libyaml/ files,
   which hold that behaviour, under libyaml's MIT license, and their
-  headers carry the copyright lines above. xtask/goyaml-dump builds the
-  unmodified library to compare the two parsers.
+  headers carry the copyright lines above. The comment scanning in
+  crates/workflint-yaml/src/libyaml/scanner.rs is ported from the
+  scanComments and scanLineComment functions of go-yaml's
+  internal/libyaml/scanner.go. xtask/goyaml-dump builds the unmodified
+  library to compare the two parsers.
 
 YAML test suite
   https://github.com/yaml/yaml-test-suite

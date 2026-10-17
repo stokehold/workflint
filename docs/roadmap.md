@@ -10,7 +10,7 @@ M0 ─ M1 ─┬─ M2 ─┬─ M4 ─ M5 ═ 0.1.0 ─ M7 ─ M8 ─ M9 ═ 1.
 M6 (release pipeline) runs in parallel from M1 and is required for 0.1.0
 ```
 
-Issues exist for M1, M2, M3, M6, and M5.11. Issues for each later milestone are created when the milestone before it is nearly done, so that they reflect what the earlier work taught. Until then, the task lists below are the plan. Dependencies between tasks are recorded on the issues as "blocked by" links.
+Issues exist for M1, M2, M3, M4, M6, and M5.11. Issues for each later milestone are created when the milestone before it is nearly done, so that they reflect what the earlier work taught. Until then, the task lists below are the plan. Dependencies between tasks are recorded on the issues as "blocked by" links.
 
 ## M0: planning and skeleton
 
@@ -48,6 +48,9 @@ Goal: the types and test infrastructure every later milestone builds on. Start w
 - M1.20 Fix renderer columns and test Go quoting over every code point [#54](https://github.com/stokehold/workflint/issues/54)
 - M1.21 Update the docs and ADRs after the M1 review [#55](https://github.com/stokehold/workflint/issues/55)
 - M1.22 Stop conformance tests from racing on the workflint binary [#101](https://github.com/stokehold/workflint/issues/101)
+- M1.23 Fix YAML error positions, tree build time and go-yaml gaps found in the M1–M3 review [#120](https://github.com/stokehold/workflint/issues/120)
+- M1.24 Make the conformance runner, the oracle and xtask fail loudly, and fix the expected-failure bookkeeping [#121](https://github.com/stokehold/workflint/issues/121)
+- M1.25 Gate merges on the parity and code-standard checks in CI [#122](https://github.com/stokehold/workflint/issues/122)
 
 ## M2: workflow syntax
 
@@ -68,6 +71,10 @@ Goal: every `syntax-check` diagnostic of the reference, on a typed AST. Start wi
 - M2.12 Parse container and services [#77](https://github.com/stokehold/workflint/issues/77)
 - M2.13 Compare selected kinds in cargo xtask oracle [#78](https://github.com/stokehold/workflint/issues/78)
 - M2.14 Decode local action and reusable workflow metadata [#79](https://github.com/stokehold/workflint/issues/79)
+- M2.15 Bound the stack use of the metadata decoders and fuzz them [#123](https://github.com/stokehold/workflint/issues/123)
+- M2.16 Keep invalid values as slots in the workflow AST [#124](https://github.com/stokehold/workflint/issues/124)
+- M2.17 Fix block scalar error positions and reusable call jobs with services [#125](https://github.com/stokehold/workflint/issues/125)
+- M2.18 Print relative paths and exit quietly on a closed pipe [#126](https://github.com/stokehold/workflint/issues/126)
 
 ## M3: expressions
 
@@ -83,15 +90,48 @@ Goal: the expression language with the reference's type checking, without its bu
 - M3.7 Detect untrusted input in script expressions [#88](https://github.com/stokehold/workflint/issues/88)
 - M3.8 Fuzz and benchmark the expression engine [#89](https://github.com/stokehold/workflint/issues/89)
 - M3.9 Type fromJSON literals and report Go's JSON errors [#90](https://github.com/stokehold/workflint/issues/90)
+- M3.10 Count expression nesting by tree depth and keep lexing after a NUL [#127](https://github.com/stokehold/workflint/issues/127)
+- M3.11 Allow no context by default, move built-in secrets to data, and fuzz untrusted inputs [#128](https://github.com/stokehold/workflint/issues/128)
+- M3.12 Compare the expression checker with the reference in CI [#129](https://github.com/stokehold/workflint/issues/129)
+- M3.13 Update the docs and ADRs after the M1–M3 review [#130](https://github.com/stokehold/workflint/issues/130)
 
 ## M4: rules and data
 
-Goal: every reference rule, with fine-grained rule IDs.
+Goal: every reference rule, with fine-grained rule IDs. Start with M4.1, which most tasks need, and the data tasks M4.4 and M4.5, which need nothing. M4.6 builds the `expression` rule, and M4.7 to M4.10 type the contexts that come from the workflow. M4.26 matches the reference on every fixture once the rule tasks are done.
 
-- M4.1 `workflint-rules`: `Rule` trait, visitor, registry, rule metadata, fixed rule order.
-- M4.2 `workflint-data`: port the remaining tables of the reference (runner labels, permissions, webhooks, popular actions, deprecated commands) as generated-style Rust files. M3 ports the expression tables.
-- M4.3 to M4.n One pull request per reference rule or group of closely related rules, in the order of `docs/parity-checklist.md`: expression checks, `if:` conditions, job `needs`, matrix, events, globs, permissions, runner labels, shell names, environment variable names, credentials, deprecated commands, actions and action metadata, reusable workflow calls.
-- M4.x Rule documentation pages for every rule, with examples run as tests.
+- M4.1 Add workflint-rules with the rule trait, visitor, and registry, and run it from the binary [#138](https://github.com/stokehold/workflint/issues/138)
+- M4.2 Add rule documentation pages and run their examples as tests [#139](https://github.com/stokehold/workflint/issues/139)
+- M4.3 Give rules the metadata of local actions and local reusable workflows [#140](https://github.com/stokehold/workflint/issues/140)
+- M4.4 Port the runner, permission, webhook, shell, and other small tables to workflint-data [#141](https://github.com/stokehold/workflint/issues/141)
+- M4.5 Port the popular action and outdated action tables to workflint-data [#142](https://github.com/stokehold/workflint/issues/142)
+- M4.6 Check the expressions at every workflow location [#143](https://github.com/stokehold/workflint/issues/143)
+- M4.7 Type inputs, secrets, and jobs from the workflow's triggers [#144](https://github.com/stokehold/workflint/issues/144)
+- M4.8 Type the matrix context from matrix rows, include, and expressions [#145](https://github.com/stokehold/workflint/issues/145)
+- M4.9 Type the steps context from run steps and action outputs [#146](https://github.com/stokehold/workflint/issues/146)
+- M4.10 Type needs and the with values of reusable workflow calls [#147](https://github.com/stokehold/workflint/issues/147)
+- M4.11 Write the rule pages of the workflint-expr rules [#148](https://github.com/stokehold/workflint/issues/148)
+- M4.12 Port the if-cond rule [#149](https://github.com/stokehold/workflint/issues/149)
+- M4.13 Port the events rule for webhook events, filters, and workflow inputs [#150](https://github.com/stokehold/workflint/issues/150)
+- M4.14 Check cron schedules and time zones in the events rule [#151](https://github.com/stokehold/workflint/issues/151)
+- M4.15 Port the glob rule for branch, tag, and path filters [#152](https://github.com/stokehold/workflint/issues/152)
+- M4.16 Port the runner-label rule [#153](https://github.com/stokehold/workflint/issues/153)
+- M4.17 Port the action rule for uses formats, Docker actions, and popular actions [#154](https://github.com/stokehold/workflint/issues/154)
+- M4.18 Check local actions and their metadata in the action rule [#155](https://github.com/stokehold/workflint/issues/155)
+- M4.19 Port the credentials and env-var rules [#156](https://github.com/stokehold/workflint/issues/156)
+- M4.20 Port the id and job-needs rules [#157](https://github.com/stokehold/workflint/issues/157)
+- M4.21 Port the matrix rule [#158](https://github.com/stokehold/workflint/issues/158)
+- M4.22 Port the permissions rule [#159](https://github.com/stokehold/workflint/issues/159)
+- M4.23 Port the shell-name rule [#160](https://github.com/stokehold/workflint/issues/160)
+- M4.24 Port the deprecated-commands rule [#161](https://github.com/stokehold/workflint/issues/161)
+- M4.25 Port the workflow-call rule [#162](https://github.com/stokehold/workflint/issues/162)
+- M4.26 Match the reference on every M4 fixture and the corpus [#163](https://github.com/stokehold/workflint/issues/163)
+- M4.27 Report a `}}` that has no opening `${{` [#164](https://github.com/stokehold/workflint/issues/164)
+- M4.28 Accept `${{ insert }}` as a mapping key [#165](https://github.com/stokehold/workflint/issues/165)
+- M4.29 Suggest the closest name for unknown contexts, properties, and functions [#166](https://github.com/stokehold/workflint/issues/166)
+- M4.30 Label diagnostics inside an anchored subtree with the alias that used it [#167](https://github.com/stokehold/workflint/issues/167)
+- M4.31 Report the head branch and head commit of `workflow_run` as untrusted input [#168](https://github.com/stokehold/workflint/issues/168)
+- M4.32 Evaluate expressions in runs-on labels [#169](https://github.com/stokehold/workflint/issues/169)
+- M4.33 Know the labels of third-party runner providers and the OS of custom labels [#170](https://github.com/stokehold/workflint/issues/170)
 
 ## M5: linter, CLI, and output
 
