@@ -944,7 +944,7 @@ mod long_chains {
     use std::io::Write as _;
 
     use super::*;
-    use workflint_data::UNTRUSTED_INPUTS;
+    use workflint_data::{Availability, UNTRUSTED_INPUTS};
     use workflint_expr::{TypeEnv, find_untrusted_inputs};
 
     const OPERANDS: usize = 100_000;
@@ -965,6 +965,7 @@ mod long_chains {
             let src = format!("{} }}}}", vec![operand; OPERANDS].join(op));
             let (expr, _) = parse_expression(&src).expect("valid");
             let mut env = TypeEnv::new();
+            env.set_availability(Availability::ALL);
             env.set_untrusted_inputs(UNTRUSTED_INPUTS);
             let (ty, errors) = env.check(&expr);
             assert_eq!(ty.to_string(), "bool");
