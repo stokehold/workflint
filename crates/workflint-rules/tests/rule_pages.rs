@@ -34,6 +34,11 @@ fn docs_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs")
 }
 
+/// Reads a file of `docs/` with `\n` line breaks, as a Windows checkout may have `\r\n`.
+fn read_doc(path: &Path) -> String {
+    fs::read_to_string(path).unwrap().replace("\r\n", "\n")
+}
+
 /// Reads every page in `docs/rules/`, keyed by rule ID, without `README.md`.
 fn read_pages() -> BTreeMap<String, String> {
     let mut pages = BTreeMap::new();
@@ -46,7 +51,7 @@ fn read_pages() -> BTreeMap<String, String> {
         let Some(id) = name.strip_suffix(".md") else {
             panic!("docs/rules/{name} is not a Markdown page");
         };
-        pages.insert(id.to_owned(), fs::read_to_string(&path).unwrap());
+        pages.insert(id.to_owned(), read_doc(&path));
     }
     pages
 }
@@ -324,7 +329,7 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
             problem(format!("the link to {linked}.md names no page"));
         }
     }
-    let differences = fs::read_to_string(docs_dir().join("differences.md")).unwrap();
+    let differences = read_doc(&docs_dir().join("differences.md"));
     for anchor in &page.differences {
         if !differences.contains(&format!("<a id=\"{anchor}\"></a>")) {
             problem(format!("docs/differences.md has no anchor {anchor:?}"));
@@ -411,7 +416,7 @@ fn every_registered_rule_has_a_page_and_every_page_a_registered_rule() {
 
 #[test]
 fn the_rules_index_matches_the_registry() {
-    let readme = fs::read_to_string(docs_dir().join("rules/README.md")).unwrap();
+    let readme = read_doc(&docs_dir().join("rules/README.md"));
     let expected = render_index(registry::rules(), &read_pages());
     assert!(
         written_index(&readme) == Some(expected.as_str()),
