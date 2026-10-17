@@ -13,8 +13,10 @@ on:
 permissions:
   contents: read
 
+# Pull requests cancel their older runs. Each push to main gets its own group,
+# so a newer push neither cancels a run nor replaces one that waits.
 concurrency:
-  group: codspeed-${{ github.ref }}
+  group: codspeed-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -39,7 +41,7 @@ jobs:
       # to an unpinned cargo-binstall, so the job builds it with cargo install.
       - name: Install cargo-codspeed
         run: cargo install --locked --version 5.0.3 cargo-codspeed
-      - run: cargo codspeed build --workspace
+      - run: cargo codspeed build --workspace --locked
       - uses: CodSpeedHQ/action@821a40cd6c80e3cfe387caf55668287addd808da # v5.5.0
         with:
           mode: simulation

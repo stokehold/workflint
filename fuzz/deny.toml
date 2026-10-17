@@ -1,0 +1,39 @@
+# The policy for the fuzz/ workspace. CI runs
+# `cargo deny --manifest-path fuzz/Cargo.toml check`, which finds this file
+# before the root deny.toml. It matches the root policy except for the
+# licenses, which are the ones this workspace's dependencies use. Keep the
+# two in step.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+# The licenses that the dependencies use, from the list in ADR 0017. ADR 0017
+# also permits BSD-2-Clause, BSD-3-Clause, ISC, and Zlib. Add one here when a
+# dependency needs it, as cargo deny warns about an allowance nothing uses.
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "Unicode-3.0",
+]
+
+# libfuzzer-sys bundles LLVM's libFuzzer, which is under NCSA. No published
+# crate depends on it (ADR 0025).
+[[licenses.exceptions]]
+crate = "libfuzzer-sys"
+allow = ["NCSA"]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# The fuzz crate is not published, so its path dependencies need no version.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
