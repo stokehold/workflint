@@ -363,38 +363,19 @@ impl<'a> Parser<'a, '_> {
     /// of labels, as the reference's `parseStringOrStringSequence` with
     /// `allowEmpty` and `allowElemEmpty` false.
     ///
-    /// An empty label is reported and kept, as in the reference, so the
-    /// `runner-label` rule reports it as an unknown label too. A label that
-    /// is not a scalar is reported and left out.
+    /// A label that is empty or not a scalar is reported and kept as
+    /// `None`. The reference keeps it as `""`, and its `runner-label` rule
+    /// then reports it again as an unknown label.
     fn parse_labels(
         &mut self,
         key: Option<Str<'a>>,
         section: &str,
         node: &'a Node,
-    ) -> Value<'a, Arc<[Template<'a>]>> {
-        let span = node.span;
-        let mut labels = Vec::new();
-        if let Some(label) = Str::new(node) {
-            self.check_string(node, false);
-            labels.push(self.template(label));
-        } else {
-            let Some(items) = self.check_sequence(section, node, false) else {
-                return Value::Invalid { key, span };
-            };
-            for &id in items {
-                let Some(item) = self.node(id) else {
-                    continue;
-                };
-                self.check_string(item, false);
-                if let Some(label) = Str::new(item) {
-                    labels.push(self.template(label));
-                }
-            }
-        }
-        Value::Literal {
-            key,
-            span,
-            value: labels.into(),
+    ) -> Value<'a, Arc<[Option<Template<'a>>]>> {
+        match self.parse_template_or_template_sequence(key, section, node, false, false) {
+            Field::Valid { key, span, value } => Value::Literal { key, span, value },
+            Field::Invalid { key, span } => Value::Invalid { key, span },
+            Field::Absent => Value::Absent,
         }
     }
 

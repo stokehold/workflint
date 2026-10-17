@@ -75,7 +75,7 @@ pub(crate) fn placeholders<'w, 'a>(workflow: &'w Workflow<'a>, f: &mut Visit<'_,
         .on
         .value()
         .into_iter()
-        .flat_map(|events| events.iter())
+        .flat_map(|events| events.iter().flatten())
     {
         event_placeholders(f, event, has_jobs);
     }
@@ -148,7 +148,7 @@ fn job_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, job: &'w Job<'a>) {
         for label in labels
             .literal()
             .into_iter()
-            .flat_map(|labels| labels.iter())
+            .flat_map(|labels| labels.iter().flatten())
         {
             template(f, label);
         }
@@ -324,12 +324,12 @@ fn keyed<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, keyed: Option<&'w Keyed<'a, Option<T
 
 fn strings<'w, 'a>(
     f: &mut Visit<'_, 'w, 'a>,
-    strings: &'w Field<'a, std::sync::Arc<[Template<'a>]>>,
+    strings: &'w Field<'a, std::sync::Arc<[Option<Template<'a>>]>>,
 ) {
     for string in strings
         .value()
         .into_iter()
-        .flat_map(|strings| strings.iter())
+        .flat_map(|strings| strings.iter().flatten())
     {
         template(f, string);
     }

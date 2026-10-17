@@ -238,6 +238,21 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: planned. No fixture covers it.
 
+<a id="invalid-value-reported-once"></a>
+### An invalid value is reported once
+
+- Upstream: the parser reports a value that is not a valid string and keeps it as the string `""`. The rules then check that string as if the file had it, and these cases get a second error:
+  - An activity type that is empty, null, or not a scalar, as in `types: [[x]]`, `types: ['']`, `types: ''`, or `types:`, also gets `invalid activity type "" for "pull_request" Webhook event` (`events`).
+  - An event key that is not a scalar, as in `[a]: x` under `on`, also gets `unknown Webhook event ""` (`events`).
+  - A `shell` of `defaults.run` or of a step that is empty or not a scalar also gets `shell name "" is invalid` (`shell-name`).
+  - A `runs-on` label that is empty or not a scalar also gets `label "" is unknown` (`runner-label`).
+- workflint: the parser reports the value once, and the rules skip it. The value keeps its place in its list, so a check that only needs the value to be written still runs. `options: [[x]]` on a `string` input of `workflow_dispatch` still gets `"options" can not be set to "text" input because its input type is not "choice"`, and `options: ['']` on a `choice` input counts as set, as upstream. The keys of `permissions` and `env` are in [Keys that are not strings in `permissions` and `env`](#non-scalar-keys).
+- Why: the second error repeats the first and names a value that is not in the file.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned.
+- Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
+
 <a id="typed-decoding-edge-cases"></a>
 ### Rare inputs to the typed decoding of local metadata
 

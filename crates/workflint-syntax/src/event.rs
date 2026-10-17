@@ -69,7 +69,8 @@ impl<'a> Event<'a> {
 /// an event allows.
 ///
 /// Each filter is a string or a sequence of strings. A string becomes a
-/// list of one. The reference's `WebhookEventFilter.Name` is the filter
+/// list of one, and an item that is not a valid string is `None`. The
+/// reference's `WebhookEventFilter.Name` is the filter
 /// field's key.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WebhookEvent<'a> {
@@ -78,21 +79,21 @@ pub struct WebhookEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `types`.
-    pub types: Field<'a, Arc<[Template<'a>]>>,
+    pub types: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `branches`.
-    pub branches: Field<'a, Arc<[Template<'a>]>>,
+    pub branches: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `branches-ignore`.
-    pub branches_ignore: Field<'a, Arc<[Template<'a>]>>,
+    pub branches_ignore: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `tags`.
-    pub tags: Field<'a, Arc<[Template<'a>]>>,
+    pub tags: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `tags-ignore`.
-    pub tags_ignore: Field<'a, Arc<[Template<'a>]>>,
+    pub tags_ignore: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `paths`.
-    pub paths: Field<'a, Arc<[Template<'a>]>>,
+    pub paths: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `paths-ignore`.
-    pub paths_ignore: Field<'a, Arc<[Template<'a>]>>,
+    pub paths_ignore: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `workflows`.
-    pub workflows: Field<'a, Arc<[Template<'a>]>>,
+    pub workflows: Field<'a, Arc<[Option<Template<'a>>]>>,
 }
 
 /// `schedule`.
@@ -144,7 +145,7 @@ pub struct WorkflowDispatchInput<'a> {
     /// [`Field::Absent`] or [`Field::Invalid`].
     pub input_type: Field<'a, WorkflowDispatchInputType>,
     /// `options`.
-    pub options: Field<'a, Arc<[Template<'a>]>>,
+    pub options: Field<'a, Arc<[Option<Template<'a>>]>>,
 }
 
 /// The `type` of a `workflow_dispatch` input.
@@ -170,7 +171,7 @@ pub struct RepositoryDispatchEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `types`. A string becomes a list of one.
-    pub types: Field<'a, Arc<[Template<'a>]>>,
+    pub types: Field<'a, Arc<[Option<Template<'a>>]>>,
 }
 
 /// `workflow_call`, which makes the workflow a reusable workflow.
@@ -254,7 +255,7 @@ pub struct ImageVersionEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `names`.
-    pub names: Field<'a, Arc<[Template<'a>]>>,
+    pub names: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `versions`.
-    pub versions: Field<'a, Arc<[Template<'a>]>>,
+    pub versions: Field<'a, Arc<[Option<Template<'a>>]>>,
 }
