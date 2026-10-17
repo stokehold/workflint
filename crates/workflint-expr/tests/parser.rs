@@ -6,7 +6,9 @@
 //! Trees are compared as S-expressions: `(op operand...)` for operators, `(. receiver name)`
 //! for property access, `(.* receiver)` for object filters, `([] operand index)` for index
 //! access, and `(callee() arg...)` for function calls. Keywords print as `#null`, `#true`, and
-//! `#false`, and float literals with an `f:` prefix.
+//! `#false`, and float literals with an `f:` prefix. A chain of `&&` or `||` is one node with
+//! all its operands, and prints nested to the right as the reference's tree is: `a && b && c`
+//! prints as `(&& a (&& b c))`.
 
 #![allow(clippy::expect_used, clippy::panic)]
 
@@ -53,8 +55,11 @@ fn sexpr(expr: &Expr) -> String {
         ExprKind::Compare { op, left, right } => {
             format!("({} {} {})", op.as_str(), sexpr(left), sexpr(right))
         }
-        ExprKind::Logical { op, left, right } => {
-            format!("({} {} {})", op.as_str(), sexpr(left), sexpr(right))
+        ExprKind::Logical { op, operands } => {
+            // The reference nests a chain to the right: `a && b && c` is `a && (b && c)`.
+            let mut operands = operands.iter().rev().map(sexpr);
+            let last = operands.next().unwrap_or_default();
+            operands.fold(last, |right, left| format!("({op} {left} {right})"))
         }
         ExprKind::Call { callee, args } => {
             let mut out = format!("({}()", callee.original());
@@ -305,6 +310,40 @@ mod first_error {
     }
 
     #[test]
+    fn remaining_tokens_continue_past_a_nul_in_a_string() {
+        // Go's scanner records the NUL error and keeps scanning, so the reference lists the
+        // tokens after it.
+        let err = parse_err("42 a 'x\0' b ");
+        assert_eq!(
+            err.message,
+            "parser did not reach end of input after parsing the expression. 3 remaining \
+             token(s) in the input: \"IDENT\", \"STRING\", \"IDENT\""
+        );
+        assert_eq!(err.start, 3);
+    }
+
+    #[test]
+    fn remaining_tokens_stop_at_a_nul_outside_a_string() {
+        let err = parse_err("42 a \0 b ");
+        assert_eq!(
+            err.message,
+            "parser did not reach end of input after parsing the expression. 1 remaining \
+             token(s) in the input: \"IDENT\""
+        );
+        assert_eq!(err.start, 3);
+    }
+
+    #[test]
+    fn nul_lexed_before_the_parser_stops_wins() {
+        let err = parse_err("42 'a\0' 'b ");
+        assert_eq!(
+            err.message,
+            "scan error while lexing expression: invalid character NUL"
+        );
+        assert_eq!(err.start, 5);
+    }
+
+    #[test]
     fn missing_end_marker_is_a_lexer_error() {
         let err = parse_expression("a.b").expect_err("no `}}`");
         assert_eq!(err.message, "unexpected EOF while lexing expression");
@@ -510,6 +549,31 @@ mod precedence {
     fn logical_operators_group_to_the_right() {
         assert_eq!(tree("a && b && c"), "(&& a (&& b c))");
         assert_eq!(tree("a || b || c"), "(|| a (|| b c))");
+    }
+
+    fn operands(expr: &Expr, want: LogicalOp) -> &[Expr] {
+        match &expr.kind {
+            ExprKind::Logical { op, operands } if *op == want => operands,
+            kind => panic!("not a {want} chain: {kind:?}"),
+        }
+    }
+
+    #[test]
+    fn chain_of_one_logical_operator_is_one_node() {
+        let expr = parse("a && b && c || d");
+        let or = operands(&expr, LogicalOp::Or);
+        assert_eq!(or.len(), 2);
+        let and = operands(&or[0], LogicalOp::And);
+        let names: Vec<_> = and.iter().map(sexpr).collect();
+        assert_eq!(names, ["a", "b", "c"]);
+    }
+
+    #[test]
+    fn parenthesized_chain_is_an_operand_of_its_own() {
+        let expr = parse("a && (b && c)");
+        let and = operands(&expr, LogicalOp::And);
+        assert_eq!(and.len(), 2);
+        assert_eq!(operands(&and[1], LogicalOp::And).len(), 2);
     }
 
     #[test]
@@ -788,8 +852,8 @@ mod depth {
             format!("x{}", ".*".repeat(200)),
             format!("x{}", "[0]".repeat(200)),
             format!("{}x{}", "f(".repeat(200), ")".repeat(200)),
-            vec!["x"; 200].join(" && "),
-            vec!["x"; 200].join(" || "),
+            format!("{}x{}", "x && (".repeat(200), ")".repeat(200)),
+            format!("{}x{}", "x || (".repeat(200), ")".repeat(200)),
             vec!["x"; 200].join(" == "),
             vec!["x"; 200].join(" < "),
         ];
@@ -800,9 +864,139 @@ mod depth {
     }
 
     #[test]
+    fn property_chain_one_level_beyond_the_limit_is_an_error_at_its_last_dot() {
+        assert!(tree(&format!("x{}", ".y".repeat(128))).starts_with("(. (. "));
+        let err = parse_err(&format!("x{}", ".y".repeat(129)));
+        assert_eq!(err.message, MESSAGE);
+        assert_eq!((err.start, err.end), (257, 258));
+    }
+
+    #[test]
+    fn logical_chain_of_any_length_is_one_level() {
+        for op in [" && ", " || "] {
+            let chain = vec!["x"; 1000].join(op);
+            let input = format!("{}{chain}{}", "(".repeat(127), ")".repeat(127));
+            assert!(matches!(parse(&input).kind, ExprKind::Logical { .. }), "{op}");
+            let input = format!("{}{chain}{}", "(".repeat(128), ")".repeat(128));
+            assert_eq!(parse_err(&input).message, MESSAGE, "{op}");
+        }
+    }
+
+    #[test]
+    fn logical_chain_of_comparisons_is_two_levels() {
+        let input = format!("{}a == 1", "a == 1 && ".repeat(64));
+        let expr = parse(&input);
+        assert!(matches!(&expr.kind, ExprKind::Logical { operands, .. } if operands.len() == 65));
+    }
+
+    #[test]
+    fn many_alternatives_in_a_condition_parse() {
+        let input = (0..65)
+            .map(|n| format!("github.actor == 'user{n}'"))
+            .collect::<Vec<_>>()
+            .join(" || ");
+        assert!(matches!(parse(&input).kind, ExprKind::Logical { .. }));
+    }
+
+    #[test]
+    fn index_counts_levels_from_its_own_node() {
+        // The index access is one level above the deeper of its operand and its index.
+        let input = format!("a{}[x{}]", ".b".repeat(100), ".y".repeat(30));
+        assert!(matches!(parse(&input).kind, ExprKind::Index { .. }));
+        let input = format!("a{}[x{}]", ".b".repeat(127), ".y".repeat(127));
+        assert!(matches!(parse(&input).kind, ExprKind::Index { .. }));
+        let input = format!("a{}[x]", ".b".repeat(128));
+        let err = parse_err(&input);
+        assert_eq!(err.message, MESSAGE);
+        assert_eq!(err.start, 257);
+        let err = parse_err(&format!("a[x{}]", ".y".repeat(128)));
+        assert_eq!(err.message, MESSAGE);
+        assert_eq!(err.start, 257);
+    }
+
+    #[test]
+    fn operator_after_an_operand_at_the_limit_is_an_error_at_the_operator() {
+        let operand = format!("x{}", ".y".repeat(128));
+        for op in ["==", "<", "&&", "||"] {
+            let err = parse_err(&format!("{operand} {op} z"));
+            assert_eq!(err.message, MESSAGE, "{op}");
+            assert_eq!(err.start, 258, "{op}");
+            let err = parse_err(&format!("z {op} {operand}"));
+            assert_eq!(err.message, MESSAGE, "{op}");
+        }
+    }
+
+    #[test]
     fn deep_nesting_does_not_overflow_the_stack() {
         let err = parse_err(&format!("{}x", "(".repeat(100_000)));
         assert_eq!(err.message, MESSAGE);
         assert_eq!(err.start, 128);
+    }
+}
+
+/// A chain of 100,000 operands, as a generated condition could have, is safe to parse, check,
+/// walk, print, compare, clone, and drop on a thread with a 2 MiB stack, the default size of a
+/// spawned thread.
+mod long_chains {
+    use std::io::Write as _;
+
+    use super::*;
+    use workflint_data::UNTRUSTED_INPUTS;
+    use workflint_expr::{TypeEnv, find_untrusted_inputs};
+
+    const OPERANDS: usize = 100_000;
+    const STACK: usize = 2 << 20;
+
+    fn on_small_stack(f: impl FnOnce() + Send + 'static) {
+        std::thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(f)
+            .expect("thread spawns")
+            .join()
+            .expect("thread does not panic");
+    }
+
+    fn check_chain(op: &'static str) {
+        on_small_stack(move || {
+            let operand = "github.event.issue.title == 'x'";
+            let src = format!("{} }}}}", vec![operand; OPERANDS].join(op));
+            let (expr, _) = parse_expression(&src).expect("valid");
+            let mut env = TypeEnv::new();
+            env.set_untrusted_inputs(UNTRUSTED_INPUTS);
+            let (ty, errors) = env.check(&expr);
+            assert_eq!(ty.to_string(), "bool");
+            assert_eq!(errors.len(), OPERANDS);
+            assert_eq!(find_untrusted_inputs(&expr, UNTRUSTED_INPUTS).len(), OPERANDS);
+            let mut nodes = 0_usize;
+            expr.walk(&mut |_: &Expr, _: Option<&Expr>, _: Visit| nodes += 1);
+            assert_eq!(nodes, 2 * (1 + 6 * OPERANDS));
+            assert!(!expr.is_constant());
+            write!(std::io::sink(), "{expr:?}").expect("formats");
+            let copy = expr.clone();
+            assert_eq!(copy, expr);
+            drop(copy);
+            drop(expr);
+        });
+    }
+
+    #[test]
+    fn long_or_chain_is_safe_on_a_small_stack() {
+        check_chain(" || ");
+    }
+
+    #[test]
+    fn long_and_chain_is_safe_on_a_small_stack() {
+        check_chain(" && ");
+    }
+
+    #[test]
+    fn long_alternating_chain_is_safe_on_a_small_stack() {
+        on_small_stack(|| {
+            let src = format!("{}x }}}}", "x && x || ".repeat(OPERANDS / 2));
+            let (expr, _) = parse_expression(&src).expect("valid");
+            let (_, errors) = TypeEnv::new().check(&expr);
+            assert_eq!(errors.len(), OPERANDS + 1);
+            drop(expr);
+        });
     }
 }
