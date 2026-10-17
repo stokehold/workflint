@@ -187,23 +187,48 @@ expressions = ["availability"]
     }
 
     #[test]
-    fn the_oracle_workflow_runs_the_comparison_when_its_inputs_change() {
+    fn the_gated_oracle_job_runs_the_comparison_when_its_inputs_change() {
         let path = Layout::repository()
             .root()
             .join(".github")
             .join("workflows")
-            .join("oracle.yml");
+            .join("gate.yml");
         let workflow = read(&path).unwrap();
-        let lines: Vec<&str> = workflow.lines().map(str::trim).collect();
+        // The `changes` job lists the patterns that run the oracle job under
+        // `ORACLE: |`, one per line, up to the next list.
+        let patterns: Vec<&str> = workflow
+            .lines()
+            .skip_while(|line| line.trim() != "ORACLE: |")
+            .skip(1)
+            .take_while(|line| !line.trim_end().ends_with(": |"))
+            .map(str::trim)
+            .collect();
         for expected in [
-            "run: cargo xtask expr-parity",
-            "- crates/**",
-            "- xtask/**",
-            "- tests/expr-parity/**",
-            "- .go-version",
+            "crates/**",
+            "xtask/**",
+            "tests/expr-parity/**",
+            ".go-version",
         ] {
-            assert!(lines.contains(&expected), "oracle.yml lacks {expected:?}");
+            assert!(
+                patterns.contains(&expected),
+                "the oracle patterns in gate.yml lack {expected:?}: {patterns:?}"
+            );
         }
+        // The step belongs to the oracle job, which starts at `oracle:` and
+        // ends at the next job.
+        let job: Vec<&str> = workflow
+            .lines()
+            .skip_while(|line| *line != "  oracle:")
+            .skip(1)
+            .take_while(|line| {
+                !(line.starts_with("  ") && !line.starts_with("   ") && line.ends_with(':'))
+            })
+            .map(str::trim)
+            .collect();
+        assert!(
+            job.contains(&"run: cargo xtask expr-parity"),
+            "the oracle job in gate.yml does not run cargo xtask expr-parity"
+        );
     }
 
     #[test]

@@ -25,7 +25,7 @@
 //! ```
 //!
 //! The [`event`] module exposes the event parser of the vendored
-//! libyaml-safer fork that the tree is built from. [`decode`] turns the bytes
+//! libyaml-safer fork that the tree is built from. [`decode()`] turns the bytes
 //! of a file into the text that both parse, as go-yaml decodes UTF-8 and
 //! UTF-16.
 

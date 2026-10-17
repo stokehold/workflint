@@ -1,0 +1,374 @@
+name: Gate
+
+# Runs the checks that only matter when certain files change, and the ci-gate
+# job that the main branch ruleset requires. A workflow skipped by a `paths:`
+# filter never reports a status, so a required check from it would wait
+# forever. This workflow runs on every pull request instead, the changes job
+# works out which checks the change needs, and ci-gate passes when each of
+# them passed or was skipped (CONTRIBUTING.md#continuous-integration).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Pull requests cancel their older runs. Each push to main gets its own group,
+# so a newer push neither cancels a run nor replaces one that waits.
+concurrency:
+  group: gate-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      oracle: ${{ steps.filter.outputs.oracle }}
+      yaml-parity: ${{ steps.filter.outputs.yaml-parity }}
+      reference: ${{ steps.filter.outputs.reference }}
+      fuzz-build: ${{ steps.filter.outputs.fuzz-build }}
+      release-timing: ${{ steps.filter.outputs.release-timing }}
+    # The paths that make each job run, one pattern per line, as in a
+    # `paths:` filter. A `*` matches any characters, `/` included.
+    env:
+      ORACLE: |
+        crates/**
+        xtask/**
+        tests/conformance/**
+        tests/expr-parity/**
+        .go-version
+        Cargo.lock
+        Cargo.toml
+        rust-toolchain.toml
+        .github/workflows/gate.yml
+      YAML_PARITY: |
+        crates/workflint-yaml/**
+        crates/workflint-diagnostics/**
+        xtask/goyaml-dump/**
+        xtask/src/yaml_parity.rs
+        xtask/src/yaml_parity/**
+        xtask/src/reference.rs
+        xtask/src/reference/**
+        xtask/src/vendor_testdata.rs
+        xtask/src/main.rs
+        xtask/Cargo.toml
+        tests/yaml-parity/**
+        tests/conformance/actionlint/**
+        .go-version
+        Cargo.lock
+        rust-toolchain.toml
+        .github/workflows/gate.yml
+      REFERENCE: |
+        xtask/**
+        .go-version
+        .gitattributes
+        tests/conformance/actionlint/**
+        Cargo.lock
+        Cargo.toml
+        rust-toolchain.toml
+        .github/workflows/gate.yml
+      FUZZ_BUILD: |
+        crates/workflint-data/**
+        crates/workflint-diagnostics/**
+        crates/workflint-expr/**
+        crates/workflint-syntax/**
+        crates/workflint-yaml/**
+        fuzz/**
+        Cargo.toml
+        .github/workflows/gate.yml
+      RELEASE_TIMING: |
+        crates/**
+        Cargo.lock
+        Cargo.toml
+        rust-toolchain.toml
+        .github/workflows/gate.yml
+    steps:
+      # A pull request checks out the merge commit, whose first parent is the
+      # base branch, so two commits are enough. A push to main compares with
+      # the commit before the push, which is the first parent after a squash
+      # merge.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Choose the jobs that the changed files need
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = push ]; then base="$BEFORE"; else base="HEAD^1"; fi
+          changed="$RUNNER_TEMP/changed.txt"
+          every=false
+          if git rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
+            git -c core.quotePath=false diff --name-only --no-renames "$base" HEAD > "$changed"
+            echo "Changed files:"
+            cat "$changed"
+            echo
+          else
+            echo "::notice::The checkout does not have $base, so every job runs."
+            every=true
+          fi
+
+          # Succeeds if a changed file matches one of the patterns in $1.
+          matches() {
+            while IFS= read -r path; do
+              while IFS= read -r pattern; do
+                [ -n "$pattern" ] || continue
+                # The pattern is a glob on purpose.
+                # shellcheck disable=SC2254
+                case "$path" in $pattern) return 0 ;; esac
+              done <<< "$1"
+            done < "$changed"
+            return 1
+          }
+
+          for job in oracle yaml-parity reference fuzz-build release-timing; do
+            case "$job" in
+              oracle) patterns="$ORACLE" ;;
+              yaml-parity) patterns="$YAML_PARITY" ;;
+              reference) patterns="$REFERENCE" ;;
+              fuzz-build) patterns="$FUZZ_BUILD" ;;
+              release-timing) patterns="$RELEASE_TIMING" ;;
+            esac
+            if [ "$every" = true ] || matches "$patterns"; then run=true; else run=false; fi
+            echo "$job: $run"
+            echo "$job=$run" >> "$GITHUB_OUTPUT"
+          done
+
+  oracle:
+    name: cargo xtask oracle
+    needs: changes
+    if: needs.changes.outputs.oracle == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # Fails on a difference between the expression checkers that
+      # tests/expr-parity/allowed-differences.toml does not explain.
+      - name: The expression checker matches the reference
+        run: cargo xtask expr-parity
+      # The conformance runner lints the fixtures that need shellcheck or
+      # pyflakes only when the tool is installed. nextest runs the corpus
+      # tests.
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: shellcheck@0.11.0,cargo-nextest@0.9.148
+      - name: Install pyflakes
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pyflakes"
+          "$RUNNER_TEMP/pyflakes/bin/pip" install --no-deps --require-hashes -r tests/conformance/requirements.txt
+          mkdir -p "$RUNNER_TEMP/tools"
+          ln -s "$RUNNER_TEMP/pyflakes/bin/pyflakes" "$RUNNER_TEMP/tools/pyflakes"
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+      # The report goes to the log, so that a difference between the two runs
+      # can be read there.
+      - name: The reference against itself reports no difference
+        run: cargo xtask oracle --self-check
+      # A runner that passes fixtures it should fail shows up here: the
+      # reference passes every fixture except the known failures in
+      # REFERENCE_FAILURES in xtask/src/conformance/runner.rs.
+      - name: The reference passes the conformance suite
+        run: cargo test --locked -p xtask --test conformance
+        env:
+          WORKFLINT_CONFORMANCE_REFERENCE: .reference/bin/actionlint
+      # M5.9 removes --report-only, so that an unexplained difference fails
+      # the job.
+      - name: Compare workflint with the reference
+        run: cargo xtask oracle --report-only
+      - name: Add the summary to the run page
+        if: ${{ !cancelled() && hashFiles('target/oracle/summary.md') != '' }}
+        run: cat target/oracle/summary.md >> "$GITHUB_STEP_SUMMARY"
+      # The fixtures only: the corpus has syntax-check differences until #49
+      # adds them to the allow-list.
+      - name: workflint matches the reference on syntax-check for every fixture
+        run: |
+          cargo xtask oracle --kind syntax-check \
+            tests/conformance/actionlint/testdata/err \
+            tests/conformance/actionlint/testdata/examples \
+            tests/conformance/actionlint/testdata/ok \
+            tests/conformance/actionlint/testdata/projects
+      # The corpus tests read .reference/realworld, which the oracle does not
+      # unpack. The checkout and the binary are up to date by now.
+      - name: Unpack the corpus
+        run: cargo xtask reference
+      - name: Every corpus file passes the fuzz checks
+        run: cargo nextest run --locked --profile ci --run-ignored only -p workflint-yaml -p workflint-syntax -E 'binary(reference_files)'
+
+  yaml-parity:
+    name: cargo xtask yaml-parity
+    needs: changes
+    if: needs.changes.outputs.yaml-parity == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo xtask yaml-parity
+
+  reference:
+    name: cargo xtask reference
+    needs: changes
+    if: needs.changes.outputs.reference == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Add a directory the command must not touch
+        run: |
+          mkdir -p .reference/research/raw
+          echo keep > .reference/research/raw/keep.txt
+      - name: First run
+        run: cargo xtask reference
+      - name: Second run reports every step as up to date
+        run: |
+          cargo xtask reference | tee second-run.txt
+          test "$(wc -l < second-run.txt)" -eq 3
+          test "$(grep -c ' is up to date' second-run.txt)" -eq 3
+      - name: Reference binary starts
+        run: .reference/bin/actionlint -version
+      - name: Other directories keep their contents
+        run: test "$(cat .reference/research/raw/keep.txt)" = keep
+      - name: Vendored test data matches the reference
+        run: |
+          cargo xtask vendor-testdata | tee vendor-run.txt
+          grep -q '^vendor-testdata: tests/conformance/actionlint is up to date' vendor-run.txt
+          changes="$(git status --porcelain --ignored --untracked-files=all -- tests/conformance/actionlint)"
+          if [ -n "$changes" ]; then
+            echo "cargo xtask vendor-testdata changed these files:"
+            echo "$changes"
+            exit 1
+          fi
+
+  # The Fuzz workflow runs the targets every night. Here they are only built
+  # and linted.
+  fuzz-build:
+    name: cargo fuzz build
+    needs: changes
+    if: needs.changes.outputs.fuzz-build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # cargo fuzz builds for the target that cargo-fuzz itself was built for
+      # by default. The address sanitizer needs the gnu target, not musl.
+      FUZZ_BUILD_TARGET: x86_64-unknown-linux-gnu
+      # install-action has no checksum for cargo-fuzz and would fall back to
+      # an unpinned cargo-binstall, so the job builds it with cargo install.
+      # Keep it in step with fuzz.yml.
+      CARGO_FUZZ_VERSION: 0.13.2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # `cargo fmt --all` in the main workspace skips fuzz/.
+      - name: Check formatting
+        run: rustfmt --check --edition 2024 fuzz/fuzz_targets/*.rs
+      - name: Install the nightly toolchain from fuzz/rust-toolchain.toml
+        working-directory: fuzz
+        run: rustup toolchain install
+      # Also caches ~/.cargo/bin, so cargo install finds cargo-fuzz there.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: fuzz -> target
+      - name: Install cargo-fuzz
+        run: cargo install --locked --version "$CARGO_FUZZ_VERSION" cargo-fuzz
+      # cargo fuzz has no --locked flag, so this fails if fuzz/Cargo.lock is stale.
+      - name: Check fuzz/Cargo.lock
+        working-directory: fuzz
+        run: cargo fetch --locked
+      # `cargo clippy --workspace` in the main workspace skips fuzz/ too.
+      - name: Lint the fuzz targets
+        working-directory: fuzz
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Build the fuzz targets
+        working-directory: fuzz
+        run: cargo fuzz build --target "$FUZZ_BUILD_TARGET"
+
+  # The parsers must stay fast on hostile input: under one second in a
+  # release build on the inputs of these tests. The test job builds in debug,
+  # where the tests allow more time.
+  release-timing:
+    name: release timing
+    needs: changes
+    if: needs.changes.outputs.release-timing == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: The parser timing tests pass in a release build
+        run: cargo test --release --locked -p workflint-yaml -p workflint-syntax --test event_parser --test billion_laughs
+
+  rustdoc:
+    name: rustdoc
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo doc --workspace --no-deps --document-private-items --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # The ruleset requires this job. It runs even when a job it needs failed or
+  # the run was cancelled, because a skipped required check counts as passed.
+  ci-gate:
+    name: ci-gate
+    needs: [changes, oracle, yaml-parity, reference, fuzz-build, release-timing, rustdoc]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or was skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
+          # changes and rustdoc always run, so they must pass. Each other job
+          # passes, or is skipped because the change does not touch its files.
+          failed="$(jq -r '[to_entries[]
+            | select(.value.result != "success"
+                     and (.value.result != "skipped" or .key == "changes" or .key == "rustdoc"))
+            | .key] | join(", ")' <<< "$NEEDS")"
+          if [ -n "$failed" ]; then
+            echo "::error::These jobs did not pass: $failed"
+            exit 1
+          fi

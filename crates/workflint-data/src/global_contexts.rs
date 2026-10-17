@@ -134,6 +134,15 @@ pub static GLOBAL_CONTEXTS: &[Context] = &[
     context("vars", T::map(&T::String)),
 ];
 
+/// The secrets that every workflow can read besides the ones it declares, sorted and in lower
+/// case. GitHub passes `GITHUB_TOKEN` to every run, and the caller of a workflow passes
+/// `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG`. Each has type `string`.
+///
+/// Ported from the reference's `UpdateSecrets` in `expr_sema.go`. The test
+/// `built_in_secrets_match_the_reference_update_secrets` compares them.
+pub static BUILT_IN_SECRETS: &[&str] =
+    &["actions_runner_debug", "actions_step_debug", "github_token"];
+
 /// Returns the type of the global context `name`, which must be lower case.
 #[must_use]
 pub fn global_context(name: &str) -> Option<&'static T> {

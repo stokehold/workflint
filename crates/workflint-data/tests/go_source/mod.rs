@@ -499,6 +499,12 @@ pub(crate) fn builtin_func_signatures() -> BTreeMap<String, Vec<FuncSignature>> 
     Parser::after(EXPR_SEMA_GO, "var BuiltinFuncSignatures = ").signature_map()
 }
 
+/// The secrets that the reference's `UpdateSecrets` adds to the declared ones, with their
+/// types.
+pub(crate) fn update_secrets_built_ins() -> BTreeMap<String, Ty> {
+    Parser::after(EXPR_SEMA_GO, "copied := NewStrictObjectType(").type_map()
+}
+
 /// What one workflow key allows in the reference's `WorkflowKeyAvailability`, with the names in
 /// the reference's order.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -530,4 +536,21 @@ pub(crate) fn all_contexts() -> BTreeMap<String, Vec<String>> {
 /// `github.event.commits.*.message`, in source order.
 pub(crate) fn builtin_untrusted_inputs() -> Vec<String> {
     Parser::after(EXPR_INSECURE_GO, "var BuiltinUntrustedInputs = ").untrusted_input_roots()
+}
+
+/// The functions that the reference's `isSafeFuncCall` accepts, in source order. Its body is
+/// `return c == "a" || c == "b" ...` after lowercasing the callee into `c`.
+pub(crate) fn safe_func_calls() -> Vec<String> {
+    let mut parser = Parser::after(EXPR_INSECURE_GO, "c := strings.ToLower(call.Callee)");
+    parser.expect(&Token::Ident("return"));
+    let mut names = Vec::new();
+    loop {
+        parser.expect_all(&[Token::Ident("c"), Token::Punct('='), Token::Punct('=')]);
+        names.push(parser.str().to_owned());
+        if !parser.eat(&Token::Punct('|')) {
+            parser.expect(&Token::Punct('}'));
+            return names;
+        }
+        parser.expect(&Token::Punct('|'));
+    }
 }

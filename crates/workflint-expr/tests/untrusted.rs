@@ -11,7 +11,7 @@
 
 #![allow(clippy::expect_used, clippy::panic)]
 
-use workflint_data::{UNTRUSTED_INPUTS, UntrustedInput};
+use workflint_data::{Availability, UNTRUSTED_INPUTS, UntrustedInput};
 use workflint_diagnostics::quote::{quote, sorted_quotes};
 use workflint_expr::rules::{UNDEFINED_FUNCTION, UNTRUSTED_INPUT, UNTRUSTED_OBJECT_FILTER};
 use workflint_expr::{Expr, ExprError, TypeEnv, find_untrusted_inputs, parse_expression};
@@ -387,6 +387,14 @@ mod all_untrusted_values_at_once {
     }
 }
 
+/// An environment that allows every context and special function, so that only the errors
+/// about untrusted input remain.
+fn open_env() -> TypeEnv {
+    let mut env = TypeEnv::new();
+    env.set_availability(Availability::ALL);
+    env
+}
+
 /// `TestExprInsecureInitState`. The reference resets its checker between expressions. Here each
 /// check starts empty.
 mod init_state {
@@ -394,7 +402,7 @@ mod init_state {
 
     #[test]
     fn each_check_reports_only_its_own_expression() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_untrusted_inputs(UNTRUSTED_INPUTS);
         for _ in 0..2 {
             let (_, errors) = env.check(&parse("github.event.issue.title }}"));
@@ -555,7 +563,7 @@ mod detect_untrusted_object_filtering {
     /// environment checks them all.
     #[test]
     fn one_environment_checks_every_case() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_untrusted_inputs(UNTRUSTED_INPUTS);
         for input in [
             "github.event.*.body",
@@ -638,14 +646,14 @@ mod type_env {
     }
 
     fn env() -> TypeEnv {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_untrusted_inputs(UNTRUSTED_INPUTS);
         env
     }
 
     #[test]
     fn check_is_off_by_default() {
-        assert_eq!(checked(&TypeEnv::new(), "github.event.issue.title"), []);
+        assert_eq!(checked(&open_env(), "github.event.issue.title"), []);
     }
 
     #[test]

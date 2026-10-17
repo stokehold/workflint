@@ -284,9 +284,9 @@ mod tests {
         expect_yaml_files(&testdata, &inputs, TESTDATA_FILES).unwrap();
     }
 
-    /// Returns the scalar values of the sequence at `path` of mapping keys
-    /// below the root of `document`.
-    fn strings_at(document: &workflint_yaml::Document, path: &[&str]) -> Vec<String> {
+    /// Returns the lines of the scalar at `path` of mapping keys below the
+    /// root of `document`.
+    fn lines_at(document: &workflint_yaml::Document, path: &[&str]) -> Vec<String> {
         use workflint_yaml::NodeKind;
         let scalar = |id| match &document.node(id).unwrap().kind {
             NodeKind::Scalar(scalar) => scalar.value.clone(),
@@ -303,18 +303,13 @@ mod tests {
                 .find(|e| scalar(e.key) == *key);
             node = entry.unwrap_or_else(|| panic!("no key {key}")).value;
         }
-        let NodeKind::Sequence(sequence) = &document.node(node).unwrap().kind else {
-            panic!("{path:?} is not a sequence");
-        };
-        document
-            .items(sequence)
-            .iter()
-            .map(|&id| scalar(id))
-            .collect()
+        scalar(node).lines().map(str::to_owned).collect()
     }
 
+    /// The Gate workflow runs the YAML parity job when one of the paths in
+    /// the `YAML_PARITY` list of its changes job changes.
     #[test]
-    fn the_workflow_runs_when_an_input_of_the_comparison_changes() {
+    fn the_gate_runs_yaml_parity_when_an_input_of_the_comparison_changes() {
         let inputs = [
             "crates/workflint-yaml/**",
             "crates/workflint-diagnostics/**",
@@ -331,26 +326,24 @@ mod tests {
             ".go-version",
             "Cargo.lock",
             "rust-toolchain.toml",
-            ".github/workflows/yaml-parity.yml",
+            ".github/workflows/gate.yml",
         ];
         let path = Layout::repository()
             .root()
             .join(".github")
             .join("workflows")
-            .join("yaml-parity.yml");
+            .join("gate.yml");
         let text = fs::read_to_string(path).unwrap();
         let file =
             workflint_diagnostics::SourceFile::new(workflint_diagnostics::FileId::new(0), "", text)
                 .unwrap();
         let document = workflint_yaml::parse(&file).document.unwrap();
-        for event in ["push", "pull_request"] {
-            let paths = strings_at(&document, &["on", event, "paths"]);
-            let missing: Vec<_> = inputs
-                .iter()
-                .filter(|input| !paths.iter().any(|path| path == *input))
-                .collect();
-            assert!(missing.is_empty(), "{event} misses {missing:?}");
-        }
+        let paths = lines_at(&document, &["jobs", "changes", "env", "YAML_PARITY"]);
+        let missing: Vec<_> = inputs
+            .iter()
+            .filter(|input| !paths.iter().any(|path| path == *input))
+            .collect();
+        assert!(missing.is_empty(), "the filter misses {missing:?}");
     }
 
     #[test]
