@@ -165,9 +165,9 @@ impl<'s> Decoder<'s> {
                     }
                     match items.next() {
                         Some(&id) => Step::Request(Request::Any { id, build: *build }),
-                        None => {
-                            Step::Done(Output::Value(build.then(|| GoValue::Slice(mem::take(values)))))
-                        }
+                        None => Step::Done(Output::Value(
+                            build.then(|| GoValue::Slice(mem::take(values))),
+                        )),
                     }
                 }
                 Frame::Mapping(mapping) => self.resume(mapping, input.take())?,
@@ -413,7 +413,11 @@ impl<'s> Decoder<'s> {
     /// Continues the entry whose key decoded to `key` and whose value is
     /// `value`. Returns the request for the value, or `None` if a merge
     /// skips the entry.
-    fn set_key(frame: &mut Mapping<'s>, key: GoValue, value: NodeId) -> Result<Option<Step>, Fatal> {
+    fn set_key(
+        frame: &mut Mapping<'s>,
+        key: GoValue,
+        value: NodeId,
+    ) -> Result<Option<Step>, Fatal> {
         if let Some(seen) = &mut frame.merged {
             match key.key() {
                 Ok(key) => {

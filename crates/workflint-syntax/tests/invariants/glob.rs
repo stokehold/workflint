@@ -22,7 +22,7 @@ fn check_problems(pattern: &str, problems: &[GlobProblem]) {
     }
     let mut previous = 0;
     for problem in problems {
-        assert!(!problem.message.is_empty());
+        assert_ne!(problem.message, "");
         let Some(range) = &problem.range else {
             continue;
         };

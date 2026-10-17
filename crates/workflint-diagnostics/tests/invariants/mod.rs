@@ -58,7 +58,9 @@ pub(crate) fn check_render(data: &[u8]) {
         u32::from_le_bytes(bytes) % limit
     };
     let mut diagnostics: Vec<Diagnostic> = spans
-        .chunks_exact(8)
+        .as_chunks::<8>()
+        .0
+        .iter()
         .map(|span| {
             let (start, end) = span.split_at(4);
             let span = Span::new(file.id(), offset(start), offset(end));

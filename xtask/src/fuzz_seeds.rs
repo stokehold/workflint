@@ -5,7 +5,8 @@
 //! The seeds stay out of git. They are copies of files that git already has.
 //! The targets that read workflows get the YAML files of the vendored
 //! reference test data, every workflow in its corpus archive, the inputs of
-//! the YAML test suite, and the fuzz regression inputs of `workflint-yaml`.
+//! the YAML test suite, and the fuzz regression inputs of `workflint-yaml`,
+//! `workflint-syntax`, and `workflint-diagnostics`.
 //! The targets that read the text after `${{` get each line of the
 //! reference's `expressions.txt` followed by `}}`, the text after each `${{`
 //! in the YAML files of the vendored test data, and the fuzz regression inputs
@@ -20,7 +21,14 @@ use zip::ZipArchive;
 
 /// The fuzz targets in `fuzz/fuzz_targets/` that read workflows. Each gets
 /// every workflow seed.
-pub(crate) const TARGETS: &[&str] = &["glob", "render", "syntax", "yaml_events", "yaml_tree"];
+pub(crate) const TARGETS: &[&str] = &[
+    "glob",
+    "metadata",
+    "render",
+    "syntax",
+    "yaml_events",
+    "yaml_tree",
+];
 
 /// The fuzz targets in `fuzz/fuzz_targets/` that read the text after `${{`.
 /// Each gets every expression seed.
@@ -35,8 +43,19 @@ const ARCHIVE: &str = "tests/conformance/actionlint/testdata/realworld/dataset.z
 /// The YAML test suite cases, relative to the repository root.
 const YAML_TEST_SUITE: &str = "crates/workflint-yaml/tests/yaml-test-suite";
 
-/// The fuzz regression inputs, relative to the repository root.
-const REGRESSIONS: &str = "crates/workflint-yaml/tests/fuzz-regressions";
+/// The fuzz regression inputs of the targets that read workflows, relative
+/// to the repository root, each with the prefix of its seed names.
+const REGRESSIONS: &[(&str, &str)] = &[
+    ("regression", "crates/workflint-yaml/tests/fuzz-regressions"),
+    (
+        "syntax-regression",
+        "crates/workflint-syntax/tests/fuzz-regressions",
+    ),
+    (
+        "render-regression",
+        "crates/workflint-diagnostics/tests/fuzz-regressions",
+    ),
+];
 
 /// The reference's real-world expressions, one per line, relative to the
 /// repository root.
@@ -94,12 +113,11 @@ fn collect(root: &Path) -> Result<Vec<Seed>> {
             )?);
         }
     }
-    for path in files_under(&root.join(REGRESSIONS))? {
-        seeds.push(seed_from_file(
-            "regression",
-            &root.join(REGRESSIONS),
-            &path,
-        )?);
+    for (prefix, dir) in REGRESSIONS {
+        let dir = root.join(dir);
+        for path in files_under(&dir)? {
+            seeds.push(seed_from_file(prefix, &dir, &path)?);
+        }
     }
     check_unique(&seeds)?;
     Ok(seeds)
@@ -314,7 +332,12 @@ mod tests {
             &format!("{YAML_TEST_SUITE}/229Q/test.event"),
             "+STR\n",
         );
-        put(root, &format!("{REGRESSIONS}/tab-after-key"), "a:\t\n");
+        let [(_, yaml), (_, syntax), (_, render)] = REGRESSIONS else {
+            panic!("three regression directories");
+        };
+        put(root, &format!("{yaml}/tab-after-key"), "a:\t\n");
+        put(root, &format!("{syntax}/metadata/merge"), "<<: {}\n");
+        put(root, &format!("{render}/empty"), "");
         put(
             root,
             &format!("{FIXTURES}/c.yml"),
@@ -347,6 +370,8 @@ mod tests {
             ("fixture-examples-a.yaml", "on: push\n"),
             ("realworld-x_y_.github_workflows_ci.yml", "jobs: {}\n"),
             ("regression-tab-after-key", "a:\t\n"),
+            ("render-regression-empty", ""),
+            ("syntax-regression-metadata-merge", "<<: {}\n"),
             ("yaml-test-suite-229Q-in.yaml", "- a\n"),
         ]
         .map(|(name, contents)| (name.to_owned(), contents.to_owned()))

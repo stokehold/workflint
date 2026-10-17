@@ -71,7 +71,7 @@ pub(crate) fn check_metadata(text: &str) {
                 assert_eq!(*id, simple_lowercase(&output.name));
             }
         }
-        Err(err) => assert!(!err.message().is_empty()),
+        Err(err) => assert_ne!(err.message(), ""),
     }
     let workflow = ReusableWorkflowMetadata::decode(&file);
     assert_eq!(workflow, ReusableWorkflowMetadata::decode(&file));
@@ -87,7 +87,7 @@ pub(crate) fn check_metadata(text: &str) {
                 assert_eq!(*id, simple_lowercase(&secret.name));
             }
         }
-        Err(err) => assert!(!err.message().is_empty()),
+        Err(err) => assert_ne!(err.message(), ""),
     }
 }
 

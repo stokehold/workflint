@@ -177,96 +177,55 @@ impl fmt::Debug for RawValue<'_> {
         let mut depth = 0;
         let mut parts = vec![DebugPart::Value(self)];
         while let Some(part) = parts.pop() {
-            let group = match part {
-                DebugPart::Value(RawValue::Scalar(scalar)) => Group {
-                    open: "Scalar(",
-                    kind: GroupKind::Tuple,
-                    items: vec![(None, DebugPart::Leaf(scalar))],
-                },
-                DebugPart::Value(RawValue::Sequence { span, items }) => Group {
-                    open: "Sequence {",
-                    kind: GroupKind::Struct,
-                    items: vec![
-                        (Some("span"), DebugPart::Leaf(span)),
-                        (Some("items"), DebugPart::Items(items)),
-                    ],
-                },
-                DebugPart::Value(RawValue::Mapping { span, entries }) => Group {
-                    open: "Mapping {",
-                    kind: GroupKind::Struct,
-                    items: vec![
-                        (Some("span"), DebugPart::Leaf(span)),
-                        (Some("entries"), DebugPart::Entries(entries)),
-                    ],
-                },
-                DebugPart::Items(items) => Group {
-                    open: "[",
-                    kind: GroupKind::List,
-                    items: items.iter().map(|item| (None, DebugPart::Value(item))).collect(),
-                },
-                DebugPart::Entries(entries) => Group {
-                    open: "[",
-                    kind: GroupKind::List,
-                    items: entries
-                        .iter()
-                        .map(|entry| (None, DebugPart::Entry(entry)))
-                        .collect(),
-                },
-                DebugPart::Entry(entry) => Group {
-                    open: "KeyedEntry {",
-                    kind: GroupKind::Struct,
-                    items: vec![
-                        (Some("key"), DebugPart::Leaf(&entry.key)),
-                        (Some("span"), DebugPart::Leaf(&entry.span)),
-                        (Some("value"), DebugPart::Value(&entry.value)),
-                    ],
-                },
-                DebugPart::Leaf(leaf) => {
-                    if pretty {
-                        let indent = format!("\n{}", "    ".repeat(depth));
-                        f.write_str(&format!("{leaf:#?}").replace('\n', &indent))?;
-                    } else {
-                        write!(f, "{leaf:?}")?;
+            let Some(group) = part.group() else {
+                match part {
+                    DebugPart::Value(_)
+                    | DebugPart::Items(_)
+                    | DebugPart::Entries(_)
+                    | DebugPart::Entry(_) => {}
+                    DebugPart::Leaf(leaf) => {
+                        if pretty {
+                            let indent = format!("\n{}", "    ".repeat(depth));
+                            f.write_str(&format!("{leaf:#?}").replace('\n', &indent))?;
+                        } else {
+                            write!(f, "{leaf:?}")?;
+                        }
                     }
-                    continue;
-                }
-                DebugPart::Name(name) => {
-                    f.write_str(name)?;
-                    f.write_str(": ")?;
-                    continue;
-                }
-                DebugPart::ItemStart { first, kind } => {
-                    if pretty {
-                        f.write_str("\n")?;
-                        f.write_str(&"    ".repeat(depth))?;
-                    } else if !first {
-                        f.write_str(", ")?;
-                    } else if kind == GroupKind::Struct {
-                        f.write_str(" ")?;
+                    DebugPart::Name(name) => {
+                        f.write_str(name)?;
+                        f.write_str(": ")?;
                     }
-                    continue;
-                }
-                DebugPart::ItemEnd => {
-                    if pretty {
-                        f.write_str(",")?;
+                    DebugPart::ItemStart { first, kind } => {
+                        if pretty {
+                            f.write_str("\n")?;
+                            f.write_str(&"    ".repeat(depth))?;
+                        } else if !first {
+                            f.write_str(", ")?;
+                        } else if kind == GroupKind::Struct {
+                            f.write_str(" ")?;
+                        }
                     }
-                    continue;
-                }
-                DebugPart::Close { kind, empty } => {
-                    depth -= 1;
-                    if pretty && !empty {
-                        f.write_str("\n")?;
-                        f.write_str(&"    ".repeat(depth))?;
-                    } else if !pretty && !empty && kind == GroupKind::Struct {
-                        f.write_str(" ")?;
+                    DebugPart::ItemEnd => {
+                        if pretty {
+                            f.write_str(",")?;
+                        }
                     }
-                    f.write_str(match kind {
-                        GroupKind::Tuple => ")",
-                        GroupKind::Struct => "}",
-                        GroupKind::List => "]",
-                    })?;
-                    continue;
+                    DebugPart::Close { kind, empty } => {
+                        depth -= 1;
+                        if pretty && !empty {
+                            f.write_str("\n")?;
+                            f.write_str(&"    ".repeat(depth))?;
+                        } else if !pretty && !empty && kind == GroupKind::Struct {
+                            f.write_str(" ")?;
+                        }
+                        f.write_str(match kind {
+                            GroupKind::Tuple => ")",
+                            GroupKind::Struct => "}",
+                            GroupKind::List => "]",
+                        })?;
+                    }
                 }
+                continue;
             };
             f.write_str(group.open)?;
             depth += 1;
@@ -292,6 +251,7 @@ impl fmt::Debug for RawValue<'_> {
 }
 
 /// A part of the `Debug` output of a [`RawValue`] still to write.
+#[derive(Clone, Copy)]
 enum DebugPart<'v, 'a> {
     Value(&'v RawValue<'a>),
     Items(&'v [RawValue<'a>]),
@@ -311,6 +271,64 @@ enum DebugPart<'v, 'a> {
         kind: GroupKind,
         empty: bool,
     },
+}
+
+impl<'v, 'a> DebugPart<'v, 'a> {
+    /// Returns the tuple, struct, or list that the part prints as, or
+    /// `None` for a part that writes text.
+    fn group(self) -> Option<Group<'v, 'a>> {
+        let group = match self {
+            Self::Value(RawValue::Scalar(scalar)) => Group {
+                open: "Scalar(",
+                kind: GroupKind::Tuple,
+                items: vec![(None, Self::Leaf(scalar))],
+            },
+            Self::Value(RawValue::Sequence { span, items }) => Group {
+                open: "Sequence {",
+                kind: GroupKind::Struct,
+                items: vec![
+                    (Some("span"), Self::Leaf(span)),
+                    (Some("items"), Self::Items(items)),
+                ],
+            },
+            Self::Value(RawValue::Mapping { span, entries }) => Group {
+                open: "Mapping {",
+                kind: GroupKind::Struct,
+                items: vec![
+                    (Some("span"), Self::Leaf(span)),
+                    (Some("entries"), Self::Entries(entries)),
+                ],
+            },
+            Self::Items(items) => Group {
+                open: "[",
+                kind: GroupKind::List,
+                items: items.iter().map(|item| (None, Self::Value(item))).collect(),
+            },
+            Self::Entries(entries) => Group {
+                open: "[",
+                kind: GroupKind::List,
+                items: entries
+                    .iter()
+                    .map(|entry| (None, Self::Entry(entry)))
+                    .collect(),
+            },
+            Self::Entry(entry) => Group {
+                open: "KeyedEntry {",
+                kind: GroupKind::Struct,
+                items: vec![
+                    (Some("key"), Self::Leaf(&entry.key)),
+                    (Some("span"), Self::Leaf(&entry.span)),
+                    (Some("value"), Self::Value(&entry.value)),
+                ],
+            },
+            Self::Leaf(_)
+            | Self::Name(_)
+            | Self::ItemStart { .. }
+            | Self::ItemEnd
+            | Self::Close { .. } => return None,
+        };
+        Some(group)
+    }
 }
 
 /// A tuple, struct, or list in the `Debug` output of a [`RawValue`].
