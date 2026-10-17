@@ -1,6 +1,6 @@
 # workflint-data
 
-This crate holds the facts about GitHub that workflint checks workflows against, such as the types of the contexts that `${{ }}` expressions read, the signatures of the functions they call, the contexts and functions that each workflow key allows, and the context properties that hold untrusted input. It depends on no other workflint crate and reads no files, environment variables, or clocks.
+This crate holds the facts about GitHub that workflint checks workflows against, such as the types of the contexts that `${{ }}` expressions read, the signatures of the functions they call, the contexts and functions that each workflow key allows, the context properties that hold untrusted input, the secrets that every workflow can read, and the naming rules of configuration variables. It depends on no other workflint crate and reads no files, environment variables, or clocks.
 
 Until workflint's data generators exist, the tables are ported from actionlint at commit `011a6d1`, so that workflint reports what actionlint reports.
 

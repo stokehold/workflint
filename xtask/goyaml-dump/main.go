@@ -4,10 +4,12 @@
 // It reads file paths from standard input, one per line. For each file it
 // prints a line `=== <path>` and then the dump: one line per node of the raw
 // tree before alias resolution, in pre-order, indented by two spaces per
-// level. A line holds the node kind, its 1-based `line:column`, its anchor as
-// `&name`, and then the alias name as `*name` for an alias or the decoded
-// value for a scalar, quoted with strconv.Quote. A file without a root node
-// prints `empty`. A file that go-yaml rejects prints `error: ` and the error.
+// level. A line holds the node kind, its 1-based `line:column`, the style of
+// a scalar that is not plain (`double`, `single`, `literal`, or `folded`),
+// its explicit tag in short form such as `!!str`, its anchor as `&name`, and
+// then the alias name as `*name` for an alias or the decoded value for a
+// scalar, quoted with strconv.Quote. A file without a root node prints
+// `empty`. A file that go-yaml rejects prints `error: ` and the error.
 //
 // It decodes each file as actionlint does in `Parse` (parse.go): with
 // yaml.Unmarshal into a yaml.Node.
@@ -88,6 +90,14 @@ func write(b *strings.Builder, n *yaml.Node, depth int) {
 	b.WriteString(strings.Repeat("  ", depth))
 	b.WriteString(kind(n.Kind))
 	fmt.Fprintf(b, " %d:%d", n.Line, n.Column)
+	if n.Kind == yaml.ScalarNode {
+		b.WriteString(scalarStyle(n.Style))
+	}
+	// go-yaml sets TaggedStyle when the node has an explicit tag, and Tag
+	// holds that tag in short form. Otherwise Tag is the resolved tag.
+	if n.Style&yaml.TaggedStyle != 0 {
+		b.WriteString(" " + n.Tag)
+	}
 	if n.Anchor != "" {
 		b.WriteString(" &" + n.Anchor)
 	}
@@ -101,6 +111,22 @@ func write(b *strings.Builder, n *yaml.Node, depth int) {
 	for _, c := range n.Content {
 		write(b, c, depth+1)
 	}
+}
+
+// scalarStyle returns the style of a scalar as a word after a space, or
+// nothing for a plain scalar.
+func scalarStyle(s yaml.Style) string {
+	switch {
+	case s&yaml.DoubleQuotedStyle != 0:
+		return " double"
+	case s&yaml.SingleQuotedStyle != 0:
+		return " single"
+	case s&yaml.LiteralStyle != 0:
+		return " literal"
+	case s&yaml.FoldedStyle != 0:
+		return " folded"
+	}
+	return ""
 }
 
 func kind(k yaml.Kind) string {

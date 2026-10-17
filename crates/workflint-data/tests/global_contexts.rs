@@ -8,8 +8,10 @@ mod go_source;
 
 use std::collections::BTreeMap;
 
-use go_source::{Ty, builtin_global_variable_types};
-use workflint_data::{GLOBAL_CONTEXTS, ObjectDesc, Rest, TypeDesc, global_context};
+use go_source::{Ty, builtin_global_variable_types, update_secrets_built_ins};
+use workflint_data::{
+    BUILT_IN_SECRETS, GLOBAL_CONTEXTS, ObjectDesc, Rest, TypeDesc, global_context,
+};
 
 fn workflint_contexts() -> BTreeMap<String, Ty> {
     GLOBAL_CONTEXTS
@@ -31,6 +33,28 @@ fn global_contexts_match_the_reference_table() {
     for (name, ty) in &reference {
         assert_eq!(workflint.get(name), Some(ty), "the type of {name}");
     }
+}
+
+#[test]
+fn built_in_secrets_match_the_reference_update_secrets() {
+    let workflint: BTreeMap<String, Ty> = BUILT_IN_SECRETS
+        .iter()
+        .map(|name| ((*name).to_owned(), Ty::String))
+        .collect();
+    assert_eq!(workflint, update_secrets_built_ins());
+}
+
+#[test]
+fn built_in_secrets_are_sorted_lower_case_names() {
+    let mut sorted = BUILT_IN_SECRETS.to_vec();
+    sorted.sort_unstable();
+    sorted.dedup();
+    assert_eq!(BUILT_IN_SECRETS, sorted);
+    assert!(
+        BUILT_IN_SECRETS
+            .iter()
+            .all(|name| !name.bytes().any(|b| b.is_ascii_uppercase()))
+    );
 }
 
 #[test]

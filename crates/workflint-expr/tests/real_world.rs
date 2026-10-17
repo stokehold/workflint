@@ -3,7 +3,8 @@
 //!
 //! `testdata/bench/expressions.txt` holds 1,858 expressions from public workflows, one per line,
 //! without `${{` and `}}`. The reference's `TestExprSemanticsCheckRealWorld` parses each of them
-//! without an error and type-checks it against the global contexts. The benchmarks in
+//! without an error and type-checks it against the global contexts, with the check for
+//! untrusted input on. The benchmarks in
 //! `benches/expressions.rs` measure the same file.
 
 #![allow(clippy::expect_used, clippy::panic)]
@@ -12,6 +13,7 @@ mod invariants;
 
 use std::path::{Path, PathBuf};
 
+use workflint_data::UNTRUSTED_INPUTS;
 use workflint_expr::{TypeEnv, lex_expression, parse_expression};
 
 const EXPRESSIONS: &str =
@@ -56,6 +58,37 @@ fn expressions_in(text: &str) -> Vec<&str> {
     found
 }
 
+/// The value of each `fromJSON('…')` string literal in `text`, with each `''` turned into `'`.
+/// The function name matches in any case. `cargo xtask fuzz-seeds` cuts the seed inputs of the
+/// `expr_json` fuzz target the same way.
+fn json_literals_in(text: &str) -> Vec<String> {
+    const CALL: &str = "fromjson('";
+    let lower = text.to_ascii_lowercase();
+    let mut found = Vec::new();
+    let mut rest = 0;
+    while let Some(start) = lower[rest..].find(CALL) {
+        let mut literal = String::new();
+        let mut chars = text[rest + start + CALL.len()..].char_indices().peekable();
+        let mut end = None;
+        while let Some((i, c)) = chars.next() {
+            if c != '\'' {
+                literal.push(c);
+            } else if chars.next_if(|(_, c)| *c == '\'').is_some() {
+                literal.push('\'');
+            } else {
+                end = Some(rest + start + CALL.len() + i + 1);
+                break;
+            }
+        }
+        let Some(end) = end else {
+            break;
+        };
+        found.push(literal);
+        rest = end;
+    }
+    found
+}
+
 #[test]
 fn every_real_world_expression_lexes_and_parses_without_an_error() {
     let mut count = 0;
@@ -75,7 +108,9 @@ fn every_real_world_expression_lexes_and_parses_without_an_error() {
 
 #[test]
 fn every_real_world_expression_parses_and_type_checks() {
-    let env = TypeEnv::new();
+    // The reference's test turns on the check for untrusted input and sets no availability.
+    let mut env = TypeEnv::new();
+    env.set_untrusted_inputs(UNTRUSTED_INPUTS);
     for line in EXPRESSIONS.lines() {
         let src = format!("{line}}}}}");
         match parse_expression(&src) {
@@ -122,4 +157,29 @@ fn every_expression_in_the_reference_fixtures_passes_the_fuzz_checks() {
 fn an_expression_ends_at_the_line_with_the_next_closing_braces() {
     let text = "a: ${{ x }} b\nc: ${{ 'y\n' }} d\ne: ${{ z";
     assert_eq!(expressions_in(text), [" x }} b\n", " 'y\n' }} d\n", " z"]);
+}
+
+#[test]
+fn every_json_literal_in_the_real_world_expressions_and_fixtures_passes_the_fuzz_check() {
+    let mut files = Vec::new();
+    yaml_files(&fixtures(), &mut files);
+    let mut literals = json_literals_in(EXPRESSIONS);
+    for path in &files {
+        let bytes = std::fs::read(path).expect("fixtures are readable");
+        literals.extend(json_literals_in(&String::from_utf8_lossy(&bytes)));
+    }
+    for literal in &literals {
+        invariants::check_json(literal);
+    }
+    assert!(
+        literals.len() >= 20,
+        "found only {} literals",
+        literals.len()
+    );
+}
+
+#[test]
+fn a_json_literal_ends_at_a_quote_that_is_not_doubled() {
+    let text = "fromJSON('{\"a\":''b''}') && FROMJSON( 'x') || fromjson('[1]') && fromJSON('open";
+    assert_eq!(json_literals_in(text), ["{\"a\":'b'}", "[1]"]);
 }

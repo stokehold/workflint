@@ -42,6 +42,14 @@ const fn leaf(name: &'static str) -> UntrustedInput {
     UntrustedInput::new(name, &[])
 }
 
+/// The functions whose arguments the check of scripts skips, sorted and in lower case. Each
+/// returns a boolean, which cannot inject code, so `contains(github.event.issue.title, 'x')`
+/// is safe in a script.
+///
+/// Ported from the reference's `isSafeFuncCall` in `expr_insecure.go`. The test
+/// `safe_functions_match_the_reference_is_safe_func_call` compares them.
+pub static SAFE_FUNCTIONS: &[&str] = &["contains", "endswith", "startswith"];
+
 const fn node(name: &'static str, children: &'static [UntrustedInput]) -> UntrustedInput {
     UntrustedInput::new(name, children)
 }

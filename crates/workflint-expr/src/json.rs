@@ -473,8 +473,13 @@ impl<'a> TypeBuilder<'a> {
                 self.pos += 1;
                 match frame {
                     Frame::Array(elem) => {
+                        // The frame owns the element type, so merging changes it in place and
+                        // typing an array takes time linear in its size.
                         let merged = match elem.take() {
-                            Some(elem) => elem.merge(&ty),
+                            Some(mut elem) => {
+                                elem.merge_in_place(&ty);
+                                elem
+                            }
                             None => ty,
                         };
                         if close == b',' {
@@ -555,13 +560,18 @@ impl<'a> TypeBuilder<'a> {
         }
     }
 
-    /// Skips an object or array with everything in it.
+    /// Skips an object or array with everything in it. Go decodes the numbers in it all the
+    /// same, so a number beyond the range of a double is noted here too.
     fn skip_value(&mut self) {
         let mut depth = 0_usize;
         while let Some(&c) = self.bytes.get(self.pos) {
             match c {
                 b'"' => {
                     self.skip_string();
+                    continue;
+                }
+                b'-' | b'0'..=b'9' => {
+                    self.number();
                     continue;
                 }
                 b'[' | b'{' => depth += 1,

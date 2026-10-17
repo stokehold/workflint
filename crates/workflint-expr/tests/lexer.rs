@@ -439,6 +439,33 @@ fn lexer_returns_end_tokens_after_an_error() {
     assert_eq!(err.start, 2);
 }
 
+/// Go's scanner records the NUL error and goes on, so the reference's lexer returns the tokens
+/// after a NUL.
+#[test]
+fn lexer_returns_the_tokens_after_a_nul() {
+    let src = "a 'x\0' b }}";
+    let mut lexer = workflint_expr::Lexer::new(src);
+    let mut tokens = Vec::new();
+    loop {
+        let token = lexer.next_token();
+        tokens.push((token.kind, &src[token.range()]));
+        if token.kind == TokenKind::End {
+            break;
+        }
+    }
+    assert_eq!(
+        tokens,
+        [
+            (TokenKind::Ident, "a"),
+            (TokenKind::String, "'x\0'"),
+            (TokenKind::Ident, "b"),
+            (TokenKind::End, "}}"),
+        ]
+    );
+    let err = lexer.error().expect("an error");
+    assert_eq!((err.start, err.end), (4, 5));
+}
+
 #[test]
 fn lexer_keeps_only_the_first_error() {
     let mut lexer = workflint_expr::Lexer::new("'a\0b");
