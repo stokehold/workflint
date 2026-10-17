@@ -1,5 +1,6 @@
 use std::fmt;
 use std::ops::Range;
+use std::sync::OnceLock;
 
 /// Identifies one [`SourceFile`] within a lint run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -45,9 +46,23 @@ pub struct SourceFile {
     text: String,
     /// The byte offset where each line starts. The first entry is always 0.
     line_starts: Vec<usize>,
-    /// Character counts at fixed points in the text, so that a column takes
-    /// time independent of the line length. Empty if the text is ASCII.
-    char_counts: Vec<CharCount>,
+    /// How a column more than [`CHAR_COUNT_STEP`] bytes into its line is
+    /// counted, so that it takes time independent of the line length. Built
+    /// when the first such column is counted.
+    long_lines: OnceLock<LongLines>,
+}
+
+/// How [`SourceFile::line_col`] counts the column of an offset more than
+/// [`CHAR_COUNT_STEP`] bytes after the start of its line. A column closer to
+/// the start of its line is counted from there.
+#[derive(Debug, Clone)]
+enum LongLines {
+    /// The text is ASCII, so a byte is a character.
+    Ascii,
+    /// The [`CharCount`] at every [`CHAR_COUNT_STEP`] bytes of the text.
+    /// Entry `k` holds the character boundary at or before byte
+    /// `k * CHAR_COUNT_STEP`.
+    Counts(Vec<CharCount>),
 }
 
 /// The number of characters before `offset` in the text.
@@ -57,8 +72,8 @@ struct CharCount {
     chars: usize,
 }
 
-/// The distance in bytes between two [`CharCount`]s. Entry `k` holds the
-/// character boundary at or before byte `k * CHAR_COUNT_STEP`.
+/// The distance in bytes from the start of a line above which [`LongLines`]
+/// counts a column.
 const CHAR_COUNT_STEP: usize = 256;
 
 const BOM: char = '\u{feff}';
@@ -80,13 +95,12 @@ impl SourceFile {
             return Err(SourceTooLarge { len: text.len() });
         }
         let line_starts = line_starts(&text);
-        let char_counts = char_counts(&text);
         Ok(Self {
             id,
             path: path.into(),
             text,
             line_starts,
-            char_counts,
+            long_lines: OnceLock::new(),
         })
     }
 
@@ -132,17 +146,29 @@ impl SourceFile {
         if start == 0 && self.text.starts_with(BOM) && offset >= BOM.len_utf8() {
             start = BOM.len_utf8();
         }
-        let column = self.chars_before(offset) - self.chars_before(start) + 1;
+        if offset - start <= CHAR_COUNT_STEP {
+            let column = self.chars(start, offset) + 1;
+            return LineCol { line, column };
+        }
+        let column = match self.long_lines.get_or_init(|| long_lines(&self.text)) {
+            LongLines::Ascii => offset - start,
+            LongLines::Counts(counts) => {
+                Self::chars_before(&self.text, counts, offset)
+                    - Self::chars_before(&self.text, counts, start)
+            }
+        } + 1;
         LineCol { line, column }
     }
 
-    /// The number of characters before `offset`, a character boundary.
-    fn chars_before(&self, offset: usize) -> usize {
-        if self.char_counts.is_empty() {
-            return offset;
-        }
-        let count = self
-            .char_counts
+    /// The number of characters from `start` to `end`.
+    fn chars(&self, start: usize, end: usize) -> usize {
+        self.text.get(start..end).map_or(0, |s| s.chars().count())
+    }
+
+    /// The number of characters before `offset`, a character boundary, from
+    /// the [`CharCount`]s of `text`.
+    fn chars_before(text: &str, counts: &[CharCount], offset: usize) -> usize {
+        let count = counts
             .get(offset / CHAR_COUNT_STEP)
             .copied()
             .unwrap_or(CharCount {
@@ -150,8 +176,7 @@ impl SourceFile {
                 chars: 0,
             });
         count.chars
-            + self
-                .text
+            + text
                 .get(count.offset..offset)
                 .map_or(0, |s| s.chars().count())
     }
@@ -204,12 +229,17 @@ fn line_starts(text: &str) -> Vec<usize> {
     starts
 }
 
-/// Returns the [`CharCount`] at every [`CHAR_COUNT_STEP`] bytes of `text`, or
-/// nothing if `text` is ASCII, where offsets count characters.
-fn char_counts(text: &str) -> Vec<CharCount> {
+/// Returns how to count columns on the long lines of `text`.
+fn long_lines(text: &str) -> LongLines {
     if text.is_ascii() {
-        return Vec::new();
+        LongLines::Ascii
+    } else {
+        LongLines::Counts(char_counts(text))
     }
+}
+
+/// Returns the [`CharCount`] at every [`CHAR_COUNT_STEP`] bytes of `text`.
+fn char_counts(text: &str) -> Vec<CharCount> {
     let mut counts = Vec::with_capacity(text.len() / CHAR_COUNT_STEP + 1);
     let mut previous = CharCount {
         offset: 0,
