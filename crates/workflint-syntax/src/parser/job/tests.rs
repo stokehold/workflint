@@ -4,7 +4,8 @@ use workflint_diagnostics::{FileId, SourceFile};
 
 use crate::testing::{Text, render};
 use crate::{
-    Field, Job, Keyed, Permissions, Str, Template, Value, Workflow, WorkflowCallSecrets, parse,
+    Field, Job, JobUses, JobUsesKind, Keyed, Permissions, Str, Template, Value, Workflow,
+    WorkflowCallSecrets, parse,
 };
 
 /// Parses the workflow `text` and returns its diagnostics as
@@ -765,7 +766,7 @@ jobs:
         let call = job(workflow, "call");
         let workflow_call = call.workflow_call.as_ref().unwrap();
         assert_eq!(
-            workflow_call.uses.value().map(Template::value),
+            workflow_call.uses.value().map(JobUses::value),
             Some("octo-org/repo/.github/workflows/ci.yml@v1")
         );
         assert_eq!(workflow_call.uses.key().map(Str::value), Some("uses"));
@@ -785,6 +786,16 @@ jobs:
             Some(WorkflowCallSecrets::Inherit(secret)) if secret.value() == "inherit"
         ));
         assert!(!inherit.inputs.is_present());
+        assert!(matches!(
+            inherit.uses.value().map(|uses| uses.kind),
+            Some(JobUsesKind::Local { path }) if path.value == "./.github/workflows/ci.yml"
+        ));
+        assert!(matches!(
+            workflow_call.uses.value().map(|uses| uses.kind),
+            Some(JobUsesKind::Repository { owner, repo, path, git_ref })
+                if [owner.value, repo.value, path.value, git_ref.value]
+                    == ["octo-org", "repo", ".github/workflows/ci.yml", "v1"]
+        ));
 
         assert!(job(workflow, "build").workflow_call.is_none());
     });

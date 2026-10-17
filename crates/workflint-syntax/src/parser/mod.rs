@@ -23,6 +23,7 @@ mod report;
 mod shared;
 mod step;
 mod strategy;
+mod uses;
 mod workflow;
 
 use std::collections::HashMap;

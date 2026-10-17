@@ -178,7 +178,9 @@ fn job_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, job: &'w Job<'a>) {
         secrets,
     }) = &job.workflow_call
     {
-        string(f, uses);
+        if let Some(uses) = uses.value() {
+            template(f, &uses.template);
+        }
         keyed(f, inputs.value());
         if let Some(WorkflowCallSecrets::Map(secrets)) = secrets.value() {
             keyed(f, Some(secrets));
@@ -214,7 +216,9 @@ fn step_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, step: &'w Step<'a>) {
             string(f, &run.working_directory);
         }
         Some(Exec::Action(action)) => {
-            string(f, &action.uses);
+            if let Some(uses) = action.uses.value() {
+                template(f, &uses.template);
+            }
             keyed(f, action.inputs.value());
             string(f, &action.entrypoint);
             string(f, &action.args);

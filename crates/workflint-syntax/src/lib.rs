@@ -102,6 +102,7 @@ pub mod rules;
 mod step;
 mod strconv;
 mod typed;
+mod uses;
 mod value;
 mod workflow;
 
@@ -128,5 +129,8 @@ pub use reusable_workflow::{
 };
 pub use step::{Exec, ExecAction, ExecRun, Step};
 pub use typed::MetadataError;
+pub use uses::{
+    InvalidAction, InvalidWorkflow, JobUses, JobUsesKind, StepUses, StepUsesKind, UsesPart,
+};
 pub use value::{Field, Value};
 pub use workflow::{Concurrency, Defaults, DefaultsRun, Env, EnvVar, Permissions, Workflow};
