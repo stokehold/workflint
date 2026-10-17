@@ -52,7 +52,6 @@ ADR 0022 makes go-yaml v4.0.0-rc.3, the YAML library of actionlint, the referenc
 - The URI escapes of a tag decode as one UTF-8 character. Upstream added each octet as a character.
 - An indentless sequence's end event and the end event of a single-pair mapping in a flow sequence end where they start. The empty value of such a pair starts at its `:`.
 
-Two cases still differ from go-yaml, both on input that both reject or that go-yaml handles by accident of its memory layout:
+- When an empty flow collection starts a simple key, the parser can take its first token before the scanner finds the `:`. go-yaml's `insertToken` then gets a negative position and appends the KEY and BLOCK-MAPPING-START tokens to the queue, and `insert_token` does the same. So `[] x: y` and `{} a: x` are the documents `[]` and `{}`, and `- [] b: 1` fails with `did not find expected '-' indicator`.
 
-- When an empty flow collection starts a simple key and other tokens come before the `:`, as in `- [] b: 1`, go-yaml writes the KEY token into the part of its token queue that the parser has read, and the parser then reports an error about the garbled queue. The scanner reports `could not find expected ':'` instead.
-- go-yaml's `parseFlowSequenceEntryMappingValue` reads the `:` token through a pointer into its token queue. When fetching the next token moves the queue in memory, the pointer sees another token, and the empty value gets that token's position. The parser always uses the `:`.
+One case still differs from go-yaml, which go-yaml handles by accident of its memory layout. go-yaml's `parseFlowSequenceEntryMappingValue` reads the `:` token through a pointer into its token queue. When fetching the next token moves the queue in memory, the pointer sees another token, and the empty value gets that token's position. The parser always uses the `:`.

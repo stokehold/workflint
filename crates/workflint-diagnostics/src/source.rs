@@ -45,7 +45,21 @@ pub struct SourceFile {
     text: String,
     /// The byte offset where each line starts. The first entry is always 0.
     line_starts: Vec<usize>,
+    /// Character counts at fixed points in the text, so that a column takes
+    /// time independent of the line length. Empty if the text is ASCII.
+    char_counts: Vec<CharCount>,
 }
+
+/// The number of characters before `offset` in the text.
+#[derive(Debug, Clone, Copy)]
+struct CharCount {
+    offset: usize,
+    chars: usize,
+}
+
+/// The distance in bytes between two [`CharCount`]s. Entry `k` holds the
+/// character boundary at or before byte `k * CHAR_COUNT_STEP`.
+const CHAR_COUNT_STEP: usize = 256;
 
 const BOM: char = '\u{feff}';
 
@@ -66,11 +80,13 @@ impl SourceFile {
             return Err(SourceTooLarge { len: text.len() });
         }
         let line_starts = line_starts(&text);
+        let char_counts = char_counts(&text);
         Ok(Self {
             id,
             path: path.into(),
             text,
             line_starts,
+            char_counts,
         })
     }
 
@@ -116,12 +132,28 @@ impl SourceFile {
         if start == 0 && self.text.starts_with(BOM) && offset >= BOM.len_utf8() {
             start = BOM.len_utf8();
         }
-        let column = self
-            .text
-            .get(start..offset)
-            .map_or(0, |s| s.chars().count())
-            + 1;
+        let column = self.chars_before(offset) - self.chars_before(start) + 1;
         LineCol { line, column }
+    }
+
+    /// The number of characters before `offset`, a character boundary.
+    fn chars_before(&self, offset: usize) -> usize {
+        if self.char_counts.is_empty() {
+            return offset;
+        }
+        let count = self
+            .char_counts
+            .get(offset / CHAR_COUNT_STEP)
+            .copied()
+            .unwrap_or(CharCount {
+                offset: 0,
+                chars: 0,
+            });
+        count.chars
+            + self
+                .text
+                .get(count.offset..offset)
+                .map_or(0, |s| s.chars().count())
     }
 
     /// Returns the byte range of a 1-based line without its line break, or `None` if the file
@@ -170,6 +202,29 @@ fn line_starts(text: &str) -> Vec<usize> {
         starts.push(i);
     }
     starts
+}
+
+/// Returns the [`CharCount`] at every [`CHAR_COUNT_STEP`] bytes of `text`, or
+/// nothing if `text` is ASCII, where offsets count characters.
+fn char_counts(text: &str) -> Vec<CharCount> {
+    if text.is_ascii() {
+        return Vec::new();
+    }
+    let mut counts = Vec::with_capacity(text.len() / CHAR_COUNT_STEP + 1);
+    let mut previous = CharCount {
+        offset: 0,
+        chars: 0,
+    };
+    for step in (0..=text.len()).step_by(CHAR_COUNT_STEP) {
+        let offset = text.floor_char_boundary(step);
+        let chars = previous.chars
+            + text
+                .get(previous.offset..offset)
+                .map_or(0, |s| s.chars().count());
+        previous = CharCount { offset, chars };
+        counts.push(previous);
+    }
+    counts
 }
 
 /// The error [`SourceFile::new`] returns for text longer than `u32::MAX` bytes.
@@ -274,6 +329,43 @@ mod tests {
     fn an_offset_inside_a_character_points_at_that_character() {
         // `日` occupies bytes 1 to 3.
         assert_eq!(line_col("a日b", 2), (1, 2));
+    }
+
+    // Counting the characters from the start of the line for each offset
+    // took about 9 seconds here in a debug build, and now takes under one.
+    #[test]
+    fn offsets_on_a_long_line_convert_in_time_independent_of_the_column() {
+        let line = "key: 'é', 日本: [a, b], ".repeat(80_000);
+        let text = format!("a: 1\n{line}\nb: 2\n");
+        let f = file(&text);
+        let started = std::time::Instant::now();
+        for (column, (offset, _)) in (1..).zip(line.char_indices()).step_by(10) {
+            let pos = f.line_col(u32::try_from(5 + offset).unwrap());
+            assert_eq!((pos.line, pos.column), (2, column), "offset {offset}");
+        }
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(5),
+            "converting the offsets took {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn columns_after_non_ascii_text_count_code_points_on_every_line() {
+        let text = "日本語\n\u{feff}x\n".repeat(200);
+        let f = file(&text);
+        let mut line = 1;
+        let mut column = 1;
+        for (offset, ch) in text.char_indices() {
+            let pos = f.line_col(u32::try_from(offset).unwrap());
+            assert_eq!((pos.line, pos.column), (line, column), "offset {offset}");
+            if ch == '\n' {
+                line += 1;
+                column = 1;
+            } else {
+                column += 1;
+            }
+        }
     }
 
     #[test]

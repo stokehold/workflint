@@ -373,11 +373,12 @@ impl<'input> Scanner<'input> {
         Ok(())
     }
 
-    /// The position in the queue of the token with number `token_number`.
-    fn queue_position(&self, token_number: usize) -> Result<usize> {
-        token_number
-            .checked_sub(self.tokens_parsed)
-            .ok_or_else(|| Error::internal(ErrorKind::Scanner, self.mark))
+    /// The position in the queue of the token with number `token_number`, or
+    /// `None` if the parser has already taken that token. go-yaml's
+    /// `insertToken` appends a token whose position is negative, so `None`
+    /// tells [`Self::insert_token`] to append.
+    fn queue_position(&self, token_number: usize) -> Option<usize> {
+        token_number.checked_sub(self.tokens_parsed)
     }
 
     /// The top of the simple key stack, which `fetch_stream_start` creates and
@@ -665,9 +666,7 @@ impl<'input> Scanner<'input> {
                 start_mark: mark,
                 end_mark: mark,
             };
-            let position = number
-                .map(|number| self.queue_position(number))
-                .transpose()?;
+            let position = number.and_then(|number| self.queue_position(number));
             self.insert_token(position, token)?;
         }
         Ok(())
@@ -895,19 +894,13 @@ impl<'input> Scanner<'input> {
             // The parser can already have taken the key's first token when
             // an empty flow collection starts the key: closing it forgets the
             // key's token number, as in go-yaml's `decreaseFlowLevel`, so
-            // `fetch_more_tokens` stops waiting for the `:`. Tokens then
-            // follow the collection before the `:`, so the input is not valid
-            // YAML. go-yaml writes the KEY token into the part of its queue
-            // that the parser has read, which garbles the queue.
-            if simple_key.token_number < self.tokens_parsed {
-                return self.set_scanner_error(
-                    "while scanning a simple key",
-                    simple_key.mark,
-                    "could not find expected ':'",
-                );
-            }
-            let position = self.queue_position(simple_key.token_number)?;
-            self.insert_token(Some(position), token)?;
+            // `fetch_more_tokens` stops waiting for the `:`. Then the KEY
+            // token, and the BLOCK-MAPPING-START token that `roll_indent`
+            // adds, go to the end of the queue, as go-yaml's `insertToken`
+            // does with a negative position. So `[] x: y` is the document
+            // `[]`, and `- [] b: 1` fails in the parser.
+            let position = self.queue_position(simple_key.token_number);
+            self.insert_token(position, token)?;
             self.roll_indent(
                 simple_key.mark.column as i64,
                 Some(simple_key.token_number),

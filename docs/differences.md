@@ -74,8 +74,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="yaml-error-positions"></a>
 ### YAML syntax error positions
 
-- Upstream: YAML syntax errors use go-yaml's position, which takes the line from libyaml's context mark when it has one and reports a 0-based column. `steps: -` is reported at `2:7`, although the problem is at `2:8`. A control character in the file gives `control characters are not allowed` at `0:0`, because libyaml's reader records only a byte offset. Bytes that do not decode as UTF-8, or as UTF-16 after a UTF-16 byte order mark, give an encoding error such as `invalid leading UTF-8 octet` at `0:0` too. go-yaml decodes the file in chunks while it parses, so when the bad bytes are in a later chunk than a syntax error, it reports the syntax error instead.
-- workflint: the error is reported at the 1-based problem position, a control character at its own position, and an encoding error at the first character that does not decode. workflint decodes the whole file before it parses, so it always reports the encoding error. The message text is unchanged.
+- Upstream: YAML syntax errors use go-yaml's position: the line and column of libyaml's context mark when the error has one, such as the start of the enclosing mapping, and of the problem mark otherwise, with a 0-based column. `steps: -` is reported at `2:7`, although the problem is at `2:8`. An unclosed quoted scalar, as in `runs-on: "ubuntu` on line 4, is reported at its opening quote, `4:13`. A control character in the file gives `control characters are not allowed` at `0:0`, because libyaml's reader records only a byte offset. Bytes that do not decode as UTF-8, or as UTF-16 after a UTF-16 byte order mark, give an encoding error such as `invalid leading UTF-8 octet` at `0:0` too. go-yaml decodes the file in chunks while it parses, so when the bad bytes are in a later chunk than a syntax error, it reports the syntax error instead.
+- workflint: the error is reported at the 1-based problem position, a control character at its own position, and an encoding error at the first character that does not decode. An unclosed quoted scalar is the exception: its problem position is the end of the file or the next document marker, so workflint reports it at the opening quote too, at `4:14`, with the snippet of that line. workflint decodes the whole file before it parses, so it always reports the encoding error. The message text is unchanged.
 - Why: the upstream position is off by one column and sometimes on the wrong line.
 - Upstream issue: #519.
 - Milestone: M1.
@@ -90,7 +90,37 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a position must point into the file.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned. No fixture covers it.
+- Status: planned. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/document-start-at-eof.yaml`.
+
+<a id="scanner-error-after-comment-before-dash"></a>
+### Scanner error after a comment before a `-` item
+
+- Upstream: when a comment line comes before a `-` item, go-yaml reads the token after the `-` to move the comment, and ignores a scanner error while it reads. The scanner then goes on after the token that failed, and the parser reports a later error. In `#\n-\n,1\n|x\n`, the `|x` is not a valid block scalar header, and upstream reports `did not find expected node content` at `2:0` instead.
+- workflint: the first error stops the parse, so the same file reports `did not find expected comment or line break` at `4:2`.
+- Why: the ignored error is a go-yaml bug, and both tools reject the file.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/scanner-error-after-comment-before-dash.yaml`.
+
+<a id="utf16-control-characters"></a>
+### Control characters in UTF-16 files
+
+- Upstream: go-yaml checks each 512-byte chunk of the file for control characters when it decodes the chunk, and in a UTF-16 file it counts UTF-16 bytes. A syntax error in an earlier chunk comes first. A UTF-16LE file with `a: 1\nb\nc: `, 290 `x`, and U+0001 has the control character in its second chunk, so upstream reports `could not find expected ':'` at `2:0`.
+- workflint: the file is decoded to UTF-8 before it is parsed, and the chunks count UTF-8 bytes. The same file reports `control characters are not allowed` at the U+0001, `3:294`.
+- Why: a chunk boundary is not something a user can see, and both tools reject the file. UTF-8 files get the same message as upstream.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/utf16le-control-character-in-second-chunk.yaml`.
+
+<a id="utf16-second-bom"></a>
+### A second byte order mark in UTF-16 files
+
+- Upstream: when the text of a UTF-16 file starts with a second U+FEFF after its byte order mark, go-yaml drops the first character of every line after the first. The UTF-16LE file `a: 1\nbb: 2\n` with two byte order marks has the keys `a` at `1:2` and `b` at `2:2`.
+- workflint: the second U+FEFF is skipped as a byte order mark, and no character is dropped. The keys are `a` at `1:1` and `bb` at `2:1`.
+- Why: upstream loses characters of the file. In a UTF-8 file with two byte order marks, workflint matches upstream, whose reader sees the same bytes.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: planned. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/utf16le-second-byte-order-mark.yaml`.
 
 <a id="unknown-anchor-position"></a>
 ### Undefined alias position and message prefix
@@ -414,7 +444,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a comma separates entries in a flow collection. go-yaml keeps a rule that libyaml dropped.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: planned. No fixture covers it.
+- Status: planned. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/tag-before-flow-sequence-end.yaml`, where upstream reads `[!!str]` as the tag `!!str]` and fails.
 
 <a id="yaml-solidus-escape"></a>
 ### The `\/` escape in double-quoted strings
