@@ -495,13 +495,15 @@ jobs:
   b:
     runs-on: ${{ x.runs_on }}
     concurrency:
-      group: g
+      group: ${{ x.job_concurrency_group_in_mapping }}
       cancel-in-progress: ${{ x.job_concurrency_cancel }}
     env:
       ${{ x.job_env_name }}: ${{ x.job_env_value }}
     strategy:
       matrix: ${{ x.matrix }}
+    container: ${{ x.container }}
     services: ${{ x.services }}
+    environment: ${{ x.environment }}
     steps:
       - run: echo
   c:
@@ -518,6 +520,18 @@ jobs:
       credentials:
         username: ${{ x.container_username }}
         password: ${{ x.container_password }}
+    services:
+      redis:
+        image: redis
+        credentials: ${{ x.service_credentials }}
+        env:
+          ${{ x.service_env_name }}: ${{ x.service_env_value }}
+        ports: ['${{ x.service_port }}']
+        volumes: ['${{ x.service_volume }}']
+        options: ${{ x.service_options }}
+      postgres:
+        image: postgres
+        env: ${{ x.service_env }}
     steps:
       - run: echo
   d:
@@ -526,6 +540,19 @@ jobs:
       i: ${{ x.call_with }}
     secrets:
       s: ${{ x.call_secret }}
+";
+
+    /// The second form of the workflow-level places of [`EVERY_PLACE`]
+    /// that take a value in two forms.
+    const WORKFLOW_SECOND_FORMS: &str = r"
+on: push
+env: ${{ x.env }}
+concurrency: ${{ x.concurrency }}
+jobs:
+  a:
+    runs-on: linux
+    steps:
+      - run: echo
 ";
 
     /// Parses `text` and returns the name after `x.` of each valid
@@ -550,18 +577,20 @@ jobs:
 
     #[test]
     fn every_place_of_the_expression_rule_has_its_expressions_parsed() {
-        let (names, diagnostics) = walk(EVERY_PLACE);
-        let mut want: Vec<_> = EVERY_PLACE
-            .split("${{ x.")
-            .skip(1)
-            .map(|rest| rest.split_once(" }}").unwrap().0.to_owned())
-            .collect();
-        want.sort();
-        assert_eq!(names, want);
-        assert!(
-            !diagnostics.iter().any(|d| d.contains("expression-syntax")),
-            "{diagnostics:#?}"
-        );
+        for text in [EVERY_PLACE, WORKFLOW_SECOND_FORMS] {
+            let (names, diagnostics) = walk(text);
+            let mut want: Vec<_> = text
+                .split("${{ x.")
+                .skip(1)
+                .map(|rest| rest.split_once(" }}").unwrap().0.to_owned())
+                .collect();
+            want.sort();
+            assert_eq!(names, want);
+            assert!(
+                !diagnostics.iter().any(|d| d.contains("expression-syntax")),
+                "{diagnostics:#?}"
+            );
+        }
     }
 
     #[test]
@@ -581,6 +610,74 @@ jobs:
             .map(|d| d.split_once(": ").unwrap().0)
             .collect();
         assert_eq!(syntax, ["4:20", "6:25", "6:36"]);
+    }
+
+    /// Returns the `L:C` position of each expression syntax error in
+    /// `text`.
+    fn syntax_errors(text: &str) -> Vec<String> {
+        walk(text)
+            .1
+            .iter()
+            .filter(|d| d.contains("expression-syntax"))
+            .map(|d| d.split_once(": ").unwrap().0.to_owned())
+            .collect()
+    }
+
+    #[test]
+    fn an_error_at_the_end_of_a_block_scalar_is_after_its_last_character() {
+        // The reference reports 8:22 for `|` and 9:22 for `|+`, and 7:33
+        // for `|-`, on the line of the header.
+        for header in ["|", "|+", "|-", ">", ">+", ">-"] {
+            let text = format!(
+                "\
+on: push
+jobs:
+  test:
+    runs-on: linux
+    steps:
+      - run: echo start
+      - run: {header}
+          echo ${{{{ github.ref
+
+      - run: echo done
+"
+            );
+            assert_eq!(syntax_errors(&text), ["8:30"], "{header}");
+        }
+    }
+
+    #[test]
+    fn an_error_at_the_end_of_a_block_if_condition_is_after_its_last_character() {
+        // The reference reports 6:9.
+        let text = "\
+on: push
+jobs:
+  test:
+    runs-on: linux
+    if: |
+      github.ref == (
+    timeout-minutes: 5
+    steps:
+      - run: echo
+";
+        assert_eq!(syntax_errors(text), ["6:22"]);
+    }
+
+    #[test]
+    fn a_reusable_call_with_services_has_its_inputs_and_secrets_checked() {
+        let text = "\
+on: push
+jobs:
+  call:
+    uses: o/r/.github/workflows/x.yml@v1
+    services:
+      s: redis
+    with:
+      a: ${{ 1 + }}
+    secrets:
+      b: ${{ 2 + }}
+";
+        assert_eq!(syntax_errors(text), ["8:16", "10:16"]);
     }
 
     #[test]

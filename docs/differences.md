@@ -53,7 +53,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Exact positions inside multi-line and quoted strings
 
 - Upstream: the position of an error inside a string, such as an expression or glob error, is the scalar's start plus a byte offset, plus 1 if quoted. In a `run: |` block every error is reported on the indicator line. Escapes such as `\t` or `''` shift the column by one per escape. A bare `if: "foo"` ignores the quote and reports column 13 instead of 14. A `TODO` at `rule_expression.go:736` notes the problem.
-- workflint: errors are mapped through the scalar's source map (ADR 0005) to the exact line and column. The maps are exact in every scalar style, including escapes, `''`, line folding, and block indentation. A character that an escape produces maps to the escape's backslash.
+- workflint: errors are mapped through the scalar's source map (ADR 0005) to the exact line and column. The maps are exact in every scalar style, including escapes, `''`, line folding, and block indentation. A character that an escape produces maps to the escape's backslash. An error at the end of a value, such as an unclosed `${{` at the end of a `run: |` block, is reported just after the last character before the trailing line breaks. With `echo ${{ github.ref` as the last line of a `|` block, on line 8 and indented 10 spaces, workflint reports `8:30`. Upstream reports `8:22`, or `9:22` with `|+`.
 - Why: a position on the wrong line sends users to the wrong place.
 - Upstream issue: #330.
 - Milestone: M2, M3, M4. Expression syntax errors use the exact positions from M2.
@@ -169,7 +169,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### `services` on a reusable workflow call job
 
 - Upstream: a job with `uses:` may not have `runs-on`, `steps`, `container` and other step-job keys, but `services` is missing from that list (`parse.go:1396`) and is accepted.
-- workflint: `services` gets the same error as the other keys, `when a reusable workflow is called with "uses", "services" is not available. ...`.
+- workflint: `services` gets the same error as the other keys, `when a reusable workflow is called with "uses", "services" is not available. ...`. Unlike the other keys, it does not make the job lose its call: the expressions in `with` and `secrets` are still checked, as upstream checks them.
 - Why: GitHub does not allow `services` on a job that calls a reusable workflow. The upstream message itself lists the allowed keys, and `services` is not among them.
 - Upstream issue: #748.
 - Milestone: M2.
