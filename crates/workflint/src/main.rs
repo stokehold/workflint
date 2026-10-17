@@ -5,10 +5,11 @@
 //! the workflow parser, and prints the diagnostics. M5.6 replaces it with the full command-line
 //! interface.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs;
-use std::io::{self, BufWriter, Write};
+use std::io::{self, BufWriter, ErrorKind, Write};
+use std::path::{Component, Path, PathBuf};
 use std::process::ExitCode;
 
 use workflint_diagnostics::quote::quote;
@@ -26,8 +27,11 @@ const EXIT_INVALID_OPTION: u8 = 2;
 /// A file could not be read, or the output could not be written.
 const EXIT_FAILURE: u8 = 3;
 
+/// The usage text. Roadmap task M5.1 adds standard input.
 const USAGE: &str = "Usage: workflint [-oneline] [-no-color] [-shellcheck=PATH] [-pyflakes=PATH] \
-                     [-config-file PATH] FILES...";
+                     [-config-file PATH] FILES...\n\
+                     This version of workflint does not read standard input yet, so FILES \
+                     cannot be a lone -.";
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
@@ -38,6 +42,12 @@ fn main() -> ExitCode {
             );
             return ExitCode::from(EXIT_INVALID_OPTION);
         }
+        // actionlint reads standard input for a lone `-`. A `-` next to other files is a file
+        // name.
+        Ok((_, [path])) if path == "-" => {
+            eprintln!("reading standard input is not supported yet\n{USAGE}");
+            return ExitCode::from(EXIT_INVALID_OPTION);
+        }
         Ok(parsed) => parsed,
         Err(message) => {
             eprintln!("{message}\n{USAGE}");
@@ -45,10 +55,11 @@ fn main() -> ExitCode {
         }
     };
 
+    let cwd = working_dir();
     // As in actionlint, a file that cannot be read stops the run before anything is printed.
     let mut files = Vec::with_capacity(paths.len());
     for (index, path) in paths.iter().enumerate() {
-        match lint(index, path) {
+        match lint(index, path, &cwd) {
             Ok(file) => files.push(file),
             Err(message) => {
                 eprintln!("{message}");
@@ -68,9 +79,15 @@ fn main() -> ExitCode {
             }
         })
         .and_then(|()| out.flush());
-    if let Err(err) = written {
-        eprintln!("could not write the output: {err}");
-        return ExitCode::from(EXIT_FAILURE);
+    match written {
+        Ok(()) => {}
+        // The reader closed the pipe, as `head` does. actionlint dies of SIGPIPE without a
+        // message. workflint stops writing and exits with the lint result.
+        Err(err) if err.kind() == ErrorKind::BrokenPipe => {}
+        Err(err) => {
+            eprintln!("could not write the output: {err}");
+            return ExitCode::from(EXIT_FAILURE);
+        }
     }
 
     if files.iter().any(|(_, diagnostics)| !diagnostics.is_empty()) {
@@ -145,10 +162,121 @@ fn parse_bool(value: &str) -> Option<bool> {
     }
 }
 
+/// Returns the working directory as Go's `os.Getwd` does, which actionlint makes paths relative
+/// to.
+///
+/// On Unix that is `PWD` when it is absolute and names the working directory, so a path through
+/// a symbolic link that the shell followed stays as the user typed it. Otherwise it is the
+/// directory the system reports, and `.` if that fails, as in actionlint.
+fn working_dir() -> PathBuf {
+    #[cfg(unix)]
+    if let Some(pwd) = std::env::var_os("PWD").map(PathBuf::from)
+        && pwd.is_absolute()
+        && same_dir(&pwd, Path::new("."))
+    {
+        return pwd;
+    }
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
+/// Whether `a` and `b` are the same directory, compared by device and inode as Go's
+/// `os.SameFile` does.
+#[cfg(unix)]
+fn same_dir(a: &Path, b: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    match (fs::metadata(a), fs::metadata(b)) {
+        (Ok(a), Ok(b)) => a.dev() == b.dev() && a.ino() == b.ino(),
+        _ => false,
+    }
+}
+
+/// Returns `target` relative to `base` as Go's `filepath.Rel` does, or `None` where `Rel`
+/// fails.
+///
+/// The paths are compared as text after `..` and `.` are removed, without asking the file
+/// system. `Rel` fails when only one path is absolute, when the drives differ, or when the
+/// answer would have to name the directory above a relative `base`. On Windows, names compare
+/// without case.
+fn relative_path(base: &Path, target: &Path) -> Option<PathBuf> {
+    let base = clean(base);
+    let target = clean(target);
+    if base.rooted != target.rooted || !same_name(base.prefix, target.prefix) {
+        return None;
+    }
+    let common = base
+        .names
+        .iter()
+        .zip(&target.names)
+        .take_while(|(a, b)| same_name(Some(a), Some(b)))
+        .count();
+    let up = base.names.get(common..).unwrap_or_default();
+    if up.first().is_some_and(|name| *name == "..") {
+        return None;
+    }
+    let mut relative: PathBuf = up.iter().map(|_| "..").collect();
+    relative.extend(target.names.get(common..).unwrap_or_default());
+    if relative.as_os_str().is_empty() {
+        relative.push(".");
+    }
+    Some(relative)
+}
+
+/// A path after the lexical cleaning of Go's `filepath.Clean`.
+struct CleanPath<'a> {
+    /// The Windows drive or share, such as `C:`.
+    prefix: Option<&'a OsStr>,
+    /// Whether the path starts at the root of its drive.
+    rooted: bool,
+    /// The names after the root. Only a relative path keeps `..`, and only at its start.
+    names: Vec<&'a OsStr>,
+}
+
+/// Removes `.` and each `..` that follows a name, as Go's `filepath.Clean` does. A `..` at the
+/// root is dropped.
+fn clean(path: &Path) -> CleanPath<'_> {
+    let mut clean = CleanPath {
+        prefix: None,
+        rooted: false,
+        names: Vec::new(),
+    };
+    for component in path.components() {
+        match component {
+            Component::Prefix(prefix) => clean.prefix = Some(prefix.as_os_str()),
+            Component::RootDir => clean.rooted = true,
+            Component::CurDir => {}
+            Component::ParentDir => match clean.names.last() {
+                Some(last) if *last != ".." => {
+                    clean.names.pop();
+                }
+                _ if clean.rooted => {}
+                _ => clean.names.push(component.as_os_str()),
+            },
+            Component::Normal(name) => clean.names.push(name),
+        }
+    }
+    clean
+}
+
+/// Whether two path names are equal, ignoring case on Windows as Go's `filepath.Rel` does.
+fn same_name(a: Option<&OsStr>, b: Option<&OsStr>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) if cfg!(windows) => {
+            a.to_string_lossy().to_lowercase() == b.to_string_lossy().to_lowercase()
+        }
+        _ => a == b,
+    }
+}
+
 /// Reads, decodes, and parses the file at `path`, and returns it with its sorted diagnostics.
 ///
-/// The error is the message to print when the file cannot be read.
-fn lint(index: usize, path: &OsString) -> Result<(SourceFile, Vec<Diagnostic>), String> {
+/// As in actionlint, the diagnostics name the file by its path relative to `cwd` when
+/// [`relative_path`] gives one, and by `path` as given otherwise. The error is the message to
+/// print when the file cannot be read, and names the file by `path` as given.
+fn lint(
+    index: usize,
+    path: &OsString,
+    cwd: &Path,
+) -> Result<(SourceFile, Vec<Diagnostic>), String> {
     let display = path.to_string_lossy();
     let fail = |err: &dyn Display| format!("could not read {}: {err}", quote(&display));
     let bytes = fs::read(path).map_err(|err| fail(&err))?;
@@ -157,7 +285,11 @@ fn lint(index: usize, path: &OsString) -> Result<(SourceFile, Vec<Diagnostic>), 
         Ok(text) => (text.into_owned(), None),
         Err(err) => (decoded_prefix(&bytes, err.offset()), Some(err)),
     };
-    let file = SourceFile::new(id, display.as_ref(), text).map_err(|err| fail(&err))?;
+    let name = match relative_path(cwd, Path::new(path)) {
+        Some(relative) => relative.to_string_lossy().into_owned(),
+        None => display.clone().into_owned(),
+    };
+    let file = SourceFile::new(id, &name, text).map_err(|err| fail(&err))?;
     let mut diagnostics = match decode_error {
         // As in actionlint, bytes that do not decode are a YAML syntax error. It points at the
         // end of the text that does decode.
@@ -256,6 +388,80 @@ mod tests {
             parse(&["-config-file", "-oneline", "a.yaml"]),
             Ok((false, vec!["a.yaml".to_owned()]))
         );
+    }
+
+    /// Checks `relative_path` on `(base, target, want)` cases, where `None` means that Go's
+    /// `filepath.Rel` returns an error.
+    fn check_relative_paths(cases: &[(&str, &str, Option<&str>)]) {
+        for &(base, target, want) in cases {
+            assert_eq!(
+                relative_path(Path::new(base), Path::new(target)),
+                want.map(PathBuf::from),
+                "{base:?} {target:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn relative_path_matches_go_filepath_rel() {
+        // The cases of `reltests` in Go's `path/filepath/path_test.go`.
+        check_relative_paths(&[
+            ("a/b", "a/b", Some(".")),
+            ("a/b/.", "a/b", Some(".")),
+            ("a/b", "a/b/.", Some(".")),
+            ("./a/b", "a/b", Some(".")),
+            ("a/b", "./a/b", Some(".")),
+            ("ab/cd", "ab/cde", Some("../cde")),
+            ("ab/cd", "ab/c", Some("../c")),
+            ("a/b", "a/b/c/d", Some("c/d")),
+            ("a/b", "a/b/../c", Some("../c")),
+            ("a/b/../c", "a/b", Some("../b")),
+            ("a/b/c", "a/c/d", Some("../../c/d")),
+            ("a/b", "c/d", Some("../../c/d")),
+            ("a/b/c/d", "a/b", Some("../..")),
+            ("a/b/c/d", "a/b/", Some("../..")),
+            ("a/b/c/d/", "a/b", Some("../..")),
+            ("a/b/c/d/", "a/b/", Some("../..")),
+            ("../../a/b", "../../a/b/c/d", Some("c/d")),
+            ("/a/b", "/a/b", Some(".")),
+            ("/a/b/.", "/a/b", Some(".")),
+            ("/a/b", "/a/b/.", Some(".")),
+            ("/ab/cd", "/ab/cde", Some("../cde")),
+            ("/ab/cd", "/ab/c", Some("../c")),
+            ("/a/b", "/a/b/c/d", Some("c/d")),
+            ("/a/b", "/a/b/../c", Some("../c")),
+            ("/a/b/../c", "/a/b", Some("../b")),
+            ("/a/b/c", "/a/c/d", Some("../../c/d")),
+            ("/a/b", "/c/d", Some("../../c/d")),
+            ("/a/b/c/d", "/a/b", Some("../..")),
+            ("/a/b/c/d", "/a/b/", Some("../..")),
+            ("/a/b/c/d/", "/a/b", Some("../..")),
+            ("/a/b/c/d/", "/a/b/", Some("../..")),
+            ("/../../a/b", "/../../a/b/c/d", Some("c/d")),
+            (".", "a/b", Some("a/b")),
+            (".", "..", Some("..")),
+            ("", "../../.", Some("../..")),
+            ("..", ".", None),
+            ("..", "a", None),
+            ("../..", "..", None),
+            ("a", "/a", None),
+            ("/a", "a", None),
+        ]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn relative_path_matches_go_filepath_rel_on_windows() {
+        // The cases of `winreltests` in Go's `path/filepath/path_test.go`.
+        check_relative_paths(&[
+            (r"C:a\b\c", "C:a/b/d", Some(r"..\d")),
+            (r"C:\", r"D:\", None),
+            ("C:", "D:", None),
+            (r"C:\Projects", r"c:\projects\src", Some("src")),
+            (r"C:\Projects", r"c:\projects", Some(".")),
+            (r"C:\Projects\a\..", r"c:\projects", Some(".")),
+            (r"\\host\share", r"\\host\share\file.txt", Some("file.txt")),
+        ]);
     }
 
     #[test]

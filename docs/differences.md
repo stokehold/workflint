@@ -646,6 +646,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M5.
 - Status: planned.
 
+<a id="closed-output-pipe"></a>
+### A closed output pipe exits with the lint result
+
+- Upstream: when the reader of the output closes the pipe early, as `actionlint | head -1` does, the next write kills actionlint with SIGPIPE. It prints no message, and a shell reports exit status 141.
+- workflint: it stops writing, prints no message, and exits with the code the run would have had if the output had been read: 1 when it found errors. This holds on Windows too, where a closed pipe is a write error.
+- Why: Rust programs ignore SIGPIPE, so workflint sees a closed pipe as a write error. Dying of the signal instead would need unsafe code and has no Windows equivalent. The exit code still tells a script with `set -o pipefail` whether the files have errors.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned.
+
 ## External tools
 
 <a id="tool-failures"></a>

@@ -362,7 +362,7 @@ Every flag uses Go `flag` syntax (ADR 0003). The upstream tests named in the fix
 | Item | Upstream source | Rule ID (kind) | Crate | Milestone | Upstream fixtures | Notes |
 |---|---|---|---|---|---|---|
 | - [ ] 0: no problems. Also for `-h`, `-version`, a successful `-init-config`, and runs where every error was ignored. | `command.go:20` | n/a | workflint | M5 | `command_test.go` |  |
-| - [ ] 1: at least one error after filtering. | `command.go:22` | n/a | workflint | M5 | `command_test.go` | From M9 the threshold follows `--fail-on` (ADR 0008). The default keeps this behaviour. |
+| - [ ] 1: at least one error after filtering. | `command.go:22` | n/a | workflint | M5 | `command_test.go` | From M9 the threshold follows `--fail-on` (ADR 0008). The default keeps this behaviour. Differs: see [differences.md#closed-output-pipe](differences.md#closed-output-pipe). |
 | - [ ] 2: invalid command-line option. Only flag parsing failures. | `command.go:24` | n/a | workflint | M5 | none |  |
 | - [ ] 3: fatal error, with the message on stderr: unreadable file or directory, no project, no YAML files, invalid `-ignore` regex, invalid `-format` template, config errors, invalid shellcheck output. | `command.go:26` | n/a | workflint | M5 | none | Differs: see [differences.md#template-execution-errors](differences.md#template-execution-errors). Differs: see [differences.md#tool-failures](differences.md#tool-failures). Differs: see [differences.md#missing-tools](differences.md#missing-tools). |
 
