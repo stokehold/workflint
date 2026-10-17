@@ -53,7 +53,7 @@ impl<'a> Event<'a> {
     pub fn body(&self) -> Option<Span> {
         match self {
             Self::Webhook(event) => event.body,
-            Self::Schedule(event) => event.body,
+            Self::Schedule(event) => Some(event.body),
             Self::WorkflowDispatch(event) => event.body,
             Self::RepositoryDispatch(event) => event.body,
             Self::WorkflowCall(event) => event.body,
@@ -102,8 +102,8 @@ pub struct ScheduleEvent<'a> {
     /// The string `schedule`.
     pub name: Str<'a>,
     /// The span of the sequence under the event's key. The parser drops a
-    /// `schedule` with no sequence, so it is always present.
-    pub body: Option<Span>,
+    /// `schedule` with no sequence, so every `schedule` has one.
+    pub body: Span,
     /// The items of the sequence whose `cron` is valid, in source order.
     /// The parser drops the other items, as the reference does.
     pub schedules: Arc<[ScheduleEntry<'a>]>,
