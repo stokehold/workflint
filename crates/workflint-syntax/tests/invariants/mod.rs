@@ -99,7 +99,7 @@ fn uses_parts<'a>(workflow: &Workflow<'a>) -> Vec<(Str<'a>, Vec<UsesPart<'a>>)> 
             .and_then(|call| call.uses.value())
         {
             let parts = match uses.kind {
-                JobUsesKind::Expression | JobUsesKind::Invalid => vec![],
+                JobUsesKind::Expression | JobUsesKind::Invalid(_) => vec![],
                 JobUsesKind::Local { path } => vec![path],
                 JobUsesKind::Repository {
                     owner,

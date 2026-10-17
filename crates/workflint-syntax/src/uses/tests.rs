@@ -243,8 +243,16 @@ fn a_job_uses_value_starting_with_dot_slash_without_a_ref_is_a_local_workflow() 
 #[test]
 fn a_local_workflow_with_a_ref_is_invalid() {
     // `examples/workflow_call_jobs` and `err/workflow_call_job`.
-    assert_eq!(job("./.github/workflows/ci.yml@main"), JobUsesKind::Invalid);
-    assert_eq!(job("./foo/bar/workflow.yml@main"), JobUsesKind::Invalid);
+    for value in [
+        "./.github/workflows/ci.yml@main",
+        "./foo/bar/workflow.yml@main",
+    ] {
+        assert_eq!(
+            job(value),
+            JobUsesKind::Invalid(InvalidWorkflow::LocalWithRef),
+            "{value:?}"
+        );
+    }
 }
 
 #[test]
@@ -261,7 +269,10 @@ fn an_at_sign_right_after_dot_slash_is_part_of_a_local_workflow_path() {
 
 #[test]
 fn dot_slash_alone_is_not_a_local_workflow() {
-    assert_eq!(job("./"), JobUsesKind::Invalid);
+    assert_eq!(
+        job("./"),
+        JobUsesKind::Invalid(InvalidWorkflow::LocalWithoutPath)
+    );
 }
 
 #[test]
@@ -283,23 +294,35 @@ fn a_repository_workflow_has_an_owner_a_repo_a_path_and_a_ref() {
 }
 
 #[test]
-fn a_job_uses_value_that_misses_a_part_of_the_repository_format_is_invalid() {
-    // `err/workflow_call_job`, then `err/upper_case_duplicate_keys`, then
+fn a_job_uses_value_starting_with_a_dot_but_not_dot_slash_is_invalid() {
+    for value in [".github/workflows/ci.yml", "../ci.yml", ".o/r/w.yml@v1"] {
+        assert_eq!(
+            job(value),
+            JobUsesKind::Invalid(InvalidWorkflow::DotPrefix),
+            "{value:?}"
+        );
+    }
+}
+
+#[test]
+fn a_job_uses_value_names_the_first_missing_part_of_the_repository_format() {
+    // From `err/workflow_call_job` and `err/upper_case_duplicate_keys`, then
     // empty parts and values made of separators.
-    for value in [
-        "/foo/bar/workflow.yml@main",
-        "foo/workflow.yml@main",
-        "foo/bar/workflow.yml",
-        "owner/repo@main",
-        "",
-        "@",
-        "/",
-        "o//w.yml@v1",
-        "o/r/@v1",
-        "o/r/w.yml@",
-        ".o/r/w.yml@v1",
-    ] {
-        assert_eq!(job(value), JobUsesKind::Invalid, "{value:?}");
+    let cases = [
+        ("/foo/bar/workflow.yml@main", InvalidWorkflow::MissingOwner),
+        ("", InvalidWorkflow::MissingOwner),
+        ("@", InvalidWorkflow::MissingOwner),
+        ("/", InvalidWorkflow::MissingOwner),
+        ("o//w.yml@v1", InvalidWorkflow::MissingRepo),
+        // With one `/`, the text after it is read as the repo.
+        ("foo/workflow.yml@main", InvalidWorkflow::MissingPath),
+        ("owner/repo@main", InvalidWorkflow::MissingPath),
+        ("o/r/@v1", InvalidWorkflow::MissingPath),
+        ("foo/bar/workflow.yml", InvalidWorkflow::MissingRef),
+        ("o/r/w.yml@", InvalidWorkflow::MissingRef),
+    ];
+    for (value, reason) in cases {
+        assert_eq!(job(value), JobUsesKind::Invalid(reason), "{value:?}");
     }
 }
 

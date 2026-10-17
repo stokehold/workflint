@@ -2,7 +2,8 @@
 //! `action` and `workflow-call` rules read them.
 //!
 //! The classification reports nothing. The rules report the format errors
-//! from the variant and the [`InvalidAction`] reason.
+//! from the variant and the [`InvalidAction`] or [`InvalidWorkflow`]
+//! reason.
 
 use workflint_diagnostics::{SourceFile, Span};
 
@@ -158,12 +159,41 @@ pub enum JobUsesKind<'a> {
         /// The text after that `@`. It may contain more `@`.
         git_ref: UsesPart<'a>,
     },
-    /// The value is none of the formats above. The reference's message
-    /// gives no reason.
+    /// The value is none of the formats above.
     ///
     /// The reference skips an empty value, which its parser reports, so the
     /// parser here never classifies one.
-    Invalid,
+    Invalid(InvalidWorkflow),
+}
+
+/// Why a job's `uses` value is neither a local nor a repository workflow.
+///
+/// The reference's `workflow-call` message gives no reason. This is the
+/// first check of `isWorkflowCallUsesLocalFormat` or
+/// `isWorkflowCallUsesRepoFormat` that fails, with the local format's
+/// reason for a value that starts with `./`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidWorkflow {
+    /// The value starts with `./` and has an `@` after the character that
+    /// follows `./`. A local workflow cannot have a ref.
+    LocalWithRef,
+    /// The value is `./`.
+    LocalWithoutPath,
+    /// The value starts with `.` but not with `./`, as in
+    /// `.github/workflows/ci.yml` or `../ci.yml`. A repository workflow
+    /// cannot start with `.`.
+    DotPrefix,
+    /// The value has no `/`, or nothing before the first one. An empty
+    /// value has no `/`.
+    MissingOwner,
+    /// Nothing is between the first and the second `/`.
+    MissingRepo,
+    /// The value has no second `/`, or nothing between it and the next
+    /// `@`. With one `/`, the text after it is read as the repo, so
+    /// `owner/workflow.yml@v1` is missing its path.
+    MissingPath,
+    /// No `@` follows the second `/`, or nothing follows that `@`.
+    MissingRef,
 }
 
 impl<'a> JobUses<'a> {
@@ -257,28 +287,37 @@ fn classify_job(value: &str, span: impl Fn(usize, usize) -> Span) -> JobUsesKind
     if contains_expression(value) {
         return JobUsesKind::Expression;
     }
-    if let Some(path) = value.strip_prefix("./")
-        && !path.is_empty()
-        && path.find('@').is_none_or(|at| at == 0)
-    {
+    if let Some(path) = value.strip_prefix("./") {
+        if path.is_empty() {
+            return JobUsesKind::Invalid(InvalidWorkflow::LocalWithoutPath);
+        }
+        if path.find('@').is_some_and(|at| at > 0) {
+            return JobUsesKind::Invalid(InvalidWorkflow::LocalWithRef);
+        }
         return JobUsesKind::Local {
             path: part(&span, 0, value),
         };
     }
     if value.starts_with('.') {
-        return JobUsesKind::Invalid;
+        return JobUsesKind::Invalid(InvalidWorkflow::DotPrefix);
     }
-    let Some((owner, rest)) = value.split_once('/') else {
-        return JobUsesKind::Invalid;
+    let Some((owner, rest)) = value.split_once('/').filter(|(owner, _)| !owner.is_empty()) else {
+        return JobUsesKind::Invalid(InvalidWorkflow::MissingOwner);
     };
     let Some((repo, rest)) = rest.split_once('/') else {
-        return JobUsesKind::Invalid;
+        return JobUsesKind::Invalid(InvalidWorkflow::MissingPath);
     };
+    if repo.is_empty() {
+        return JobUsesKind::Invalid(InvalidWorkflow::MissingRepo);
+    }
     let Some((path, git_ref)) = rest.split_once('@') else {
-        return JobUsesKind::Invalid;
+        return JobUsesKind::Invalid(InvalidWorkflow::MissingRef);
     };
-    if owner.is_empty() || repo.is_empty() || path.is_empty() || git_ref.is_empty() {
-        return JobUsesKind::Invalid;
+    if path.is_empty() {
+        return JobUsesKind::Invalid(InvalidWorkflow::MissingPath);
+    }
+    if git_ref.is_empty() {
+        return JobUsesKind::Invalid(InvalidWorkflow::MissingRef);
     }
     let repo_start = owner.len() + 1;
     let path_start = repo_start + repo.len() + 1;
