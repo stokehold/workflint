@@ -60,14 +60,19 @@ impl<'a> Parser<'a, '_> {
 /// Calls `f` for each string with placeholders in `workflow` that the
 /// reference's `expression` rule checks, in source order within each
 /// section. These are the places of `docs/research/02-expressions.md`
-/// section 7.2.
+/// section 7.2. [`parse`](crate::parse) reports the parse errors of these
+/// placeholders, and the `expression` rule of `workflint-rules` checks
+/// them, so a test there compares the two walks.
 ///
 /// The `required` keys of `workflow_call` inputs and secrets are left out,
 /// because the reference does not check them, and so are the `value` keys
 /// of `workflow_call` outputs in a workflow with no jobs. The expressions of `include`
 /// elements are visited, which the reference skips by mistake
 /// (`docs/differences.md#matrix-include-expressions`).
-pub(crate) fn placeholders<'w, 'a>(workflow: &'w Workflow<'a>, f: &mut Visit<'_, 'w, 'a>) {
+pub fn placeholders<'w, 'a>(
+    workflow: &'w Workflow<'a>,
+    f: &mut dyn FnMut(Str<'a>, &'w [Placeholder]),
+) {
     string(f, &workflow.name);
     string(f, &workflow.run_name);
     let has_jobs = workflow.jobs.value().is_some_and(|jobs| !jobs.is_empty());

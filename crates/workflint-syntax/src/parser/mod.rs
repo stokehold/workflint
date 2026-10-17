@@ -20,6 +20,8 @@ mod job;
 mod leaf;
 mod mapping;
 mod report;
+
+pub use report::placeholders;
 mod shared;
 mod step;
 mod strategy;

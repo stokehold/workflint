@@ -128,7 +128,7 @@ pub use job::{
 pub use keyed::{Keyed, KeyedEntry};
 pub use leaf::{Expr, Str, Template};
 pub use matrix::{Matrix, MatrixCombination, MatrixRow, RawValue};
-pub use parser::{Parsed, parse};
+pub use parser::{Parsed, parse, placeholders};
 pub use reusable_workflow::{
     ReusableWorkflowInput, ReusableWorkflowMetadata, ReusableWorkflowOutput, ReusableWorkflowSecret,
 };
