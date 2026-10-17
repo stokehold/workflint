@@ -34,6 +34,7 @@ pub(crate) const PATHS: &[&str] = &[
     "rule_permissions.go",
     "rule_runner_label.go",
     "rule_shell_name.go",
+    "popular_actions.go",
     "cmd/actionlint/main.go",
     "LICENSE.txt",
 ];
@@ -406,6 +407,7 @@ mod tests {
             "rule_permissions.go".to_owned(),
             "rule_runner_label.go".to_owned(),
             "rule_shell_name.go".to_owned(),
+            "popular_actions.go".to_owned(),
             "cmd/actionlint/main.go".to_owned(),
             "LICENSE.txt".to_owned(),
         ];
