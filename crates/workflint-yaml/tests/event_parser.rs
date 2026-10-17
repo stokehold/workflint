@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use workflint_diagnostics::{FileId, SourceFile};
 use workflint_yaml::event::{Error, ErrorKind, Event, EventData, EventParser, Mark, ScalarStyle};
-use workflint_yaml::parse;
+use workflint_yaml::{NodeKind, parse};
 
 /// Parses `input` up to the end of the stream or the first error, and
 /// returns the events other than comments and the error.
@@ -546,17 +546,40 @@ fn empty_value_of_a_pair_in_a_flow_sequence_starts_at_the_colon() {
     assert_eq!(at(scalars[2].start), (0, 5));
 }
 
+// An empty flow collection that starts a simple key is taken by the parser
+// before the scanner finds the `:`. The KEY and BLOCK-MAPPING-START tokens
+// then go to the end of the token queue, as in go-yaml.
 #[test]
-fn empty_flow_collection_with_tokens_before_its_colon_is_an_error() {
-    let (_, err) = run("- [] b: 1\n");
-    let err = err.unwrap();
-    assert_eq!(err.kind(), ErrorKind::Scanner);
-    assert_error(
-        &err,
-        "could not find expected ':'",
-        (0, 6),
-        Some(("while scanning a simple key", (0, 2))),
-    );
+fn empty_flow_collection_with_tokens_before_its_colon_fails_in_the_parser() {
+    for input in ["- [] b: 1\n", "- {} b: 1\n- c\n"] {
+        let (_, err) = run(input);
+        let err = err.unwrap_or_else(|| panic!("{input:?} parsed"));
+        assert_eq!(err.kind(), ErrorKind::Parser, "{input:?}");
+        assert_error(
+            &err,
+            "did not find expected '-' indicator",
+            (0, 5),
+            Some(("while parsing a block collection", (0, 0))),
+        );
+    }
+}
+
+#[test]
+fn empty_flow_collection_with_tokens_before_its_colon_is_the_root() {
+    for (input, sequence) in [("[] x: y\n", true), ("{} a: x\n", false)] {
+        let file = SourceFile::new(FileId::new(0), "a.yaml", input).unwrap();
+        let parsed = parse(&file);
+        assert!(parsed.diagnostics.is_empty(), "{input:?}");
+        let document = parsed.document.unwrap();
+        let root = document.node(document.root().unwrap()).unwrap();
+        let empty = match &root.kind {
+            NodeKind::Sequence(seq) if sequence => document.items(seq).is_empty(),
+            NodeKind::Mapping(map) if !sequence => document.entries(map).is_empty(),
+            _ => false,
+        };
+        assert!(empty, "{input:?}: {:?}", root.kind);
+        assert_eq!((root.span.start, root.span.end), (0, 2), "{input:?}");
+    }
 }
 
 // Directives.

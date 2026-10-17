@@ -38,7 +38,6 @@
 "err/issue151_child_of_child_job" = "M4"
 "err/issue155_env_in_job_level_if" = "M4"
 "err/issue170_empty_permissions" = "M4"
-"err/issue280_runs_on" = "M4"
 "err/issue558_read_write_none_are_not_always_valid_permissions" = "M4"
 "err/macos12_runner" = "M4"
 "err/macos_10.15_removed" = "M4"
@@ -139,3 +138,4 @@
 "projects/workflow_call_upper_case" = "M4"
 "workflint/err/case_argument_count" = "M4"
 "workflint/err/empty_event_name" = "M4"
+"workflint/err/invalid_value_reported_once" = "M4"

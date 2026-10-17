@@ -43,3 +43,28 @@ anchor = "dispatch-input-key-list"
 fixture = "err/unexpected_keys"
 upstream = 'test.yaml:6:9: unexpected key "invalid_key" for "inputs" section. expected one of "default", "description", "required" [syntax-check]'
 workflint = 'test.yaml:6:9: unexpected key "invalid_key" for "inputs" section. expected one of "default", "description", "options", "required", "type" [syntax-check]'
+
+[[difference]]
+anchor = "invalid-value-reported-once"
+fixture = "err/issue280_runs_on"
+upstream = '/test\.yaml:7:13: label "" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+
+[[difference]]
+anchor = "invalid-value-reported-once"
+fixture = "err/issue280_runs_on"
+upstream = '/test\.yaml:17:14: label "" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+
+[[difference]]
+anchor = "invalid-value-reported-once"
+fixture = "err/issue280_runs_on"
+upstream = '/test\.yaml:22:22: label "" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+
+[[difference]]
+anchor = "invalid-value-reported-once"
+fixture = "err/issue280_runs_on"
+upstream = '/test\.yaml:58:15: label "" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+
+[[difference]]
+anchor = "invalid-value-reported-once"
+fixture = "err/issue280_runs_on"
+upstream = '/test\.yaml:64:21: label "" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'

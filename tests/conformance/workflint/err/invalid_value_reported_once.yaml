@@ -1,0 +1,31 @@
+on:
+  # Activity types that are not non-empty strings
+  pull_request:
+    types: [[x]]
+  pull_request_target:
+    types: ['']
+  issues:
+    types: ''
+  release:
+    types:
+  # An event key that is not a string
+  [a]: x
+  workflow_dispatch:
+    inputs:
+      # Options are set, so the input must be a choice
+      text:
+        type: string
+        options: [[x]]
+      # Options are set, so the choice has options
+      pick:
+        type: choice
+        options: ['']
+defaults:
+  run:
+    shell: ''
+jobs:
+  test:
+    runs-on: [ubuntu-latest, '']
+    steps:
+      - run: echo hello
+        shell: [x]
