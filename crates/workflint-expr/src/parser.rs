@@ -99,7 +99,7 @@ impl<'src> Parser<'src> {
     }
 
     fn parse(mut self) -> Result<(Expr, u32), ExprError> {
-        let root = self.chain(LogicalOp::Or).map(|root| root.expr);
+        let root = self.or_chain().map(|root| root.expr);
         if let Some(err) = self.lexer.error() {
             return Err(err.clone());
         }
@@ -182,14 +182,20 @@ impl<'src> Parser<'src> {
     /// Checks that a node one level above a child of `levels` levels fits under
     /// [`MAX_DEPTH`] at the current depth, or records an error at the next token. After an
     /// error the parse stops, so the depth no longer matters.
+    #[inline]
     fn fits_above(&mut self, levels: u32) -> Option<()> {
         if self.depth + levels >= MAX_DEPTH {
-            self.error(&INVALID_EXPRESSION_SYNTAX, || {
-                format!("expression is nested more than {MAX_DEPTH} levels deep")
-            });
-            return None;
+            return self.too_deep();
         }
         Some(())
+    }
+
+    #[cold]
+    fn too_deep(&mut self) -> Option<()> {
+        self.error(&INVALID_EXPRESSION_SYNTAX, || {
+            format!("expression is nested more than {MAX_DEPTH} levels deep")
+        });
+        None
     }
 
     /// Adds a level for a parenthesis or a node whose children the parser reads next, or
@@ -201,28 +207,49 @@ impl<'src> Parser<'src> {
         Some(())
     }
 
-    /// Parses a chain of `op`, and the operators that bind tighter. The loop reads a chain of
-    /// any length without recursion.
-    fn chain(&mut self, op: LogicalOp) -> Option<Parsed> {
+    /// Parses a chain of `||`, and the operators that bind tighter.
+    fn or_chain(&mut self) -> Option<Parsed> {
         let start = self.cur.start;
-        let first = self.chain_operand(op)?;
+        let first = self.and_chain()?;
+        if self.cur.kind != TokenKind::Or {
+            return Some(first);
+        }
+        self.chain(LogicalOp::Or, start, first)
+    }
+
+    /// Parses a chain of `&&`, and the operators that bind tighter.
+    #[inline]
+    fn and_chain(&mut self) -> Option<Parsed> {
+        let start = self.cur.start;
+        let first = self.comparison(EQUALITY_LEVEL)?;
+        if self.cur.kind != TokenKind::And {
+            return Some(first);
+        }
+        self.chain(LogicalOp::And, start, first)
+    }
+
+    /// Parses the rest of a chain of `op` from `start`, after its first operand. The loop
+    /// reads a chain of any length without recursion.
+    fn chain(&mut self, op: LogicalOp, start: u32, first: Parsed) -> Option<Parsed> {
         let op_token = match op {
             LogicalOp::Or => TokenKind::Or,
             LogicalOp::And => TokenKind::And,
         };
-        if self.cur.kind != op_token {
-            return Some(first);
-        }
         // The first operand was read before the chain was known, so it has not counted the
         // chain's level yet.
         self.fits_above(first.levels)?;
         self.depth += 1;
         let mut levels = first.levels;
         let token = first.expr.token;
-        let mut operands = vec![first.expr];
+        // Most chains have a few operands. Room for four saves growing the vector twice.
+        let mut operands = Vec::with_capacity(4);
+        operands.push(first.expr);
         while self.cur.kind == op_token {
             self.next();
-            let operand = self.chain_operand(op)?;
+            let operand = match op {
+                LogicalOp::Or => self.and_chain()?,
+                LogicalOp::And => self.comparison(EQUALITY_LEVEL)?,
+            };
             levels = levels.max(operand.levels);
             operands.push(operand.expr);
         }
@@ -234,15 +261,8 @@ impl<'src> Parser<'src> {
         })
     }
 
-    /// Parses an operand of a chain of `op`.
-    fn chain_operand(&mut self, op: LogicalOp) -> Option<Parsed> {
-        match op {
-            LogicalOp::Or => self.chain(LogicalOp::And),
-            LogicalOp::And => self.comparison(EQUALITY_LEVEL),
-        }
-    }
-
     /// Parses comparisons of precedence level `min` and above, and their operands.
+    #[inline]
     fn comparison(&mut self, min: u8) -> Option<Parsed> {
         let start = self.cur.start;
         let mut left = self.unary()?;
@@ -288,7 +308,10 @@ impl<'src> Parser<'src> {
 
     fn postfix(&mut self) -> Option<Parsed> {
         let start = self.cur.start;
-        let Parsed { mut expr, mut levels } = self.primary()?;
+        let Parsed {
+            mut expr,
+            mut levels,
+        } = self.primary()?;
         loop {
             // The reference reports errors about the whole chain at its first token.
             let token = expr.token;
@@ -321,7 +344,7 @@ impl<'src> Parser<'src> {
                     self.fits_above(levels)?;
                     self.next();
                     self.depth += 1;
-                    let index = self.chain(LogicalOp::Or)?;
+                    let index = self.or_chain()?;
                     if self.cur.kind != TokenKind::RightBracket {
                         return self.unexpected(
                             "closing bracket ']' for index access",
@@ -349,7 +372,7 @@ impl<'src> Parser<'src> {
             TokenKind::LeftParen => {
                 self.enter()?;
                 self.next();
-                let nested = self.chain(LogicalOp::Or)?;
+                let nested = self.or_chain()?;
                 if self.cur.kind != TokenKind::RightParen {
                     return self.unexpected(
                         "closing ')' of nested expression (...)",
@@ -412,7 +435,7 @@ impl<'src> Parser<'src> {
             self.next();
         } else {
             loop {
-                let arg = self.chain(LogicalOp::Or)?;
+                let arg = self.or_chain()?;
                 levels = levels.max(arg.levels);
                 args.push(arg.expr);
                 match self.cur.kind {
@@ -559,7 +582,7 @@ mod tests {
     #[test]
     fn later_error_keeps_the_first_error() {
         let mut parser = Parser::new(".}}");
-        assert!(parser.chain(LogicalOp::Or).is_none());
+        assert!(parser.or_chain().is_none());
         let first = parser.error.clone();
         assert!(first.is_some());
         let _: Option<()> = parser.unexpected("foo", &[]);

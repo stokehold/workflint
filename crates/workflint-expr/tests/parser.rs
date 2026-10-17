@@ -876,7 +876,10 @@ mod depth {
         for op in [" && ", " || "] {
             let chain = vec!["x"; 1000].join(op);
             let input = format!("{}{chain}{}", "(".repeat(127), ")".repeat(127));
-            assert!(matches!(parse(&input).kind, ExprKind::Logical { .. }), "{op}");
+            assert!(
+                matches!(parse(&input).kind, ExprKind::Logical { .. }),
+                "{op}"
+            );
             let input = format!("{}{chain}{}", "(".repeat(128), ")".repeat(128));
             assert_eq!(parse_err(&input).message, MESSAGE, "{op}");
         }
@@ -966,7 +969,10 @@ mod long_chains {
             let (ty, errors) = env.check(&expr);
             assert_eq!(ty.to_string(), "bool");
             assert_eq!(errors.len(), OPERANDS);
-            assert_eq!(find_untrusted_inputs(&expr, UNTRUSTED_INPUTS).len(), OPERANDS);
+            assert_eq!(
+                find_untrusted_inputs(&expr, UNTRUSTED_INPUTS).len(),
+                OPERANDS
+            );
             let mut nodes = 0_usize;
             expr.walk(&mut |_: &Expr, _: Option<&Expr>, _: Visit| nodes += 1);
             assert_eq!(nodes, 2 * (1 + 6 * OPERANDS));

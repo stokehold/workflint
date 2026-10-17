@@ -616,12 +616,18 @@ impl Checker<'_> {
     /// assumption and merged with the type of `r`. The loop checks the operands in source
     /// order and merges their types from the right, as the reference's recursion does.
     fn check_chain(&mut self, op: LogicalOp, operands: &[Expr]) -> Ty {
+        let truthy = op == LogicalOp::Or;
+        if let [left, right] = operands {
+            // The common case, without a vector.
+            let left_ty = self.check_narrowed(left, truthy);
+            return left_ty.merge(&self.check(right));
+        }
         let Some((last, init)) = operands.split_last() else {
             return Ty::Any;
         };
         let narrowed: Vec<Ty> = init
             .iter()
-            .map(|operand| self.check_narrowed(operand, op == LogicalOp::Or))
+            .map(|operand| self.check_narrowed(operand, truthy))
             .collect();
         let last_ty = self.check(last);
         if operands.len() > 2 {
@@ -643,14 +649,12 @@ impl Checker<'_> {
                     && let Some((first, rest)) = operands.split_first()
                 {
                     self.check(first);
-                    return match rest {
-                        [right] => self.check(right),
-                        _ => {
-                            let ty = self.check_chain(*op, rest);
-                            self.leave_nested_chain();
-                            ty
-                        }
-                    };
+                    if let [right] = rest {
+                        return self.check(right);
+                    }
+                    let ty = self.check_chain(*op, rest);
+                    self.leave_nested_chain();
+                    return ty;
                 }
                 self.check_chain(*op, operands)
             }
