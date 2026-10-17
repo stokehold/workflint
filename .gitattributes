@@ -12,3 +12,6 @@
 
 # Fuzz regression inputs must reach the checks byte for byte, like the crash inputs they come from.
 /crates/workflint-yaml/tests/fuzz-regressions/** -text
+
+# Expression parity cases are compared with their spaces and positions, so they must reach both checkers byte for byte.
+/tests/expr-parity/** -text

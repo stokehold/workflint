@@ -1,0 +1,45 @@
+# Each context and special function, run under every workflow key.
+github
+github.ref
+GITHUB.ref
+env
+env.FOO
+vars
+vars.FOO
+Vars.foo
+secrets
+secrets.GITHUB_TOKEN
+inputs
+inputs.foo
+job
+job.status
+runner
+runner.os
+strategy
+strategy.job-index
+matrix
+matrix.os
+steps
+steps.build.outputs.x
+needs
+needs.build.result
+jobs
+jobs.build.outputs.digest
+undefined_context
+always()
+Always()
+success()
+failure()
+cancelled()
+CANCELLED()
+hashFiles('**/go.sum')
+hashfiles('a', 'b')
+success() && github.ref == 'refs/heads/main'
+always() || hashFiles('x')
+contains(github.ref, 'x')
+format('{0}', job.status)
+toJSON(strategy)
+fromJSON(needs.build.outputs.artifact)
+!cancelled() && steps.build.outcome == 'success'
+github.event.issue.title
+github.head_ref

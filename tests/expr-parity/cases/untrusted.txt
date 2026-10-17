@@ -1,0 +1,66 @@
+# Untrusted input paths: dot and index access, object filters, and values
+# passed through functions and operators.
+github.event.issue.title
+github.event.issue.title.foo
+github.event.issue
+github.event.commits[0].message
+github.event.commits[0].author.name
+github.event.commits.*.message
+github.event.commits.*.author.*
+github.event.commits[github.foo].message
+github.event.commits['0'].message
+github.event.commits[0]
+github.event.pages[0].page_name
+github.event.pages.*.page_name
+github.event.pages.*.*
+github.event.*.body
+github.event.*.title
+github.event.*.*
+github.event.*.*.*
+github.event.*.body[0]
+github.event.*.head.ref
+github.event.pull_request.*
+github.event.pull_request.head.*
+github.event.pull_request.head.*.default_branch
+github.*.issue.title
+github.*.*.title
+github.head_ref
+github.HEAD_REF
+github['head_ref']
+github['event']['issue']['title']
+github['EVENT']['ISSUE']['TITLE']
+github.event['issue'].title
+github.event.issue[github.head_ref]
+github.event.issue[github.event.issue.title].title
+foo[github.event.issue.title].bar
+github.event.issue.title || github.event.issue.body
+format('{0}', github.event.issue.title)
+contains(github.event.issue.title, 'x')
+startsWith(github.event.issue.title, 'x')
+toJSON(github.event.issue.title)
+toJSON(github.event.commits.*.message)
+toJSON(github.event.issue)
+!github.event.issue.title
+github.event.issue.title == 'x'
+contains(format('{0}', github.event.issue.title), github.head_ref)
+format('{0}', contains(github.event.issue.title, 'a'), github.head_ref)
+foo(github.event.issue.title)
+github.event.issue.title && github.head_ref
+(github.event.issue.title && 1) || github.head_ref
+!(github.event.issue.title && 1) || github.head_ref
+!(github.head_ref || 1) && github.event.issue.body
+github.event.commits.*.message[0]
+github.event.commits[0][0].message
+github.event.commits[0].*.message
+github.event.commits.*.*.message
+github.event.head_commit.*.name
+github.event.head_commit.*
+github.event.pull_request.head.repo.*
+fromJSON(github.event.issue.title)
+fromJSON(github.event.issue.title).foo
+github.event.issue.title[0]
+github.event.discussion.body
+github.event.review_comment.body
+env.foo
+github
+github.event

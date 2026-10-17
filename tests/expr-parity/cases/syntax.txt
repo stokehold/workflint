@@ -1,0 +1,99 @@
+# Literals, operator grouping, and the lexer and parser errors with their
+# positions.
+0
+-1
+1.5
+-1.5e3
+1e-5
+0x1F
+0xff
+0b1
+0o7
+1.
+.5
+1e
+1.2.3
+00
+-0
+'it''s'
+''
+'unterminated
+"double"
+true
+TRUE
+null
+NaN
+Infinity
+-Infinity
+1 +
+1 -
+a.
+a.b.
+a[
+a[0
+a]
+a.[0]
+foo(
+foo(1
+foo(1,)
+foo(,1)
+foo)(
+(1
+1)
+()
+!
+!!
+!!true
+==
+1 ==
+== 1
+1 = 1
+1 === 1
+1 & 1
+1 | 1
+1 && && 1
+1 || || 1
+a b
+a,b
+a. b
+a .b
+github .ref
+github. ref
+github.*
+github.*.*
+github.**
+*.a
+a.1
+a.-b
+a-b
+a_b
+_a
+-a
+1a
+a1.b2
+github.event.pull_request.head.ref ||
+(a == b) == (c == d)
+!a == b
+!(a == b)
+a && b || c && d
+a || b && c || d
+((((((((((1))))))))))
+!!!!!!!!!!a
+a.b.c.d.e.f.g.h.i.j.k
+f(g(h(i(j(k(1))))))
+a[b[c[d[0]]]]
+'a' 'b'
+1 2
+  github.ref
+github.ref
+github.ref	== 'x'
+'é' == 'e'
+'日本語'.foo
+'😀' == 😀
+`a`
+$a
+a@b
+a#b
+a;b
+a?b:c
+a ? b : c

@@ -1,0 +1,197 @@
+# Property access, function calls, and operators on the global contexts and
+# on fromJSON values.
+github.ref
+github.event_path
+github.EVENT.issue.title
+github.repositoryUrl
+github.foo
+runner.environment
+runner.foo
+job.services.foo.ports.80
+job.services.foo.bar
+job.container.foo
+job.check_run_id
+strategy.foo
+strategy.fail-fast
+env.*
+secrets.*
+vars.*
+github.*
+github.*.foo
+github.event.*
+github.event.*.foo
+job.services.*
+job.services.*.id
+job.services.*.foo
+job.*.id
+job.*.foo
+runner.*
+matrix.*
+steps.*
+needs.*
+inputs.*
+env.FOO.bar
+env['FOO']
+env[0]
+github[0]
+github['ref']
+github['REF']
+github[1 == 1]
+github[null]
+github[github.ref]
+'foo'[0]
+'foo'.bar
+null.foo
+true.foo
+1.foo
+(1).foo
+fromJSON('[1]').foo
+fromJSON('[1]')[0]
+fromJSON('[1]')['a']
+fromJSON('[1]')[true]
+fromJSON('{"a":[1]}').a.*
+fromJSON('{"a":[{"b":1}]}').a.*.b
+fromJSON('{"a":[{"b":1}]}').a.*.c
+fromJSON('{"a":[1]}').a.*.c
+fromJSON('{"a":[[1]]}').a.*.c
+fromJSON('[[{"b":1}]]').*.*.b
+fromJSON('{"a":{"b":1}}').*
+fromJSON('{"a":1}').*
+fromJSON('{"a":1}').*.b
+vars.FOO
+vars.github_foo
+vars.GITHUB_FOO
+vars.foo_bar_1
+vars['github_foo']
+foo
+Github.ref
+GITHUB.REF
+jobs
+jobs.foo
+contains('a', 'b')
+contains(fromJSON('[1]'), 1)
+contains(github.event.issue.labels.*.name, 'x')
+contains(1, 2)
+contains(null, 'a')
+contains(true, 'a')
+contains()
+contains('a')
+contains('a', 'b', 'c')
+contains(env, 'a')
+contains(fromJSON('{"a":1}'), 'a')
+startsWith('a', 1)
+startsWith(1, 'a')
+startsWith(null, 'a')
+startsWith(true, 'a')
+startsWith(github.event, 'a')
+startswith('a','b')
+STARTSWITH('a','b')
+endsWith('a')
+format('{0}')
+format('{0}', 1)
+format('{0}', 1, 2)
+format('{0} {1}', 1)
+format('{1}', 1)
+format('{2} {1} {0}', 1)
+format('{{0}}', 1)
+format('x')
+format(1)
+format(github.ref, 1, 2)
+format()
+format('{0}', github)
+format('{0}', null)
+join(fromJSON('[1]'))
+join(fromJSON('["a"]'), ',')
+join('a')
+join('a', ',')
+join(github.event.labels.*.name)
+join(github.event.labels.*.name, 1)
+join(github.event.labels.*.name, null)
+join(env)
+join(1)
+join(fromJSON('[true]'))
+join(fromJSON('[null]'))
+join(fromJSON('[[1]]'))
+join(fromJSON('[{"a":1}]'))
+toJSON(github)
+toJSON()
+toJSON(1, 2)
+tojson(github).foo
+fromJSON(1)
+fromJSON(null)
+fromJSON(github.ref)
+fromJSON('x')
+fromJSON('{')
+fromJSON('')
+fromJSON('{"a":1}').A
+fromJSON('{"A":1}').a
+hashFiles()
+hashFiles('a')
+hashFiles('a', 'b')
+hashFiles(1)
+hashFiles(null)
+hashFiles('a', true)
+success()
+success(1)
+always()
+cancelled()
+failure()
+case(true, 'a', 'b')
+case(true, 'a')
+case(true, 'a', false, 'b')
+case(true, 'a', false, 'b', 'c')
+case()
+case(1, 'a', 'b')
+case('x', 'a', 'b')
+case(null, 1, 2)
+case(true, 1, 'b')
+case(true, github, 'b').ref
+case(true, 'a', 'b').foo
+foo()
+Foo(1, 2)
+foo(github.ref)
+foo(bar)
+!github
+!github.foo
+!'a'
+!1
+!null
+1 == 'a'
+1 == github
+github == 1
+github == github
+github == null
+null == github
+fromJSON('[1]') == fromJSON('[1]')
+fromJSON('[1]') == fromJSON('["a"]')
+fromJSON('[1]') == fromJSON('[{"a":1}]')
+fromJSON('[{"a":1}]') == fromJSON('[1]')
+fromJSON('[1]') == 1
+1 < 'a'
+1 < null
+null < 1
+true < 1
+'a' < true
+github < 1
+1 < github
+fromJSON('[1]') < 1
+1 < fromJSON('[1]')
+1 != github
+github.ref && 1
+github.ref || 1
+1 || 'a'
+1 && true
+true || 1
+null || null
+fromJSON('[1]') || fromJSON('["a"]')
+github || env
+env || secrets
+(github.ref && 1) || 2
+!(github.ref && 1) || 2
+!(!(github.ref || 1)) || null
+github.ref && 1 && 'a'
+null && 1
+github.event.inputs
+github.event.inputs.foo
+github.event.foo
+github['event']['inputs']

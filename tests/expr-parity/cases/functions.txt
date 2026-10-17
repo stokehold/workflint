@@ -1,0 +1,58 @@
+# fromJSON literals and Go's JSON errors, format specifiers, and the
+# arguments of the other built-in functions. The format strings near the end
+# hold invisible and unusual characters before `{1}`.
+fromJSON('1e400')
+fromJSON('[1e400]')
+fromJSON('{"a":1e400}').a
+fromJSON('{"a":1e400, "b": 1}').b
+fromJSON('-1e400')
+fromJSON('1e308')
+fromJSON('"\ud800"')
+fromJSON('{"a":1,"a":"x"}').a
+fromJSON('{"a":1,"A":"x"}').a
+fromJSON('{"A":1,"a":"x"}').A
+fromJSON(' ')
+fromJSON('nul')
+fromJSON('[1,]')
+fromJSON('{"a":1}}')
+fromJSON('tru')
+format('{0}{1}{2}', 1)
+format('{0}', 1, 2, 3)
+format('{3}{1}', 1, 2)
+format('{0}{0}', 1)
+format('{00}', 1)
+format('{4294967296}', 1)
+format('{0', 1)
+format('{0}}', 1)
+format('{0}}}', 1)
+format(format('{0}', 1, 2), 1)
+contains(fromJSON('[1]'), github)
+contains(fromJSON('{"a":[1]}').a.*, 1)
+contains(github.*, 'a')
+contains(env.*, 'a')
+contains(fromJSON('[1]').*, 'a')
+join(fromJSON('[1]').*, 'a')
+join(fromJSON('{"a":["x"]}').*, 'a')
+join(github.event.*.labels, ',')
+toJSON(fromJSON('{"a":1}').a)
+case(github.ref == 'a', 1, github.ref == 'b', 'x', null)
+case(true, 1, 2).foo
+case(true, fromJSON('{"a":1}'), 2).a
+hashFiles('a', 1)
+hashFiles(fromJSON('[1]'))
+format('a b{1}', 1)
+format('​{1}', 1)
+format('	{1}', 1)
+format('{1}', 1)
+format('{1}', 1)
+format('😀{1}', 1)
+format('\\{1}"', 1)
+format('�{1}', 1)
+format('́{1}', 1)
+format('󠀁{1}', 1)
+format(' {1}', 1)
+format('􏿿{1}', 1)
+format('﻿{1}', 1)
+format('­{1}', 1)
+format('　{1}', 1)
+format(' {1}', 1)

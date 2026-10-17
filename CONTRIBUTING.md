@@ -45,6 +45,14 @@ cargo xtask yaml-parity
 
 It builds a small Go program with go-yaml, the YAML library of the reference, and compares the trees of both parsers on the vendored test data, the 1,503 corpus files, and `tests/yaml-parity/`. Every node must have the same kind, position, explicit tag, anchor, and alias name, and every scalar the same style and decoded value. A file that go-yaml rejects must fail in workflint too, at any position, with the same message after the prefixes `yaml:`, `line N:`, and `could not parse as YAML:`. The one exception is an encoding error that workflint reports where go-yaml reports a syntax error (`docs/differences.md#yaml-error-positions`). A few files in `tests/yaml-parity/` differ as an entry of `docs/differences.md` describes, and its `README.md` lists them. The command prints a diff for each file that differs and exits with an error. It needs Go 1.26.4, not `.reference/`. Pass file or directory paths to compare only those. CI runs it when these paths change.
 
+After a change to `crates/workflint-expr/` or `crates/workflint-data/`, run:
+
+```sh
+cargo xtask expr-parity
+```
+
+It builds `xtask/expr-check`, a small Go program around the reference's expression checker, inside `.reference/actionlint`, and runs about 14,000 expressions through it and through `workflint-expr`: the reference's real-world expressions, 2,000 generated ones, and the hand-written cases in `tests/expr-parity/`, each in several setups of workflow key, contexts, and the untrusted-input check. It compares the parse error or the type, whether the expression is constant, and each error with its line and column, in order. The command prints each difference that `tests/expr-parity/allowed-differences.toml` does not explain and exits with an error, as it does for a record that explains no difference. `tests/expr-parity/README.md` describes the inputs. It needs git and Go 1.26.4, and clones `.reference/actionlint` if it is missing. The `cargo xtask oracle` job of CI runs it first when a change touches `crates/`, `xtask/`, `tests/conformance/`, or `tests/expr-parity/`, and fails on a difference.
+
 ## Oracle
 
 `cargo xtask oracle` runs workflint and the reference binary on the same inputs and compares their output (ADR 0004). It needs git and Go 1.26.4 to build the reference, and builds it first if `.reference/` lacks it.

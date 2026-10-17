@@ -1002,6 +1002,7 @@ dependencies = [
  "similar",
  "tempfile",
  "toml",
+ "workflint-data",
  "workflint-diagnostics",
  "workflint-expr",
  "workflint-syntax",
