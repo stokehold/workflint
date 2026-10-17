@@ -324,7 +324,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Comparison operator precedence
 
 - Upstream: all six comparison operators share one precedence level and associate to the right. `'a' < 'b' == true` parses as `'a' < ('b' == true)` and reports `"string" value cannot be compared to "bool" value with "<" operator`.
-- workflint: `<`, `<=`, `>` and `>=` bind tighter than `==` and `!=`, and all associate to the left, following GitHub's documented operator order. `'a' < 'b' == true` parses as `('a' < 'b') == true`. `&&` and `||` keep upstream's grouping to the right, which evaluates to the same value as any other grouping.
+- workflint: `<`, `<=`, `>` and `>=` bind tighter than `==` and `!=`, and all associate to the left, following GitHub's documented operator order. `'a' < 'b' == true` parses as `('a' < 'b') == true`. A chain of `&&` or `||` is one node with all its operands, as in GitHub's parser. Upstream nests it to the right, which gives the same values, types, and errors.
 - Confirmed against the expression parser in `actions/languageservices` (`expressions/src/parser.ts`) at commit `4043eda`. From the loosest: `||`, then `&&`, then `==` and `!=`, then `<`, `<=`, `>` and `>=`, then `!`, then property access and index access. The comparison and equality levels are left-associative loops. The `&&` and `||` levels collect any number of operands into one node.
 - Why: the tree must match how GitHub evaluates the expression, or type errors are wrong.
 - Upstream issue: none.
@@ -335,8 +335,18 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Nesting limit for expressions
 
 - Upstream: expressions can nest without limit.
-- workflint: an expression nested more than 128 levels deep is an error, `expression is nested more than 128 levels deep`, reported by `invalid-expression-syntax`. Each parenthesis, `!`, function call, property access, object filter, index access, and binary operator adds a level.
-- Why: the parser and the checks walk the tree recursively, and a limit keeps a crafted expression from overflowing the stack. The deepest expression in the corpus is 11 levels deep. GitHub's parser in `actions/languageservices` stops at 50 levels.
+- workflint: an expression nested more than 128 levels deep is an error, `expression is nested more than 128 levels deep`, reported by `invalid-expression-syntax`. The depth is the most levels on a path from the root of the tree to a leaf. Each parenthesis adds a level, and so do `!`, a function call, a property access, an object filter, an index access, and a comparison. A chain of `&&` or `||` of any length adds one level, so a condition with hundreds of `a == b ||` alternatives is accepted. `a.b.c[x.y]` is 3 levels deep: the index access is one level above the deeper of `a.b.c` and `x.y`.
+- Why: the parser and the checks walk the tree recursively, and a limit keeps a crafted expression from overflowing the stack. The parser reads a chain of `&&` or `||` in a loop, so a long chain needs no limit. The deepest expression in the corpus is 11 levels deep. GitHub's parser in `actions/languageservices` stops at 50 levels.
+- Upstream issue: none.
+- Milestone: M3.
+- Status: planned.
+
+<a id="bom-before-string-literal"></a>
+### Byte order mark before a string literal
+
+- Upstream: when an expression starts with a byte order mark, the lexer keeps the mark in the first token. If that token is a string literal, the parser cuts the first byte and the last byte off the token, so `${{ 'x' }}` after a byte order mark has the value `"\xbb\xbf'x"`: the last two bytes of the mark, the opening quote, and `x`.
+- workflint: the parser drops the byte order mark before it removes the quotes, so the value is `"x"`.
+- Why: upstream's value is not valid UTF-8 and keeps a quote.
 - Upstream issue: none.
 - Milestone: M3.
 - Status: planned.
