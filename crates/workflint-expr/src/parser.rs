@@ -32,8 +32,8 @@ const EQUALITY_LEVEL: u8 = 3;
 ///
 /// Returns the first error. A lexer error wins over the parser error it causes, as in
 /// actionlint. Number literals beyond the range of a double are errors of
-/// [`INVALID_NUMBER_LITERAL`](crate::rules::INVALID_NUMBER_LITERAL), and every other error
-/// belongs to [`INVALID_EXPRESSION_SYNTAX`](crate::rules::INVALID_EXPRESSION_SYNTAX).
+/// [`INVALID_NUMBER_LITERAL`], and every other error belongs to
+/// [`INVALID_EXPRESSION_SYNTAX`].
 ///
 /// ```
 /// use workflint_expr::{ExprKind, parse_expression};

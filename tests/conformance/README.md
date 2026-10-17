@@ -86,7 +86,7 @@ To check the runner itself, run the suite with the reference binary in place of 
 WORKFLINT_CONFORMANCE_REFERENCE=.reference/bin/actionlint cargo nextest run -p xtask --test conformance
 ```
 
-A relative path is relative to the repository root. In this mode the runner does not map kinds, because the reference prints kinds already. It reads neither `expected-failures.toml` nor `allowed-differences.toml`, and it skips workflint's own fixtures. The only expected failures are the ones in `REFERENCE_FAILURES` in `xtask/src/conformance/runner.rs`, each with its reason: today only `projects/local_action_invalid`. Every other fixture must pass, so a runner that passes or fails fixtures by mistake shows up. The oracle job in `.github/workflows/oracle.yml` runs this check.
+A relative path is relative to the repository root. In this mode the runner does not map kinds, because the reference prints kinds already. It reads neither `expected-failures.toml` nor `allowed-differences.toml`, and it skips workflint's own fixtures. The only expected failures are the ones in `REFERENCE_FAILURES` in `xtask/src/conformance/runner.rs`, each with its reason: today only `projects/local_action_invalid`. Every other fixture must pass, so a runner that passes or fails fixtures by mistake shows up. The `cargo xtask oracle` job in `.github/workflows/gate.yml` runs this check.
 
 ## Expected failures
 

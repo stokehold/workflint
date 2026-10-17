@@ -2,3 +2,5 @@
 [toolchain]
 channel = "nightly-2026-10-15"
 profile = "minimal"
+# CI runs clippy on the fuzz targets.
+components = ["clippy"]

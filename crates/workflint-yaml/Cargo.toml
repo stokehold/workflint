@@ -10,7 +10,7 @@ homepage.workspace = true
 authors.workspace = true
 readme = "README.md"
 # Keep the yaml-test-suite data and the benchmarks out of the published package (ADR 0006).
-include = ["/src", "/README.md"]
+include = ["/src", "/README.md", "/LICENSE", "/NOTICE"]
 
 [dependencies]
 workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
