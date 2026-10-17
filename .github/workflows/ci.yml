@@ -8,8 +8,10 @@ on:
 permissions:
   contents: read
 
+# Pull requests cancel their older runs. Each push to main gets its own group,
+# so a newer push neither cancels a run nor replaces one that waits.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -84,7 +86,7 @@ jobs:
           persist-credentials: false
       - name: cargo deny check
         uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
-      # fuzz/ is its own workspace. deny.toml at the root covers it too.
+      # fuzz/ is its own workspace, with its own fuzz/deny.toml.
       - name: cargo deny check (fuzz)
         uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
         with:
@@ -109,7 +111,7 @@ jobs:
             exit 1
           fi
           rustup toolchain install "$msrv" --profile minimal
-          cargo "+$msrv" check --workspace --locked
+          cargo "+$msrv" check --workspace --all-targets --locked
 
   workflow-security:
     name: workflow-security
