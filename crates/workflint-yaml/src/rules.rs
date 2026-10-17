@@ -36,3 +36,38 @@ const fn syntax_check(id: &'static str, docs_url: &'static str) -> RuleMeta {
         docs_url,
     }
 }
+
+/// Every rule in this module, in the order of their IDs.
+pub static ALL: [&RuleMeta; 4] = [
+    &RECURSIVE_ALIAS,
+    &UNKNOWN_ANCHOR,
+    &UNUSED_ANCHOR,
+    &YAML_SYNTAX_ERROR,
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_rule_has_its_kind_and_links_the_page_named_after_its_id() {
+        for rule in ALL {
+            assert_eq!(rule.kind, "syntax-check", "{}", rule.id);
+            assert_eq!(
+                rule.docs_url,
+                format!(
+                    "https://github.com/stokehold/workflint/blob/main/docs/rules/{}.md",
+                    rule.id
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn the_list_is_sorted_by_id() {
+        let ids: Vec<_> = ALL.iter().map(|rule| rule.id).collect();
+        let mut sorted = ids.clone();
+        sorted.sort_unstable();
+        assert_eq!(ids, sorted);
+    }
+}

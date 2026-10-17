@@ -10,6 +10,14 @@ nextest-version = "0.9.148"
 filter = "binary_id(xtask::conformance) & test(=skipped_fixtures::README.md)"
 success-output = "final"
 
+# A conformance test that hangs fails instead of holding up the run. Each test
+# lints one fixture in milliseconds, but the first tests of a run wait for
+# `cargo build -p workflint`, so the limit leaves room for a cold build. The
+# runner also kills a binary that runs past 60 seconds.
+[[profile.default.overrides]]
+filter = "binary_id(xtask::conformance)"
+slow-timeout = { period = "60s", terminate-after = 5 }
+
 [profile.ci]
 # Run every test and report all failures, instead of stopping at the first one.
 fail-fast = false

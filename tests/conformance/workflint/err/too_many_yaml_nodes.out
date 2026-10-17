@@ -1,0 +1,1 @@
+test.yaml:1:1: workflow has more than 50000 YAML nodes when its aliases are expanded. GitHub rejects it with "Maximum YAML nodes exceeded" [syntax-check]

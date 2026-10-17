@@ -1003,6 +1003,8 @@ dependencies = [
  "tempfile",
  "toml",
  "workflint-diagnostics",
+ "workflint-expr",
+ "workflint-syntax",
  "workflint-yaml",
  "zip",
 ]

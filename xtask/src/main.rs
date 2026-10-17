@@ -109,12 +109,13 @@ enum Command {
 }
 
 fn parse_seconds(text: &str) -> Result<Duration, String> {
-    match text.parse::<f64>() {
-        Ok(seconds) if seconds > 0.0 && seconds.is_finite() => Ok(Duration::from_secs_f64(seconds)),
-        _ => Err(format!(
-            "expected a positive number of seconds, got {text:?}"
-        )),
-    }
+    let seconds = text
+        .parse::<f64>()
+        .ok()
+        .filter(|seconds| *seconds > 0.0)
+        .ok_or_else(|| format!("expected a positive number of seconds, got {text:?}"))?;
+    Duration::try_from_secs_f64(seconds)
+        .map_err(|_| format!("{text:?} seconds is longer than a time limit can be"))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -280,6 +281,18 @@ mod tests {
         };
         assert_eq!(timeout, Some(Duration::from_millis(1500)));
         assert!(Cli::try_parse_from(["xtask", "bench", "--timeout", "0"]).is_err());
+    }
+
+    #[test]
+    fn bench_timeout_too_large_for_a_duration_is_an_error() {
+        for huge in ["1e300", "inf", "NaN"] {
+            let error = Cli::try_parse_from(["xtask", "bench", "--timeout", huge]).unwrap_err();
+            assert_eq!(
+                error.kind(),
+                clap::error::ErrorKind::ValueValidation,
+                "{huge}"
+            );
+        }
     }
 
     #[test]
