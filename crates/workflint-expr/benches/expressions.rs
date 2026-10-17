@@ -8,14 +8,15 @@
 //! handles every expression once per iteration, so the time per expression is the reported
 //! time divided by 1,858.
 //!
-//! The checks run in a new [`TypeEnv`], which allows no context and no special function, as the
-//! reference's benchmarks run its checker without a workflow key.
+//! The checks run in a [`TypeEnv`] that allows every context and special function, so that
+//! they measure the type checks rather than a `context-not-allowed` error for each context.
+//! The reference's benchmarks set no workflow key, which allows nothing.
 
 #![allow(clippy::expect_used)]
 
 use divan::Bencher;
 use divan::counter::ItemsCount;
-use workflint_data::UNTRUSTED_INPUTS;
+use workflint_data::{Availability, UNTRUSTED_INPUTS};
 use workflint_expr::{Expr, Lexer, TokenKind, TypeEnv, parse_expression};
 
 fn main() {
@@ -42,9 +43,16 @@ fn trees() -> Vec<Expr> {
         .collect()
 }
 
-/// An environment that also reports untrusted input, as for an expression in a script.
-fn untrusted_env() -> TypeEnv {
+/// An environment that allows every context and special function.
+fn open_env() -> TypeEnv {
     let mut env = TypeEnv::new();
+    env.set_availability(Availability::ALL);
+    env
+}
+
+/// [`open_env`] that also reports untrusted input, as for an expression in a script.
+fn untrusted_env() -> TypeEnv {
+    let mut env = open_env();
     env.set_untrusted_inputs(UNTRUSTED_INPUTS);
     env
 }
@@ -87,7 +95,7 @@ fn parse(bencher: Bencher<'_, '_>) {
 /// Lexes, parses, and type-checks each expression against the global contexts.
 #[divan::bench]
 fn parse_and_check(bencher: Bencher<'_, '_>) {
-    bench_parse_and_check(bencher, &TypeEnv::new());
+    bench_parse_and_check(bencher, &open_env());
 }
 
 /// Lexes, parses, and type-checks each expression with the check for untrusted input on, as
@@ -116,7 +124,7 @@ fn bench_parse_and_check(bencher: Bencher<'_, '_>, env: &TypeEnv) {
 /// as the reference's `Sema-trust` does.
 #[divan::bench]
 fn check(bencher: Bencher<'_, '_>) {
-    bench_check(bencher, &TypeEnv::new());
+    bench_check(bencher, &open_env());
 }
 
 /// Type-checks each expression, parsed before the measurement, with the check for untrusted
@@ -146,6 +154,6 @@ fn from_json_wide_array(bencher: Bencher<'_, '_>) {
     let elements: Vec<String> = (0..32_000).map(|i| format!(r#"{{"k{i}":1}}"#)).collect();
     let src = format!("fromJSON('[{}]') }}}}", elements.join(","));
     let (expr, _) = parse_expression(&src).expect("the call parses");
-    let env = TypeEnv::new();
+    let env = open_env();
     bencher.bench_local(|| env.check(divan::black_box(&expr)));
 }
