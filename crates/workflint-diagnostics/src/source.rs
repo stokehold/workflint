@@ -146,23 +146,31 @@ impl SourceFile {
         if start == 0 && self.text.starts_with(BOM) && offset >= BOM.len_utf8() {
             start = BOM.len_utf8();
         }
-        if offset - start <= CHAR_COUNT_STEP {
-            let column = self.chars(start, offset) + 1;
-            return LineCol { line, column };
+        let column = if offset - start <= CHAR_COUNT_STEP {
+            self.text
+                .get(start..offset)
+                .map_or(0, |s| s.chars().count())
+        } else {
+            self.long_column(start, offset)
+        };
+        LineCol {
+            line,
+            column: column + 1,
         }
-        let column = match self.long_lines.get_or_init(|| long_lines(&self.text)) {
+    }
+
+    /// The number of characters from `start`, the start of a line, to
+    /// `offset`, more than [`CHAR_COUNT_STEP`] bytes further.
+    #[cold]
+    #[inline(never)]
+    fn long_column(&self, start: usize, offset: usize) -> usize {
+        match self.long_lines.get_or_init(|| long_lines(&self.text)) {
             LongLines::Ascii => offset - start,
             LongLines::Counts(counts) => {
                 Self::chars_before(&self.text, counts, offset)
                     - Self::chars_before(&self.text, counts, start)
             }
-        } + 1;
-        LineCol { line, column }
-    }
-
-    /// The number of characters from `start` to `end`.
-    fn chars(&self, start: usize, end: usize) -> usize {
-        self.text.get(start..end).map_or(0, |s| s.chars().count())
+        }
     }
 
     /// The number of characters before `offset`, a character boundary, from
