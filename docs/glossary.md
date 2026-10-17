@@ -33,6 +33,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | rule | One check with a stable ID and rule metadata, listed in the registry in `workflint-rules`. |
 | rule metadata | A rule's `RuleMeta`: its rule ID, kind, category, default severity, and docs URL. |
 | parse-stage rule | A rule whose diagnostics a parsing crate reports while parsing, such as `yaml-syntax-error` in `workflint-yaml`. The parsing crate defines its rule metadata, and the registry lists it (ADR 0024). |
+| checker rule | A rule such as `undefined-property`, whose diagnostics `TypeEnv::check` in `workflint-expr` reports when a rule in `workflint-rules` calls it. `workflint-expr` defines its rule metadata, and the registry lists it, as for a parse-stage rule (ADR 0028). |
 | rule ID | The kebab-case name of a rule, such as `undefined-property`. Users write it in config and ignore comments. |
 | kind | The actionlint error kind a rule maps to, such as `expression` or `syntax-check`. Used for conformance and accepted in config. |
 | category | The rule set a rule belongs to: `correctness` (on by default), `pedantic`, `style`, `security-strict`, or `policy` (off by default). |
@@ -56,6 +57,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | placeholder | One `${{ }}` in a template: its byte range in the decoded value, and its parsed expression or the parse error (`Placeholder`). An `if` condition written without `${{ }}` is one implicit placeholder that covers the whole value. |
 | field | A key with a fixed name in a section, such as `name` or `steps` of a job, and its value. It is absent, invalid, or valid (`Field`). |
 | expression value | A value that may be a literal or a single `${{ }}` expression, such as `continue-on-error`. It is absent, invalid, a literal, or an expression (`Value`). The expression (`Expr`) holds its parsed placeholder. |
+| raw value | A YAML value in a matrix row or an `include` or `exclude` item, kept as written: a scalar with its tag and style, a sequence, or a mapping (`RawValue`, the reference's `RawYAMLValue`). The tag and style let rules tell `1` from `"1"`. |
 | invalid value | A value that is written but has the wrong type or is otherwise unusable. The parser reports it once, and the AST keeps it in its place, marked so that rules skip it instead of reporting it again. The value of a key is `Field::Invalid` or `Value::Invalid`. An item of a list, such as an activity type in `Arc<[Option<Template>]>` or an event of `on`, and a value in a keyed collection, such as a scope in `Keyed<Option<Str>>`, is `None`. A list keeps its length, so a rule that only needs a value to be written, such as one that counts the options of an input, still sees it. |
 | short form | A string written where a mapping is also accepted, such as `concurrency: ci` or `container: node:24`. The string fills one field of the mapping form, and that field has no key. |
 | keyed collection | Entries keyed by names that compare case-insensitively, such as jobs, `env`, or `with` (`Keyed`). It keeps source order, and each entry keeps its key as written and its folded key. |

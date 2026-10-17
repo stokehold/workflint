@@ -79,6 +79,14 @@ fn expected_failures(_: &Path) -> datatest_stable::Result<()> {
     check(runner::check_expected_failures())
 }
 
+fn checks_md(_: &Path) -> datatest_stable::Result<()> {
+    check(runner::check_checks_md())
+}
+
+fn parity_checklist(_: &Path) -> datatest_stable::Result<()> {
+    check(runner::check_parity_checklist())
+}
+
 fn rule_kinds(_: &Path) -> datatest_stable::Result<()> {
     check(runner::check_rule_kinds())
 }
@@ -95,6 +103,8 @@ datatest_stable::harness! {
     { test = allowed_differences, root = "../tests/conformance", pattern = r"^allowed-differences\.toml$" },
     { test = expected_failures, root = "../tests/conformance", pattern = r"^expected-failures\.toml$" },
     { test = rule_kinds, root = "../tests/conformance", pattern = r"^rule-kinds\.toml$" },
+    { test = parity_checklist, root = "../docs", pattern = r"^parity-checklist\.md$" },
+    { test = checks_md, root = "../tests/conformance/actionlint/docs", pattern = r"^checks\.md$" },
     // The README says when the runner skips a fixture.
     { test = skipped_fixtures, root = "../tests/conformance", pattern = r"^README\.md$" },
 }

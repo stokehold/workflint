@@ -11,14 +11,20 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
+use xtask::process::{self, Finished};
 
 use super::compare::Case;
 use super::outcome::Outcome;
 use super::setups::Setup;
 use crate::reference::go;
+
+/// How long the program may take for every case together. It needs about
+/// ten seconds for the committed inputs.
+const TIME_LIMIT: Duration = Duration::from_mins(5);
 
 /// The package that the overlay adds to the checkout.
 const PACKAGE: &str = "cmd/workflint-expr-check";
@@ -113,17 +119,19 @@ pub(crate) fn run(
     let input = work.join("input.json");
     let json = serde_json::to_vec(&Input { setups, cases })?;
     fs::write(&input, json).with_context(|| format!("cannot write {}", input.display()))?;
-    let output = Command::new(binary)
-        .arg(&input)
-        .output()
-        .with_context(|| format!("cannot run {}", binary.display()))?;
-    if !output.status.success() {
-        bail!(
-            "{} failed with {}: {}",
+    let output = process::output(Command::new(binary).arg(&input), TIME_LIMIT)?;
+    match output.finished {
+        Finished::Exited(status) if status.success() => {}
+        Finished::Exited(status) => bail!(
+            "{} failed with {status}: {}",
             binary.display(),
-            output.status,
             String::from_utf8_lossy(&output.stderr).trim()
-        );
+        ),
+        Finished::TimedOut => bail!(
+            "{} did not finish within {} seconds",
+            binary.display(),
+            TIME_LIMIT.as_secs()
+        ),
     }
     let stdout = String::from_utf8(output.stdout)
         .context("the output of the reference's expression checker is not UTF-8")?;

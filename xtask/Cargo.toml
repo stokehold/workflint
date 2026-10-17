@@ -23,6 +23,7 @@ toml = { version = "1.1.8", default-features = false, features = ["std", "parse"
 workflint-data = { path = "../crates/workflint-data", version = "0.0.1" }
 workflint-diagnostics = { path = "../crates/workflint-diagnostics", version = "0.0.1" }
 workflint-expr = { path = "../crates/workflint-expr", version = "0.0.1" }
+workflint-syntax = { path = "../crates/workflint-syntax", version = "0.0.1" }
 workflint-yaml = { path = "../crates/workflint-yaml", version = "0.0.1" }
 zip = { version = "9.0.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 

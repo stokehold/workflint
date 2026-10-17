@@ -14,8 +14,10 @@ use super::kinds::Kinds;
 pub(crate) struct Output {
     pub(crate) stdout: String,
     pub(crate) stderr: String,
-    /// `None` when a signal ended the process.
+    /// `None` when a signal ended the process, or when it timed out.
     pub(crate) code: Option<i32>,
+    /// Whether the process ran past its time limit and was killed.
+    pub(crate) timed_out: bool,
 }
 
 /// The lines of one file in a run, from both binaries.
@@ -46,7 +48,9 @@ pub(crate) struct Run {
     pub(crate) stderr: [String; 2],
     /// The number of allow-list entries that changed the expected lines.
     pub(crate) applied: usize,
-    /// Allow-list entries that do not apply and rule IDs without a kind.
+    /// Allow-list entries that do not apply, rule IDs without a kind, a
+    /// reference that did not exit with 0 or 1 or printed to standard error,
+    /// and a binary that timed out.
     pub(crate) problems: Vec<String>,
 }
 
@@ -81,6 +85,10 @@ pub(crate) fn compare(
     kinds: &Kinds,
 ) -> Run {
     let mut problems = BTreeSet::new();
+    check_reference(reference, &mut problems);
+    if workflint.timed_out {
+        problems.insert("workflint did not finish within the time limit and was killed".to_owned());
+    }
 
     let printed: Vec<String> = reference
         .stdout
@@ -167,6 +175,31 @@ pub(crate) fn compare(
         stderr: [reference.stderr.clone(), workflint.stderr.clone()],
         applied,
         problems: problems.into_iter().collect(),
+    }
+}
+
+/// Adds a problem when the reference did not run normally: it timed out,
+/// exited with a code other than 0 or 1, was stopped by a signal, or printed
+/// to standard error. Its output then says nothing about the input.
+fn check_reference(reference: &Output, problems: &mut BTreeSet<String>) {
+    if reference.timed_out {
+        problems
+            .insert("the reference did not finish within the time limit and was killed".to_owned());
+    } else {
+        match reference.code {
+            Some(0 | 1) => {}
+            Some(code) => {
+                problems.insert(format!(
+                    "the reference exited with code {code}; only 0 and 1 are normal"
+                ));
+            }
+            None => {
+                problems.insert("the reference was stopped by a signal".to_owned());
+            }
+        }
+    }
+    if !reference.stderr.trim().is_empty() {
+        problems.insert("the reference printed to standard error".to_owned());
     }
 }
 
@@ -257,6 +290,7 @@ mod tests {
             stdout: stdout.to_owned(),
             stderr: String::new(),
             code: Some(code),
+            timed_out: false,
         }
     }
 
@@ -606,6 +640,86 @@ workflows/a.yaml:3:1: c [expression]
             &Kinds::default(),
         );
         assert_eq!((run.expected_code, run.actual_code), (Some(3), Some(0)));
+    }
+
+    #[test]
+    fn a_reference_that_exits_3_is_a_problem_even_when_workflint_does_the_same() {
+        let failing = Output {
+            stderr: "could not read test.yaml\n".to_owned(),
+            ..output("", 3)
+        };
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &failing,
+            &failing,
+            &Allowed::default(),
+            true,
+            &Kinds::default(),
+        );
+        assert!(run.files.iter().all(|file| file.identical), "{run:?}");
+        assert_eq!(
+            run.problems,
+            [
+                "the reference exited with code 3; only 0 and 1 are normal",
+                "the reference printed to standard error",
+            ],
+            "{run:?}"
+        );
+    }
+
+    #[test]
+    fn a_reference_stopped_by_a_signal_or_a_timeout_is_a_problem() {
+        let signal = Output {
+            code: None,
+            ..output("", 0)
+        };
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &signal,
+            &output("", 0),
+            &Allowed::default(),
+            true,
+            &Kinds::default(),
+        );
+        assert_eq!(run.problems, ["the reference was stopped by a signal"]);
+        let hang = Output {
+            timed_out: true,
+            ..signal
+        };
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &hang,
+            &hang,
+            &Allowed::default(),
+            true,
+            &Kinds::default(),
+        );
+        assert_eq!(
+            run.problems,
+            [
+                "the reference did not finish within the time limit and was killed",
+                "workflint did not finish within the time limit and was killed",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reference_that_exits_normally_without_standard_error_is_no_problem() {
+        for code in [0, 1] {
+            let run = compare(
+                "err/x",
+                &inputs(&["test.yaml"]),
+                &output("", code),
+                &output("", 0),
+                &Allowed::default(),
+                true,
+                &Kinds::default(),
+            );
+            assert_eq!(run.problems, Vec::<String>::new());
+        }
     }
 
     #[test]

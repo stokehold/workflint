@@ -203,3 +203,55 @@ pub static UNTRUSTED_OBJECT_FILTER: RuleMeta = RuleMeta {
     default_severity: Severity::Error,
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/untrusted-object-filter.md",
 };
+
+/// Every rule in this module, in the order of their IDs.
+pub static ALL: [&RuleMeta; 21] = [
+    &CASE_ARGUMENT_COUNT,
+    &CONTEXT_NOT_ALLOWED,
+    &FUNCTION_NOT_ALLOWED,
+    &INVALID_COMPARISON,
+    &INVALID_CONFIG_VARIABLE_NAME,
+    &INVALID_EXPRESSION_SYNTAX,
+    &INVALID_INDEX_ACCESS,
+    &INVALID_JSON_LITERAL,
+    &INVALID_NUMBER_LITERAL,
+    &INVALID_OBJECT_FILTER,
+    &INVALID_PROPERTY_ACCESS,
+    &MISSING_FORMAT_ARGUMENT,
+    &UNDEFINED_CONFIG_VARIABLE,
+    &UNDEFINED_FUNCTION,
+    &UNDEFINED_PROPERTY,
+    &UNDEFINED_VARIABLE,
+    &UNTRUSTED_INPUT,
+    &UNTRUSTED_OBJECT_FILTER,
+    &UNUSED_FORMAT_ARGUMENT,
+    &WRONG_ARGUMENT_COUNT,
+    &WRONG_ARGUMENT_TYPE,
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_rule_has_its_kind_and_links_the_page_named_after_its_id() {
+        for rule in ALL {
+            assert_eq!(rule.kind, "expression", "{}", rule.id);
+            assert_eq!(
+                rule.docs_url,
+                format!(
+                    "https://github.com/stokehold/workflint/blob/main/docs/rules/{}.md",
+                    rule.id
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn the_list_is_sorted_by_id() {
+        let ids: Vec<_> = ALL.iter().map(|rule| rule.id).collect();
+        let mut sorted = ids.clone();
+        sorted.sort_unstable();
+        assert_eq!(ids, sorted);
+    }
+}

@@ -99,6 +99,11 @@ pub(crate) const SCENARIOS: [Scenario; 3] = [
     },
 ];
 
+/// The empty config file that every scenario passes, relative to the
+/// project the binaries run in. With it, neither binary reads a config file
+/// from the workflint repository or the user's config directory.
+pub(crate) const CONFIG_FILE: &str = "../config.yaml";
+
 impl Scenario {
     /// The flags both binaries run with. `shellcheck` is the pinned
     /// shellcheck, which the scenarios with shellcheck on pass explicitly so
@@ -108,7 +113,12 @@ impl Scenario {
             (true, Some(path)) => format!("-shellcheck={}", path.display()),
             _ => "-shellcheck=".to_owned(),
         };
-        vec![shellcheck, "-pyflakes=".to_owned()]
+        vec![
+            shellcheck,
+            "-pyflakes=".to_owned(),
+            "-config-file".to_owned(),
+            CONFIG_FILE.to_owned(),
+        ]
     }
 }
 
@@ -198,11 +208,16 @@ mod tests {
         let shellcheck = Path::new("/usr/bin/shellcheck");
         assert_eq!(
             SCENARIOS[0].flags(Some(shellcheck)),
-            ["-shellcheck=", "-pyflakes="]
+            ["-shellcheck=", "-pyflakes=", "-config-file", CONFIG_FILE]
         );
         assert_eq!(
             SCENARIOS[1].flags(Some(shellcheck)),
-            ["-shellcheck=/usr/bin/shellcheck", "-pyflakes="]
+            [
+                "-shellcheck=/usr/bin/shellcheck",
+                "-pyflakes=",
+                "-config-file",
+                CONFIG_FILE
+            ]
         );
     }
 

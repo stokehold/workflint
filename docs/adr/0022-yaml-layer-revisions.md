@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-10-16
 - Amends: ADR 0005
+- Amended by: ADR 0028
 
 ## Context
 

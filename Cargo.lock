@@ -1005,6 +1005,7 @@ dependencies = [
  "workflint-data",
  "workflint-diagnostics",
  "workflint-expr",
+ "workflint-syntax",
  "workflint-yaml",
  "zip",
 ]

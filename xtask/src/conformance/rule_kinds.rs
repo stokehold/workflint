@@ -10,6 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
 
 use regex::Regex;
+use workflint_diagnostics::RuleMeta;
 
 use super::output::Diagnostic;
 
@@ -73,6 +74,38 @@ pub fn parse_table(text: &str) -> Result<BTreeMap<String, String>, String> {
             other => Err(format!(
                 "rule {rule:?} maps to a {}, not a string",
                 other.type_str()
+            )),
+        })
+        .collect()
+}
+
+/// Every rule that the crates define so far: the `ALL` lists of
+/// `workflint-yaml`, `workflint-syntax` and `workflint-expr`.
+#[must_use]
+pub fn defined_rules() -> Vec<&'static RuleMeta> {
+    workflint_yaml::rules::ALL
+        .iter()
+        .chain(&workflint_syntax::rules::ALL)
+        .chain(&workflint_expr::rules::ALL)
+        .copied()
+        .collect()
+}
+
+/// One line for each of `rules` that `table` does not map to the rule's
+/// kind.
+#[must_use]
+pub fn check_rules(table: &BTreeMap<String, String>, rules: &[&RuleMeta]) -> Vec<String> {
+    rules
+        .iter()
+        .filter_map(|rule| match table.get(rule.id) {
+            Some(kind) if kind == rule.kind => None,
+            Some(kind) => Some(format!(
+                "{}: its RuleMeta says {}, rule-kinds.toml says {kind}",
+                rule.id, rule.kind
+            )),
+            None => Some(format!(
+                "{} ({}) has a RuleMeta but is not in rule-kinds.toml",
+                rule.id, rule.kind
             )),
         })
         .collect()
@@ -155,6 +188,45 @@ mod tests {
         let table = parse_table("a-rule = \"expression\"\nb-rule = \"action\"\n").unwrap();
         assert_eq!(table["a-rule"], "expression");
         assert_eq!(table.len(), 2);
+    }
+
+    fn meta(id: &'static str, kind: &'static str) -> RuleMeta {
+        RuleMeta {
+            id,
+            kind,
+            category: workflint_diagnostics::Category::Correctness,
+            default_severity: workflint_diagnostics::Severity::Error,
+            docs_url: "",
+        }
+    }
+
+    #[test]
+    fn a_rule_meta_missing_from_the_table_or_with_another_kind_is_reported() {
+        let table = parse_table("a-rule = \"expression\"\nb-rule = \"action\"\n").unwrap();
+        let (a, b, c) = (
+            meta("a-rule", "expression"),
+            meta("b-rule", "syntax-check"),
+            meta("c-rule", "syntax-check"),
+        );
+        assert_eq!(
+            check_rules(&table, &[&a, &b, &c]),
+            [
+                "b-rule: its RuleMeta says syntax-check, rule-kinds.toml says action",
+                "c-rule (syntax-check) has a RuleMeta but is not in rule-kinds.toml",
+            ]
+        );
+    }
+
+    #[test]
+    fn the_defined_rules_include_every_crate() {
+        let ids: Vec<&str> = defined_rules().iter().map(|rule| rule.id).collect();
+        for id in [
+            "yaml-syntax-error",
+            "too-many-yaml-nodes",
+            "undefined-variable",
+        ] {
+            assert!(ids.contains(&id), "{id} is missing from {ids:?}");
+        }
     }
 
     #[test]
