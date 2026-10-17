@@ -33,7 +33,8 @@ impl Expr {
     ///
     /// `f` gets the node, its parent (`None` for `self`), and whether the walk enters or leaves
     /// the node. Children are visited in source order, except that the index of an index access
-    /// is visited before its operand. The untrusted-input check depends on that order.
+    /// is visited before its operand. The untrusted-input check depends on that order. A chain
+    /// of `&&` or `||` is one node, where actionlint's walk enters a node for each operator.
     ///
     /// ```
     /// use workflint_expr::{Expr, ExprKind, Visit, parse_expression};
@@ -75,11 +76,11 @@ impl Expr {
                 operand.walk_in(me, f);
             }
             ExprKind::Not { operand } => operand.walk_in(me, f),
-            ExprKind::Compare { left, right, .. } | ExprKind::Logical { left, right, .. } => {
+            ExprKind::Compare { left, right, .. } => {
                 left.walk_in(me, f);
                 right.walk_in(me, f);
             }
-            ExprKind::Call { args, .. } => {
+            ExprKind::Logical { operands: args, .. } | ExprKind::Call { args, .. } => {
                 for arg in args {
                     arg.walk_in(me, f);
                 }
@@ -149,15 +150,17 @@ pub enum ExprKind {
         /// The right operand.
         right: Box<Expr>,
     },
-    /// `&&` or `||`. A chain such as `a && b && c` nests to the right, as actionlint's parser
-    /// builds it: `a && (b && c)`.
+    /// A chain of `&&` or of `||`, such as `a && b && c`, with all its operands in one node,
+    /// as GitHub's parser builds it. A chain of any length is one level of nesting.
+    ///
+    /// actionlint's parser nests a chain to the right, `a && (b && c)`, which gives the same
+    /// values and types. A parenthesized chain is an operand of its own: `a && (b && c)` is a
+    /// chain of two operands, the second of which is a chain of two.
     Logical {
         /// The operator.
         op: LogicalOp,
-        /// The left operand.
-        left: Box<Expr>,
-        /// The right operand.
-        right: Box<Expr>,
+        /// The operands in source order. There are at least two.
+        operands: Vec<Expr>,
     },
     /// A function call, such as `contains(a, 'b')`. Only a bare name can be called.
     Call {
@@ -240,8 +243,10 @@ impl fmt::Display for LogicalOp {
 
 /// The name of a variable, a property, or a called function.
 ///
-/// Names compare case-insensitively, so [`Name::as_str`] returns the name in lowercase. Names
-/// are ASCII, because the lexer accepts only ASCII letters, digits, `_`, and `-` in them.
+/// Expressions match names without regard to case. [`Name::as_str`] returns the name in
+/// lowercase for lookups, and [`Name::original`] returns it as written for messages. `==` on
+/// two names compares their spelling and their ranges, so compare `as_str()` to match names.
+/// Names are ASCII, because the lexer accepts only ASCII letters, digits, `_`, and `-` in them.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     folded: Box<str>,

@@ -28,7 +28,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | untrusted input | A context property that someone outside the repository can set, such as `github.event.issue.title` or `github.head_ref`, which can inject code when a script reads it in `${{ }}` (`UNTRUSTED_INPUTS`). Paths write array elements as `*`, as in `github.event.commits.*.message`. |
 | workflow key | The path of a place in a workflow where expressions can appear, as GitHub's context availability table writes it, such as `jobs.<job_id>.steps.if` (`WORKFLOW_KEYS`). |
 | special function | A built-in function that only some workflow keys allow: `always`, `cancelled`, `failure`, `hashFiles`, and `success` (`SPECIAL_FUNCTIONS`). |
-| availability | Which contexts and special functions a given workflow key allows (`Availability`). A key that the table does not list allows none. |
+| availability | Which contexts and special functions a given workflow key allows (`Availability`). A key that the table does not list allows none, and so does a type environment without a workflow key. |
 | platform data | Facts about GitHub that change over time: runner labels, permissions, events, contexts, popular actions (ADR 0011). |
 | rule | One check with a stable ID and rule metadata, listed in the registry in `workflint-rules`. |
 | rule metadata | A rule's `RuleMeta`: its rule ID, kind, category, default severity, and docs URL. |
@@ -56,7 +56,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | placeholder | One `${{ }}` in a template: its byte range in the decoded value, and its parsed expression or the parse error (`Placeholder`). An `if` condition written without `${{ }}` is one implicit placeholder that covers the whole value. |
 | field | A key with a fixed name in a section, such as `name` or `steps` of a job, and its value. It is absent, invalid, or valid (`Field`). |
 | expression value | A value that may be a literal or a single `${{ }}` expression, such as `continue-on-error`. It is absent, invalid, a literal, or an expression (`Value`). The expression (`Expr`) holds its parsed placeholder. |
-| invalid value | A value that is written but has the wrong type or is otherwise unusable. The parser reports it once, and the AST marks it (`Field::Invalid`, `Value::Invalid`) so that rules skip it. |
+| invalid value | A value that is written but has the wrong type or is otherwise unusable. The parser reports it once, and the AST keeps it in its place, marked so that rules skip it instead of reporting it again. The value of a key is `Field::Invalid` or `Value::Invalid`. An item of a list, such as an activity type in `Arc<[Option<Template>]>` or an event of `on`, and a value in a keyed collection, such as a scope in `Keyed<Option<Str>>`, is `None`. A list keeps its length, so a rule that only needs a value to be written, such as one that counts the options of an input, still sees it. |
 | short form | A string written where a mapping is also accepted, such as `concurrency: ci` or `container: node:24`. The string fills one field of the mapping form, and that field has no key. |
 | keyed collection | Entries keyed by names that compare case-insensitively, such as jobs, `env`, or `with` (`Keyed`). It keeps source order, and each entry keeps its key as written and its folded key. |
 | folded key | A key lowercased as Go's `strings.ToLower` does. Keyed collections compare folded keys, and lookup returns the first entry with a name. |

@@ -8,8 +8,16 @@
 
 #![allow(clippy::panic)]
 
+use workflint_data::Availability;
 use workflint_expr::rules::{INVALID_JSON_LITERAL, UNDEFINED_PROPERTY};
 use workflint_expr::{Expr, Ty, TypeEnv, parse_expression};
+
+/// An environment that allows every context, for the cases that read one.
+fn open_env() -> TypeEnv {
+    let mut env = TypeEnv::new();
+    env.set_availability(Availability::ALL);
+    env
+}
 
 /// Parses `input` followed by `}}`.
 fn parse(input: &str) -> Expr {
@@ -27,7 +35,7 @@ fn from_json(json: &str) -> String {
 
 /// Checks `input` and returns its type. Fails if the check reports an error.
 fn ty(input: &str) -> Ty {
-    let (ty, errors) = TypeEnv::new().check(&parse(input));
+    let (ty, errors) = open_env().check(&parse(input));
     assert!(errors.is_empty(), "checking {input:?} failed: {errors:?}");
     ty
 }
@@ -40,7 +48,7 @@ fn json_ty(json: &str) -> Ty {
 /// Checks `input` and returns its type and its errors as the rule ID, the byte range, and
 /// the message.
 fn check(input: &str) -> (Ty, Vec<(&'static str, u32, u32, String)>) {
-    let (ty, errors) = TypeEnv::new().check(&parse(input));
+    let (ty, errors) = open_env().check(&parse(input));
     let errors = errors
         .into_iter()
         .map(|err| (err.rule.id, err.start, err.end, err.message))
@@ -550,5 +558,60 @@ mod nesting {
             want = Ty::array(want);
         }
         assert_eq!(json_ty(&json), want);
+    }
+
+    /// The type stops at 128 levels, but Go still decodes the numbers below them.
+    #[test]
+    fn number_beyond_a_double_below_the_typed_levels_gives_any() {
+        let json = format!("{}1e400{}", "[".repeat(150), "]".repeat(150));
+        assert_eq!(json_ty(&json), Ty::Any);
+        let json = format!(
+            r#"{}{{"a": [true, "1e400", -1e400]}}{}"#,
+            "[".repeat(150),
+            "]".repeat(150)
+        );
+        assert_eq!(json_ty(&json), Ty::Any);
+        let json = format!(
+            r#"{}{{"1e400": [-1.5e300]}}{}"#,
+            "[".repeat(150),
+            "]".repeat(150)
+        );
+        assert_ne!(json_ty(&json), Ty::Any);
+    }
+}
+
+/// Typing merges each element into the element type in place, so its time grows linearly with
+/// the number of elements. Merging into a copy of the element type took 21 seconds in release
+/// for 32,000 objects with distinct keys.
+mod wide_arrays {
+    use super::*;
+
+    const ELEMENTS: usize = 32_000;
+
+    fn array_of(element: impl Fn(usize) -> String) -> String {
+        let elements: Vec<String> = (0..ELEMENTS).map(element).collect();
+        format!("[{}]", elements.join(","))
+    }
+
+    fn keys() -> Ty {
+        Ty::strict((0..ELEMENTS).map(|i| (format!("k{i}"), Ty::Number)))
+    }
+
+    #[test]
+    fn objects_with_distinct_keys_merge_into_one_element_type() {
+        let json = array_of(|i| format!(r#"{{"k{i}":1}}"#));
+        assert_eq!(json_ty(&json), Ty::array(keys()));
+    }
+
+    #[test]
+    fn nested_objects_with_distinct_keys_merge_into_one_element_type() {
+        let json = array_of(|i| format!(r#"{{"a":{{"k{i}":1}}}}"#));
+        assert_eq!(json_ty(&json), Ty::array(Ty::strict([("a", keys())])));
+    }
+
+    #[test]
+    fn nested_arrays_of_objects_merge_into_one_element_type() {
+        let json = array_of(|i| format!(r#"[{{"k{i}":1}}]"#));
+        assert_eq!(json_ty(&json), Ty::array(Ty::array(keys())));
     }
 }

@@ -548,6 +548,33 @@ fn a_document_at_the_depth_limit_dumps_on_a_two_mebibyte_stack() {
     );
 }
 
+// Building the tree takes time linear in the size of the input. Walking the
+// open collections for each scalar took over 20 seconds here in a debug
+// build, and the parse alone takes about a second.
+#[test]
+fn many_scalars_at_the_depth_limit_build_in_linear_time() {
+    const SCALARS: usize = 200_000;
+    let text = format!(
+        "{}{}{}\n",
+        "[".repeat(MAX_DEPTH),
+        "1,".repeat(SCALARS),
+        "]".repeat(MAX_DEPTH)
+    );
+    let file = source(&text);
+    let started = std::time::Instant::now();
+    let parsed = parse(&file);
+    let elapsed = started.elapsed();
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    assert_eq!(
+        parsed.document.unwrap().nodes().count(),
+        MAX_DEPTH + SCALARS
+    );
+    assert!(
+        elapsed < std::time::Duration::from_secs(10),
+        "building the tree took {elapsed:?}"
+    );
+}
+
 fn diagnostics(text: &str) -> String {
     let file = source(text);
     let mut parsed = parse(&file);
@@ -582,4 +609,82 @@ fn a_control_character_is_reported_at_its_position() {
         diagnostics("on: push\njobs:\n  a:\n    runs-on: x\u{1}\n"),
         "4:15-4:16: could not parse as YAML: control characters are not allowed [yaml-syntax-error]\n"
     );
+}
+
+// The reference reports `4:13` with a snippet of line 4: go-yaml's position
+// of an error with a context is the context mark, here the opening quote,
+// with a 0-based column (docs/differences.md#yaml-error-positions).
+#[test]
+fn an_unclosed_quoted_scalar_is_reported_at_its_opening_quote() {
+    assert_eq!(
+        diagnostics(
+            "on: push\njobs:\n  test:\n    runs-on: \"ubuntu\n    steps:\n      - run: echo\n# end\n"
+        ),
+        "4:14-4:15: could not parse as YAML: found unexpected end of stream [yaml-syntax-error]\n"
+    );
+    assert_eq!(
+        diagnostics("on: push\njobs:\n  test:\n    runs-on: 'ubuntu\n    steps:\n---\n"),
+        "4:14-4:15: could not parse as YAML: found unexpected document indicator [yaml-syntax-error]\n"
+    );
+}
+
+// An escape error in a quoted scalar has a context too, but it is reported
+// at the escape's backslash, which says more than the opening quote.
+#[test]
+fn an_unknown_escape_is_reported_at_the_escape() {
+    assert_eq!(
+        diagnostics("a: \"x\\qy\"\n"),
+        "1:6-1:7: could not parse as YAML: found unknown escape character [yaml-syntax-error]\n"
+    );
+}
+
+#[test]
+fn a_comment_after_a_dash_attaches_to_the_item_that_follows() {
+    let file = source("steps:\n  - # c\n    run: a\n  - # d\n    uses: b\n");
+    let document = parse(&file).document.unwrap();
+    assert_eq!(
+        attachments(&file, &document),
+        owned(&[
+            ("# c", Some("mapping at 3:5")),
+            ("# d", Some("mapping at 5:5")),
+        ])
+    );
+}
+
+#[test]
+fn a_comment_after_indicators_attaches_to_the_node_that_follows() {
+    for (text, want) in [
+        ("? # c\n  a\n: b\n", "scalar \"a\" at 2:3"),
+        ("- - # c\n    x\n", "scalar \"x\" at 2:5"),
+        ("\u{feff}- # c\n  x\n", "scalar \"x\" at 2:3"),
+        ("- # c\n  - x\n", "sequence at 2:3"),
+        ("- # c\n- b\n", "scalar \"\" at 1:2"),
+    ] {
+        let file = source(text);
+        let document = parse(&file).document.unwrap();
+        assert_eq!(
+            attachments(&file, &document),
+            owned(&[("# c", Some(want))]),
+            "{text:?}"
+        );
+    }
+}
+
+#[test]
+fn a_comment_after_a_node_or_a_document_marker_keeps_the_trailing_rule() {
+    for (text, want) in [
+        ("- a # c\n", Some("scalar \"a\" at 1:3")),
+        ("- -a # c\n", Some("scalar \"-a\" at 1:3")),
+        // `---` is not three `-` indicators, and no node starts before the
+        // comment on its line.
+        ("--- # c\na\n", None),
+    ] {
+        let file = source(text);
+        let document = parse(&file).document.unwrap();
+        assert_eq!(
+            attachments(&file, &document),
+            owned(&[("# c", want)]),
+            "{text:?}"
+        );
+    }
 }

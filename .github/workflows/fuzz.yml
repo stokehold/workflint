@@ -68,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [expr_check, expr_lex, expr_parse, glob, metadata, render, syntax, yaml_events, yaml_tree]
+        target: [expr_check, expr_json, expr_lex, expr_parse, glob, metadata, render, syntax, yaml_events, yaml_tree]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

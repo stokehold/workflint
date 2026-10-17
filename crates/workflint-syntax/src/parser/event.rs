@@ -25,7 +25,7 @@ use crate::{
 };
 
 /// A string or a sequence of strings, such as a webhook filter.
-type Strings<'a> = Field<'a, Arc<[Template<'a>]>>;
+type Strings<'a> = Field<'a, Arc<[Option<Template<'a>>]>>;
 
 /// The filters of a webhook event, parsed before the event is built so that
 /// the body of an event whose key is not a scalar is still checked.
@@ -242,28 +242,29 @@ impl<'a> Parser<'a, '_> {
     ///
     /// A scalar names one event and a sequence names one per item, each
     /// with no configuration. A mapping names one per key, with its
-    /// configuration under the key. Any other node, which can only be an
-    /// alias that stays unresolved, is invalid, and the reference then
-    /// also reports `on` as missing.
+    /// configuration under the key. An event that is reported and not
+    /// built is kept as `None`. Any other node, which can only be an alias
+    /// that stays unresolved, is invalid, and the reference then also
+    /// reports `on` as missing.
     pub(super) fn parse_events(
         &mut self,
         key: Option<Str<'a>>,
         node: &'a Node,
-    ) -> Field<'a, Arc<[Event<'a>]>> {
+    ) -> Field<'a, Arc<[Option<Event<'a>>]>> {
         let span = node.span;
         let mut events = Vec::new();
         match &node.kind {
-            NodeKind::Scalar(_) => events.extend(self.parse_event_with_no_config(node)),
+            NodeKind::Scalar(_) => events.push(self.parse_event_with_no_config(node)),
             NodeKind::Sequence(_) => {
                 for &id in self.check_sequence("on", node, false).unwrap_or_default() {
                     if let Some(item) = self.node(id) {
-                        events.extend(self.parse_event_with_no_config(item));
+                        events.push(self.parse_event_with_no_config(item));
                     }
                 }
             }
             NodeKind::Mapping(_) => {
                 for entry in self.parse_mapping(Label::Section("on"), node, false, true) {
-                    events.extend(self.parse_event(&entry.id, entry.key, Some(entry.value)));
+                    events.push(self.parse_event(&entry.id, entry.key, Some(entry.value)));
                 }
             }
             NodeKind::Alias(_) => {
@@ -299,11 +300,12 @@ impl<'a> Parser<'a, '_> {
     /// Builds the event `id`, named by `name`, and parses `body`, the value
     /// under its key in the mapping form.
     ///
+    /// Returns `None`, after reporting, for an event that is not built.
     /// `schedule` with no body is an error, and `schedule` with a body that
-    /// is not a sequence with items is dropped, as in the reference. An
+    /// is not a sequence with items is not built, as in the reference. An
     /// event whose key is not a scalar is a webhook event with the name
-    /// `""` in the reference. Its body is checked, but the event is not
-    /// built, because it has no string to name it.
+    /// `""` in the reference, which its `events` rule reports again as an
+    /// unknown event. Its body is checked, but the event is not built.
     fn parse_event(
         &mut self,
         id: &str,
@@ -405,8 +407,9 @@ impl<'a> Parser<'a, '_> {
     /// Parses `node` as a sequence of `schedule` entries. The reference's
     /// `parseScheduleEvent`.
     ///
-    /// The event is dropped if `node` is not a sequence with items. An entry
-    /// is dropped unless its `cron` is a valid string.
+    /// The event is not built if `node` is not a sequence with items. An
+    /// entry is dropped unless its `cron` is a valid string, as in the
+    /// reference, so no rule sees it.
     fn parse_schedule(&mut self, name: Str<'a>, node: &'a Node) -> Option<ScheduleEvent<'a>> {
         const ELEMENT: &str = "element of \"schedule\" section";
         let items = self.check_sequence("schedule", node, false)?;
@@ -428,7 +431,7 @@ impl<'a> Parser<'a, '_> {
         }
         Some(ScheduleEvent {
             name,
-            body: Some(node.span),
+            body: node.span,
             schedules: schedules.into(),
         })
     }

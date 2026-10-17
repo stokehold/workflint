@@ -107,6 +107,36 @@ fn a_run_step_has_run_shell_and_working_directory() {
 }
 
 #[test]
+fn an_empty_or_non_scalar_shell_is_invalid() {
+    // The reference keeps both as `""`, and its `shell-name` rule reports
+    // `shell name "" is invalid` too.
+    let text =
+        format!("{PREFIX}      - run: a\n        shell: ''\n      - run: b\n        shell: [x]\n");
+    let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+    let document = workflint_yaml::parse(&file).document.unwrap();
+    let parsed = parse(&file, &document);
+    assert_eq!(
+        render(&file, parsed.diagnostics),
+        [
+            "7:16: string should not be empty [empty-string]",
+            r#"9:16: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
+        ]
+    );
+    let job = &parsed
+        .workflow
+        .jobs
+        .value()
+        .unwrap()
+        .get("test")
+        .unwrap()
+        .value;
+    for step in job.steps.value().unwrap().iter() {
+        let shell = &run(step).shell;
+        assert!(shell.is_present() && !shell.is_valid(), "{shell:?}");
+    }
+}
+
+#[test]
 fn an_action_step_has_uses_and_with_with_case_insensitive_keys() {
     let steps = "      - uses: actions/checkout@v6
         with:

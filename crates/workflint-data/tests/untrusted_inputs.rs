@@ -1,13 +1,15 @@
 //! Checks the untrusted input paths against the reference's `BuiltinUntrustedInputs` in the
-//! vendored `expr_insecure.go`, and ports `TestExprInsecureBuiltinUntrustedInputs` from
-//! `expr_insecure_test.go`.
+//! vendored `expr_insecure.go`, the safe functions against its `isSafeFuncCall`, and ports
+//! `TestExprInsecureBuiltinUntrustedInputs` from `expr_insecure_test.go`.
 
 #![allow(clippy::panic)]
 
 mod go_source;
 
-use go_source::builtin_untrusted_inputs;
-use workflint_data::{UNTRUSTED_INPUTS, UntrustedInput};
+use go_source::{builtin_untrusted_inputs, safe_func_calls};
+use workflint_data::{
+    SAFE_FUNCTIONS, TypeDesc, UNTRUSTED_INPUTS, UntrustedInput, builtin_function,
+};
 
 /// The reference's `testAllUntrustedInputs`.
 const ALL_UNTRUSTED_INPUTS: [&str; 20] = [
@@ -60,6 +62,30 @@ fn workflint_paths() -> Vec<String> {
 #[test]
 fn untrusted_inputs_match_the_reference_table() {
     assert_eq!(workflint_paths(), builtin_untrusted_inputs());
+}
+
+#[test]
+fn safe_functions_match_the_reference_is_safe_func_call() {
+    let mut reference = safe_func_calls();
+    reference.sort();
+    assert_eq!(SAFE_FUNCTIONS, reference);
+}
+
+/// A function is safe because its result is a boolean, which cannot inject code.
+#[test]
+fn every_safe_function_returns_bool() {
+    for name in SAFE_FUNCTIONS {
+        let Some(function) = builtin_function(name) else {
+            panic!("{name} is not a built-in function");
+        };
+        assert!(
+            function
+                .overloads
+                .iter()
+                .all(|overload| overload.ret == TypeDesc::Bool),
+            "{name}"
+        );
+    }
 }
 
 #[test]

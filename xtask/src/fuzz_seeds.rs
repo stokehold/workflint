@@ -10,7 +10,10 @@
 //! The targets that read the text after `${{` get each line of the
 //! reference's `expressions.txt` followed by `}}`, the text after each `${{`
 //! in the YAML files of the vendored test data, and the fuzz regression inputs
-//! of `workflint-expr`.
+//! of `workflint-expr`. The target that reads a JSON literal gets the value of
+//! each `fromJSON('…')` string literal in `expressions.txt` and in the YAML
+//! files of the vendored test data, and the JSON fuzz regression inputs of
+//! `workflint-expr`.
 
 use std::fs::{self, File};
 use std::io::Read as _;
@@ -33,6 +36,10 @@ pub(crate) const TARGETS: &[&str] = &[
 /// The fuzz targets in `fuzz/fuzz_targets/` that read the text after `${{`.
 /// Each gets every expression seed.
 pub(crate) const EXPRESSION_TARGETS: &[&str] = &["expr_check", "expr_lex", "expr_parse"];
+
+/// The fuzz targets in `fuzz/fuzz_targets/` that read the text of a JSON
+/// literal. Each gets every JSON seed.
+pub(crate) const JSON_TARGETS: &[&str] = &["expr_json"];
 
 /// The vendored reference test data, relative to the repository root.
 const FIXTURES: &str = "tests/conformance/actionlint/testdata";
@@ -65,6 +72,10 @@ const EXPRESSIONS: &str = "tests/conformance/actionlint/testdata/bench/expressio
 /// repository root.
 const EXPRESSION_REGRESSIONS: &str = "crates/workflint-expr/tests/fuzz-regressions";
 
+/// The fuzz regression inputs of the JSON target, relative to the repository
+/// root.
+const JSON_REGRESSIONS: &str = "crates/workflint-expr/tests/json-fuzz-regressions";
+
 /// The corpus directories, relative to the repository root. `cargo fuzz run
 /// <target>` reads `fuzz/corpus/<target>/` by default.
 const CORPUS: &str = "fuzz/corpus";
@@ -77,11 +88,17 @@ struct Seed {
 }
 
 /// Collects the seeds under `root` and writes them into the corpus directory
-/// of every target in [`TARGETS`] and [`EXPRESSION_TARGETS`].
+/// of every target in [`TARGETS`], [`EXPRESSION_TARGETS`], and
+/// [`JSON_TARGETS`].
 pub(crate) fn run(root: &Path) -> Result<()> {
     let seeds = collect(root)?;
     let expressions = collect_expressions(root)?;
-    for (targets, seeds) in [(TARGETS, &seeds), (EXPRESSION_TARGETS, &expressions)] {
+    let json = collect_json(root)?;
+    for (targets, seeds) in [
+        (TARGETS, &seeds),
+        (EXPRESSION_TARGETS, &expressions),
+        (JSON_TARGETS, &json),
+    ] {
         for target in targets {
             let dir = root.join(CORPUS).join(target);
             write(&dir, seeds)?;
@@ -161,6 +178,78 @@ fn collect_expressions(root: &Path) -> Result<Vec<Seed>> {
     }
     check_unique(&seeds)?;
     Ok(seeds)
+}
+
+/// Reads the JSON seeds from the sources under `root`, in a fixed order: the
+/// `fromJSON('…')` literals of `expressions.txt` and of the YAML files of the
+/// vendored test data, and the JSON fuzz regression inputs. Fails if a source
+/// is missing or two seeds would get the same file name.
+fn collect_json(root: &Path) -> Result<Vec<Seed>> {
+    let path = root.join(EXPRESSIONS);
+    let text =
+        fs::read_to_string(&path).with_context(|| format!("cannot read {}", path.display()))?;
+    let mut seeds: Vec<Seed> = json_literals_in(&text)
+        .into_iter()
+        .enumerate()
+        .map(|(index, literal)| Seed {
+            name: format!("json-expression-{:04}", index + 1),
+            contents: literal.into_bytes(),
+        })
+        .collect();
+    let fixtures = root.join(FIXTURES);
+    for path in files_under(&fixtures)? {
+        if !is_yaml(&path) {
+            continue;
+        }
+        let file = seed_from_file("json-fixture", &fixtures, &path)?;
+        let text = String::from_utf8_lossy(&file.contents);
+        for (index, literal) in json_literals_in(&text).into_iter().enumerate() {
+            seeds.push(Seed {
+                name: format!("{}-{}", file.name, index + 1),
+                contents: literal.into_bytes(),
+            });
+        }
+    }
+    for path in files_under(&root.join(JSON_REGRESSIONS))? {
+        seeds.push(seed_from_file(
+            "regression",
+            &root.join(JSON_REGRESSIONS),
+            &path,
+        )?);
+    }
+    check_unique(&seeds)?;
+    Ok(seeds)
+}
+
+/// The value of each `fromJSON('…')` string literal in `text`, with each `''`
+/// turned into `'`. The function name matches in any case. The tests of
+/// `workflint-expr` in `real_world.rs` cut the literals the same way.
+fn json_literals_in(text: &str) -> Vec<String> {
+    const CALL: &str = "fromjson('";
+    let lower = text.to_ascii_lowercase();
+    let mut found = Vec::new();
+    let mut rest = 0;
+    while let Some(start) = lower[rest..].find(CALL) {
+        let mut literal = String::new();
+        let mut chars = text[rest + start + CALL.len()..].char_indices().peekable();
+        let mut end = None;
+        while let Some((i, c)) = chars.next() {
+            if c != '\'' {
+                literal.push(c);
+            } else if chars.next_if(|(_, c)| *c == '\'').is_some() {
+                literal.push('\'');
+            } else {
+                end = Some(rest + start + CALL.len() + i + 1);
+                break;
+            }
+        }
+        let Some(end) = end else {
+            break;
+        };
+        found.push(literal);
+        rest = end;
+    }
+    found
 }
 
 /// Fails if two seeds have the same file name.
@@ -343,8 +432,14 @@ mod tests {
             &format!("{FIXTURES}/c.yml"),
             "x: ${{ a }} b\ny: ${{ c\n",
         );
-        put(root, EXPRESSIONS, "a.b\n!c\n");
+        put(
+            root,
+            &format!("{FIXTURES}/d.yml"),
+            "x: ${{ fromJSON('[1]') && FromJson('{\"a\":''b''}') }}\n",
+        );
+        put(root, EXPRESSIONS, "a.b\n!c\nfromJSON('null')\n");
         put(root, &format!("{EXPRESSION_REGRESSIONS}/empty"), "");
+        put(root, &format!("{JSON_REGRESSIONS}/trailing-comma"), "[1,]");
         dir
     }
 
@@ -367,6 +462,10 @@ mod tests {
         [
             ("fixture-b.yml", "on: pull_request\n"),
             ("fixture-c.yml", "x: ${{ a }} b\ny: ${{ c\n"),
+            (
+                "fixture-d.yml",
+                "x: ${{ fromJSON('[1]') && FromJson('{\"a\":''b''}') }}\n",
+            ),
             ("fixture-examples-a.yaml", "on: push\n"),
             ("realworld-x_y_.github_workflows_ci.yml", "jobs: {}\n"),
             ("regression-tab-after-key", "a:\t\n"),
@@ -391,8 +490,13 @@ mod tests {
         [
             ("expression-0001", "a.b}}"),
             ("expression-0002", "!c}}"),
+            ("expression-0003", "fromJSON('null')}}"),
             ("fixture-c.yml-1", " a }} b\n"),
             ("fixture-c.yml-2", " c\n"),
+            (
+                "fixture-d.yml-1",
+                " fromJSON('[1]') && FromJson('{\"a\":''b''}') }}\n",
+            ),
             ("regression-empty", ""),
         ]
         .map(|(name, contents)| (name.to_owned(), contents.to_owned()))
@@ -410,6 +514,30 @@ mod tests {
                 "{target}"
             );
         }
+    }
+
+    #[test]
+    fn every_json_target_gets_the_json_literals_and_the_json_regressions() {
+        let dir = repository();
+        run(dir.path()).unwrap();
+        let expected: Vec<(String, String)> = [
+            ("json-expression-0001", "null"),
+            ("json-fixture-d.yml-1", "[1]"),
+            ("json-fixture-d.yml-2", "{\"a\":'b'}"),
+            ("regression-trailing-comma", "[1,]"),
+        ]
+        .map(|(name, contents)| (name.to_owned(), contents.to_owned()))
+        .to_vec();
+        for target in JSON_TARGETS {
+            assert_eq!(corpus(dir.path(), target), expected, "{target}");
+        }
+    }
+
+    #[test]
+    fn a_json_literal_ends_at_a_quote_that_is_not_doubled() {
+        let text =
+            "fromJSON('{\"a\":''b''}') && FROMJSON( 'x') || fromjson('[1]') && fromJSON('open";
+        assert_eq!(json_literals_in(text), ["{\"a\":'b'}", "[1]"]);
     }
 
     #[test]
@@ -443,7 +571,12 @@ mod tests {
             .filter(|name| *name != "workflint-fuzz")
             .collect();
         bins.sort_unstable();
-        let mut targets: Vec<&str> = TARGETS.iter().chain(EXPRESSION_TARGETS).copied().collect();
+        let mut targets: Vec<&str> = TARGETS
+            .iter()
+            .chain(EXPRESSION_TARGETS)
+            .chain(JSON_TARGETS)
+            .copied()
+            .collect();
         targets.sort_unstable();
         assert_eq!(bins, targets);
 

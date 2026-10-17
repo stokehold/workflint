@@ -50,7 +50,8 @@ impl Section for JobBody<'static> {
 ///
 /// `runs-on`, `environment`, `outputs`, `env`, `defaults`, `steps`,
 /// `timeout-minutes`, `continue-on-error`, `container`, and `services` are
-/// only for a job with steps. The reference does not count `services`
+/// only for a job with steps. The reference does not count `services`, so
+/// workflint reports it but keeps the call
 /// (`docs/differences.md#reusable-call-services`). `uses`, `with`, and
 /// `secrets` are only for a job that calls a reusable workflow.
 static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
@@ -257,7 +258,8 @@ impl<'a> Parser<'a, '_> {
     ///
     /// After the keys come the checks of research section 3.6. With `uses`,
     /// each key that only a job with steps may have is reported, and the
-    /// job then has no [`workflow_call`](Job::workflow_call). Without
+    /// job then has no [`workflow_call`](Job::workflow_call), unless that
+    /// key is `services` alone. Without
     /// `uses`, a missing `runs-on` or `steps` is reported at the job ID, and
     /// each of `with` and `secrets` is reported at its key. An invalid
     /// `steps` counts as missing, as in the reference. The reference
@@ -288,7 +290,9 @@ impl<'a> Parser<'a, '_> {
                     ),
                 );
             }
-            if steps_only.is_empty() {
+            // The reference keeps the call when `services` is the only such
+            // key, because it does not count `services`.
+            if steps_only.iter().all(|key| key.value() == "services") {
                 job.workflow_call = Some(call);
             }
             return job;
@@ -363,38 +367,19 @@ impl<'a> Parser<'a, '_> {
     /// of labels, as the reference's `parseStringOrStringSequence` with
     /// `allowEmpty` and `allowElemEmpty` false.
     ///
-    /// An empty label is reported and kept, as in the reference, so the
-    /// `runner-label` rule reports it as an unknown label too. A label that
-    /// is not a scalar is reported and left out.
+    /// A label that is empty or not a scalar is reported and kept as
+    /// `None`. The reference keeps it as `""`, and its `runner-label` rule
+    /// then reports it again as an unknown label.
     fn parse_labels(
         &mut self,
         key: Option<Str<'a>>,
         section: &str,
         node: &'a Node,
-    ) -> Value<'a, Arc<[Template<'a>]>> {
-        let span = node.span;
-        let mut labels = Vec::new();
-        if let Some(label) = Str::new(node) {
-            self.check_string(node, false);
-            labels.push(self.template(label));
-        } else {
-            let Some(items) = self.check_sequence(section, node, false) else {
-                return Value::Invalid { key, span };
-            };
-            for &id in items {
-                let Some(item) = self.node(id) else {
-                    continue;
-                };
-                self.check_string(item, false);
-                if let Some(label) = Str::new(item) {
-                    labels.push(self.template(label));
-                }
-            }
-        }
-        Value::Literal {
-            key,
-            span,
-            value: labels.into(),
+    ) -> Value<'a, Arc<[Option<Template<'a>>]>> {
+        match self.parse_template_or_template_sequence(key, section, node, false, false) {
+            Field::Valid { key, span, value } => Value::Literal { key, span, value },
+            Field::Invalid { key, span } => Value::Invalid { key, span },
+            Field::Absent => Value::Absent,
         }
     }
 

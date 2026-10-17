@@ -419,22 +419,25 @@ jobs:
 }
 
 #[test]
-fn an_empty_label_is_reported_and_kept() {
+fn an_empty_or_non_scalar_label_is_kept_as_an_invalid_entry() {
     let file = SourceFile::new(
         FileId::new(0),
         "test.yml",
-        "on: push\njobs:\n  test:\n    runs-on: [x64, '']\n    steps: [{run: a}]\n",
+        "on: push\njobs:\n  test:\n    runs-on: [x64, '', [y]]\n    steps: [{run: a}]\n",
     )
     .unwrap();
     let document = workflint_yaml::parse(&file).document.unwrap();
     let parsed = parse(&file, &document);
     let runner = job(&parsed.workflow, "test").runs_on.value().unwrap();
-    // The `runner-label` rule reports it as an unknown label, as in the
-    // reference.
-    assert_eq!(strings(runner.labels.literal().unwrap()), ["x64", ""]);
+    // The reference keeps both as `""`, and its `runner-label` rule reports
+    // them again as unknown labels.
+    assert_eq!(strings(runner.labels.literal().unwrap()), ["x64", "-", "-"]);
     assert_eq!(
         render(&file, parsed.diagnostics),
-        ["4:20: string should not be empty [empty-string]"]
+        [
+            "4:20: string should not be empty [empty-string]",
+            r#"4:24: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#
+        ]
     );
 }
 
@@ -911,6 +914,42 @@ jobs:
         for entry in jobs(workflow) {
             assert!(entry.value.workflow_call.is_none(), "{}", entry.key.value());
         }
+    });
+}
+
+#[test]
+fn a_call_with_services_is_reported_and_keeps_its_call() {
+    let text = "\
+on: push
+jobs:
+  services:
+    uses: ./w.yml
+    services: {redis: {image: redis}}
+    with: {a: b}
+  both:
+    uses: ./w.yml
+    services: {redis: {image: redis}}
+    runs-on: x
+";
+    assert_eq!(
+        check(text),
+        [
+            format!(
+                r#"5:5: when a reusable workflow is called with "uses", "services" is not available. {ALLOWED_CALL_KEYS} in job "services" [invalid-reusable-call-key]"#
+            ),
+            format!(
+                r#"9:5: when a reusable workflow is called with "uses", "services" is not available. {ALLOWED_CALL_KEYS} in job "both" [invalid-reusable-call-key]"#
+            ),
+            format!(
+                r#"10:5: when a reusable workflow is called with "uses", "runs-on" is not available. {ALLOWED_CALL_KEYS} in job "both" [invalid-reusable-call-key]"#
+            ),
+        ]
+    );
+    parsed_with_errors(text, |workflow| {
+        let call = job(workflow, "services").workflow_call.as_ref().unwrap();
+        assert_eq!(keyed_strings(call.inputs.value().unwrap()), ["a=b"]);
+        assert!(job(workflow, "services").services.literal().is_some());
+        assert!(job(workflow, "both").workflow_call.is_none());
     });
 }
 

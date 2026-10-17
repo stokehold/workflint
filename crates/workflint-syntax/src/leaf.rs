@@ -92,10 +92,21 @@ impl<'a> Str<'a> {
     /// The span covers the source of each character in the range, so a
     /// character that an escape produces is the whole escape, and a range
     /// in a block scalar is on its own line. An empty range is where its
-    /// offset maps to.
+    /// offset maps to. At the end of the value, that is just after the last
+    /// character before the trailing line feeds. The source of those line
+    /// feeds ends on a later line, so an error at the end of a `|` or `>`
+    /// block would otherwise point at the line after the block.
     #[must_use]
     pub fn source_span(&self, file: &SourceFile, range: Range<usize>) -> Option<Span> {
-        Some(self.source_map(file)?.source_span(range))
+        let map = self.source_map(file)?;
+        let value = self.value();
+        let range = if range.start >= value.len() && range.end <= range.start {
+            let end = value.trim_end_matches('\n').len();
+            end..end
+        } else {
+            range
+        };
+        Some(map.source_span(range))
     }
 }
 

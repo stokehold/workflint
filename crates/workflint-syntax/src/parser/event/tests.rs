@@ -30,7 +30,10 @@ fn check(on: &str) -> Vec<String> {
         match &workflow.on {
             Field::Valid { value, .. } => {
                 for event in value.iter() {
-                    describe(file, event, &mut lines);
+                    match event {
+                        Some(event) => describe(file, event, &mut lines),
+                        None => lines.push("invalid event".to_owned()),
+                    }
                 }
             }
             Field::Invalid { .. } => lines.push("invalid".to_owned()),
@@ -263,6 +266,9 @@ fn a_sequence_names_an_event_per_item_at_the_item() {
             r#"repository "repository_dispatch" at 1:37"#,
             r#"call "workflow_call" at 1:58"#,
             r#"image "image_version" at 1:73"#,
+            "invalid event",
+            "invalid event",
+            "invalid event",
         ]
     );
 }
@@ -271,22 +277,35 @@ fn a_sequence_names_an_event_per_item_at_the_item() {
 fn schedule_needs_a_mapping_to_configure_it() {
     assert_eq!(
         check("on: schedule\n"),
-        ["1:5: schedule event must be configured with mapping [schedule-without-config]"]
+        [
+            "1:5: schedule event must be configured with mapping [schedule-without-config]",
+            "invalid event",
+        ]
     );
     assert_eq!(
         check("on:\n  - push\n  - schedule\n"),
         [
             "3:5: schedule event must be configured with mapping [schedule-without-config]",
             r#"webhook "push" at 2:5"#,
+            "invalid event",
         ]
     );
 }
 
 #[test]
-fn an_empty_on_names_no_event() {
-    let cases: [(&str, &str); 4] = [
+fn an_empty_on_string_is_one_invalid_event() {
+    let cases: [(&str, &str); 2] = [
         ("on:\n", "1:4: string should not be empty [empty-string]"),
         ("on: ''\n", "1:5: string should not be empty [empty-string]"),
+    ];
+    for (on, want) in cases {
+        assert_eq!(check(on), [want, "invalid event"], "{on:?}");
+    }
+}
+
+#[test]
+fn an_empty_on_collection_names_no_event() {
+    let cases: [(&str, &str); 2] = [
         (
             "on: []\n",
             r#"1:5: "on" section should not be empty [empty-section]"#,
@@ -339,7 +358,7 @@ fn a_mapping_names_an_event_per_key_at_the_key() {
 }
 
 #[test]
-fn an_event_key_that_is_not_a_scalar_is_reported_and_its_body_parsed() {
+fn an_event_key_that_is_not_a_scalar_is_an_invalid_event_with_its_body_parsed() {
     assert_eq!(
         check(
             "on:\n  [push]: x\n  workflow_call:\n    inputs:\n      [a]: {}\n    outputs:\n      {b: c}: {}\n"
@@ -351,7 +370,18 @@ fn an_event_key_that_is_not_a_scalar_is_reported_and_its_body_parsed() {
             r#"5:7: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
             r#"7:7: "value" is missing at "" output of workflow_call event [missing-required-key]"#,
             r#"7:7: expected scalar node for string value but found mapping node with "!!map" tag [unexpected-node-kind]"#,
+            "invalid event",
             r#"call "workflow_call" at 3:3 body 4:5 inputs={} outputs={}"#,
+        ]
+    );
+    // The reference names the event `""`, and its `events` rule reports
+    // `unknown Webhook event ""` too.
+    assert_eq!(
+        check("on: {[a]: x}\n"),
+        [
+            r#"1:6: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
+            r#"1:11: "" section is scalar node but mapping node is expected [unexpected-node-kind]"#,
+            "invalid event",
         ]
     );
 }
@@ -386,7 +416,7 @@ fn webhook_filters_must_not_be_empty() {
             r#"12:17: "pull_request" section is scalar node but mapping node is expected [unexpected-node-kind]"#,
             r#"13:11: "issues" section is sequence node but mapping node is expected [unexpected-node-kind]"#,
             r#"16:5: key "types" is duplicated in "release" section. previously defined at line:15,col:5 [duplicate-key]"#,
-            r#"webhook "push" at 2:3 body 3:5 types=invalid branches=invalid branches-ignore=[] tags=invalid tags-ignore=invalid paths=[] paths-ignore=[~] workflows=invalid"#,
+            r#"webhook "push" at 2:3 body 3:5 types=[-] branches=invalid branches-ignore=[-] tags=invalid tags-ignore=[-] paths=[-] paths-ignore=[~] workflows=invalid"#,
             r#"webhook "pull_request" at 12:3 body 12:17"#,
             r#"webhook "issues" at 13:3 body 13:11"#,
             r#"webhook "release" at 14:3 body 15:5 types=[a]"#,
@@ -405,6 +435,20 @@ fn schedule_entries_have_cron_and_timezone() {
             r#"  entry at 3:7 cron="0 0 * * *""#,
             r#"  entry at 4:7 cron="*/5 * * * *" timezone="Europe/Oslo""#,
         ]
+    );
+}
+
+#[test]
+fn schedule_body_is_the_span_of_its_sequence() {
+    with_workflow(
+        "on:\n  schedule:\n    - cron: '0 0 * * *'\n",
+        |file, workflow, _| {
+            let Some(Some(Event::Schedule(schedule))) = workflow.on.value().unwrap().first() else {
+                panic!("no schedule event");
+            };
+            let body: Span = schedule.body;
+            assert_eq!(at(file, body), "3:5");
+        },
     );
 }
 
@@ -429,7 +473,7 @@ fn schedule_entries_without_a_valid_cron_are_dropped() {
 }
 
 #[test]
-fn schedule_that_is_not_a_sequence_with_items_is_dropped() {
+fn schedule_that_is_not_a_sequence_with_items_is_an_invalid_event() {
     let cases: [(&str, &str); 3] = [
         (
             "on:\n  schedule: {cron: x}\n",
@@ -445,7 +489,7 @@ fn schedule_that_is_not_a_sequence_with_items_is_dropped() {
         ),
     ];
     for (on, want) in cases {
-        assert_eq!(check(on), [want], "{on:?}");
+        assert_eq!(check(on), [want, "invalid event"], "{on:?}");
     }
 }
 
@@ -473,7 +517,8 @@ fn workflow_dispatch_input_names_are_case_insensitive() {
         "on:\n  workflow_dispatch:\n    inputs:\n      MyInput:\n        type: string\n",
         |_, workflow, diagnostics| {
             assert_eq!(diagnostics, Vec::<String>::new());
-            let Some(Event::WorkflowDispatch(event)) = workflow.on.value().unwrap().first() else {
+            let Some(Some(Event::WorkflowDispatch(event))) = workflow.on.value().unwrap().first()
+            else {
                 panic!("not workflow_dispatch");
             };
             let inputs = event.inputs.value().unwrap();
@@ -506,7 +551,7 @@ fn workflow_dispatch_inputs_report_invalid_keys_and_list_all_five() {
             r#"21:5: expected "inputs" key for "workflow_dispatch" section but got "foo" [unexpected-key]"#,
             r#"dispatch "workflow_dispatch" at 2:3 body 3:5 inputs={a, B, c, d}"#,
             r#"  input "a" at 4:7 description=invalid required=invalid default=invalid type=invalid options=invalid"#,
-            r#"  input "B" at 10:7 required=invalid type=invalid options=[]"#,
+            r#"  input "B" at 10:7 required=invalid type=invalid options=[-, -]"#,
             r#"  input "c" at 16:7 type=invalid options=invalid"#,
             r#"  input "d" at 20:7"#,
         ]
@@ -557,7 +602,7 @@ fn repository_dispatch_types_must_not_be_empty() {
         check("on:\n  repository_dispatch:\n    types:\n"),
         [
             "3:11: string should not be empty [empty-string]",
-            r#"repository "repository_dispatch" at 2:3 body 3:5 types=invalid"#,
+            r#"repository "repository_dispatch" at 2:3 body 3:5 types=[-]"#,
         ]
     );
 }
@@ -685,7 +730,7 @@ fn image_version_names_and_versions_are_non_empty_sequences() {
             r#"3:12: "names" section must be sequence node but got scalar node with "!!str" tag [unexpected-node-kind]"#,
             "4:16: string should not be empty [empty-string]",
             r#"5:5: unexpected key "entrypoint" for "image_version" section. expected one of "names", "versions" [unexpected-key]"#,
-            r#"image "image_version" at 2:3 body 3:5 names=invalid versions=[]"#,
+            r#"image "image_version" at 2:3 body 3:5 names=invalid versions=[-]"#,
         ]
     );
     assert_eq!(
@@ -694,6 +739,59 @@ fn image_version_names_and_versions_are_non_empty_sequences() {
             r#"3:12: "names" section should not be empty [empty-section]"#,
             r#"4:14: "versions" section must be sequence node but got scalar node with "!!null" tag [unexpected-node-kind]"#,
             r#"image "image_version" at 2:3 body 3:5 names=invalid versions=invalid"#,
+        ]
+    );
+}
+
+#[test]
+fn an_invalid_activity_type_is_kept_as_an_invalid_entry() {
+    // The reference keeps each of these as the type `""`, and its `events`
+    // rule reports `invalid activity type ""` too.
+    let cases: [(&str, &str); 4] = [
+        (
+            "on: {pull_request: {types: [[x]]}}\n",
+            r#"1:29: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
+        ),
+        (
+            "on: {pull_request: {types: ['']}}\n",
+            "1:29: string should not be empty [empty-string]",
+        ),
+        (
+            "on: {pull_request: {types: ''}}\n",
+            "1:28: string should not be empty [empty-string]",
+        ),
+        (
+            "on: {pull_request: {types: }}\n",
+            "1:28: string should not be empty [empty-string]",
+        ),
+    ];
+    for (on, want) in cases {
+        let events = check(on);
+        assert_eq!(events[0], want, "{on:?}");
+        assert!(events[1].ends_with(" types=[-]"), "{on:?}: {events:?}");
+    }
+}
+
+#[test]
+fn an_invalid_dispatch_option_is_kept_as_an_invalid_entry() {
+    // With `options` written, the reference's `events` rule reports options
+    // on a non-choice input, and does not report a choice input as having
+    // no options.
+    let on = |input: &str| format!("on:\n  workflow_dispatch:\n    inputs:\n      i: {input}\n");
+    assert_eq!(
+        check(&on("{type: string, options: [[x]]}")),
+        [
+            r#"4:35: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
+            r#"dispatch "workflow_dispatch" at 2:3 body 3:5 inputs={i}"#,
+            r#"  input "i" at 4:7 type=String options=[-]"#,
+        ]
+    );
+    assert_eq!(
+        check(&on("{type: choice, options: ['']}")),
+        [
+            "4:35: string should not be empty [empty-string]",
+            r#"dispatch "workflow_dispatch" at 2:3 body 3:5 inputs={i}"#,
+            r#"  input "i" at 4:7 type=Choice options=[-]"#,
         ]
     );
 }

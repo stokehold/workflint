@@ -17,7 +17,7 @@ pub struct Job<'a> {
     /// `name`. It may be empty.
     pub name: Field<'a, Template<'a>>,
     /// `needs`: job IDs, in source order. A string becomes a list of one.
-    pub needs: Field<'a, Arc<[Template<'a>]>>,
+    pub needs: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `runs-on`.
     pub runs_on: Field<'a, Runner<'a>>,
     /// `permissions`. The reference's `Permissions.Pos` is this field's key.
@@ -53,9 +53,9 @@ pub struct Job<'a> {
     /// The call of a reusable workflow, from `uses`, `with`, and `secrets`.
     ///
     /// It is set only when `uses` is written, valid or not, and no key that
-    /// only a job with steps may have is written, such as `runs-on` or
-    /// `services`. The reference does not count `services`
-    /// (`docs/differences.md#reusable-call-services`).
+    /// only a job with steps may have is written, such as `runs-on`.
+    /// `services` does not count here, as in the reference, although the
+    /// parser reports it (`docs/differences.md#reusable-call-services`).
     pub workflow_call: Option<WorkflowCall<'a>>,
     /// `snapshot`. The reference's `snapshot` position is this field's key.
     pub snapshot: Field<'a, Snapshot<'a>>,
@@ -71,10 +71,10 @@ pub struct Runner<'a> {
     /// `labels`, in source order. A string becomes a list of one. Labels
     /// that contain an expression among other text stay labels.
     ///
-    /// An empty label is kept after the parser reports it, as in the
-    /// reference, where the `runner-label` rule reports it as an unknown
-    /// label too. A label that is not a scalar is reported and left out.
-    pub labels: Value<'a, Arc<[Template<'a>]>>,
+    /// A label that is empty or not a scalar is `None` after the parser
+    /// reports it. The reference keeps it as `""`, and its `runner-label`
+    /// rule reports it again as an unknown label.
+    pub labels: Value<'a, Arc<[Option<Template<'a>>]>>,
     /// `group`.
     pub group: Field<'a, Template<'a>>,
 }
@@ -116,10 +116,10 @@ pub struct Container<'a> {
     /// `env`.
     pub env: Value<'a, Env<'a>>,
     /// `ports`, in source order.
-    pub ports: Field<'a, Arc<[Template<'a>]>>,
+    pub ports: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `volumes`, in source order. The reference stores them in `Ports`
     /// (`docs/differences.md#container-volumes`).
-    pub volumes: Field<'a, Arc<[Template<'a>]>>,
+    pub volumes: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `options`.
     pub options: Field<'a, Template<'a>>,
     /// `command`. Only a service may have it.

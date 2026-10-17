@@ -53,7 +53,7 @@ impl<'a> Event<'a> {
     pub fn body(&self) -> Option<Span> {
         match self {
             Self::Webhook(event) => event.body,
-            Self::Schedule(event) => event.body,
+            Self::Schedule(event) => Some(event.body),
             Self::WorkflowDispatch(event) => event.body,
             Self::RepositoryDispatch(event) => event.body,
             Self::WorkflowCall(event) => event.body,
@@ -69,7 +69,8 @@ impl<'a> Event<'a> {
 /// an event allows.
 ///
 /// Each filter is a string or a sequence of strings. A string becomes a
-/// list of one. The reference's `WebhookEventFilter.Name` is the filter
+/// list of one, and an item that is not a valid string is `None`. The
+/// reference's `WebhookEventFilter.Name` is the filter
 /// field's key.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WebhookEvent<'a> {
@@ -78,21 +79,21 @@ pub struct WebhookEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `types`.
-    pub types: Field<'a, Arc<[Template<'a>]>>,
+    pub types: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `branches`.
-    pub branches: Field<'a, Arc<[Template<'a>]>>,
+    pub branches: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `branches-ignore`.
-    pub branches_ignore: Field<'a, Arc<[Template<'a>]>>,
+    pub branches_ignore: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `tags`.
-    pub tags: Field<'a, Arc<[Template<'a>]>>,
+    pub tags: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `tags-ignore`.
-    pub tags_ignore: Field<'a, Arc<[Template<'a>]>>,
+    pub tags_ignore: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `paths`.
-    pub paths: Field<'a, Arc<[Template<'a>]>>,
+    pub paths: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `paths-ignore`.
-    pub paths_ignore: Field<'a, Arc<[Template<'a>]>>,
+    pub paths_ignore: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `workflows`.
-    pub workflows: Field<'a, Arc<[Template<'a>]>>,
+    pub workflows: Field<'a, Arc<[Option<Template<'a>>]>>,
 }
 
 /// `schedule`.
@@ -100,9 +101,9 @@ pub struct WebhookEvent<'a> {
 pub struct ScheduleEvent<'a> {
     /// The string `schedule`.
     pub name: Str<'a>,
-    /// The span of the sequence under the event's key. The parser drops a
-    /// `schedule` with no sequence, so it is always present.
-    pub body: Option<Span>,
+    /// The span of the sequence under the event's key. A `schedule` with no
+    /// sequence is `None` in the list of `on`, so every `schedule` has one.
+    pub body: Span,
     /// The items of the sequence whose `cron` is valid, in source order.
     /// The parser drops the other items, as the reference does.
     pub schedules: Arc<[ScheduleEntry<'a>]>,
@@ -144,7 +145,7 @@ pub struct WorkflowDispatchInput<'a> {
     /// [`Field::Absent`] or [`Field::Invalid`].
     pub input_type: Field<'a, WorkflowDispatchInputType>,
     /// `options`.
-    pub options: Field<'a, Arc<[Template<'a>]>>,
+    pub options: Field<'a, Arc<[Option<Template<'a>>]>>,
 }
 
 /// The `type` of a `workflow_dispatch` input.
@@ -170,7 +171,7 @@ pub struct RepositoryDispatchEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `types`. A string becomes a list of one.
-    pub types: Field<'a, Arc<[Template<'a>]>>,
+    pub types: Field<'a, Arc<[Option<Template<'a>>]>>,
 }
 
 /// `workflow_call`, which makes the workflow a reusable workflow.
@@ -254,7 +255,7 @@ pub struct ImageVersionEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `names`.
-    pub names: Field<'a, Arc<[Template<'a>]>>,
+    pub names: Field<'a, Arc<[Option<Template<'a>>]>>,
     /// `versions`.
-    pub versions: Field<'a, Arc<[Template<'a>]>>,
+    pub versions: Field<'a, Arc<[Option<Template<'a>>]>>,
 }

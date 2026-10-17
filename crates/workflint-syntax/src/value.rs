@@ -105,6 +105,12 @@ impl<'a, T> Value<'a, T> {
 /// `key` is `None` when the value comes from a short form with no key of
 /// its own, such as the group of `concurrency: ci` or the image of
 /// `container: node:24`.
+///
+/// A list of strings, such as `types` of a webhook event, is a
+/// `Field<Arc<[Option<Template>]>>`. The field is invalid when the value is
+/// not a list, and an item is `None` when the item is not a valid string.
+/// A string where a list is expected is a list of one, as in the reference,
+/// so `types: ''` is a valid list whose only item is `None`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum Field<'a, T> {
     /// The key is not written.

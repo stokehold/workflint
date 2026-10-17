@@ -14,13 +14,17 @@ use crate::token::to_usize;
 pub struct ExprError {
     /// The message, byte-identical to actionlint's.
     pub message: String,
-    /// The byte offset where the error is: the unexpected character, or the end of the input.
+    /// The byte offset where the error starts. A lexer error starts at the unexpected
+    /// character or at the end of the input, a parser error at the unexpected token, and an
+    /// error of [`TypeEnv::check`](crate::TypeEnv::check) at the token that actionlint reports
+    /// it at.
     pub start: u32,
-    /// The byte offset one past the unexpected character. Equal to `start` for an error at the
-    /// end of the input.
+    /// The byte offset one past the end of what the error is about: the character, the token,
+    /// or the node. Equal to `start` for an error at the end of the input.
     pub end: u32,
-    /// The rule the error belongs to: [`INVALID_NUMBER_LITERAL`] for a number literal beyond
-    /// the range of a double, and [`INVALID_EXPRESSION_SYNTAX`] for every other error.
+    /// The rule the error belongs to. Syntax errors belong to [`INVALID_NUMBER_LITERAL`] or
+    /// [`INVALID_EXPRESSION_SYNTAX`], and the errors of `TypeEnv::check` to the other rules in
+    /// [`rules`](crate::rules).
     ///
     /// [`INVALID_NUMBER_LITERAL`]: crate::rules::INVALID_NUMBER_LITERAL
     /// [`INVALID_EXPRESSION_SYNTAX`]: crate::rules::INVALID_EXPRESSION_SYNTAX
