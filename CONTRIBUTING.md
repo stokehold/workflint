@@ -94,8 +94,9 @@ Hot paths have micro-benchmarks written with [divan](https://docs.rs/divan) (ADR
 - `crates/workflint-yaml/benches/parse.rs` parses `minimal.yaml`, `small.yaml`, `large.yaml`, and `many_scripts.yaml` to events and to the span tree.
 - `crates/workflint-diagnostics/benches/source.rs` builds the line index of `large.yaml` and converts the offset of each of its characters to a line and column.
 - `crates/workflint-expr/benches/expressions.rs` lexes, parses, and type-checks the 1,858 expressions of `expressions.txt`. `check` type-checks trees parsed before the measurement, and `parse_and_check` lexes, parses, and type-checks in one pass. Divide the reported time by 1,858 for the time per expression.
+- `crates/workflint-syntax/benches/parse.rs` parses the same four files as `workflint-yaml` and the largest corpus file, `mozilla_DeepSpeech_.github_workflows_build-and-test.yml`, into a `Workflow`. `workflow` starts from a span tree built before the measurement, and `tree_and_workflow` builds the span tree too, as the binary does for each file. The benchmark reads the corpus file from `dataset.zip`.
 
-The inputs are the reference's benchmark files in `tests/conformance/actionlint/testdata/bench/`. They sit outside the crates, so the published packages do not contain them (ADR 0006).
+The inputs are the reference's benchmark files in `tests/conformance/actionlint/testdata/bench/`, and its corpus archive in `tests/conformance/actionlint/testdata/realworld/`. They sit outside the crates, so the published packages do not contain them (ADR 0006).
 
 Run them locally with `cargo bench`:
 
@@ -103,6 +104,7 @@ Run them locally with `cargo bench`:
 cargo bench -p workflint-yaml
 cargo bench -p workflint-diagnostics
 cargo bench -p workflint-expr
+cargo bench -p workflint-syntax
 cargo bench -p workflint-yaml -- tree
 ```
 
