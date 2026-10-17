@@ -3,6 +3,8 @@
 use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
 use workflint_syntax::{Job, KeyedEntry, Step, Workflow};
 
+use crate::local::{LocalMetadata, NoProject};
+
 /// A rule: the reference's `Rule`, which implements some of the five hooks of its `Pass`.
 ///
 /// Every hook does nothing by default, so a rule implements only the hooks it needs. A rule is
@@ -40,23 +42,34 @@ pub trait Rule<'a> {
     }
 }
 
-/// What the hooks of a rule get besides the node: the file being linted and the list of
-/// diagnostics that the rules report.
+/// What the hooks of a rule get besides the node: the file being linted, the metadata of the
+/// project's local actions and local reusable workflows, and the list of diagnostics that the
+/// rules report.
 ///
-/// The project's local actions and reusable workflows (M4.3) and the config (M5.2) become fields
-/// of this type, so the signature of the hooks stays the same when they arrive.
+/// The config (M5.2) becomes a field of this type, so the signature of the hooks stays the same
+/// when it arrives.
 #[derive(Debug)]
 pub struct Context<'f> {
     file: &'f SourceFile,
+    local: &'f dyn LocalMetadata,
     diagnostics: Vec<Diagnostic>,
 }
 
 impl<'f> Context<'f> {
-    /// Creates the context for linting `file`, with no diagnostics.
+    /// Creates the context for linting `file` outside any project, with no diagnostics. Lookups
+    /// of local actions and local reusable workflows find nothing.
     #[must_use]
     pub fn new(file: &'f SourceFile) -> Self {
+        Self::with_local_metadata(file, &NoProject)
+    }
+
+    /// Creates the context for linting `file`, whose project has the local actions and local
+    /// reusable workflows in `local`, with no diagnostics.
+    #[must_use]
+    pub fn with_local_metadata(file: &'f SourceFile, local: &'f dyn LocalMetadata) -> Self {
         Self {
             file,
+            local,
             diagnostics: Vec::new(),
         }
     }
@@ -66,6 +79,12 @@ impl<'f> Context<'f> {
     #[must_use]
     pub fn file(&self) -> &'f SourceFile {
         self.file
+    }
+
+    /// Returns the metadata of the local actions and local reusable workflows of the project.
+    #[must_use]
+    pub fn local_metadata(&self) -> &'f dyn LocalMetadata {
+        self.local
     }
 
     /// Reports a diagnostic of `rule` at `span` with the rule's default severity.

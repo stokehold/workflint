@@ -935,6 +935,7 @@ name = "workflint"
 version = "0.0.1"
 dependencies = [
  "workflint-diagnostics",
+ "workflint-linter",
  "workflint-rules",
  "workflint-syntax",
  "workflint-yaml",
@@ -964,6 +965,17 @@ dependencies = [
  "datatest-stable",
  "workflint-data",
  "workflint-diagnostics",
+]
+
+[[package]]
+name = "workflint-linter"
+version = "0.0.1"
+dependencies = [
+ "tempfile",
+ "workflint-diagnostics",
+ "workflint-rules",
+ "workflint-syntax",
+ "workflint-yaml",
 ]
 
 [[package]]

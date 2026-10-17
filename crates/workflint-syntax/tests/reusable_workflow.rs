@@ -463,3 +463,110 @@ fn deeply_nested_merges_decode_on_a_small_stack() {
         "input \"a\": name=\"a\" required=true type=string\n"
     );
 }
+
+// `LocalReusableWorkflowCache.WriteWorkflowCallEvent` in `reusable_workflow.go`.
+
+/// Parses `text` as a workflow and prints the metadata of its first
+/// `workflow_call` event, or `none` if it has none.
+fn from_event(text: &str) -> String {
+    let file = SourceFile::new(FileId::new(0), "reusable.yml", text).unwrap();
+    let document = workflint_yaml::parse(&file).document.unwrap();
+    let parsed = workflint_syntax::parse(&file, &document);
+    parsed.workflow.workflow_call_event().map_or_else(
+        || "none\n".to_owned(),
+        |event| dump(&ReusableWorkflowMetadata::from_event(event)),
+    )
+}
+
+#[test]
+fn a_parsed_workflow_call_event_gives_the_metadata_that_decoding_gives() {
+    for text in [
+        "on:\n  workflow_call:\n",
+        "on: workflow_call\n",
+        "on: [push, workflow_call]\n",
+        "on:
+  workflow_call:
+    inputs:
+      a:
+        type: string
+      b:
+        type: number
+      c:
+        type: boolean
+      d:
+        required: true
+      e:
+        type: string
+        default: abc
+        required: true
+    outputs:
+      o:
+        value: foo
+    secrets:
+      x:
+      y:
+        required: true
+",
+    ] {
+        assert_eq!(from_event(text), decode(text), "{text}");
+    }
+}
+
+#[test]
+fn names_keep_their_case_and_keys_are_folded() {
+    let text = "on:
+  workflow_call:
+    inputs:
+      MyInput:
+        type: string
+        required: true
+    outputs:
+      MyOutput:
+        value: foo
+    secrets:
+      MyToken:
+        required: true
+";
+    assert_eq!(
+        from_event(text),
+        r#"input "myinput": name="MyInput" required=true type=string
+output "myoutput": name="MyOutput"
+secret "mytoken": name="MyToken" required=true
+"#,
+    );
+}
+
+#[test]
+fn a_written_default_makes_an_input_optional_even_if_it_is_empty() {
+    let text = "on:
+  workflow_call:
+    inputs:
+      a:
+        required: true
+        default:
+      b:
+        required: true
+        default: ''
+";
+    assert_eq!(
+        from_event(text),
+        "input \"a\": name=\"a\" required=false type=any\ninput \"b\": name=\"b\" required=false type=any\n",
+    );
+}
+
+#[test]
+fn a_required_flag_from_an_expression_is_not_required() {
+    let text = "on:
+  workflow_call:
+    inputs:
+      a:
+        required: ${{ true }}
+    secrets:
+      s:
+        required: ${{ true }}
+";
+    assert_eq!(
+        from_event(text),
+        "input \"a\": name=\"a\" required=false type=any\nsecret \"s\": name=\"s\" required=false\n",
+    );
+}

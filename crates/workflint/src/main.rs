@@ -5,8 +5,7 @@
 //! workflow parser, and the rules, and prints the diagnostics. M5.6 replaces it with the full
 //! command-line interface.
 
-mod path;
-
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs;
@@ -18,6 +17,8 @@ use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{
     Color, Diagnostic, FileId, SourceFile, Span, render_default, render_oneline, sort_and_dedup,
 };
+use workflint_linter::{LocalCache, find_project_root, path};
+use workflint_rules::local::{LocalMetadata, NoProject};
 use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
 /// No file has a diagnostic.
@@ -55,10 +56,25 @@ fn main() -> ExitCode {
     };
 
     // As in actionlint, a file that cannot be read stops the run before anything is printed.
+    // Files are linted one after another, so the first use of a local action or reusable
+    // workflow in file order, then source position, reports its errors.
     let cwd = path::working_dir();
+    let mut caches = BTreeMap::new();
     let mut files = Vec::with_capacity(paths.len());
     for (index, path) in paths.iter().enumerate() {
-        match lint(index, path, &cwd) {
+        let path = Path::new(path);
+        let root = find_project_root(path, &cwd);
+        let file_metadata = root.map(|root| {
+            caches
+                .entry(root.clone())
+                .or_insert_with(|| LocalCache::new(root))
+                .for_file(&path::absolute(&cwd, path))
+        });
+        let local: &dyn LocalMetadata = match &file_metadata {
+            Some(file_metadata) => file_metadata,
+            None => &NoProject,
+        };
+        match lint(index, path, &cwd, local) {
             Ok(file) => files.push(file),
             Err(message) => {
                 eprintln!("{message}");
@@ -162,17 +178,19 @@ fn parse_bool(value: &str) -> Option<bool> {
 
 /// Reads, decodes, and parses the file at `path`, and returns it with its sorted diagnostics.
 ///
-/// The diagnostics name the file by its path relative to `cwd` when there is one. The error is
-/// the message to print when the file cannot be read, and names the file as given.
+/// The diagnostics name the file by its path relative to `cwd` when there is one. The rules look
+/// up local actions and local reusable workflows in `local`. The error is the message to print
+/// when the file cannot be read, and names the file as given.
 fn lint(
     index: usize,
-    path: &OsString,
+    path: &Path,
     cwd: &Path,
+    local: &dyn LocalMetadata,
 ) -> Result<(SourceFile, Vec<Diagnostic>), String> {
     let given = path.to_string_lossy();
     let fail = |err: &dyn Display| format!("could not read {}: {err}", quote(&given));
     let bytes = fs::read(path).map_err(|err| fail(&err))?;
-    let display = path::display_path(cwd, Path::new(path));
+    let display = path::display_path(cwd, path);
     let display = display.to_string_lossy();
     let id = FileId::new(u32::try_from(index).map_err(|err| fail(&err))?);
     let (text, decode_error) = match workflint_yaml::decode(&bytes) {
@@ -191,21 +209,26 @@ fn lint(
                 format!("could not parse as YAML: {}", err.problem()),
             )]
         }
-        None => parse_file(&file),
+        None => parse_file(&file, local),
     };
     sort_and_dedup(&file, &mut diagnostics);
     Ok((file, diagnostics))
 }
 
 /// Parses `file` with the YAML layer and, if it gives a document, with the workflow parser, runs
-/// the rules on the workflow, and returns the diagnostics of all three.
-fn parse_file(file: &SourceFile) -> Vec<Diagnostic> {
+/// the rules on the workflow with the project's local metadata in `local`, and returns the
+/// diagnostics of all three.
+fn parse_file(file: &SourceFile, local: &dyn LocalMetadata) -> Vec<Diagnostic> {
     let parsed = workflint_yaml::parse(file);
     let mut diagnostics = parsed.diagnostics;
     if let Some(document) = &parsed.document {
         let syntax = workflint_syntax::parse(file, document);
         diagnostics.extend(syntax.diagnostics);
-        diagnostics.extend(workflint_rules::run(file, &syntax.workflow));
+        diagnostics.extend(workflint_rules::run_in_project(
+            file,
+            &syntax.workflow,
+            local,
+        ));
     }
     diagnostics
 }

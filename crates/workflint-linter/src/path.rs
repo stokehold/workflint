@@ -1,8 +1,9 @@
-//! The paths printed in diagnostics, computed as actionlint computes them.
+//! Paths computed as actionlint computes them with Go's `path/filepath`.
 //!
 //! actionlint prints `filepath.Rel(cwd, path)` when it succeeds and the path as given otherwise
 //! (`linter.go:374`). The working directory comes from Go's `os.Getwd`, or is `.` when that
-//! fails (`linter.go:170-175`).
+//! fails (`linter.go:170-175`). It finds a file's project from `filepath.Abs` of the path, and
+//! joins the project root with a `uses:` value with `filepath.Join`, which cleans the result.
 
 use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
@@ -11,7 +12,7 @@ use std::path::{Component, Path, PathBuf};
 ///
 /// On Unix, Go returns `$PWD` when it is absolute and names the same directory as `.`, so a
 /// directory reached through a symbolic link keeps the link's path.
-pub(crate) fn working_dir() -> PathBuf {
+pub fn working_dir() -> PathBuf {
     #[cfg(unix)]
     if let Some(pwd) = std::env::var_os("PWD").map(PathBuf::from)
         && pwd.is_absolute()
@@ -33,8 +34,39 @@ fn same_dir(a: &Path, b: &Path) -> bool {
 
 /// Returns the path to print for the argument `path`: `path` relative to `cwd` as Go's
 /// `filepath.Rel` computes it, or `path` unchanged when `filepath.Rel` fails.
-pub(crate) fn display_path(cwd: &Path, path: &Path) -> PathBuf {
+#[must_use]
+pub fn display_path(cwd: &Path, path: &Path) -> PathBuf {
     relative(cwd, path).unwrap_or_else(|| path.to_path_buf())
+}
+
+/// Returns `path` as Go's `filepath.Abs` does with the working directory `cwd`: `path` cleaned
+/// if it is absolute, and `cwd` joined with `path` and cleaned otherwise.
+#[must_use]
+pub fn absolute(cwd: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        clean(path)
+    } else {
+        clean(&cwd.join(path))
+    }
+}
+
+/// Go's `filepath.Clean`: `path` with `.` names and repeated separators removed, and each `..`
+/// that follows a name removed with that name. An empty result is `.`.
+#[must_use]
+pub fn clean(path: &Path) -> PathBuf {
+    let clean = Clean::new(path);
+    let mut result = PathBuf::new();
+    if let Some(prefix) = clean.prefix {
+        result.push(prefix);
+    }
+    if clean.rooted {
+        result.push(Component::RootDir);
+    }
+    result.extend(clean.names);
+    if result.as_os_str().is_empty() {
+        result.push(".");
+    }
+    result
 }
 
 /// Go's `filepath.Rel`: a path that names `target` when joined to `base`, found lexically.
@@ -42,7 +74,8 @@ pub(crate) fn display_path(cwd: &Path, path: &Path) -> PathBuf {
 /// Both paths are cleaned first. It fails when one path is absolute and the other is not, when
 /// they are on different volumes, and when finding the result would need to know what a `..` in
 /// `base` refers to.
-fn relative(base: &Path, target: &Path) -> Option<PathBuf> {
+#[must_use]
+pub fn relative(base: &Path, target: &Path) -> Option<PathBuf> {
     let base = Clean::new(base);
     let target = Clean::new(target);
     if !same_name(base.prefix, target.prefix) || base.rooted != target.rooted {
@@ -175,6 +208,29 @@ mod tests {
     fn a_parent_directory_left_in_the_base_has_no_relative_path() {
         assert_eq!(rel("../a", "b"), None);
         assert_eq!(rel("../a", "../a/b").as_deref(), Some("b"));
+    }
+
+    #[test]
+    fn clean_removes_dots_and_resolves_parent_names() {
+        assert_eq!(
+            clean(Path::new("/repo/./a//b/../c/")),
+            Path::new("/repo/a/c")
+        );
+        assert_eq!(clean(Path::new("/../a")), Path::new("/a"));
+        assert_eq!(clean(Path::new("../a/..")), Path::new(".."));
+        assert_eq!(clean(Path::new("a/..")), Path::new("."));
+    }
+
+    #[test]
+    fn absolute_joins_a_relative_path_to_the_working_directory() {
+        assert_eq!(
+            absolute(Path::new("/work"), Path::new("./x/../t1.yaml")),
+            Path::new("/work/t1.yaml")
+        );
+        assert_eq!(
+            absolute(Path::new("/work"), Path::new("/other/./t1.yaml")),
+            Path::new("/other/t1.yaml")
+        );
     }
 
     #[test]

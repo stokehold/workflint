@@ -7,7 +7,7 @@ use workflint_diagnostics::SourceFile;
 use workflint_yaml::{NodeId, NodeKind, simple_lowercase};
 
 use crate::typed::{DecodeError, Decoder, Fatal, Source};
-use crate::{MetadataError, WorkflowCallInputType};
+use crate::{Field, MetadataError, WorkflowCallEvent, WorkflowCallInputType};
 
 /// The inputs, outputs, and secrets of a local reusable workflow, decoded
 /// from its `on.workflow_call` section as the reference decodes them.
@@ -99,6 +99,49 @@ impl ReusableWorkflowMetadata {
             "\"workflow_call\" event trigger is not found in \"on:\" at line:{}, column:{}",
             position.line, position.column
         )))
+    }
+
+    /// Converts the `workflow_call` event of a parsed workflow, as the
+    /// reference's `LocalReusableWorkflowCache.WriteWorkflowCallEvent` does.
+    ///
+    /// A linted reusable workflow gives its metadata this way, so later
+    /// callers in the run do not read its file. An invalid `inputs`,
+    /// `outputs`, or `secrets`, which the parser has reported, has no
+    /// entries. An input is required only if `required` is the literal
+    /// `true` and `default` is not written.
+    #[must_use]
+    pub fn from_event(event: &WorkflowCallEvent<'_>) -> Self {
+        let inputs = event.inputs.value().into_iter().flatten();
+        let outputs = event.outputs.value().into_iter().flatten();
+        let secrets = event.secrets.value().into_iter().flatten();
+        Self {
+            inputs: inputs
+                .map(|entry| {
+                    let input = &entry.value;
+                    let metadata = ReusableWorkflowInput {
+                        name: entry.key.value().to_owned(),
+                        required: input.is_required() && matches!(input.default, Field::Absent),
+                        input_type: input.input_type.value().copied(),
+                    };
+                    (entry.folded().to_owned(), metadata)
+                })
+                .collect(),
+            outputs: outputs
+                .map(|entry| {
+                    let name = entry.key.value().to_owned();
+                    (entry.folded().to_owned(), ReusableWorkflowOutput { name })
+                })
+                .collect(),
+            secrets: secrets
+                .map(|entry| {
+                    let secret = ReusableWorkflowSecret {
+                        name: entry.key.value().to_owned(),
+                        required: entry.value.required.literal() == Some(&true),
+                    };
+                    (entry.folded().to_owned(), secret)
+                })
+                .collect(),
+        }
     }
 }
 
