@@ -1,6 +1,5 @@
-//! Reads tables from the reference's `expr_sema.go`, `availability.go`, and `expr_insecure.go`,
-//! vendored by `cargo xtask vendor-testdata`, for the tests that compare them with
-//! `workflint-data`.
+//! Reads tables from the reference's Go files, vendored by `cargo xtask vendor-testdata`, for
+//! the tests that compare them with `workflint-data`.
 
 // Each test file uses part of this module.
 #![allow(clippy::panic, dead_code)]
@@ -20,6 +19,42 @@ const AVAILABILITY_GO: &str =
 /// The reference's `expr_insecure.go`.
 const EXPR_INSECURE_GO: &str =
     include_str!("../../../../tests/conformance/actionlint/expr_insecure.go");
+
+/// The reference's `all_webhooks.go`.
+const ALL_WEBHOOKS_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/all_webhooks.go");
+
+/// The reference's `rule_action.go`.
+const RULE_ACTION_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/rule_action.go");
+
+/// The reference's `rule_deprecated_commands.go`.
+const RULE_DEPRECATED_COMMANDS_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/rule_deprecated_commands.go");
+
+/// The reference's `rule_events.go`.
+const RULE_EVENTS_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/rule_events.go");
+
+/// The reference's `rule_permissions.go`.
+const RULE_PERMISSIONS_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/rule_permissions.go");
+
+/// The reference's `rule_runner_label.go`.
+const RULE_RUNNER_LABEL_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/rule_runner_label.go");
+
+/// The reference's `rule_shell_name.go`.
+const RULE_SHELL_NAME_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/rule_shell_name.go");
+
+/// The reference's `cmd/actionlint/main.go`.
+pub(crate) const MAIN_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/cmd/actionlint/main.go");
+
+/// The time zone names of the Go that builds the reference, written by
+/// `cargo xtask vendor-testdata`.
+const TIME_ZONES_TXT: &str = include_str!("../../../../tests/conformance/go/time-zones.txt");
 
 /// An owned expression type, built from the Go source or from a [`TypeDesc`].
 #[derive(Debug, PartialEq, Eq)]
@@ -121,12 +156,30 @@ impl fmt::Display for FuncSignature {
 #[derive(Debug, PartialEq, Eq)]
 enum Token<'a> {
     Ident(&'a str),
+    /// An interpreted string literal with its escapes kept, or a raw string literal.
     Str(&'a str),
+    /// A rune literal, such as `'@'`, with its escapes kept.
+    Rune(&'a str),
     Punct(char),
 }
 
-/// Splits Go source into identifiers, interpreted string literals without escapes, and
-/// punctuation, and drops whitespace and `//` comments. This is enough for a map literal.
+/// The length of the quoted literal at the start of `rest`, quotes included. A backslash
+/// escapes the next character unless the literal is raw.
+fn literal_len(rest: &str, quote: char, raw: bool) -> usize {
+    let mut chars = rest.char_indices().skip(1);
+    while let Some((i, c)) = chars.next() {
+        if c == quote {
+            return i + 1;
+        }
+        if c == '\\' && !raw {
+            chars.next();
+        }
+    }
+    panic!("unterminated literal in {rest:.40}");
+}
+
+/// Splits Go source into identifiers, string and rune literals, and punctuation, and drops
+/// whitespace and `//` comments. This is enough for the tables and the code around them.
 fn tokenize(src: &str) -> Vec<Token<'_>> {
     let mut tokens = Vec::new();
     let mut rest = src;
@@ -135,12 +188,15 @@ fn tokenize(src: &str) -> Vec<Token<'_>> {
             rest = &rest[c.len_utf8()..];
         } else if let Some(comment) = rest.strip_prefix("//") {
             rest = comment.find('\n').map_or("", |end| &comment[end..]);
-        } else if c == '"' {
-            let Some(end) = rest[1..].find('"') else {
-                panic!("unterminated string in {rest:.40}");
-            };
-            tokens.push(Token::Str(&rest[1..=end]));
-            rest = &rest[end + 2..];
+        } else if matches!(c, '"' | '`' | '\'') {
+            let len = literal_len(rest, c, c == '`');
+            let inner = &rest[1..len - 1];
+            tokens.push(if c == '\'' {
+                Token::Rune(inner)
+            } else {
+                Token::Str(inner)
+            });
+            rest = &rest[len..];
         } else if c.is_alphanumeric() || c == '_' {
             let end = rest
                 .find(|c: char| !(c.is_alphanumeric() || c == '_'))
@@ -553,4 +609,359 @@ pub(crate) fn safe_func_calls() -> Vec<String> {
         }
         parser.expect(&Token::Punct('|'));
     }
+}
+
+impl Parser<'_> {
+    /// `{"a", "b", ...}`, a `[]string` literal whose type is elided.
+    fn elided_strings(&mut self) -> Vec<String> {
+        self.expect(&Token::Punct('{'));
+        let mut strings = Vec::new();
+        while !self.eat(&Token::Punct('}')) {
+            strings.push(self.str().to_owned());
+            self.eat(&Token::Punct(','));
+        }
+        strings
+    }
+
+    /// `map[string]<value>{"name": <value>, ...}` in source order, with `value` reading each
+    /// value. `value_type` is the tokens of the value type, such as `[Ident("runnerOSCompat")]`.
+    fn ordered_map<T>(
+        &mut self,
+        value_type: &[Token<'_>],
+        mut value: impl FnMut(&mut Self) -> T,
+    ) -> Vec<(String, T)> {
+        self.expect_all(&[
+            Token::Ident("map"),
+            Token::Punct('['),
+            Token::Ident("string"),
+            Token::Punct(']'),
+        ]);
+        self.expect_all(value_type);
+        self.expect(&Token::Punct('{'));
+        let mut entries: Vec<(String, T)> = Vec::new();
+        while !self.eat(&Token::Punct('}')) {
+            let name = self.str();
+            assert!(
+                entries.iter().all(|(other, _)| other != name),
+                "{name:?} appears twice"
+            );
+            self.expect(&Token::Punct(':'));
+            entries.push((name.to_owned(), value(self)));
+            self.eat(&Token::Punct(','));
+        }
+        entries
+    }
+
+    /// The strings of `case "a", "b":` labels up to `default` or the `}` that ends the switch,
+    /// skipping the statements between them. Fails on a nested block that has its own `case`.
+    fn case_strings(&mut self) -> Vec<String> {
+        let mut strings = Vec::new();
+        let mut depth = 0_usize;
+        loop {
+            match self.next() {
+                Token::Ident("case") if depth == 0 => loop {
+                    strings.push(self.str().to_owned());
+                    if !self.eat(&Token::Punct(',')) {
+                        self.expect(&Token::Punct(':'));
+                        break;
+                    }
+                },
+                Token::Ident("case") => panic!("a nested switch is not supported"),
+                Token::Ident("default") | Token::Punct('}') if depth == 0 => return strings,
+                Token::Punct('{') => depth += 1,
+                Token::Punct('}') => depth -= 1,
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The reference's `AllWebhookTypes` in source order. `None` stands for Go's `nil`, which
+/// means any activity type.
+pub(crate) fn all_webhook_types() -> Vec<(String, Option<Vec<String>>)> {
+    Parser::after(ALL_WEBHOOKS_GO, "var AllWebhookTypes = ").ordered_map(
+        &[Token::Punct('['), Token::Punct(']'), Token::Ident("string")],
+        |parser| {
+            if parser.eat(&Token::Ident("nil")) {
+                None
+            } else {
+                Some(parser.elided_strings())
+            }
+        },
+    )
+}
+
+/// The reference's `allPermissionScopes` in source order.
+pub(crate) fn all_permission_scopes() -> Vec<(String, Vec<String>)> {
+    Parser::after(RULE_PERMISSIONS_GO, "var allPermissionScopes = ").ordered_map(
+        &[Token::Punct('['), Token::Punct(']'), Token::Ident("string")],
+        Parser::elided_strings,
+    )
+}
+
+/// The values that the reference's `checkPermissions` accepts for all the scopes at once.
+pub(crate) fn permissions_for_all_scopes() -> Vec<String> {
+    Parser::after(RULE_PERMISSIONS_GO, "switch p.All.Value {").case_strings()
+}
+
+/// The names of the reference's `runnerOSCompat` bits, in declaration order. `compatInvalid`,
+/// which is 0, is not a bit.
+pub(crate) fn runner_os_compat_bits() -> Vec<String> {
+    let start = RULE_RUNNER_LABEL_GO
+        .find("const (")
+        .unwrap_or_else(|| panic!("rule_runner_label.go has no const block"));
+    let block = &RULE_RUNNER_LABEL_GO[start + "const (".len()..];
+    let end = block
+        .find(')')
+        .unwrap_or_else(|| panic!("the const block of rule_runner_label.go is not closed"));
+    block[..end]
+        .lines()
+        .filter_map(|line| line.split_whitespace().next())
+        .filter(|name| *name != "compatInvalid")
+        .map(str::to_owned)
+        .collect()
+}
+
+/// The reference's `allGitHubHostedRunnerLabels`.
+pub(crate) fn all_github_hosted_runner_labels() -> Vec<String> {
+    Parser::after(RULE_RUNNER_LABEL_GO, "var allGitHubHostedRunnerLabels = ").strings()
+}
+
+/// The reference's `selfHostedRunnerPresetOSLabels`.
+pub(crate) fn self_hosted_runner_preset_os_labels() -> Vec<String> {
+    Parser::after(
+        RULE_RUNNER_LABEL_GO,
+        "var selfHostedRunnerPresetOSLabels = ",
+    )
+    .strings()
+}
+
+/// The reference's `selfHostedRunnerPresetOtherLabels`.
+pub(crate) fn self_hosted_runner_preset_other_labels() -> Vec<String> {
+    Parser::after(
+        RULE_RUNNER_LABEL_GO,
+        "var selfHostedRunnerPresetOtherLabels = ",
+    )
+    .strings()
+}
+
+/// The reference's `defaultRunnerOSCompats` in source order, with the names of the bits that
+/// each label's value ORs together.
+pub(crate) fn default_runner_os_compats() -> Vec<(String, Vec<String>)> {
+    Parser::after(RULE_RUNNER_LABEL_GO, "var defaultRunnerOSCompats = ").ordered_map(
+        &[Token::Ident("runnerOSCompat")],
+        |parser| {
+            let mut bits = Vec::new();
+            loop {
+                match parser.next() {
+                    Token::Ident(bit) => bits.push(bit.to_owned()),
+                    token => panic!("expected the name of a bit, got {token:?}"),
+                }
+                if !parser.eat(&Token::Punct('|')) {
+                    return bits;
+                }
+            }
+        },
+    )
+}
+
+/// The arms of the reference's `getAvailableShellNames`, keyed by the platform constant, such
+/// as `platformKindAny`.
+pub(crate) fn available_shell_names() -> Vec<(String, Vec<String>)> {
+    let mut parser = Parser::after(
+        RULE_SHELL_NAME_GO,
+        "func getAvailableShellNames(kind platformKind) []string {",
+    );
+    parser.expect_all(&[
+        Token::Ident("switch"),
+        Token::Ident("kind"),
+        Token::Punct('{'),
+    ]);
+    let mut arms = Vec::new();
+    while parser.eat(&Token::Ident("case")) {
+        let Token::Ident(platform) = parser.next() else {
+            panic!("expected a platform constant");
+        };
+        parser.expect_all(&[Token::Punct(':'), Token::Ident("return")]);
+        arms.push((platform.to_owned(), parser.strings()));
+    }
+    parser.expect(&Token::Ident("default"));
+    arms
+}
+
+/// The calls of `checkExclusiveFilters` in the reference's `checkWebhookEvent`: the field of the
+/// filter, such as `Paths`, and the events that may have it, in source order.
+pub(crate) fn exclusive_filters() -> Vec<(String, Vec<String>)> {
+    let call = "rule.checkExclusiveFilters(";
+    let mut calls = Vec::new();
+    let mut rest = RULE_EVENTS_GO;
+    while let Some(start) = rest.find(call) {
+        rest = &rest[start + call.len()..];
+        if rest.starts_with("filter, ") {
+            // The declaration, `func (rule *RuleEvents) checkExclusiveFilters(filter, ...`.
+            continue;
+        }
+        let mut parser = Parser::after(rest, "");
+        let field = |parser: &mut Parser<'_>| {
+            parser.expect_all(&[Token::Ident("event"), Token::Punct('.')]);
+            match parser.next() {
+                Token::Ident(field) => field.to_owned(),
+                token => panic!("expected a field of the event, got {token:?}"),
+            }
+        };
+        let filter = field(&mut parser);
+        parser.expect(&Token::Punct(','));
+        let ignore = field(&mut parser);
+        assert_eq!(ignore, format!("{filter}Ignore"));
+        parser.expect_all(&[Token::Punct(','), Token::Ident("hook"), Token::Punct(',')]);
+        calls.push((filter, parser.strings()));
+    }
+    calls
+}
+
+/// The number in the reference's `len(event.Inputs) > N` check of `workflow_dispatch` inputs.
+pub(crate) fn max_workflow_dispatch_inputs() -> usize {
+    let mut parser = Parser::after(RULE_EVENTS_GO, "if len(event.Inputs) > ");
+    match parser.next() {
+        Token::Ident(number) => number
+            .parse()
+            .unwrap_or_else(|_| panic!("{number:?} is not a number")),
+        token => panic!("expected a number, got {token:?}"),
+    }
+}
+
+/// The seconds in the reference's `diff < 60.0*N` check of cron intervals.
+pub(crate) fn min_schedule_interval_seconds() -> u64 {
+    let mut parser = Parser::after(RULE_EVENTS_GO, "if diff < ");
+    parser.expect_all(&[
+        Token::Ident("60"),
+        Token::Punct('.'),
+        Token::Ident("0"),
+        Token::Punct('*'),
+    ]);
+    match parser.next() {
+        Token::Ident(minutes) => {
+            60 * minutes
+                .parse::<u64>()
+                .unwrap_or_else(|_| panic!("{minutes:?} is not a number"))
+        }
+        token => panic!("expected a number, got {token:?}"),
+    }
+}
+
+/// The reference's `deprecatedCommandsPattern`.
+pub(crate) fn deprecated_commands_pattern() -> String {
+    let mut parser = Parser::after(
+        RULE_DEPRECATED_COMMANDS_GO,
+        "var deprecatedCommandsPattern = regexp.MustCompile(",
+    );
+    parser.str().to_owned()
+}
+
+/// The replacement that the reference's `VisitStep` of `deprecated-commands` names for each
+/// command, in source order.
+pub(crate) fn deprecated_command_replacements() -> Vec<(String, String)> {
+    let mut parser = Parser::after(RULE_DEPRECATED_COMMANDS_GO, "switch c {");
+    let mut arms = Vec::new();
+    while parser.eat(&Token::Ident("case")) {
+        let command = parser.str().to_owned();
+        parser.expect_all(&[Token::Punct(':'), Token::Ident("a"), Token::Punct('=')]);
+        arms.push((command, parser.str().to_owned()));
+    }
+    parser.expect(&Token::Ident("default"));
+    arms
+}
+
+/// `map[string]struct{}{"name": {}, ...}` after `declaration` in `rule_action.go`, in source
+/// order.
+fn rule_action_set(declaration: &str) -> Vec<String> {
+    Parser::after(RULE_ACTION_GO, declaration)
+        .ordered_map(
+            &[Token::Ident("struct"), Token::Punct('{'), Token::Punct('}')],
+            |parser| parser.expect_all(&[Token::Punct('{'), Token::Punct('}')]),
+        )
+        .into_iter()
+        .map(|(name, ())| name)
+        .collect()
+}
+
+/// The reference's `BrandingColors` in source order.
+pub(crate) fn branding_colors() -> Vec<String> {
+    rule_action_set("var BrandingColors = ")
+}
+
+/// The reference's `BrandingIcons` in source order.
+pub(crate) fn branding_icons() -> Vec<String> {
+    rule_action_set("var BrandingIcons = ")
+}
+
+/// The prefixes in the reference's `isImageOnDockerRegistry`, in source order.
+pub(crate) fn docker_registry_prefixes() -> Vec<String> {
+    let mut parser = Parser::after(
+        RULE_ACTION_GO,
+        "func isImageOnDockerRegistry(image string) bool {",
+    );
+    parser.expect(&Token::Ident("return"));
+    let mut prefixes = Vec::new();
+    loop {
+        parser.expect_all(&[
+            Token::Ident("strings"),
+            Token::Punct('.'),
+            Token::Ident("HasPrefix"),
+            Token::Punct('('),
+            Token::Ident("image"),
+            Token::Punct(','),
+        ]);
+        prefixes.push(parser.str().to_owned());
+        parser.expect(&Token::Punct(')'));
+        if !parser.eat(&Token::Punct('|')) {
+            parser.expect(&Token::Punct('}'));
+            return prefixes;
+        }
+        parser.expect(&Token::Punct('|'));
+    }
+}
+
+/// The `runs.using` values that the reference's `checkLocalActionRuns` checks, without the
+/// empty string that stands for a missing value.
+pub(crate) fn runs_using_values() -> Vec<String> {
+    let mut values =
+        Parser::after(RULE_ACTION_GO, "switch r := &meta.Runs; r.Using {").case_strings();
+    values.retain(|value| !value.is_empty());
+    values
+}
+
+/// The message that the reference's `checkLocalActionRuns` reports for an invalid
+/// `runs.using`.
+pub(crate) fn invalid_runs_using_message() -> String {
+    let switch = "switch r := &meta.Runs; r.Using {";
+    let Some(start) = RULE_ACTION_GO.find(switch) else {
+        panic!("rule_action.go has no {switch:?}");
+    };
+    let mut parser = Parser::after(&RULE_ACTION_GO[start..], "default:");
+    parser.expect_all(&[
+        Token::Ident("rule"),
+        Token::Punct('.'),
+        Token::Ident("Errorf"),
+        Token::Punct('('),
+        Token::Ident("pos"),
+        Token::Punct(','),
+    ]);
+    parser.str().to_owned()
+}
+
+/// The time zones that `cargo xtask vendor-testdata` listed, and the tzdata version that its
+/// first line names.
+pub(crate) fn go_time_zones() -> (String, Vec<String>) {
+    let mut lines = TIME_ZONES_TXT.lines();
+    let first = lines.next().unwrap_or_default();
+    let Some((_, version)) = first.rsplit_once(", tzdata ") else {
+        panic!("the first line of time-zones.txt names no tzdata version: {first}");
+    };
+    let version = version.trim_end_matches('.').to_owned();
+    let names = lines
+        .filter(|line| !line.starts_with('#'))
+        .map(str::to_owned)
+        .collect();
+    (version, names)
 }

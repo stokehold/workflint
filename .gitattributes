@@ -12,3 +12,6 @@
 
 # Fuzz regression inputs must reach the checks byte for byte, like the crash inputs they come from.
 /crates/workflint-yaml/tests/fuzz-regressions/** -text
+
+# `cargo xtask vendor-testdata` compares the time zone list byte for byte with what it would write.
+/tests/conformance/go/** -text

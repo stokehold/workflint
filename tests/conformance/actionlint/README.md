@@ -9,6 +9,8 @@ This directory is a copy of files from [rhysd/actionlint](https://github.com/rhy
 - `expr_sema.go`, the expression checker, whose `BuiltinGlobalVariableTypes` and `BuiltinFuncSignatures` tables the tests of `workflint-data` compare with.
 - `availability.go`, the contexts and special functions that each workflow key allows, which the tests of `workflint-data` compare with.
 - `expr_insecure.go`, the untrusted-input checker, whose `BuiltinUntrustedInputs` table the tests of `workflint-data` compare with.
+- `all_webhooks.go`, `rule_action.go`, `rule_deprecated_commands.go`, `rule_events.go`, `rule_permissions.go`, `rule_runner_label.go`, and `rule_shell_name.go`, whose webhook, branding, Docker registry, `runs.using`, deprecated command, filter, permission, runner label, and shell tables the tests of `workflint-data` compare with.
+- `cmd/actionlint/main.go`, the reference's command, which embeds Go's tzdata.
 - `LICENSE.txt`, actionlint's MIT license, which covers every file here except this README.
 
 Do not edit these files. To recreate the copy, run this from the repository root:

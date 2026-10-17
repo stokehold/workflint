@@ -33,7 +33,7 @@ cargo xtask reference
 
 The command checks the Go version before it builds. With another Go 1.21 or later installed, `GOTOOLCHAIN=go1.26.4 cargo xtask reference` makes it download Go 1.26.4. It stops with an error, and changes nothing, when the checkout has local changes or untracked files that its `.gitignore` does not ignore. It builds the binary again when the commit, the Go version, or a Go build variable such as `GOFLAGS`, `GOOS`, or `GOARCH` changes. The corpus is up to date when every file has the content of its archive entry. `docs/research/README.md` lists the other projects under `.reference/`, which you clone by hand.
 
-The test suite does not need `.reference/`. It reads a copy of the reference's test data in `tests/conformance/actionlint/`, which is in git. `cargo xtask vendor-testdata` recreates that copy from the checkout, and the `README.md` there lists the files it holds.
+The test suite does not need `.reference/`. It reads a copy of the reference's test data in `tests/conformance/actionlint/`, which is in git. `cargo xtask vendor-testdata` recreates that copy from the checkout, and the `README.md` there lists the files it holds. It also writes `tests/conformance/go/time-zones.txt` from the tzdata of the pinned Go, so it needs that Go version too.
 
 The conformance suite, the `conformance` test target of `xtask`, lints each of those fixtures with the `workflint` binary. `tests/conformance/README.md` describes how it runs them and the files that list expected failures and allowed differences. Fixtures that need shellcheck or pyflakes are skipped when the tool is not on `PATH`, so install both to run every fixture.
 
