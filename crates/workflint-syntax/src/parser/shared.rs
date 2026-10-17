@@ -569,6 +569,15 @@ mod tests {
                 "run shell invalid working-directory invalid",
             ]
         );
+        // The reference keeps the shell as `""`, and its `shell-name` rule
+        // reports `shell name "" is invalid` too.
+        assert_eq!(
+            defaults("defaults:\n  run:\n    shell: [x]\n"),
+            [
+                r#"3:12: expected scalar node for string value but found sequence node with "!!seq" tag [unexpected-node-kind]"#,
+                "run shell invalid working-directory absent",
+            ]
+        );
     }
 
     #[test]

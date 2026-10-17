@@ -7,23 +7,26 @@ use crate::lexer::Lexer;
 use crate::rules::{INVALID_EXPRESSION_SYNTAX, INVALID_NUMBER_LITERAL};
 use crate::token::{Token, TokenKind};
 
-/// The deepest nesting the parser accepts. Each parenthesis, `!`, function call, property
-/// access, object filter, index access, and binary operator adds a level, so that neither the
-/// parser nor a recursive walk of the tree can overflow the stack.
+/// The deepest nesting the parser accepts: the most levels on a path from the root of the tree
+/// to a leaf. Each parenthesis adds a level, and so does each node that is not a leaf: `!`, a
+/// function call, a property access, an object filter, an index access, a comparison, and a
+/// chain of `&&` or `||` of any length. The limit keeps the parser and every recursive walk of
+/// the tree from overflowing the stack.
 const MAX_DEPTH: u32 = 128;
 
 const EXPECTED_PRIMARY: &str = "variable access, function call, null, bool, int, float or string";
 
-/// The precedence level of `&&`. `&&` and `||` group to the right, and the operators above
-/// them group to the left.
-const AND_LEVEL: u8 = 2;
+/// The precedence level of `==` and `!=`. The levels of `||` and `&&`, 1 and 2, are below it,
+/// and the level of `<`, `<=`, `>`, and `>=`, 4, above it.
+const EQUALITY_LEVEL: u8 = 3;
 
 /// Parses the expression at the start of `src` up to and including the `}}` that ends it.
 ///
 /// Returns the tree and the byte offset just past `}}`. The precedence of the operators, from
 /// the tightest, is: property access, object filters, and index access; `!`; `<`, `<=`, `>`,
-/// and `>=`; `==` and `!=`; `&&`; `||`. Comparisons group to the left, as in GitHub's parser,
-/// and `&&` and `||` group to the right, as in actionlint's.
+/// and `>=`; `==` and `!=`; `&&`; `||`. Comparisons group to the left, as in GitHub's parser.
+/// A chain of `&&` or `||` is one [`ExprKind::Logical`] node, as in GitHub's parser, and has no
+/// limit on its length.
 ///
 /// # Errors
 ///
@@ -48,9 +51,13 @@ pub fn parse_expression(src: &str) -> Result<(Expr, u32), ExprError> {
     Parser::new(src).parse()
 }
 
-/// A recursive-descent parser with precedence climbing for binary operators, ported from
+/// A recursive-descent parser with precedence climbing for comparisons, ported from
 /// actionlint's `ExprParser`. Like actionlint's, it pulls one token at a time from the lexer
-/// and stops at the first error.
+/// and stops at the first error. It reads a chain of `&&` or `||` in a loop.
+///
+/// Each parse function returns its node with the node's levels, and keeps
+/// `depth + levels <= MAX_DEPTH`, where `depth` is the parser's depth when the function
+/// starts. Then the levels of the root are at most [`MAX_DEPTH`].
 struct Parser<'src> {
     src: &'src str,
     lexer: Lexer<'src>,
@@ -58,9 +65,23 @@ struct Parser<'src> {
     cur: Token,
     /// The byte offset one past the last consumed token.
     prev_end: u32,
-    /// The current nesting depth, at most [`MAX_DEPTH`].
+    /// The levels above the node being parsed: its ancestors and the parentheses around it. At
+    /// most [`MAX_DEPTH`].
     depth: u32,
     error: Option<ExprError>,
+}
+
+/// A node and its levels: the most parentheses and nodes that are not leaves on a path from
+/// the node down to a leaf, the node included. A leaf has none.
+struct Parsed {
+    expr: Expr,
+    levels: u32,
+}
+
+impl Parsed {
+    const fn leaf(expr: Expr) -> Self {
+        Self { expr, levels: 0 }
+    }
 }
 
 impl<'src> Parser<'src> {
@@ -78,7 +99,7 @@ impl<'src> Parser<'src> {
     }
 
     fn parse(mut self) -> Result<(Expr, u32), ExprError> {
-        let root = self.binary(1);
+        let root = self.or_chain().map(|root| root.expr);
         if let Some(err) = self.lexer.error() {
             return Err(err.clone());
         }
@@ -158,75 +179,145 @@ impl<'src> Parser<'src> {
         None
     }
 
-    /// Adds a nesting level, or records an error if that exceeds [`MAX_DEPTH`]. The caller
-    /// removes the level on success. After an error the parse stops, so the depth no longer
-    /// matters.
-    fn enter(&mut self) -> Option<()> {
-        if self.depth >= MAX_DEPTH {
-            self.error(&INVALID_EXPRESSION_SYNTAX, || {
-                format!("expression is nested more than {MAX_DEPTH} levels deep")
-            });
-            return None;
+    /// Checks that a node one level above a child of `levels` levels fits under
+    /// [`MAX_DEPTH`] at the current depth, or records an error at the next token. After an
+    /// error the parse stops, so the depth no longer matters.
+    #[inline]
+    fn fits_above(&mut self, levels: u32) -> Option<()> {
+        if self.depth + levels >= MAX_DEPTH {
+            return self.too_deep();
         }
+        Some(())
+    }
+
+    #[cold]
+    fn too_deep(&mut self) -> Option<()> {
+        self.error(&INVALID_EXPRESSION_SYNTAX, || {
+            format!("expression is nested more than {MAX_DEPTH} levels deep")
+        });
+        None
+    }
+
+    /// Adds a level for a parenthesis or a node whose children the parser reads next, or
+    /// records an error if that exceeds [`MAX_DEPTH`]. The caller removes the level on
+    /// success.
+    fn enter(&mut self) -> Option<()> {
+        self.fits_above(0)?;
         self.depth += 1;
         Some(())
     }
 
-    /// Parses binary operators of level `min` and above, and their operands.
-    fn binary(&mut self, min: u8) -> Option<Expr> {
+    /// Parses a chain of `||`, and the operators that bind tighter.
+    fn or_chain(&mut self) -> Option<Parsed> {
+        let start = self.cur.start;
+        let first = self.and_chain()?;
+        if self.cur.kind != TokenKind::Or {
+            return Some(first);
+        }
+        self.chain(LogicalOp::Or, start, first)
+    }
+
+    /// Parses a chain of `&&`, and the operators that bind tighter.
+    #[inline]
+    fn and_chain(&mut self) -> Option<Parsed> {
+        let start = self.cur.start;
+        let first = self.comparison(EQUALITY_LEVEL)?;
+        if self.cur.kind != TokenKind::And {
+            return Some(first);
+        }
+        self.chain(LogicalOp::And, start, first)
+    }
+
+    /// Parses the rest of a chain of `op` from `start`, after its first operand. The loop
+    /// reads a chain of any length without recursion.
+    fn chain(&mut self, op: LogicalOp, start: u32, first: Parsed) -> Option<Parsed> {
+        let op_token = match op {
+            LogicalOp::Or => TokenKind::Or,
+            LogicalOp::And => TokenKind::And,
+        };
+        // The first operand was read before the chain was known, so it has not counted the
+        // chain's level yet.
+        self.fits_above(first.levels)?;
+        self.depth += 1;
+        let mut levels = first.levels;
+        let token = first.expr.token;
+        // Most chains have a few operands. Room for four saves growing the vector twice.
+        let mut operands = Vec::with_capacity(4);
+        operands.push(first.expr);
+        while self.cur.kind == op_token {
+            self.next();
+            let operand = match op {
+                LogicalOp::Or => self.and_chain()?,
+                LogicalOp::And => self.comparison(EQUALITY_LEVEL)?,
+            };
+            levels = levels.max(operand.levels);
+            operands.push(operand.expr);
+        }
+        self.depth -= 1;
+        let expr = self.node(ExprKind::Logical { op, operands }, start, token);
+        Some(Parsed {
+            expr,
+            levels: levels + 1,
+        })
+    }
+
+    /// Parses comparisons of precedence level `min` and above, and their operands.
+    #[inline]
+    fn comparison(&mut self, min: u8) -> Option<Parsed> {
         let start = self.cur.start;
         let mut left = self.unary()?;
-        let mut levels = 0;
-        while let Some((op, level)) = binary_op(self.cur.kind) {
+        while let Some((op, level)) = compare_op(self.cur.kind) {
             if level < min {
                 break;
             }
-            self.enter()?;
-            levels += 1;
+            self.fits_above(left.levels)?;
             self.next();
-            let right_min = if level <= AND_LEVEL { level } else { level + 1 };
-            let right = Box::new(self.binary(right_min)?);
-            let token = left.token;
-            let left_box = Box::new(left);
-            let kind = match op {
-                BinaryOp::Compare(op) => ExprKind::Compare {
-                    op,
-                    left: left_box,
-                    right,
-                },
-                BinaryOp::Logical(op) => ExprKind::Logical {
-                    op,
-                    left: left_box,
-                    right,
-                },
+            self.depth += 1;
+            let right = self.comparison(level + 1)?;
+            self.depth -= 1;
+            let token = left.expr.token;
+            let kind = ExprKind::Compare {
+                op,
+                left: Box::new(left.expr),
+                right: Box::new(right.expr),
             };
-            left = self.node(kind, start, token);
+            left = Parsed {
+                expr: self.node(kind, start, token),
+                levels: left.levels.max(right.levels) + 1,
+            };
         }
-        self.depth -= levels;
         Some(left)
     }
 
-    fn unary(&mut self) -> Option<Expr> {
+    fn unary(&mut self) -> Option<Parsed> {
         if self.cur.kind != TokenKind::Not {
             return self.postfix();
         }
         self.enter()?;
         let token = self.next();
-        let operand = Box::new(self.unary()?);
+        let operand = self.unary()?;
         self.depth -= 1;
-        Some(self.node(ExprKind::Not { operand }, token.start, token))
+        let kind = ExprKind::Not {
+            operand: Box::new(operand.expr),
+        };
+        Some(Parsed {
+            expr: self.node(kind, token.start, token),
+            levels: operand.levels + 1,
+        })
     }
 
-    fn postfix(&mut self) -> Option<Expr> {
+    fn postfix(&mut self) -> Option<Parsed> {
         let start = self.cur.start;
-        let mut expr = self.primary()?;
-        let mut levels = 0;
+        let Parsed {
+            mut expr,
+            mut levels,
+        } = self.primary()?;
         loop {
             // The reference reports errors about the whole chain at its first token.
             let token = expr.token;
             let kind = match self.cur.kind {
                 TokenKind::Dot => {
-                    self.enter()?;
+                    self.fits_above(levels)?;
                     levels += 1;
                     self.next();
                     let receiver = Box::new(expr);
@@ -250,10 +341,10 @@ impl<'src> Parser<'src> {
                     }
                 }
                 TokenKind::LeftBracket => {
-                    self.enter()?;
-                    levels += 1;
+                    self.fits_above(levels)?;
                     self.next();
-                    let index = Box::new(self.binary(1)?);
+                    self.depth += 1;
+                    let index = self.or_chain()?;
                     if self.cur.kind != TokenKind::RightBracket {
                         return self.unexpected(
                             "closing bracket ']' for index access",
@@ -261,26 +352,27 @@ impl<'src> Parser<'src> {
                         );
                     }
                     self.next();
+                    self.depth -= 1;
+                    levels = levels.max(index.levels) + 1;
                     ExprKind::Index {
                         operand: Box::new(expr),
-                        index,
+                        index: Box::new(index.expr),
                     }
                 }
                 _ => break,
             };
             expr = self.node(kind, start, token);
         }
-        self.depth -= levels;
-        Some(expr)
+        Some(Parsed { expr, levels })
     }
 
-    fn primary(&mut self) -> Option<Expr> {
+    fn primary(&mut self) -> Option<Parsed> {
         match self.cur.kind {
             TokenKind::Ident => self.ident(),
             TokenKind::LeftParen => {
                 self.enter()?;
                 self.next();
-                let nested = self.binary(1)?;
+                let nested = self.or_chain()?;
                 if self.cur.kind != TokenKind::RightParen {
                     return self.unexpected(
                         "closing ')' of nested expression (...)",
@@ -289,10 +381,13 @@ impl<'src> Parser<'src> {
                 }
                 self.next();
                 self.depth -= 1;
-                Some(nested)
+                Some(Parsed {
+                    expr: nested.expr,
+                    levels: nested.levels + 1,
+                })
             }
-            TokenKind::Int => self.number(TokenKind::Int),
-            TokenKind::Float => self.number(TokenKind::Float),
+            TokenKind::Int => self.number(TokenKind::Int).map(Parsed::leaf),
+            TokenKind::Float => self.number(TokenKind::Float).map(Parsed::leaf),
             TokenKind::String => {
                 let token = self.next();
                 let text = self.text(token);
@@ -301,7 +396,8 @@ impl<'src> Parser<'src> {
                 let text = text.strip_prefix('\'').unwrap_or(text);
                 let text = text.strip_suffix('\'').unwrap_or(text);
                 let lit = StringLit::new(text.replace("''", "'"));
-                Some(self.node(ExprKind::String(lit), token.start, token))
+                let expr = self.node(ExprKind::String(lit), token.start, token);
+                Some(Parsed::leaf(expr))
             }
             _ => self.unexpected(
                 EXPECTED_PRIMARY,
@@ -316,7 +412,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn ident(&mut self) -> Option<Expr> {
+    fn ident(&mut self) -> Option<Parsed> {
         let token = self.next();
         let text = self.text(token);
         if self.cur.kind != TokenKind::LeftParen {
@@ -327,18 +423,21 @@ impl<'src> Parser<'src> {
                 "false" => ExprKind::Bool(false),
                 _ => ExprKind::Variable(Name::new(text, token.start, token.end)),
             };
-            return Some(self.node(kind, token.start, token));
+            return Some(Parsed::leaf(self.node(kind, token.start, token)));
         }
 
         // Only a bare name can be called, so a call is a primary expression.
         self.enter()?;
         self.next();
         let mut args = Vec::new();
+        let mut levels = 0;
         if self.cur.kind == TokenKind::RightParen {
             self.next();
         } else {
             loop {
-                args.push(self.binary(1)?);
+                let arg = self.or_chain()?;
+                levels = levels.max(arg.levels);
+                args.push(arg.expr);
                 match self.cur.kind {
                     TokenKind::Comma => {
                         self.next();
@@ -358,7 +457,10 @@ impl<'src> Parser<'src> {
         }
         self.depth -= 1;
         let callee = Name::new(text, token.start, token.end);
-        Some(self.node(ExprKind::Call { callee, args }, token.start, token))
+        Some(Parsed {
+            expr: self.node(ExprKind::Call { callee, args }, token.start, token),
+            levels: levels + 1,
+        })
     }
 
     fn number(&mut self, kind: TokenKind) -> Option<Expr> {
@@ -403,24 +505,16 @@ impl<'src> Parser<'src> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum BinaryOp {
-    Compare(CompareOp),
-    Logical(LogicalOp),
-}
-
-/// Returns the binary operator of a token kind and its precedence level. A higher level binds
-/// tighter.
-fn binary_op(kind: TokenKind) -> Option<(BinaryOp, u8)> {
+/// Returns the comparison operator of a token kind and its precedence level. A higher level
+/// binds tighter.
+fn compare_op(kind: TokenKind) -> Option<(CompareOp, u8)> {
     let op = match kind {
-        TokenKind::Or => (BinaryOp::Logical(LogicalOp::Or), 1),
-        TokenKind::And => (BinaryOp::Logical(LogicalOp::And), AND_LEVEL),
-        TokenKind::Eq => (BinaryOp::Compare(CompareOp::Eq), 3),
-        TokenKind::NotEq => (BinaryOp::Compare(CompareOp::NotEq), 3),
-        TokenKind::Less => (BinaryOp::Compare(CompareOp::Less), 4),
-        TokenKind::LessEq => (BinaryOp::Compare(CompareOp::LessEq), 4),
-        TokenKind::Greater => (BinaryOp::Compare(CompareOp::Greater), 4),
-        TokenKind::GreaterEq => (BinaryOp::Compare(CompareOp::GreaterEq), 4),
+        TokenKind::Eq => (CompareOp::Eq, EQUALITY_LEVEL),
+        TokenKind::NotEq => (CompareOp::NotEq, EQUALITY_LEVEL),
+        TokenKind::Less => (CompareOp::Less, EQUALITY_LEVEL + 1),
+        TokenKind::LessEq => (CompareOp::LessEq, EQUALITY_LEVEL + 1),
+        TokenKind::Greater => (CompareOp::Greater, EQUALITY_LEVEL + 1),
+        TokenKind::GreaterEq => (CompareOp::GreaterEq, EQUALITY_LEVEL + 1),
         _ => return None,
     };
     Some(op)
@@ -488,7 +582,7 @@ mod tests {
     #[test]
     fn later_error_keeps_the_first_error() {
         let mut parser = Parser::new(".}}");
-        assert!(parser.binary(1).is_none());
+        assert!(parser.or_chain().is_none());
         let first = parser.error.clone();
         assert!(first.is_some());
         let _: Option<()> = parser.unexpected("foo", &[]);

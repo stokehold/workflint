@@ -13,6 +13,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4.13"
+workflint-data = { path = "../crates/workflint-data" }
 workflint-diagnostics = { path = "../crates/workflint-diagnostics" }
 workflint-expr = { path = "../crates/workflint-expr" }
 workflint-syntax = { path = "../crates/workflint-syntax" }
@@ -72,6 +73,13 @@ bench = false
 [[bin]]
 name = "expr_parse"
 path = "fuzz_targets/expr_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_json"
+path = "fuzz_targets/expr_json.rs"
 test = false
 doc = false
 bench = false

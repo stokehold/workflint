@@ -1,0 +1,16 @@
+plain: x
+single: 'x'
+double: "x"
+literal: |
+  x
+folded: >-
+  x
+str: !!str 1
+int: !<tag:yaml.org,2002:int> "2"
+map: !!map {a: !!null ''}
+seq: !!seq [!!bool true]
+custom: !custom x
+binary: !!binary aGk=
+non-specific: ! x
+anchored: &a !!str y
+alias: *a

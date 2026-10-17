@@ -75,8 +75,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="yaml-error-positions"></a>
 ### YAML syntax error positions
 
-- Upstream: YAML syntax errors use go-yaml's position, which takes the line from libyaml's context mark when it has one and reports a 0-based column. `steps: -` is reported at `2:7`, although the problem is at `2:8`. A control character in the file gives `control characters are not allowed` at `0:0`, because libyaml's reader records only a byte offset. Bytes that do not decode as UTF-8, or as UTF-16 after a UTF-16 byte order mark, give an encoding error such as `invalid leading UTF-8 octet` at `0:0` too. go-yaml decodes the file in chunks while it parses, so when the bad bytes are in a later chunk than a syntax error, it reports the syntax error instead.
-- workflint: the error is reported at the 1-based problem position, a control character at its own position, and an encoding error at the first character that does not decode. workflint decodes the whole file before it parses, so it always reports the encoding error. The message text is unchanged.
+- Upstream: YAML syntax errors use go-yaml's position: the line and column of libyaml's context mark when the error has one, such as the start of the enclosing mapping, and of the problem mark otherwise, with a 0-based column. `steps: -` is reported at `2:7`, although the problem is at `2:8`. An unclosed quoted scalar, as in `runs-on: "ubuntu` on line 4, is reported at its opening quote, `4:13`. A control character in the file gives `control characters are not allowed` at `0:0`, because libyaml's reader records only a byte offset. Bytes that do not decode as UTF-8, or as UTF-16 after a UTF-16 byte order mark, give an encoding error such as `invalid leading UTF-8 octet` at `0:0` too. go-yaml decodes the file in chunks while it parses, so when the bad bytes are in a later chunk than a syntax error, it reports the syntax error instead.
+- workflint: the error is reported at the 1-based problem position, a control character at its own position, and an encoding error at the first character that does not decode. An unclosed quoted scalar is the exception: its problem position is the end of the file or the next document marker, so workflint reports it at the opening quote too, at `4:14`, with the snippet of that line. workflint decodes the whole file before it parses, so it always reports the encoding error. The message text is unchanged.
 - Why: the upstream position is off by one column and sometimes on the wrong line.
 - Upstream issue: #519.
 - Milestone: M1.
@@ -91,7 +91,37 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a position must point into the file.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: implemented. No fixture covers it.
+- Status: implemented. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/document-start-at-eof.yaml`.
+
+<a id="scanner-error-after-comment-before-dash"></a>
+### Scanner error after a comment before a `-` item
+
+- Upstream: when a comment line comes before a `-` item, go-yaml reads the token after the `-` to move the comment, and ignores a scanner error while it reads. The scanner then goes on after the token that failed, and the parser reports a later error. In `#\n-\n,1\n|x\n`, the `|x` is not a valid block scalar header, and upstream reports `did not find expected node content` at `2:0` instead.
+- workflint: the first error stops the parse, so the same file reports `did not find expected comment or line break` at `4:2`.
+- Why: the ignored error is a go-yaml bug, and both tools reject the file.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: implemented. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/scanner-error-after-comment-before-dash.yaml`.
+
+<a id="utf16-control-characters"></a>
+### Control characters in UTF-16 files
+
+- Upstream: go-yaml checks each 512-byte chunk of the file for control characters when it decodes the chunk, and in a UTF-16 file it counts UTF-16 bytes. A syntax error in an earlier chunk comes first. A UTF-16LE file with `a: 1\nb\nc: `, 290 `x`, and U+0001 has the control character in its second chunk, so upstream reports `could not find expected ':'` at `2:0`.
+- workflint: the file is decoded to UTF-8 before it is parsed, and the chunks count UTF-8 bytes. The same file reports `control characters are not allowed` at the U+0001, `3:294`.
+- Why: a chunk boundary is not something a user can see, and both tools reject the file. UTF-8 files get the same message as upstream.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: implemented. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/utf16le-control-character-in-second-chunk.yaml`.
+
+<a id="utf16-second-bom"></a>
+### A second byte order mark in UTF-16 files
+
+- Upstream: when the text of a UTF-16 file starts with a second U+FEFF after its byte order mark, go-yaml drops the first character of every line after the first. The UTF-16LE file `a: 1\nbb: 2\n` with two byte order marks has the keys `a` at `1:2` and `b` at `2:2`.
+- workflint: the second U+FEFF is skipped as a byte order mark, and no character is dropped. The keys are `a` at `1:1` and `bb` at `2:1`.
+- Why: upstream loses characters of the file. In a UTF-8 file with two byte order marks, workflint matches upstream, whose reader sees the same bytes.
+- Upstream issue: none.
+- Milestone: M1.
+- Status: implemented. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/utf16le-second-byte-order-mark.yaml`.
 
 <a id="unknown-anchor-position"></a>
 ### Undefined alias position and message prefix
@@ -243,6 +273,21 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: implemented in the parser. The `permissions` rule follows in M4.22. No fixture covers it.
 
+<a id="invalid-value-reported-once"></a>
+### An invalid value is reported once
+
+- Upstream: the parser reports a value that is not a valid string and keeps it as the string `""`. The rules then check that string as if the file had it, and these cases get a second error:
+  - An activity type that is empty, null, or not a scalar, as in `types: [[x]]`, `types: ['']`, `types: ''`, or `types:`, also gets `invalid activity type "" for "pull_request" Webhook event` (`events`).
+  - An event key that is not a scalar, as in `[a]: x` under `on`, also gets `unknown Webhook event ""` (`events`).
+  - A `shell` of `defaults.run` or of a step that is empty or not a scalar also gets `shell name "" is invalid` (`shell-name`).
+  - A `runs-on` label that is empty or not a scalar also gets `label "" is unknown` (`runner-label`).
+- workflint: the parser reports the value once, and the rules skip it. The value keeps its place in its list, so a check that only needs the value to be written still runs. `options: [[x]]` on a `string` input of `workflow_dispatch` still gets `"options" can not be set to "text" input because its input type is not "choice"`, and `options: ['']` on a `choice` input counts as set, as upstream. The keys of `permissions` and `env` are in [Keys that are not strings in `permissions` and `env`](#non-scalar-keys).
+- Why: the second error repeats the first and names a value that is not in the file.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: implemented in the parser. The rules that skip the value follow in M4.
+- Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
+
 <a id="typed-decoding-edge-cases"></a>
 ### Rare inputs to the typed decoding of local metadata
 
@@ -284,7 +329,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Comparison operator precedence
 
 - Upstream: all six comparison operators share one precedence level and associate to the right. `'a' < 'b' == true` parses as `'a' < ('b' == true)` and reports `"string" value cannot be compared to "bool" value with "<" operator`.
-- workflint: `<`, `<=`, `>` and `>=` bind tighter than `==` and `!=`, and all associate to the left, following GitHub's documented operator order. `'a' < 'b' == true` parses as `('a' < 'b') == true`. `&&` and `||` keep upstream's grouping to the right, which evaluates to the same value as any other grouping.
+- workflint: `<`, `<=`, `>` and `>=` bind tighter than `==` and `!=`, and all associate to the left, following GitHub's documented operator order. `'a' < 'b' == true` parses as `('a' < 'b') == true`. A chain of `&&` or `||` is one node with all its operands, as in GitHub's parser. Upstream nests it to the right, which gives the same values, types, and errors.
 - Confirmed against the expression parser in `actions/languageservices` (`expressions/src/parser.ts`) at commit `4043eda`. From the loosest: `||`, then `&&`, then `==` and `!=`, then `<`, `<=`, `>` and `>=`, then `!`, then property access and index access. The comparison and equality levels are left-associative loops. The `&&` and `||` levels collect any number of operands into one node.
 - Why: the tree must match how GitHub evaluates the expression, or type errors are wrong.
 - Upstream issue: none.
@@ -295,8 +340,18 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Nesting limit for expressions
 
 - Upstream: expressions can nest without limit.
-- workflint: an expression nested more than 128 levels deep is an error, `expression is nested more than 128 levels deep`, reported by `invalid-expression-syntax`. Each parenthesis, `!`, function call, property access, object filter, index access, and binary operator adds a level.
-- Why: the parser and the checks walk the tree recursively, and a limit keeps a crafted expression from overflowing the stack. The deepest expression in the corpus is 11 levels deep. GitHub's parser in `actions/languageservices` stops at 50 levels.
+- workflint: an expression nested more than 128 levels deep is an error, `expression is nested more than 128 levels deep`, reported by `invalid-expression-syntax`. The depth is the most levels on a path from the root of the tree to a leaf. Each parenthesis adds a level, and so do `!`, a function call, a property access, an object filter, an index access, and a comparison. A chain of `&&` or `||` of any length adds one level, so a condition with hundreds of `a == b ||` alternatives is accepted. `a.b.c[x.y]` is 3 levels deep: the index access is one level above the deeper of `a.b.c` and `x.y`.
+- Why: the parser and the checks walk the tree recursively, and a limit keeps a crafted expression from overflowing the stack. The parser reads a chain of `&&` or `||` in a loop, so a long chain needs no limit. The deepest expression in the corpus is 11 levels deep. GitHub's parser in `actions/languageservices` stops at 50 levels.
+- Upstream issue: none.
+- Milestone: M3.
+- Status: implemented.
+
+<a id="bom-before-string-literal"></a>
+### Byte order mark before a string literal
+
+- Upstream: when an expression starts with a byte order mark, the lexer keeps the mark in the first token. If that token is a string literal, the parser cuts the first byte and the last byte off the token, so `${{ 'x' }}` after a byte order mark has the value `"\xbb\xbf'x"`: the last two bytes of the mark, the opening quote, and `x`.
+- workflint: the parser drops the byte order mark before it removes the quotes, so the value is `"x"`.
+- Why: upstream's value is not valid UTF-8 and keeps a quote.
 - Upstream issue: none.
 - Milestone: M3.
 - Status: implemented.
@@ -419,7 +474,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a comma separates entries in a flow collection. go-yaml keeps a rule that libyaml dropped.
 - Upstream issue: none.
 - Milestone: M1.
-- Status: implemented. No fixture covers it.
+- Status: implemented. No fixture covers it. `cargo xtask yaml-parity` allows the difference for `tests/yaml-parity/tag-before-flow-sequence-end.yaml`, where upstream reads `[!!str]` as the tag `!!str]` and fails.
 
 <a id="yaml-solidus-escape"></a>
 ### The `\/` escape in double-quoted strings
@@ -654,6 +709,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Upstream issue: none.
 - Milestone: M5.
 - Status: planned.
+
+<a id="closed-pipe"></a>
+### A closed output pipe ends the run with its exit code
+
+- Upstream: when the reader of stdout goes away, as in `actionlint x.yaml | head -1`, the next write kills the process with SIGPIPE. It prints nothing more, and a shell reports exit status 141.
+- workflint: it stops writing, prints nothing to stderr, and exits with the code the run would have had: 1 when there are diagnostics, 0 when there are none. Rust ignores SIGPIPE, and workflint forbids the unsafe code it would take to restore it.
+- Why: the exit code still says whether the files have problems, and a shell pipeline without `pipefail` reports the last command either way.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: implemented.
 
 ## External tools
 

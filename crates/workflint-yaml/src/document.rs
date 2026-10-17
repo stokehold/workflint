@@ -545,6 +545,13 @@ pub struct Comment {
     /// there. If no node starts on that line, as when the line is empty or
     /// holds only a closing bracket, the comment is attached to no node.
     ///
+    /// A trailing comment that only `-` and `?` indicators precede on its
+    /// line, as in `- # c`, is attached to the node that follows the last
+    /// indicator. If that node starts on a later line, the comment is
+    /// attached as if it were an own-line comment before that line. So in
+    /// `- # c` followed by `  run: a`, the comment is attached to the
+    /// mapping, which is the sequence item, and not to the sequence.
+    ///
     /// A comment on an alias is attached to the alias node. See
     /// [`Document::node_comments`].
     pub node: Option<NodeId>,

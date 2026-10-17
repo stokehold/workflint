@@ -5,10 +5,13 @@
 //! the workflow parser, and prints the diagnostics. M5.6 replaces it with the full command-line
 //! interface.
 
+mod path;
+
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs;
-use std::io::{self, BufWriter, Write};
+use std::io::{self, BufWriter, ErrorKind, Write};
+use std::path::Path;
 use std::process::ExitCode;
 
 use workflint_diagnostics::quote::quote;
@@ -27,7 +30,8 @@ const EXIT_INVALID_OPTION: u8 = 2;
 const EXIT_FAILURE: u8 = 3;
 
 const USAGE: &str = "Usage: workflint [-oneline] [-no-color] [-shellcheck=PATH] [-pyflakes=PATH] \
-                     [-config-file PATH] FILES...";
+                     [-config-file PATH] FILES...\n\
+                     Reading a workflow from stdin with `-` is not supported yet.";
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
@@ -38,6 +42,11 @@ fn main() -> ExitCode {
             );
             return ExitCode::from(EXIT_INVALID_OPTION);
         }
+        // actionlint reads stdin when `-` is the only argument.
+        Ok((_, [only])) if only == "-" => {
+            eprintln!("this version of workflint cannot read stdin\n{USAGE}");
+            return ExitCode::from(EXIT_INVALID_OPTION);
+        }
         Ok(parsed) => parsed,
         Err(message) => {
             eprintln!("{message}\n{USAGE}");
@@ -46,9 +55,10 @@ fn main() -> ExitCode {
     };
 
     // As in actionlint, a file that cannot be read stops the run before anything is printed.
+    let cwd = path::working_dir();
     let mut files = Vec::with_capacity(paths.len());
     for (index, path) in paths.iter().enumerate() {
-        match lint(index, path) {
+        match lint(index, path, &cwd) {
             Ok(file) => files.push(file),
             Err(message) => {
                 eprintln!("{message}");
@@ -68,15 +78,20 @@ fn main() -> ExitCode {
             }
         })
         .and_then(|()| out.flush());
-    if let Err(err) = written {
-        eprintln!("could not write the output: {err}");
-        return ExitCode::from(EXIT_FAILURE);
-    }
-
-    if files.iter().any(|(_, diagnostics)| !diagnostics.is_empty()) {
-        ExitCode::from(EXIT_PROBLEM_FOUND)
+    let code = if files.iter().any(|(_, diagnostics)| !diagnostics.is_empty()) {
+        EXIT_PROBLEM_FOUND
     } else {
-        ExitCode::from(EXIT_NO_PROBLEM)
+        EXIT_NO_PROBLEM
+    };
+    match written {
+        // A reader that stops early, such as `head`, is not an error. actionlint dies of SIGPIPE
+        // there without a message.
+        Err(err) if err.kind() == ErrorKind::BrokenPipe => ExitCode::from(code),
+        Err(err) => {
+            eprintln!("could not write the output: {err}");
+            ExitCode::from(EXIT_FAILURE)
+        }
+        Ok(()) => ExitCode::from(code),
     }
 }
 
@@ -147,11 +162,18 @@ fn parse_bool(value: &str) -> Option<bool> {
 
 /// Reads, decodes, and parses the file at `path`, and returns it with its sorted diagnostics.
 ///
-/// The error is the message to print when the file cannot be read.
-fn lint(index: usize, path: &OsString) -> Result<(SourceFile, Vec<Diagnostic>), String> {
-    let display = path.to_string_lossy();
-    let fail = |err: &dyn Display| format!("could not read {}: {err}", quote(&display));
+/// The diagnostics name the file by its path relative to `cwd` when there is one. The error is
+/// the message to print when the file cannot be read, and names the file as given.
+fn lint(
+    index: usize,
+    path: &OsString,
+    cwd: &Path,
+) -> Result<(SourceFile, Vec<Diagnostic>), String> {
+    let given = path.to_string_lossy();
+    let fail = |err: &dyn Display| format!("could not read {}: {err}", quote(&given));
     let bytes = fs::read(path).map_err(|err| fail(&err))?;
+    let display = path::display_path(cwd, Path::new(path));
+    let display = display.to_string_lossy();
     let id = FileId::new(u32::try_from(index).map_err(|err| fail(&err))?);
     let (text, decode_error) = match workflint_yaml::decode(&bytes) {
         Ok(text) => (text.into_owned(), None),
