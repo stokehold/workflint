@@ -23,11 +23,13 @@ pub struct Workflow<'a> {
     pub run_name: Field<'a, Template<'a>>,
     /// `on`: the events that trigger the workflow, in source order.
     ///
-    /// The list is empty when `on` is written but names no valid event,
-    /// such as `on:` with a null value. `on` is invalid when its value is
-    /// an alias that stays unresolved, and the reference then reports it as
-    /// missing.
-    pub on: Field<'a, Arc<[Event<'a>]>>,
+    /// An event that the parser cannot build is reported and kept as
+    /// `None`: a string or sequence item that is not a non-empty string,
+    /// such as `on: ''`, an event key that is not a scalar, such as
+    /// `[a]: x`, and a `schedule` with no valid sequence of entries. The
+    /// list is empty when `on` is an empty sequence or mapping. `on` is invalid when its value is an alias that stays
+    /// unresolved, and the reference then reports it as missing.
+    pub on: Field<'a, Arc<[Option<Event<'a>>]>>,
     /// `permissions`. The reference's `Permissions.Pos` is this field's key.
     pub permissions: Field<'a, Permissions<'a>>,
     /// `env`.
@@ -47,10 +49,14 @@ impl<'a> Workflow<'a> {
     /// `FindWorkflowCallEvent`.
     #[must_use]
     pub fn workflow_call_event(&self) -> Option<&WorkflowCallEvent<'a>> {
-        self.on.value()?.iter().find_map(|event| match event {
-            Event::WorkflowCall(event) => Some(event),
-            _ => None,
-        })
+        self.on
+            .value()?
+            .iter()
+            .flatten()
+            .find_map(|event| match event {
+                Event::WorkflowCall(event) => Some(event),
+                _ => None,
+            })
     }
 }
 
@@ -164,7 +170,7 @@ jobs:
     }
 
     /// Builds the events of `WORKFLOW`.
-    fn events(document: &Document) -> Arc<[Event<'_>]> {
+    fn events(document: &Document) -> Arc<[Option<Event<'_>>]> {
         let input = WorkflowCallEventInput {
             required: Value::Literal {
                 key: Some(key_at(
@@ -186,7 +192,7 @@ jobs:
             input,
         )]);
         Arc::new([
-            Event::Webhook(WebhookEvent {
+            Some(Event::Webhook(WebhookEvent {
                 name: key_at(document, &["on", "push"]),
                 body: Some(node_at(document, &["on", "push"]).span),
                 types: Field::Absent,
@@ -197,14 +203,14 @@ jobs:
                 paths: Field::Absent,
                 paths_ignore: Field::Absent,
                 workflows: Field::Absent,
-            }),
-            Event::WorkflowCall(WorkflowCallEvent {
+            })),
+            Some(Event::WorkflowCall(WorkflowCallEvent {
                 name: key_at(document, &["on", "workflow_call"]),
                 body: Some(node_at(document, &["on", "workflow_call"]).span),
                 inputs: valid(document, &["on", "workflow_call", "inputs"], inputs),
                 secrets: Field::Absent,
                 outputs: Field::Absent,
-            }),
+            })),
         ])
     }
 
@@ -307,6 +313,7 @@ jobs:
             .value()
             .unwrap()
             .iter()
+            .flatten()
             .map(|e| e.name().value())
             .collect();
         assert_eq!(names, ["push", "workflow_call"]);

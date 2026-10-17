@@ -5,7 +5,8 @@ use std::fmt::Write as _;
 
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{FileId, SourceFile};
-use workflint_yaml::{Document, Node, NodeId, NodeKind, decode, parse};
+use workflint_yaml::event::{EventData, EventParser};
+use workflint_yaml::{Document, Node, NodeId, NodeKind, ScalarStyle, decode, parse};
 
 /// Dumps the tree that `workflint-yaml` builds from `bytes`.
 ///
@@ -13,7 +14,8 @@ use workflint_yaml::{Document, Node, NodeId, NodeKind, decode, parse};
 /// node of the tree before alias resolution, in pre-order, then `empty` for
 /// a file without a root and `error: ` for a file that `workflint-yaml`
 /// rejects. The bytes are decoded as go-yaml decodes them, with [`decode`].
-/// Positions come from the line index of [`SourceFile`].
+/// Positions come from the line index of [`SourceFile`]. A node's tag is
+/// printed when the node has an explicit tag, which [`explicit_tags`] finds.
 pub(crate) fn dump(bytes: &[u8]) -> String {
     let text = match decode(bytes) {
         Ok(text) => text,
@@ -48,11 +50,49 @@ pub(crate) fn dump(bytes: &[u8]) -> String {
         file: &file,
         document: &document,
         nodes: document.nodes().collect(),
+        explicit_tags: explicit_tags(file.text()),
         next: 0,
         out: String::new(),
     };
     dumper.node(root, 0);
     dumper.out
+}
+
+/// Returns whether each node of the first document of `text` has an
+/// explicit tag, indexed by node ID.
+///
+/// The tree keeps a node's tag, but not whether the tag was written or
+/// resolved, so this reads the events that the tree is built from. Each
+/// scalar, collection start, and alias event of the first document makes
+/// one node, in the order of the node IDs. The non-specific tag `!` is not
+/// an explicit tag, as in go-yaml.
+fn explicit_tags(text: &str) -> Vec<bool> {
+    let mut explicit = Vec::new();
+    for event in EventParser::new(text) {
+        let Ok(event) = event else { break };
+        let tag = match event.data {
+            EventData::Scalar { tag, .. }
+            | EventData::SequenceStart { tag, .. }
+            | EventData::MappingStart { tag, .. } => tag,
+            EventData::Alias { .. } => None,
+            EventData::DocumentEnd { .. } => break,
+            _ => continue,
+        };
+        explicit.push(tag.is_some_and(|tag| !tag.is_empty() && tag != "!"));
+    }
+    explicit
+}
+
+/// The style of a scalar as a word after a space, or nothing for a plain
+/// scalar, as `xtask/goyaml-dump` prints it.
+fn style(style: ScalarStyle) -> &'static str {
+    match style {
+        ScalarStyle::Plain => "",
+        ScalarStyle::SingleQuoted => " single",
+        ScalarStyle::DoubleQuoted => " double",
+        ScalarStyle::Literal(_) => " literal",
+        ScalarStyle::Folded(_) => " folded",
+    }
 }
 
 /// Walks the tree with resolved aliases and prints the tree as written.
@@ -65,6 +105,8 @@ struct Dumper<'a> {
     file: &'a SourceFile,
     document: &'a Document,
     nodes: Vec<(NodeId, &'a Node)>,
+    /// Whether each node has an explicit tag, indexed by node ID.
+    explicit_tags: Vec<bool>,
     next: usize,
     out: String,
 }
@@ -92,6 +134,15 @@ impl Dumper<'_> {
                 pos.line,
                 pos.column
             );
+            if let NodeKind::Scalar(scalar) = &node.kind {
+                self.out.push_str(style(scalar.style));
+            }
+            let explicit = usize::try_from(id.index())
+                .ok()
+                .and_then(|index| self.explicit_tags.get(index));
+            if let (Some(true), Some(tag)) = (explicit, node.tag()) {
+                let _ = write!(self.out, " {}", tag.as_str());
+            }
             if let Some(anchor) = &node.anchor {
                 let _ = write!(self.out, " &{}", anchor.name);
             }
@@ -159,7 +210,44 @@ mod tests {
                 "  scalar 2:1 \"jobs\"",
                 "  sequence 3:3",
                 "    scalar 3:5 \"x\"",
-                "    scalar 4:5 \"y\"",
+                "    scalar 4:5 single \"y\"",
+            ]),
+        );
+    }
+
+    #[test]
+    fn scalar_styles_and_explicit_tags_are_printed() {
+        assert_eq!(
+            dump(b"a: !!str x\nb: !custom [\"q\"]\nc: ! y\nd: |\n  l\ne: >-\n  f\nf: !!map {}\n"),
+            lines(&[
+                "mapping 1:1",
+                "  scalar 1:1 \"a\"",
+                "  scalar 1:4 !!str \"x\"",
+                "  scalar 2:1 \"b\"",
+                "  sequence 2:4 !custom",
+                "    scalar 2:13 double \"q\"",
+                "  scalar 3:1 \"c\"",
+                "  scalar 3:4 \"y\"",
+                "  scalar 4:1 \"d\"",
+                "  scalar 4:4 literal \"l\\n\"",
+                "  scalar 6:1 \"e\"",
+                "  scalar 6:4 folded \"f\"",
+                "  scalar 8:1 \"f\"",
+                "  mapping 8:4 !!map",
+            ]),
+        );
+    }
+
+    #[test]
+    fn an_explicit_tag_comes_before_the_anchor() {
+        assert_eq!(
+            dump(b"a: &x !<tag:yaml.org,2002:int> 1\nb: *x\n"),
+            lines(&[
+                "mapping 1:1",
+                "  scalar 1:1 \"a\"",
+                "  scalar 1:4 !!int &x \"1\"",
+                "  scalar 2:1 \"b\"",
+                "  alias 2:4 *x",
             ]),
         );
     }
@@ -238,9 +326,9 @@ mod tests {
             lines(&[
                 "mapping 1:1",
                 "  scalar 1:1 \"日本\"",
-                "  scalar 1:5 \"語 😀\\t\"",
+                "  scalar 1:5 double \"語 😀\\t\"",
                 "  scalar 2:1 \"😀\"",
-                "  scalar 2:4 \"x\"",
+                "  scalar 2:4 literal \"x\"",
             ]),
         );
     }

@@ -235,8 +235,10 @@ fn check_node(src: &str, expr: &Expr, parent: &Range<usize>) {
         ExprKind::ObjectFilter { receiver } => children.push(receiver),
         ExprKind::Index { operand, index } => children.extend([operand.as_ref(), index]),
         ExprKind::Not { operand } => children.push(operand),
-        ExprKind::Compare { left, right, .. } | ExprKind::Logical { left, right, .. } => {
-            children.extend([left.as_ref(), right]);
+        ExprKind::Compare { left, right, .. } => children.extend([left.as_ref(), right]),
+        ExprKind::Logical { operands, .. } => {
+            assert!(operands.len() >= 2, "{what}");
+            children.extend(operands);
         }
         ExprKind::Call { callee, args } => {
             names.push(callee);

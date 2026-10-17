@@ -560,13 +560,18 @@ impl<'a> TypeBuilder<'a> {
         }
     }
 
-    /// Skips an object or array with everything in it.
+    /// Skips an object or array with everything in it. Go decodes the numbers in it all the
+    /// same, so a number beyond the range of a double is noted here too.
     fn skip_value(&mut self) {
         let mut depth = 0_usize;
         while let Some(&c) = self.bytes.get(self.pos) {
             match c {
                 b'"' => {
                     self.skip_string();
+                    continue;
+                }
+                b'-' | b'0'..=b'9' => {
+                    self.number();
                     continue;
                 }
                 b'[' | b'{' => depth += 1,

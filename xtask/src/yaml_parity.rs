@@ -15,7 +15,7 @@ mod goyaml;
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 
@@ -25,6 +25,23 @@ use crate::vendor_testdata;
 /// The inputs that the vendored test data lacks, relative to the repository
 /// root.
 const EXTRA_INPUTS: &str = "tests/yaml-parity";
+
+/// The files in [`EXTRA_INPUTS`] whose dumps differ from go-yaml's as an
+/// entry of `docs/differences.md` describes, with the anchor of the entry.
+/// Each must differ, so an entry that no longer applies fails the run.
+const ALLOWED_DIFFERENCES: [(&str, &str); 5] = [
+    ("document-start-at-eof.yaml", "empty-scalar-past-last-line"),
+    (
+        "scanner-error-after-comment-before-dash.yaml",
+        "scanner-error-after-comment-before-dash",
+    ),
+    ("tag-before-flow-sequence-end.yaml", "tag-before-flow-comma"),
+    (
+        "utf16le-control-character-in-second-chunk.yaml",
+        "utf16-control-characters",
+    ),
+    ("utf16le-second-byte-order-mark.yaml", "utf16-second-bom"),
+];
 
 /// The number of `.yaml` and `.yml` files in the vendored `testdata/`
 /// directory. The corpus archive in it is counted apart, as
@@ -57,13 +74,15 @@ pub(crate) fn run(layout: &Layout, paths: &[PathBuf]) -> Result<()> {
 
     let mut report = compare::Report::default();
     let mut corpus_verdicts = BTreeMap::new();
+    let mut unused_allowances = Vec::new();
     for (file, go_dump) in files.iter().zip(&go_dumps) {
         let bytes = fs::read(file).with_context(|| format!("cannot read {}", file.display()))?;
-        let verdict = report.add(
-            &layout.display(file).to_string(),
-            go_dump,
-            &dump::dump(&bytes),
-        );
+        let display = layout.display(file).to_string();
+        let allowance = allowance(layout, file);
+        let verdict = report.add(&display, go_dump, &dump::dump(&bytes), allowance);
+        if allowance.is_some() && verdict != compare::Verdict::Allowed {
+            unused_allowances.push(display);
+        }
         let corpus_name = corpus
             .as_deref()
             .and_then(|corpus| file.strip_prefix(corpus).ok());
@@ -77,10 +96,28 @@ pub(crate) fn run(layout: &Layout, paths: &[PathBuf]) -> Result<()> {
         1 => bail!("1 file differs"),
         n => bail!("{n} files differ"),
     }
+    if !unused_allowances.is_empty() {
+        bail!(
+            "{} no longer differ, so remove them from ALLOWED_DIFFERENCES",
+            unused_allowances.join(", ")
+        );
+    }
     if corpus.is_some() {
         check_panicked_in_research(&corpus_verdicts)?;
     }
     Ok(())
+}
+
+/// The anchor of the entry in `docs/differences.md` that allows the dumps
+/// of `file` to differ, from [`ALLOWED_DIFFERENCES`].
+fn allowance(layout: &Layout, file: &Path) -> Option<&'static str> {
+    let extra = path::absolute(layout.root().join(EXTRA_INPUTS)).ok()?;
+    let file = path::absolute(file).ok()?;
+    let name = file.strip_prefix(extra).ok()?;
+    ALLOWED_DIFFERENCES
+        .iter()
+        .find(|(allowed, _)| Path::new(allowed) == name)
+        .map(|&(_, anchor)| anchor)
 }
 
 /// The vendored test data, the corpus unpacked from its vendored archive
@@ -314,6 +351,27 @@ mod tests {
                 .collect();
             assert!(missing.is_empty(), "{event} misses {missing:?}");
         }
+    }
+
+    #[test]
+    fn each_allowed_difference_names_an_input_and_an_entry() {
+        let root = Layout::repository().root().to_path_buf();
+        let differences = fs::read_to_string(root.join("docs").join("differences.md")).unwrap();
+        for (file, anchor) in ALLOWED_DIFFERENCES {
+            let path = root.join(EXTRA_INPUTS).join(file);
+            assert!(path.is_file(), "{} is missing", path.display());
+            assert_eq!(
+                allowance(&Layout::repository(), &path),
+                Some(anchor),
+                "{file}"
+            );
+            assert!(
+                differences.contains(&format!("<a id=\"{anchor}\"></a>")),
+                "docs/differences.md has no entry {anchor}"
+            );
+        }
+        let other = root.join(EXTRA_INPUTS).join("multi-document.yaml");
+        assert_eq!(allowance(&Layout::repository(), &other), None);
     }
 
     fn all_identical() -> BTreeMap<String, Verdict> {

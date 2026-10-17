@@ -1,5 +1,6 @@
 use std::fmt;
 use std::ops::Range;
+use std::sync::OnceLock;
 
 /// Identifies one [`SourceFile`] within a lint run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -45,7 +46,35 @@ pub struct SourceFile {
     text: String,
     /// The byte offset where each line starts. The first entry is always 0.
     line_starts: Vec<usize>,
+    /// How a column more than [`CHAR_COUNT_STEP`] bytes into its line is
+    /// counted, so that it takes time independent of the line length. Built
+    /// when the first such column is counted.
+    long_lines: OnceLock<LongLines>,
 }
+
+/// How [`SourceFile::line_col`] counts the column of an offset more than
+/// [`CHAR_COUNT_STEP`] bytes after the start of its line. A column closer to
+/// the start of its line is counted from there.
+#[derive(Debug, Clone)]
+enum LongLines {
+    /// The text is ASCII, so a byte is a character.
+    Ascii,
+    /// The [`CharCount`] at every [`CHAR_COUNT_STEP`] bytes of the text.
+    /// Entry `k` holds the character boundary at or before byte
+    /// `k * CHAR_COUNT_STEP`.
+    Counts(Vec<CharCount>),
+}
+
+/// The number of characters before `offset` in the text.
+#[derive(Debug, Clone, Copy)]
+struct CharCount {
+    offset: usize,
+    chars: usize,
+}
+
+/// The distance in bytes from the start of a line above which [`LongLines`]
+/// counts a column.
+const CHAR_COUNT_STEP: usize = 256;
 
 const BOM: char = '\u{feff}';
 
@@ -71,6 +100,7 @@ impl SourceFile {
             path: path.into(),
             text,
             line_starts,
+            long_lines: OnceLock::new(),
         })
     }
 
@@ -116,12 +146,47 @@ impl SourceFile {
         if start == 0 && self.text.starts_with(BOM) && offset >= BOM.len_utf8() {
             start = BOM.len_utf8();
         }
-        let column = self
-            .text
-            .get(start..offset)
-            .map_or(0, |s| s.chars().count())
-            + 1;
-        LineCol { line, column }
+        let column = if offset - start <= CHAR_COUNT_STEP {
+            self.text
+                .get(start..offset)
+                .map_or(0, |s| s.chars().count())
+        } else {
+            self.long_column(start, offset)
+        };
+        LineCol {
+            line,
+            column: column + 1,
+        }
+    }
+
+    /// The number of characters from `start`, the start of a line, to
+    /// `offset`, more than [`CHAR_COUNT_STEP`] bytes further.
+    #[cold]
+    #[inline(never)]
+    fn long_column(&self, start: usize, offset: usize) -> usize {
+        match self.long_lines.get_or_init(|| long_lines(&self.text)) {
+            LongLines::Ascii => offset - start,
+            LongLines::Counts(counts) => {
+                Self::chars_before(&self.text, counts, offset)
+                    - Self::chars_before(&self.text, counts, start)
+            }
+        }
+    }
+
+    /// The number of characters before `offset`, a character boundary, from
+    /// the [`CharCount`]s of `text`.
+    fn chars_before(text: &str, counts: &[CharCount], offset: usize) -> usize {
+        let count = counts
+            .get(offset / CHAR_COUNT_STEP)
+            .copied()
+            .unwrap_or(CharCount {
+                offset: 0,
+                chars: 0,
+            });
+        count.chars
+            + text
+                .get(count.offset..offset)
+                .map_or(0, |s| s.chars().count())
     }
 
     /// Returns the byte range of a 1-based line without its line break, or `None` if the file
@@ -170,6 +235,34 @@ fn line_starts(text: &str) -> Vec<usize> {
         starts.push(i);
     }
     starts
+}
+
+/// Returns how to count columns on the long lines of `text`.
+fn long_lines(text: &str) -> LongLines {
+    if text.is_ascii() {
+        LongLines::Ascii
+    } else {
+        LongLines::Counts(char_counts(text))
+    }
+}
+
+/// Returns the [`CharCount`] at every [`CHAR_COUNT_STEP`] bytes of `text`.
+fn char_counts(text: &str) -> Vec<CharCount> {
+    let mut counts = Vec::with_capacity(text.len() / CHAR_COUNT_STEP + 1);
+    let mut previous = CharCount {
+        offset: 0,
+        chars: 0,
+    };
+    for step in (0..=text.len()).step_by(CHAR_COUNT_STEP) {
+        let offset = text.floor_char_boundary(step);
+        let chars = previous.chars
+            + text
+                .get(previous.offset..offset)
+                .map_or(0, |s| s.chars().count());
+        previous = CharCount { offset, chars };
+        counts.push(previous);
+    }
+    counts
 }
 
 /// The error [`SourceFile::new`] returns for text longer than `u32::MAX` bytes.
@@ -274,6 +367,43 @@ mod tests {
     fn an_offset_inside_a_character_points_at_that_character() {
         // `日` occupies bytes 1 to 3.
         assert_eq!(line_col("a日b", 2), (1, 2));
+    }
+
+    // Counting the characters from the start of the line for each offset
+    // took about 9 seconds here in a debug build, and now takes under one.
+    #[test]
+    fn offsets_on_a_long_line_convert_in_time_independent_of_the_column() {
+        let line = "key: 'é', 日本: [a, b], ".repeat(80_000);
+        let text = format!("a: 1\n{line}\nb: 2\n");
+        let f = file(&text);
+        let started = std::time::Instant::now();
+        for (column, (offset, _)) in (1..).zip(line.char_indices()).step_by(10) {
+            let pos = f.line_col(u32::try_from(5 + offset).unwrap());
+            assert_eq!((pos.line, pos.column), (2, column), "offset {offset}");
+        }
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(5),
+            "converting the offsets took {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn columns_after_non_ascii_text_count_code_points_on_every_line() {
+        let text = "日本語\n\u{feff}x\n".repeat(200);
+        let f = file(&text);
+        let mut line = 1;
+        let mut column = 1;
+        for (offset, ch) in text.char_indices() {
+            let pos = f.line_col(u32::try_from(offset).unwrap());
+            assert_eq!((pos.line, pos.column), (line, column), "offset {offset}");
+            if ch == '\n' {
+                line += 1;
+                column = 1;
+            } else {
+                column += 1;
+            }
+        }
     }
 
     #[test]

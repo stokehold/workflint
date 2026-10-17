@@ -131,6 +131,14 @@ impl UntrustedChecker {
         self.end = node.end;
     }
 
+    /// Called where the reference's walk leaves a node of a `&&` or `||` chain that this tree
+    /// does not have, as [`leave`](Self::leave) does for a chain node.
+    pub(crate) fn leave_nested_chain(&mut self) {
+        if self.safe_calls == 0 {
+            self.end_chain();
+        }
+    }
+
     /// Ends the last chain and returns the errors.
     pub(crate) fn finish(mut self) -> Vec<ExprError> {
         self.end_chain();
