@@ -8,7 +8,9 @@ mod go_source;
 use std::collections::BTreeMap;
 
 use go_source::{Availability, all_contexts, special_function_names, workflow_key_availability};
-use workflint_data::{SPECIAL_FUNCTIONS, WORKFLOW_KEYS, special_function_keys, workflow_key};
+use workflint_data::{
+    Availability as Allowed, SPECIAL_FUNCTIONS, WORKFLOW_KEYS, special_function_keys, workflow_key,
+};
 
 fn owned(names: &[&str]) -> Vec<String> {
     names.iter().map(|name| (*name).to_owned()).collect()
@@ -58,6 +60,18 @@ fn contexts_of_the_workflow_keys_match_the_reference_all_contexts() {
     }
 
     assert_eq!(workflint, all_contexts());
+}
+
+#[test]
+fn all_allows_every_context_of_the_reference_and_every_special_function() {
+    let contexts: Vec<String> = all_contexts().into_keys().collect();
+    assert_eq!(owned(Allowed::ALL.contexts), contexts);
+    assert_eq!(Allowed::ALL.special_functions, SPECIAL_FUNCTIONS);
+}
+
+#[test]
+fn default_allows_nothing() {
+    assert_eq!(Allowed::default(), Allowed::NONE);
 }
 
 #[test]

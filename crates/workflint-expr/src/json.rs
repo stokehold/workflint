@@ -473,8 +473,13 @@ impl<'a> TypeBuilder<'a> {
                 self.pos += 1;
                 match frame {
                     Frame::Array(elem) => {
+                        // The frame owns the element type, so merging changes it in place and
+                        // typing an array takes time linear in its size.
                         let merged = match elem.take() {
-                            Some(elem) => elem.merge(&ty),
+                            Some(mut elem) => {
+                                elem.merge_in_place(&ty);
+                                elem
+                            }
                             None => ty,
                         };
                         if close == b',' {

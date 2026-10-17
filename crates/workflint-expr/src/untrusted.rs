@@ -3,7 +3,7 @@
 //! Ported from rhysd/actionlint at commit `011a6d1`: `UntrustedInputChecker` in
 //! `expr_insecure.go`.
 
-use workflint_data::UntrustedInput;
+use workflint_data::{SAFE_FUNCTIONS, UntrustedInput};
 use workflint_diagnostics::RuleMeta;
 use workflint_diagnostics::quote::{quote, sorted_quotes};
 
@@ -24,8 +24,9 @@ const ADVICE_LINK: &str = "see https://docs.github.com/en/actions/reference/secu
 /// context in `roots`. When the chain ends on an untrusted value, it reports
 /// [`UNTRUSTED_INPUT`]. When an object filter makes it end on several, it reports
 /// [`UNTRUSTED_OBJECT_FILTER`] with all of them. An index other than a string literal counts
-/// as any array element, `*`. Nothing inside `contains`, `startsWith`, or `endsWith` is
-/// reported, because they return a boolean. Each error starts at the context and ends at the
+/// as any array element, `*`. Nothing inside a call of one of the
+/// [`SAFE_FUNCTIONS`](workflint_data::SAFE_FUNCTIONS), `contains`, `startsWith`, and
+/// `endsWith`, is reported, because they return a boolean. Each error starts at the context and ends at the
 /// end of the chain.
 ///
 /// ```
@@ -226,13 +227,12 @@ impl UntrustedChecker {
     }
 }
 
-/// Returns whether `node` calls `contains`, `startsWith`, or `endsWith`, whose boolean results
-/// cannot inject code.
+/// Returns whether `node` calls one of the [`SAFE_FUNCTIONS`], whose boolean results cannot
+/// inject code.
 fn is_safe_call(node: &Expr) -> bool {
     matches!(
         &node.kind,
-        ExprKind::Call { callee, .. }
-            if matches!(callee.as_str(), "contains" | "startswith" | "endswith")
+        ExprKind::Call { callee, .. } if SAFE_FUNCTIONS.contains(&callee.as_str())
     )
 }
 

@@ -1,18 +1,21 @@
-//! The checks that the `expr_lex`, `expr_parse`, and `expr_check` fuzz targets in `fuzz/` run on
-//! each input.
+//! The checks that the `expr_lex`, `expr_parse`, `expr_check`, and `expr_json` fuzz targets in
+//! `fuzz/` run on each input.
 //!
 //! The fuzz targets include this file with `#[path]`, and `real_world.rs` and
 //! `fuzz_regressions.rs` run it on expressions, so a crash input found by the fuzzer fails the
 //! same check as a test. Each check panics when an invariant does not hold. The input is the
-//! text after `${{`.
+//! text after `${{`, except for [`check_json`], whose input is the text of a JSON literal.
 
 #![allow(clippy::panic, clippy::unwrap_used)]
 
 use std::ops::Range;
 
-use workflint_expr::rules::{INVALID_EXPRESSION_SYNTAX, INVALID_NUMBER_LITERAL};
+use workflint_data::{Availability, UNTRUSTED_INPUTS};
+use workflint_expr::rules::{
+    INVALID_EXPRESSION_SYNTAX, INVALID_JSON_LITERAL, INVALID_NUMBER_LITERAL,
+};
 use workflint_expr::{Expr, ExprError, ExprKind, Lexer, TokenKind, Visit, lex_expression};
-use workflint_expr::{Token, TypeEnv, parse_expression};
+use workflint_expr::{Token, Ty, TypeEnv, parse_expression};
 
 /// Lexes `src` one token at a time up to the end of the expression or the first error.
 ///
@@ -105,17 +108,68 @@ pub(crate) fn check_parse(src: &str) {
     }
 }
 
-/// Parses `src` and, if that succeeds, type-checks the tree against the global contexts.
+/// Parses `src` and, if that succeeds, type-checks the tree against the global contexts in
+/// three environments: a new one, which allows no context, one that allows every context and
+/// special function, and one that also reports untrusted input, as for a script.
 ///
 /// The checker does not panic, and a second check returns the same type and errors. Every
 /// error has a message and a rule other than the two syntax rules, and its range lies inside
-/// the tree's range on character boundaries. [`Expr::is_constant`] does not panic.
+/// the tree's range on character boundaries. The availability of contexts does not change the
+/// type, and the check for untrusted input only adds errors after the others.
+/// [`Expr::is_constant`] does not panic.
 pub(crate) fn check_types(src: &str) {
     let Ok((expr, _)) = parse_expression(src) else {
         return;
     };
-    let env = TypeEnv::new();
-    let (ty, errors) = env.check(&expr);
+    let (none_ty, _) = check_types_in(src, &expr, &TypeEnv::new());
+    let mut env = TypeEnv::new();
+    env.set_availability(Availability::ALL);
+    let (ty, errors) = check_types_in(src, &expr, &env);
+    assert_eq!(none_ty, ty, "{src:?}");
+    env.set_untrusted_inputs(UNTRUSTED_INPUTS);
+    let (untrusted_ty, untrusted_errors) = check_types_in(src, &expr, &env);
+    assert_eq!(untrusted_ty, ty, "{src:?}");
+    assert_eq!(
+        untrusted_errors.get(..errors.len()),
+        Some(&errors[..]),
+        "{src:?}"
+    );
+    let _ = expr.is_constant();
+}
+
+/// Type-checks `fromJSON('<json>')`, with each `'` in `json` doubled, which runs the JSON
+/// scanner and the type builder on `json`.
+///
+/// [`check_types`] holds for the call. The check reports at most one error, of the rule
+/// `invalid-json-literal`, which covers the string literal, and the offset in its message lies
+/// inside `json`. A call that does not parse, which a NUL character in `json` can cause, is
+/// left to the other expression targets.
+pub(crate) fn check_json(json: &str) {
+    let src = format!("fromJSON('{}') }}}}", json.replace('\'', "''"));
+    let Ok((expr, _)) = parse_expression(&src) else {
+        return;
+    };
+    check_types(&src);
+    let (_, errors) = TypeEnv::new().check(&expr);
+    let [error] = errors.as_slice() else {
+        assert!(errors.is_empty(), "{errors:?} in {src:?}");
+        return;
+    };
+    let what = format!("{error:?} in {src:?}");
+    assert_eq!(error.rule.id, INVALID_JSON_LITERAL.id, "{what}");
+    assert_eq!(error.range(), 9..src.len() - 4, "{what}");
+    let offset = error
+        .message
+        .strip_prefix("broken JSON string is passed to fromJSON() at offset ")
+        .and_then(|rest| rest.split_once(':'))
+        .and_then(|(offset, _)| offset.parse::<usize>().ok());
+    assert!(offset.is_some_and(|offset| offset <= json.len()), "{what}");
+}
+
+/// Checks `expr`, parsed from `src`, in `env`, as [`check_types`] says, and returns its type
+/// and errors.
+fn check_types_in(src: &str, expr: &Expr, env: &TypeEnv) -> (Ty, Vec<ExprError>) {
+    let (ty, errors) = env.check(expr);
     for error in &errors {
         let what = format!("{error:?} in {src:?}");
         assert!(!error.message.is_empty(), "{what}");
@@ -126,8 +180,9 @@ pub(crate) fn check_types(src: &str) {
         check_range(src, &error.range(), &what);
         check_inside(&error.range(), &expr.range(), &what);
     }
-    assert_eq!(env.check(&expr), (ty, errors), "{src:?}");
-    let _ = expr.is_constant();
+    let again = env.check(expr);
+    assert_eq!(again, (ty.clone(), errors.clone()), "{src:?}");
+    (ty, errors)
 }
 
 /// An error has a message and one of the two rules of the lexer and the parser. Its range lies

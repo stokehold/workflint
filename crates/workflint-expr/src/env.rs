@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, LazyLock};
 
-use workflint_data::{Availability, GLOBAL_CONTEXTS, UntrustedInput, workflow_key};
+use workflint_data::{
+    Availability, BUILT_IN_SECRETS, GLOBAL_CONTEXTS, UntrustedInput, workflow_key,
+};
 
 use crate::types::{ObjectTy, Rest, Ty};
 
@@ -15,9 +17,6 @@ static GLOBALS: LazyLock<Vec<(&'static str, Ty)>> = LazyLock::new(|| {
         .collect()
 });
 
-/// The secrets that every workflow can read, besides the ones it declares.
-const BUILT_IN_SECRETS: [&str; 3] = ["actions_runner_debug", "actions_step_debug", "github_token"];
-
 /// The types of the contexts at one place in a workflow, which [`check`](Self::check) checks
 /// expressions against.
 ///
@@ -27,6 +26,14 @@ const BUILT_IN_SECRETS: [&str; 3] = ["actions_runner_debug", "actions_step_debug
 /// clone is cheap, because types share their parts. Checking an expression changes nothing
 /// in the environment, so one environment can check many expressions.
 ///
+/// A new environment allows no context and no special function, as the reference's checker
+/// does until `SetContextAvailability` and `SetSpecialFunctionAvailability` change that.
+/// Before checking the expressions at a place, call
+/// [`set_workflow_key`](Self::set_workflow_key) with its workflow key, also where the key is
+/// empty or GitHub's table does not list it. A missing call then reports each context that an
+/// expression reads instead of allowing it. Each call replaces the availability of the
+/// previous one, so the key of one place never carries over to the next.
+///
 /// This replaces the reference's `Update*` methods, which change the checker's shared map of
 /// contexts.
 ///
@@ -35,6 +42,7 @@ const BUILT_IN_SECRETS: [&str; 3] = ["actions_runner_debug", "actions_step_debug
 ///
 /// let mut env = TypeEnv::new();
 /// env.set_matrix(ObjectTy::new([("os", Ty::String)], Rest::Strict));
+/// env.set_workflow_key("jobs.<job_id>.steps.run");
 ///
 /// let (expr, _) = parse_expression("matrix.os }}").unwrap();
 /// let (ty, errors) = env.check(&expr);
@@ -44,6 +52,11 @@ const BUILT_IN_SECRETS: [&str; 3] = ["actions_runner_debug", "actions_step_debug
 /// let (expr, _) = parse_expression("matrix.arch }}").unwrap();
 /// let (_, errors) = env.check(&expr);
 /// assert_eq!(errors[0].message, r#"property "arch" is not defined in object type {os: string}"#);
+///
+/// // Without a workflow key, no context is allowed.
+/// let (expr, _) = parse_expression("github.ref }}").unwrap();
+/// let (_, errors) = TypeEnv::new().check(&expr);
+/// assert!(errors[0].message.starts_with(r#"context "github" is not allowed here. no context is available here."#));
 /// ```
 #[derive(Debug, Clone, Default)]
 pub struct TypeEnv {
@@ -58,15 +71,18 @@ pub struct TypeEnv {
     /// The configured variable names. `None` turns the check of `vars.NAME` against the list
     /// off.
     config_vars: Option<Arc<[String]>>,
-    /// The contexts and special functions that expressions may use. `None` allows all of them.
-    availability: Option<Availability>,
+    /// The contexts and special functions that expressions may use. A new environment allows
+    /// none.
+    availability: Availability,
     /// The untrusted input paths that [`check`](Self::check) reports. `None` turns the check
     /// off.
     untrusted_inputs: Option<&'static [UntrustedInput]>,
 }
 
 impl TypeEnv {
-    /// An environment with only the global contexts.
+    /// An environment with only the global contexts, which allows no context and no special
+    /// function until [`set_workflow_key`](Self::set_workflow_key) or
+    /// [`set_availability`](Self::set_availability) says otherwise.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -93,8 +109,8 @@ impl TypeEnv {
         self.jobs = Some(Ty::Object(ty.into()));
     }
 
-    /// Sets `secrets` to a strict object of the declared secrets and the three that every
-    /// workflow can read: `github_token`, `actions_step_debug`, and `actions_runner_debug`. A
+    /// Sets `secrets` to a strict object of the declared secrets and the
+    /// [`BUILT_IN_SECRETS`](workflint_data::BUILT_IN_SECRETS) that every workflow can read. A
     /// declared secret replaces a built-in one of the same name. This is the reference's
     /// `UpdateSecrets`.
     pub fn set_secrets(&mut self, declared: impl Into<Arc<ObjectTy>>) {
@@ -138,10 +154,13 @@ impl TypeEnv {
     }
 
     /// Allows the contexts and special functions of the workflow key `key`, such as
-    /// `jobs.<job_id>.steps.if`. A key that `workflint-data` does not list, or an empty key,
-    /// allows no context and no special function, as in the reference. Without a call to this
-    /// or [`set_availability`](Self::set_availability), every context and special function is
-    /// allowed.
+    /// `jobs.<job_id>.steps.if`, and nothing else. A key that `workflint-data` does not list,
+    /// or an empty key, allows no context and no special function, as in the reference. The
+    /// reference checks the step `shell`, `uses`, and `id`, the job `needs` and `uses`, and
+    /// the values under `on:` with the empty key.
+    ///
+    /// Call it on the clone for each place before checking the expressions there. It replaces
+    /// what an earlier call allowed.
     ///
     /// ```
     /// use workflint_expr::{TypeEnv, parse_expression};
@@ -163,15 +182,15 @@ impl TypeEnv {
 
     /// Allows only the contexts and special functions in `availability`. Messages list the
     /// allowed contexts in its order. This is the reference's `SetContextAvailability` and
-    /// `SetSpecialFunctionAvailability`.
+    /// `SetSpecialFunctionAvailability`. [`Availability::ALL`] allows everything, for a check
+    /// outside any place in a workflow, such as in a test.
     pub fn set_availability(&mut self, availability: Availability) {
-        self.availability = Some(availability);
+        self.availability = availability;
     }
 
-    /// Returns the contexts and special functions that expressions may use, or `None` if all
-    /// of them are allowed.
-    pub(crate) fn availability(&self) -> Option<&Availability> {
-        self.availability.as_ref()
+    /// Returns the contexts and special functions that expressions may use.
+    pub(crate) fn availability(&self) -> &Availability {
+        &self.availability
     }
 
     /// Turns on the check for untrusted input with the paths in `roots`, as for an expression in
@@ -188,6 +207,7 @@ impl TypeEnv {
     /// use workflint_expr::{TypeEnv, parse_expression};
     ///
     /// let mut env = TypeEnv::new();
+    /// env.set_workflow_key("jobs.<job_id>.steps.run");
     /// env.set_untrusted_inputs(UNTRUSTED_INPUTS);
     /// let (expr, _) = parse_expression("github.head_ref }}").unwrap();
     /// let (_, errors) = env.check(&expr);
