@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use workflint_diagnostics::Span;
 
-use crate::{Field, Keyed, Str, Value};
+use crate::{Field, Keyed, Str, Template, Value};
 
 /// One event of `on:`.
 ///
@@ -78,21 +78,21 @@ pub struct WebhookEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `types`.
-    pub types: Field<'a, Arc<[Str<'a>]>>,
+    pub types: Field<'a, Arc<[Template<'a>]>>,
     /// `branches`.
-    pub branches: Field<'a, Arc<[Str<'a>]>>,
+    pub branches: Field<'a, Arc<[Template<'a>]>>,
     /// `branches-ignore`.
-    pub branches_ignore: Field<'a, Arc<[Str<'a>]>>,
+    pub branches_ignore: Field<'a, Arc<[Template<'a>]>>,
     /// `tags`.
-    pub tags: Field<'a, Arc<[Str<'a>]>>,
+    pub tags: Field<'a, Arc<[Template<'a>]>>,
     /// `tags-ignore`.
-    pub tags_ignore: Field<'a, Arc<[Str<'a>]>>,
+    pub tags_ignore: Field<'a, Arc<[Template<'a>]>>,
     /// `paths`.
-    pub paths: Field<'a, Arc<[Str<'a>]>>,
+    pub paths: Field<'a, Arc<[Template<'a>]>>,
     /// `paths-ignore`.
-    pub paths_ignore: Field<'a, Arc<[Str<'a>]>>,
+    pub paths_ignore: Field<'a, Arc<[Template<'a>]>>,
     /// `workflows`.
-    pub workflows: Field<'a, Arc<[Str<'a>]>>,
+    pub workflows: Field<'a, Arc<[Template<'a>]>>,
 }
 
 /// `schedule`.
@@ -114,9 +114,9 @@ pub struct ScheduleEntry<'a> {
     /// The span of the item.
     pub span: Span,
     /// `cron`. It is always valid.
-    pub cron: Field<'a, Str<'a>>,
+    pub cron: Field<'a, Template<'a>>,
     /// `timezone`.
-    pub timezone: Field<'a, Str<'a>>,
+    pub timezone: Field<'a, Template<'a>>,
 }
 
 /// `workflow_dispatch`.
@@ -135,16 +135,16 @@ pub struct WorkflowDispatchEvent<'a> {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct WorkflowDispatchInput<'a> {
     /// `description`. It may be empty.
-    pub description: Field<'a, Str<'a>>,
+    pub description: Field<'a, Template<'a>>,
     /// `required`.
     pub required: Value<'a, bool>,
     /// `default`. It may be empty.
-    pub default: Field<'a, Str<'a>>,
+    pub default: Field<'a, Template<'a>>,
     /// `type`. The reference's `WorkflowDispatchEventInputTypeNone` is
     /// [`Field::Absent`] or [`Field::Invalid`].
     pub input_type: Field<'a, WorkflowDispatchInputType>,
     /// `options`.
-    pub options: Field<'a, Arc<[Str<'a>]>>,
+    pub options: Field<'a, Arc<[Template<'a>]>>,
 }
 
 /// The `type` of a `workflow_dispatch` input.
@@ -170,7 +170,7 @@ pub struct RepositoryDispatchEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `types`. A string becomes a list of one.
-    pub types: Field<'a, Arc<[Str<'a>]>>,
+    pub types: Field<'a, Arc<[Template<'a>]>>,
 }
 
 /// `workflow_call`, which makes the workflow a reusable workflow.
@@ -198,9 +198,9 @@ pub struct WorkflowCallEvent<'a> {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct WorkflowCallEventInput<'a> {
     /// `description`. It may be empty.
-    pub description: Field<'a, Str<'a>>,
+    pub description: Field<'a, Template<'a>>,
     /// `default`. It may be empty.
-    pub default: Field<'a, Str<'a>>,
+    pub default: Field<'a, Template<'a>>,
     /// `required`.
     pub required: Value<'a, bool>,
     /// `type`. The reference's `WorkflowCallEventInputTypeInvalid` is
@@ -232,7 +232,7 @@ pub enum WorkflowCallInputType {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct WorkflowCallEventSecret<'a> {
     /// `description`. It may be empty.
-    pub description: Field<'a, Str<'a>>,
+    pub description: Field<'a, Template<'a>>,
     /// `required`.
     pub required: Value<'a, bool>,
 }
@@ -241,9 +241,9 @@ pub struct WorkflowCallEventSecret<'a> {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct WorkflowCallEventOutput<'a> {
     /// `description`. It may be empty.
-    pub description: Field<'a, Str<'a>>,
+    pub description: Field<'a, Template<'a>>,
     /// `value`.
-    pub value: Field<'a, Str<'a>>,
+    pub value: Field<'a, Template<'a>>,
 }
 
 /// `image_version`.
@@ -254,7 +254,7 @@ pub struct ImageVersionEvent<'a> {
     /// The span of the value under the event's key, if any.
     pub body: Option<Span>,
     /// `names`.
-    pub names: Field<'a, Arc<[Str<'a>]>>,
+    pub names: Field<'a, Arc<[Template<'a>]>>,
     /// `versions`.
-    pub versions: Field<'a, Arc<[Str<'a>]>>,
+    pub versions: Field<'a, Arc<[Template<'a>]>>,
 }

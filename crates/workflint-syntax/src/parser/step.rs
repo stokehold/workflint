@@ -14,7 +14,7 @@ use workflint_yaml::Node;
 use super::shared::mapping_field;
 use super::{KeySpec, Label, MapEntry, Parser, Section};
 use crate::rules::STEP_WITHOUT_RUN_OR_USES;
-use crate::{Exec, ExecAction, ExecRun, Field, Step, Str, Value};
+use crate::{Exec, ExecAction, ExecRun, Field, Step, Str, Template, Value, contains_expression};
 
 /// What a step runs, from the later of its `run` and `uses` keys.
 #[derive(Clone, Copy, PartialEq)]
@@ -52,15 +52,15 @@ static RUN_STEP_KEYS: [KeySpec<ExecRun<'static>>; 9] = [
     common("timeout-minutes"),
     KeySpec {
         name: "run",
-        parse: |p, r, e| r.run = p.parse_string(e.key.string, e.value, false),
+        parse: |p, r, e| r.run = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "shell",
-        parse: |p, r, e| r.shell = p.parse_string(e.key.string, e.value, false),
+        parse: |p, r, e| r.shell = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "working-directory",
-        parse: |p, r, e| r.working_directory = p.parse_string(e.key.string, e.value, false),
+        parse: |p, r, e| r.working_directory = p.parse_template(e.key.string, e.value, false),
     },
 ];
 
@@ -87,7 +87,7 @@ static ACTION_STEP_KEYS: [KeySpec<ActionBody<'static>>; 8] = [
     KeySpec {
         name: "uses",
         // TODO(#72): parse the typed `uses` value.
-        parse: |p, b, e| b.action.uses = p.parse_string(e.key.string, e.value, false),
+        parse: |p, b, e| b.action.uses = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "with",
@@ -144,9 +144,9 @@ impl<'a> Parser<'a, '_> {
         for entry in &entries {
             let key = entry.key.string;
             match &*entry.id {
-                "id" => step.id = self.parse_string(key, entry.value, false),
-                "if" => step.condition = self.parse_string(key, entry.value, false),
-                "name" => step.name = self.parse_string(key, entry.value, true),
+                "id" => step.id = self.parse_step_id(key, entry.value),
+                "if" => step.condition = self.parse_condition(key, entry.value),
+                "name" => step.name = self.parse_template(key, entry.value, true),
                 "env" => step.env = self.parse_env(entry.key, entry.value),
                 "continue-on-error" => step.continue_on_error = self.parse_bool(key, entry.value),
                 "timeout-minutes" => step.timeout_minutes = self.parse_timeout_minutes(entry),
@@ -212,18 +212,31 @@ impl<'a> Parser<'a, '_> {
             entries.retain(|input| match &*input.id {
                 "entrypoint" => {
                     body.action.entrypoint =
-                        self.parse_string(input.key.string, input.value, false);
+                        self.parse_template(input.key.string, input.value, false);
                     false
                 }
                 "args" => {
-                    body.action.args = self.parse_string(input.key.string, input.value, true);
+                    body.action.args = self.parse_template(input.key.string, input.value, true);
                     false
                 }
                 _ => true,
             });
         }
-        let inputs = self.keyed_strings(entries, true);
+        let inputs = self.keyed_templates(entries, true);
         body.action.inputs = mapping_field(entry.key, node, inputs);
+    }
+
+    /// Parses `id` of a step. Its placeholders are parsed only if it
+    /// [contains an expression](contains_expression), because only then
+    /// does the reference check them.
+    fn parse_step_id(&mut self, key: Option<Str<'a>>, node: &'a Node) -> Field<'a, Template<'a>> {
+        self.parse_string(key, node, false).map(|id| {
+            if contains_expression(id.value()) {
+                self.template(id)
+            } else {
+                Template::plain(id)
+            }
+        })
     }
 }
 

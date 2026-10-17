@@ -1,7 +1,13 @@
-//! The string leaf and the expression leaf of the AST.
+//! The string leaves and the expression leaf of the AST.
+
+use std::ops::Range;
+use std::sync::Arc;
 
 use workflint_diagnostics::{SourceFile, Span};
 use workflint_yaml::{Node, NodeKind, Scalar, ScalarStyle, SourceMap, Tag};
+
+use crate::expression::{implicit, scan};
+use crate::{Placeholder, contains_expression, is_expression_assigned};
 
 /// A YAML scalar as a string: its decoded value and the node it comes from.
 ///
@@ -78,27 +84,144 @@ impl<'a> Str<'a> {
     pub fn source_map<'f>(&self, file: &'f SourceFile) -> Option<SourceMap<'f>> {
         self.node.source_map(file)
     }
+
+    /// Returns the span in `file` of the byte range `range` of
+    /// [`value`](Self::value), or `None` if `file` is not the file the node
+    /// was parsed from.
+    ///
+    /// The span covers the source of each character in the range, so a
+    /// character that an escape produces is the whole escape, and a range
+    /// in a block scalar is on its own line. An empty range is where its
+    /// offset maps to.
+    #[must_use]
+    pub fn source_span(&self, file: &SourceFile, range: Range<usize>) -> Option<Span> {
+        Some(self.source_map(file)?.source_span(range))
+    }
+}
+
+/// A string in a place where GitHub evaluates the `${{ }}` placeholders in
+/// it, such as `name`, `run`, or an `env` value, with each placeholder
+/// parsed.
+///
+/// The places are those the reference's `expression` rule checks. Strings
+/// elsewhere, such as a job ID or a `permissions` scope, are plain [`Str`]
+/// values, because the reference never parses them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Template<'a> {
+    /// The scalar.
+    pub source: Str<'a>,
+    /// The placeholders in source order, or `None` if there are none.
+    placeholders: Option<Arc<[Placeholder]>>,
+}
+
+impl<'a> Template<'a> {
+    /// Parses every `${{ }}` in `source`.
+    ///
+    /// ```
+    /// use workflint_diagnostics::{FileId, SourceFile};
+    /// use workflint_syntax::{Str, Template};
+    /// use workflint_yaml::parse;
+    ///
+    /// let file = SourceFile::new(FileId::new(0), "ci.yml", "echo ${{ a }} ${{ b. }}\n").unwrap();
+    /// let document = parse(&file).document.unwrap();
+    /// let source = Str::new(document.node(document.root().unwrap()).unwrap()).unwrap();
+    ///
+    /// let template = Template::new(source);
+    /// let [a, b] = template.placeholders() else { panic!() };
+    /// assert_eq!(&template.value()[a.range()], "${{ a }}");
+    /// assert!(a.expr.is_ok());
+    /// let err = b.expr.as_ref().unwrap_err();
+    /// let span = template.source.source_span(&file, b.to_value(err.range())).unwrap();
+    /// assert_eq!(file.line_col(span.start).column, 22);
+    /// ```
+    #[must_use]
+    pub fn new(source: Str<'a>) -> Self {
+        Self::with(source, scan(source.value()))
+    }
+
+    /// Parses `source` as an `if` condition, as the reference's
+    /// `checkIfCondition` does: every `${{ }}` in it if it
+    /// [contains an expression](contains_expression), and otherwise the
+    /// whole string as one [implicit](Placeholder::is_implicit) expression.
+    #[must_use]
+    pub fn condition(source: Str<'a>) -> Self {
+        if contains_expression(source.value()) {
+            Self::new(source)
+        } else {
+            Self::with(source, vec![implicit(source.value())])
+        }
+    }
+
+    /// Returns `source` with no placeholders.
+    pub(crate) fn plain(source: Str<'a>) -> Self {
+        Self {
+            source,
+            placeholders: None,
+        }
+    }
+
+    fn with(source: Str<'a>, placeholders: Vec<Placeholder>) -> Self {
+        Self {
+            source,
+            placeholders: (!placeholders.is_empty()).then(|| placeholders.into()),
+        }
+    }
+
+    /// Returns the decoded value of the scalar.
+    #[must_use]
+    pub fn value(&self) -> &'a str {
+        self.source.value()
+    }
+
+    /// Returns the span of the scalar.
+    #[must_use]
+    pub fn span(&self) -> Span {
+        self.source.span()
+    }
+
+    /// Returns the placeholders in source order.
+    #[must_use]
+    pub fn placeholders(&self) -> &[Placeholder] {
+        self.placeholders.as_deref().unwrap_or_default()
+    }
 }
 
 /// A value written as a single `${{ }}` expression, such as
 /// `continue-on-error: ${{ matrix.experimental }}`.
 ///
-/// It holds the scalar the expression is written in. Strings that contain
-/// expressions among other text, such as `run:` scripts, stay plain [`Str`]
-/// values.
-// TODO(#73): add the parsed expression, shared through `Arc` so that an
-// aliased scalar's expression is parsed once.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// It holds the scalar the expression is written in and the parsed
+/// expression. Strings that contain expressions among other text, such as
+/// `run:` scripts, are [`Template`] values.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Expr<'a> {
     /// The scalar that holds the expression, `${{` and `}}` included.
     pub source: Str<'a>,
+    placeholder: Arc<Placeholder>,
 }
 
 impl<'a> Expr<'a> {
-    /// Returns the expression written in `source`.
+    /// Parses the expression written in `source`, or returns `None` if
+    /// `source` is not a [single expression](is_expression_assigned).
     #[must_use]
-    pub const fn new(source: Str<'a>) -> Self {
-        Self { source }
+    pub fn new(source: Str<'a>) -> Option<Self> {
+        if !is_expression_assigned(source.value()) {
+            return None;
+        }
+        let placeholder = scan(source.value()).into_iter().next()?;
+        Some(Self::with(source, Arc::new(placeholder)))
+    }
+
+    pub(crate) fn with(source: Str<'a>, placeholder: Arc<Placeholder>) -> Self {
+        Self {
+            source,
+            placeholder,
+        }
+    }
+
+    /// Returns the expression's placeholder.
+    #[must_use]
+    pub fn placeholder(&self) -> &Placeholder {
+        &self.placeholder
     }
 
     /// Returns the span of the scalar that holds the expression.

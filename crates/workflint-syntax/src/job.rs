@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use crate::{Concurrency, Defaults, Env, Field, Keyed, Matrix, Permissions, Step, Str, Value};
+use crate::{
+    Concurrency, Defaults, Env, Field, Keyed, Matrix, Permissions, Step, Str, Template, Value,
+};
 
 /// One job of `jobs`.
 ///
@@ -12,9 +14,9 @@ use crate::{Concurrency, Defaults, Env, Field, Keyed, Matrix, Permissions, Step,
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Job<'a> {
     /// `name`. It may be empty.
-    pub name: Field<'a, Str<'a>>,
+    pub name: Field<'a, Template<'a>>,
     /// `needs`: job IDs, in source order. A string becomes a list of one.
-    pub needs: Field<'a, Arc<[Str<'a>]>>,
+    pub needs: Field<'a, Arc<[Template<'a>]>>,
     /// `runs-on`.
     pub runs_on: Field<'a, Runner<'a>>,
     /// `permissions`. The reference's `Permissions.Pos` is this field's key.
@@ -26,13 +28,13 @@ pub struct Job<'a> {
     /// `outputs`, keyed by output name. An output's value is `None` when it
     /// is not a scalar, which the parser reports. The reference's
     /// `Output.Name` is the entry's key.
-    pub outputs: Field<'a, Keyed<'a, Option<Str<'a>>>>,
+    pub outputs: Field<'a, Keyed<'a, Option<Template<'a>>>>,
     /// `env`.
     pub env: Value<'a, Env<'a>>,
     /// `defaults`. The reference's `Defaults.Pos` is this field's key.
     pub defaults: Field<'a, Defaults<'a>>,
     /// `if`.
-    pub condition: Field<'a, Str<'a>>,
+    pub condition: Field<'a, Template<'a>>,
     /// `steps`, in source order.
     pub steps: Field<'a, Arc<[Step<'a>]>>,
     /// `timeout-minutes`. A literal that is zero or less stays a literal
@@ -71,9 +73,9 @@ pub struct Runner<'a> {
     /// An empty label is kept after the parser reports it, as in the
     /// reference, where the `runner-label` rule reports it as an unknown
     /// label too. A label that is not a scalar is reported and left out.
-    pub labels: Value<'a, Arc<[Str<'a>]>>,
+    pub labels: Value<'a, Arc<[Template<'a>]>>,
     /// `group`.
-    pub group: Field<'a, Str<'a>>,
+    pub group: Field<'a, Template<'a>>,
 }
 
 /// `environment` of a job.
@@ -81,9 +83,9 @@ pub struct Runner<'a> {
 pub struct Environment<'a> {
     /// `name`. In the string form, `environment: production`, the whole
     /// value is the name and the field has no key.
-    pub name: Field<'a, Str<'a>>,
+    pub name: Field<'a, Template<'a>>,
     /// `url`.
-    pub url: Field<'a, Str<'a>>,
+    pub url: Field<'a, Template<'a>>,
     /// `deployment`.
     pub deployment: Value<'a, bool>,
 }
@@ -107,31 +109,31 @@ pub struct Strategy<'a> {
 pub struct Container<'a> {
     /// `image`. In the string form, `container: node:24`, the whole value
     /// is the image and the field has no key.
-    pub image: Field<'a, Str<'a>>,
+    pub image: Field<'a, Template<'a>>,
     /// `credentials`. The reference's `Credentials.Pos` is this field's key.
     pub credentials: Value<'a, Credentials<'a>>,
     /// `env`.
     pub env: Value<'a, Env<'a>>,
     /// `ports`, in source order.
-    pub ports: Field<'a, Arc<[Str<'a>]>>,
+    pub ports: Field<'a, Arc<[Template<'a>]>>,
     /// `volumes`, in source order. The reference stores them in `Ports`
     /// (`docs/differences.md#container-volumes`).
-    pub volumes: Field<'a, Arc<[Str<'a>]>>,
+    pub volumes: Field<'a, Arc<[Template<'a>]>>,
     /// `options`.
-    pub options: Field<'a, Str<'a>>,
+    pub options: Field<'a, Template<'a>>,
     /// `command`. Only a service may have it.
-    pub command: Field<'a, Str<'a>>,
+    pub command: Field<'a, Template<'a>>,
     /// `entrypoint`. Only a service may have it.
-    pub entrypoint: Field<'a, Str<'a>>,
+    pub entrypoint: Field<'a, Template<'a>>,
 }
 
 /// `credentials` of a container.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Credentials<'a> {
     /// `username`.
-    pub username: Field<'a, Str<'a>>,
+    pub username: Field<'a, Template<'a>>,
     /// `password`.
-    pub password: Field<'a, Str<'a>>,
+    pub password: Field<'a, Template<'a>>,
 }
 
 /// `services` of a job, keyed by service ID.
@@ -145,11 +147,11 @@ pub type Services<'a> = Keyed<'a, Container<'a>>;
 pub struct WorkflowCall<'a> {
     /// `uses`.
     // TODO(#72): replace with the typed `uses` value.
-    pub uses: Field<'a, Str<'a>>,
+    pub uses: Field<'a, Template<'a>>,
     /// `with`, keyed by input name. An input's value is `None` when it is
     /// not a scalar, which the parser reports. The reference's
     /// `WorkflowCallInput.Name` is the entry's key.
-    pub inputs: Field<'a, Keyed<'a, Option<Str<'a>>>>,
+    pub inputs: Field<'a, Keyed<'a, Option<Template<'a>>>>,
     /// `secrets`.
     pub secrets: Field<'a, WorkflowCallSecrets<'a>>,
 }
@@ -162,7 +164,7 @@ pub enum WorkflowCallSecrets<'a> {
     /// The secrets keyed by name. A secret's value is `None` when it is not
     /// a scalar, which the parser reports. The reference's
     /// `WorkflowCallSecret.Name` is the entry's key.
-    Map(Keyed<'a, Option<Str<'a>>>),
+    Map(Keyed<'a, Option<Template<'a>>>),
 }
 
 /// `snapshot` of a job.
@@ -174,5 +176,5 @@ pub struct Snapshot<'a> {
     /// `version`.
     pub version: Field<'a, Str<'a>>,
     /// `if`.
-    pub condition: Field<'a, Str<'a>>,
+    pub condition: Field<'a, Template<'a>>,
 }

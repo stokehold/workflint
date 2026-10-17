@@ -13,6 +13,7 @@ include = ["/src", "/README.md"]
 
 [dependencies]
 workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
+workflint-expr = { path = "../workflint-expr", version = "0.0.1" }
 workflint-yaml = { path = "../workflint-yaml", version = "0.0.1" }
 
 [lints]
