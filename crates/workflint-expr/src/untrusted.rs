@@ -25,7 +25,7 @@ const ADVICE_LINK: &str = "see https://docs.github.com/en/actions/reference/secu
 /// [`UNTRUSTED_INPUT`]. When an object filter makes it end on several, it reports
 /// [`UNTRUSTED_OBJECT_FILTER`] with all of them. An index other than a string literal counts
 /// as any array element, `*`. Nothing inside a call of one of the
-/// [`SAFE_FUNCTIONS`](workflint_data::SAFE_FUNCTIONS), `contains`, `startsWith`, and
+/// [`SAFE_FUNCTIONS`], `contains`, `startsWith`, and
 /// `endsWith`, is reported, because they return a boolean. Each error starts at the context and ends at the
 /// end of the chain.
 ///

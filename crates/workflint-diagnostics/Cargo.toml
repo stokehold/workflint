@@ -20,12 +20,17 @@ unicode-general-category = "=0.6.0"
 unicode-width = { version = "0.2.2", default-features = false }
 
 [dev-dependencies]
+datatest-stable = "0.3.3"
 # divan's API, measured by CodSpeed in CI and by divan on `cargo bench` (ADR 0019).
 divan = { package = "codspeed-divan-compat", version = "5.0.3" }
 insta = "1.49.0"
 
 [[bench]]
 name = "source"
+harness = false
+
+[[test]]
+name = "fuzz_regressions"
 harness = false
 
 [lints]
