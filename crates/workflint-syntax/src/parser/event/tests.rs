@@ -443,7 +443,7 @@ fn schedule_body_is_the_span_of_its_sequence() {
     with_workflow(
         "on:\n  schedule:\n    - cron: '0 0 * * *'\n",
         |file, workflow, _| {
-            let Some(Event::Schedule(schedule)) = workflow.on.value().unwrap().iter().next() else {
+            let Some(Some(Event::Schedule(schedule))) = workflow.on.value().unwrap().first() else {
                 panic!("no schedule event");
             };
             let body: Span = schedule.body;

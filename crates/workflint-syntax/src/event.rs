@@ -101,8 +101,8 @@ pub struct WebhookEvent<'a> {
 pub struct ScheduleEvent<'a> {
     /// The string `schedule`.
     pub name: Str<'a>,
-    /// The span of the sequence under the event's key. The parser drops a
-    /// `schedule` with no sequence, so every `schedule` has one.
+    /// The span of the sequence under the event's key. A `schedule` with no
+    /// sequence is `None` in the list of `on`, so every `schedule` has one.
     pub body: Span,
     /// The items of the sequence whose `cron` is valid, in source order.
     /// The parser drops the other items, as the reference does.

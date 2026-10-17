@@ -407,8 +407,9 @@ impl<'a> Parser<'a, '_> {
     /// Parses `node` as a sequence of `schedule` entries. The reference's
     /// `parseScheduleEvent`.
     ///
-    /// The event is dropped if `node` is not a sequence with items. An entry
-    /// is dropped unless its `cron` is a valid string.
+    /// The event is not built if `node` is not a sequence with items. An
+    /// entry is dropped unless its `cron` is a valid string, as in the
+    /// reference, so no rule sees it.
     fn parse_schedule(&mut self, name: Str<'a>, node: &'a Node) -> Option<ScheduleEvent<'a>> {
         const ELEMENT: &str = "element of \"schedule\" section";
         let items = self.check_sequence("schedule", node, false)?;
