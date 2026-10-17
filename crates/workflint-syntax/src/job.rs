@@ -53,9 +53,9 @@ pub struct Job<'a> {
     /// The call of a reusable workflow, from `uses`, `with`, and `secrets`.
     ///
     /// It is set only when `uses` is written, valid or not, and no key that
-    /// only a job with steps may have is written, such as `runs-on` or
-    /// `services`. The reference does not count `services`
-    /// (`docs/differences.md#reusable-call-services`).
+    /// only a job with steps may have is written, such as `runs-on`.
+    /// `services` does not count here, as in the reference, although the
+    /// parser reports it (`docs/differences.md#reusable-call-services`).
     pub workflow_call: Option<WorkflowCall<'a>>,
     /// `snapshot`. The reference's `snapshot` position is this field's key.
     pub snapshot: Field<'a, Snapshot<'a>>,
