@@ -134,7 +134,12 @@ impl PartialEq for RawValue<'_> {
                     if span != other_span || items.len() != other_items.len() {
                         return false;
                     }
-                    pending.extend(items.iter().zip(other_items.iter()));
+                    // The aliases of an anchored value share it. Skipping
+                    // shared items keeps the comparison linear in the size
+                    // of the input.
+                    if !Arc::ptr_eq(items, other_items) {
+                        pending.extend(items.iter().zip(other_items.iter()));
+                    }
                 }
                 (
                     Self::Mapping { span, entries },
@@ -145,6 +150,9 @@ impl PartialEq for RawValue<'_> {
                 ) => {
                     if span != other_span || entries.len() != other_entries.len() {
                         return false;
+                    }
+                    if entries.shares_entries(other_entries) {
+                        continue;
                     }
                     for (a, b) in entries.iter().zip(other_entries) {
                         if a.key != b.key || a.span != b.span || a.folded() != b.folded() {

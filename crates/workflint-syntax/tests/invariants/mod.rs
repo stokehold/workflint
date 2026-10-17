@@ -1,23 +1,29 @@
-//! The checks that the `syntax` fuzz target in `fuzz/` runs on each input.
+//! The checks that the `syntax` and `metadata` fuzz targets in `fuzz/` run
+//! on each input.
 //!
-//! The fuzz target includes this file with `#[path]`, and
-//! `reference_files.rs` runs it on files, so a crash input found by the
-//! fuzzer fails the same check as a test. Each check panics when an
-//! invariant does not hold.
+//! The fuzz targets include this file with `#[path]`, and
+//! `reference_files.rs` and `fuzz_regressions.rs` run it on files, so a
+//! crash input found by the fuzzer fails the same check as a test. Each
+//! check panics when an invariant does not hold.
 
 #![allow(clippy::unwrap_used)]
 
 use workflint_diagnostics::{FileId, SourceFile, Span, sort_and_dedup};
-use workflint_syntax::{Exec, JobUsesKind, StepUsesKind, Str, UsesPart, Workflow};
+use workflint_syntax::{
+    ActionMetadata, Exec, JobUsesKind, ReusableWorkflowMetadata, StepUsesKind, Str, UsesPart,
+    Workflow,
+};
+use workflint_yaml::simple_lowercase;
 
 /// Parses `text` with the YAML layer and, if it gives a document, with the
-/// workflow parser.
+/// workflow parser. Runs [`check_metadata`] first.
 ///
 /// The parser does not panic, and every diagnostic belongs to the file, has
 /// a span inside `text` on character boundaries, and converts to a line and
 /// column. Sorting and deduplicating the diagnostics does not panic. Every
 /// part of a classified `uses` value has a span inside the value's span.
 pub(crate) fn check_parse(text: &str) {
+    check_metadata(text);
     let Ok(file) = SourceFile::new(FileId::new(0), "fuzz.yml", text) else {
         return;
     };
@@ -41,6 +47,47 @@ pub(crate) fn check_parse(text: &str) {
                 "{what}"
             );
         }
+    }
+}
+
+/// Decodes `text` as the `action.yml` of a local action and as a local
+/// reusable workflow.
+///
+/// Neither decoder panics, and a second decode gives the same result. An
+/// error has a message. Each input, output, and secret is keyed by its
+/// name in lowercase.
+pub(crate) fn check_metadata(text: &str) {
+    let Ok(file) = SourceFile::new(FileId::new(0), "fuzz.yml", text) else {
+        return;
+    };
+    let action = ActionMetadata::decode(&file);
+    assert_eq!(action, ActionMetadata::decode(&file));
+    match &action {
+        Ok(metadata) => {
+            for (id, input) in &metadata.inputs {
+                assert_eq!(*id, simple_lowercase(&input.name));
+            }
+            for (id, output) in &metadata.outputs {
+                assert_eq!(*id, simple_lowercase(&output.name));
+            }
+        }
+        Err(err) => assert!(!err.message().is_empty()),
+    }
+    let workflow = ReusableWorkflowMetadata::decode(&file);
+    assert_eq!(workflow, ReusableWorkflowMetadata::decode(&file));
+    match &workflow {
+        Ok(metadata) => {
+            for (id, input) in &metadata.inputs {
+                assert_eq!(*id, simple_lowercase(&input.name));
+            }
+            for (id, output) in &metadata.outputs {
+                assert_eq!(*id, simple_lowercase(&output.name));
+            }
+            for (id, secret) in &metadata.secrets {
+                assert_eq!(*id, simple_lowercase(&secret.name));
+            }
+        }
+        Err(err) => assert!(!err.message().is_empty()),
     }
 }
 
