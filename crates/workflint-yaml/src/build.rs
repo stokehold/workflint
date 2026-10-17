@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, Span};
 
-use crate::attach::{Role, attach};
+use crate::attach::{CommentPlace, Role, after_indicators, attach};
 use crate::document::{
     Alias, Anchor, BlockHeader, Chomping, CollectionStyle, Comment, Document, Entry, Mapping, Node,
     NodeId, NodeKind, Scalar, ScalarStyle, Sequence, Tag,
@@ -15,6 +15,10 @@ use crate::libyaml::{
 };
 use crate::resolve;
 use crate::rules::{RECURSIVE_ALIAS, UNKNOWN_ANCHOR, UNUSED_ANCHOR, YAML_SYNTAX_ERROR};
+
+/// The context of the scanner errors for a quoted scalar without its closing
+/// quote.
+const UNCLOSED_QUOTED_SCALAR: &str = "while scanning a quoted scalar";
 
 /// The result of [`parse`].
 #[derive(Debug, Clone)]
@@ -62,9 +66,11 @@ struct Frame {
     node: NodeId,
     mapping: bool,
     block: bool,
-    /// The column where the collection's content starts, which is the
-    /// scanner's indentation inside a block collection.
-    column: u64,
+    /// The scanner's indentation inside the innermost block collection that
+    /// is open at this frame, this one included, or -1 if there is none.
+    /// It is computed when the frame is pushed, so a scalar finds it without
+    /// walking the frames.
+    block_indent: i64,
     /// Where the collection's children start in `Builder::scratch`.
     scratch_start: usize,
     /// The end of the last child as written, for the end of a block
@@ -92,7 +98,7 @@ struct Builder<'a> {
     items: Vec<NodeId>,
     entries: Vec<Entry>,
     comments: Vec<Comment>,
-    comment_lines: Vec<u64>,
+    comment_places: Vec<CommentPlace>,
     root: Option<NodeId>,
     /// The offset of the first document's start event.
     start: u32,
@@ -116,7 +122,7 @@ impl<'a> Builder<'a> {
             items: Vec::new(),
             entries: Vec::new(),
             comments: Vec::new(),
-            comment_lines: Vec::new(),
+            comment_places: Vec::new(),
             root: None,
             start: 0,
             diagnostics: Vec::new(),
@@ -199,11 +205,17 @@ impl<'a> Builder<'a> {
         Span::new(self.id, start, end)
     }
 
+    /// The diagnostic for a syntax error, at the problem position. An
+    /// unclosed quoted scalar is reported at its opening quote, the context
+    /// mark, as in go-yaml, because its problem position is the end of the
+    /// stream or the next document marker.
     fn syntax_error(&self, err: &Error) -> Diagnostic {
         let len = self.text.len();
-        let offset = usize::try_from(err.problem_offset())
-            .unwrap_or(len)
-            .min(len);
+        let position = match (err.context(), err.context_mark()) {
+            (Some(UNCLOSED_QUOTED_SCALAR), Some(mark)) => mark.index,
+            _ => err.problem_offset(),
+        };
+        let offset = usize::try_from(position).unwrap_or(len).min(len);
         let offset = self.text.floor_char_boundary(offset);
         let end = self
             .text
@@ -219,12 +231,20 @@ impl<'a> Builder<'a> {
     }
 
     fn comment(&mut self, kind: libyaml::CommentKind, event: &EventMarks) {
+        let start = Self::offset(event.start_mark);
+        let after_indicators = match kind {
+            libyaml::CommentKind::Trailing => after_indicators(self.text, start),
+            libyaml::CommentKind::OwnLine => None,
+        };
         self.comments.push(Comment {
             kind,
-            span: self.span(Self::offset(event.start_mark), Self::offset(event.end_mark)),
+            span: self.span(start, Self::offset(event.end_mark)),
             node: None,
         });
-        self.comment_lines.push(event.start_mark.line);
+        self.comment_places.push(CommentPlace {
+            line: event.start_mark.line,
+            after_indicators,
+        });
     }
 
     /// Adds a node to the arena and to the innermost open collection, or
@@ -258,6 +278,12 @@ impl<'a> Builder<'a> {
             self.scratch.push(child);
         }
         id
+    }
+
+    /// The scanner's indentation inside the innermost open block collection,
+    /// or -1 outside every block collection.
+    fn block_indent(&self) -> i64 {
+        self.frames.last().map_or(-1, |frame| frame.block_indent)
     }
 
     /// Records that a child of the innermost open collection ended at `end`.
@@ -315,12 +341,7 @@ impl<'a> Builder<'a> {
             ScalarStyle::Plain => resolve::plain(&value),
             _ => Tag::Str,
         });
-        let parent_indent = self
-            .frames
-            .iter()
-            .rev()
-            .find(|frame| frame.block)
-            .map_or(-1, |frame| i64::try_from(frame.column).unwrap_or(i64::MAX));
+        let parent_indent = self.block_indent();
         let node = Node {
             span: self.span(start, end),
             content_start,
@@ -406,11 +427,18 @@ impl<'a> Builder<'a> {
             comments: 0..0,
         };
         let id = self.add(node, event.start_mark.line, None);
+        // The column where a block collection's content starts is the
+        // scanner's indentation inside it.
+        let block_indent = if block {
+            i64::try_from(content.column).unwrap_or(i64::MAX)
+        } else {
+            self.block_indent()
+        };
         self.frames.push(Frame {
             node: id,
             mapping,
             block,
-            column: content.column,
+            block_indent,
             scratch_start: self.scratch.len(),
             last_end: None,
         });
@@ -522,7 +550,7 @@ impl<'a> Builder<'a> {
             &self.lines,
             &self.roles,
             &mut self.comments,
-            &self.comment_lines,
+            &self.comment_places,
         );
         let document = Document {
             file: self.id,

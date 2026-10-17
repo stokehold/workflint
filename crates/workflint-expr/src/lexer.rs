@@ -20,14 +20,15 @@ const EXPECTED_ALL: &str = "'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')
 /// the caller knows where the expression ends in its string. A `}}` inside a string literal does
 /// not end the expression. Reaching the end of the input before `}}` is an error.
 ///
-/// The lexer keeps only the first error, available from [`Lexer::error`]. After an error,
-/// every call returns an empty [`TokenKind::End`] token.
+/// The lexer keeps only the first error, available from [`Lexer::error`]. After an error
+/// other than a NUL character, every call returns an empty [`TokenKind::End`] token.
 ///
 /// The lexer works like actionlint's, which is built on Go's `text/scanner`:
 ///
 /// - A byte order mark at the start of the input is skipped but stays in the first token.
-/// - A NUL character is an error, reported when the lexer reaches it. The token being lexed
-///   still completes.
+/// - A NUL character is an error, reported when the lexer reaches it. The lexer goes on: the
+///   token being lexed completes, and the next calls return the tokens after it. A NUL
+///   outside a string literal is then an unexpected character.
 /// - Unlike actionlint's, the exponent of a number accepts `+`, as in JSON.
 ///
 /// The lexer reads at most `u32::MAX` bytes of its input, because tokens store `u32` offsets.
@@ -39,6 +40,8 @@ pub struct Lexer<'src> {
     /// The offset where the current token starts.
     start: usize,
     error: Option<ExprError>,
+    /// Whether an error other than a NUL character stopped the lexer.
+    stopped: bool,
 }
 
 impl<'src> Lexer<'src> {
@@ -52,6 +55,7 @@ impl<'src> Lexer<'src> {
             pos: 0,
             start: 0,
             error: None,
+            stopped: false,
         };
         if src.starts_with(BOM) {
             lexer.pos = BOM.len_utf8();
@@ -62,13 +66,12 @@ impl<'src> Lexer<'src> {
 
     /// Lexes and returns the next token.
     pub fn next_token(&mut self) -> Token {
-        if self.error.is_some() {
+        if self.stopped {
             return self.eof();
         }
         self.skip_white();
         let Some(c) = self.peek() else {
-            self.report(|| "unexpected EOF while lexing expression".to_owned());
-            return self.eof();
+            return self.unexpected_eof();
         };
         match c {
             'a'..='z' | 'A'..='Z' | '_' => self.lex_ident(),
@@ -159,9 +162,17 @@ impl<'src> Lexer<'src> {
         }
     }
 
+    /// Records that the input ends before `}}`, and returns an end token.
+    fn unexpected_eof(&mut self) -> Token {
+        self.report(|| "unexpected EOF while lexing expression".to_owned());
+        self.stopped = true;
+        self.eof()
+    }
+
     /// Records the unexpected character `c`, or the end of the input if it is `None`, and
     /// returns an end token.
     fn unexpected(&mut self, c: Option<char>, where_: &str, expected: &str) -> Token {
+        self.stopped = true;
         self.report(|| {
             let what = c.map_or_else(
                 || "EOF".to_owned(),

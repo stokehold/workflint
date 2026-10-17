@@ -91,9 +91,8 @@ impl Expr {
                         .is_some_and(|function| function.constant)
             }
             ExprKind::Not { operand } => operand.is_constant(),
-            ExprKind::Compare { left, right, .. } | ExprKind::Logical { left, right, .. } => {
-                left.is_constant() && right.is_constant()
-            }
+            ExprKind::Compare { left, right, .. } => left.is_constant() && right.is_constant(),
+            ExprKind::Logical { operands, .. } => operands.iter().all(Expr::is_constant),
         }
     }
 }
@@ -160,7 +159,7 @@ impl Checker<'_> {
                 }
                 Ty::Bool
             }
-            ExprKind::Logical { op, left, right } => self.check_logical(*op, left, right),
+            ExprKind::Logical { op, operands } => self.check_chain(*op, operands),
         }
     }
 
@@ -611,13 +610,33 @@ impl Checker<'_> {
         }
     }
 
-    /// The reference's `checkLogicalOp`. When `l && r` is falsy, its value is `l`, and when
+    /// The reference's `checkLogicalOp` on a chain, which the reference nests to the right:
+    /// `a || b || c` is `a || (b || c)`. When `l && r` is falsy, its value is `l`, and when
     /// `l || r` is truthy, its value is `l`. So the type of `l` is narrowed with that
-    /// assumption and merged with the type of `r`.
-    fn check_logical(&mut self, op: LogicalOp, left: &Expr, right: &Expr) -> Ty {
-        let left_ty = self.check_narrowed(left, op == LogicalOp::Or);
-        let right_ty = self.check(right);
-        left_ty.merge(&right_ty)
+    /// assumption and merged with the type of `r`. The loop checks the operands in source
+    /// order and merges their types from the right, as the reference's recursion does.
+    fn check_chain(&mut self, op: LogicalOp, operands: &[Expr]) -> Ty {
+        let truthy = op == LogicalOp::Or;
+        if let [left, right] = operands {
+            // The common case, without a vector.
+            let left_ty = self.check_narrowed(left, truthy);
+            return left_ty.merge(&self.check(right));
+        }
+        let Some((last, init)) = operands.split_last() else {
+            return Ty::Any;
+        };
+        let narrowed: Vec<Ty> = init
+            .iter()
+            .map(|operand| self.check_narrowed(operand, truthy))
+            .collect();
+        let last_ty = self.check(last);
+        if operands.len() > 2 {
+            self.leave_nested_chain();
+        }
+        narrowed
+            .into_iter()
+            .rev()
+            .fold(last_ty, |right, left| left.merge(&right))
     }
 
     /// The reference's `checkWithNarrowing`: the type of `expr` when its value is assumed to
@@ -625,15 +644,32 @@ impl Checker<'_> {
     /// flips the assumption for its operand.
     fn check_narrowed(&mut self, expr: &Expr, truthy: bool) -> Ty {
         match &expr.kind {
-            ExprKind::Logical { op, left, right } => {
-                if (*op == LogicalOp::And) == truthy {
-                    self.check(left);
-                    return self.check(right);
+            ExprKind::Logical { op, operands } => {
+                if (*op == LogicalOp::And) == truthy
+                    && let Some((first, rest)) = operands.split_first()
+                {
+                    self.check(first);
+                    if let [right] = rest {
+                        return self.check(right);
+                    }
+                    let ty = self.check_chain(*op, rest);
+                    self.leave_nested_chain();
+                    return ty;
                 }
-                self.check_logical(*op, left, right)
+                self.check_chain(*op, operands)
             }
             ExprKind::Not { operand } => self.check_narrowed(operand, !truthy),
             _ => self.check(expr),
+        }
+    }
+
+    /// Tells the untrusted-input check that the walk leaves the node of the chain after an
+    /// operand, which the reference's tree has and this one does not. The reference checks
+    /// `b || c` in `a || b || c` through `check`, which leaves that node and so ends the
+    /// current chain of property accesses.
+    fn leave_nested_chain(&mut self) {
+        if let Some(untrusted) = &mut self.untrusted {
+            untrusted.leave_nested_chain();
         }
     }
 }

@@ -22,6 +22,11 @@
 //!
 //! "Invalid" means the key is written but its value is not usable. The
 //! parser has reported it, so rules skip it instead of reporting it again.
+//! An invalid item of a list, such as an activity type in `types` or an
+//! event of `on`, and an invalid value in a [`Keyed`], such as a
+//! `permissions` scope, is `None`. The list keeps its length, so a rule
+//! that only needs a value to be written, such as one that checks whether
+//! an input has options, still sees it.
 //!
 //! ```
 //! use workflint_diagnostics::{FileId, SourceFile};

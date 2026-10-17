@@ -551,4 +551,23 @@ mod nesting {
         }
         assert_eq!(json_ty(&json), want);
     }
+
+    /// The type stops at 128 levels, but Go still decodes the numbers below them.
+    #[test]
+    fn number_beyond_a_double_below_the_typed_levels_gives_any() {
+        let json = format!("{}1e400{}", "[".repeat(150), "]".repeat(150));
+        assert_eq!(json_ty(&json), Ty::Any);
+        let json = format!(
+            r#"{}{{"a": [true, "1e400", -1e400]}}{}"#,
+            "[".repeat(150),
+            "]".repeat(150)
+        );
+        assert_eq!(json_ty(&json), Ty::Any);
+        let json = format!(
+            r#"{}{{"1e400": [-1.5e300]}}{}"#,
+            "[".repeat(150),
+            "]".repeat(150)
+        );
+        assert_ne!(json_ty(&json), Ty::Any);
+    }
 }
