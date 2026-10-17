@@ -17,6 +17,7 @@ The runner finds the reference's fixtures by listing `actionlint/testdata/`. It 
 | Path | What it holds |
 |---|---|
 | `actionlint/` | The reference's test data, vendored by `cargo xtask vendor-testdata`. Do not edit. |
+| `go/time-zones.txt` | The time zone names in the tzdata that the reference binary embeds, written by `cargo xtask vendor-testdata` from the Go in `.go-version`. Do not edit. |
 | `workflint/` | workflint's own fixtures, with the same layout as `actionlint/testdata/`. |
 | `expected-failures.toml` | Fixtures that do not pass yet, with the milestone expected to make them pass. |
 | `milestones.toml` | The milestones whose work is done, which no expected failure may name. |

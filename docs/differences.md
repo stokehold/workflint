@@ -575,6 +575,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M4.
 - Status: planned.
 
+<a id="host-time-zones"></a>
+### Schedule time zones do not depend on the host
+
+- Upstream: `on.schedule[*].timezone` is checked with Go's `time.LoadLocation`, which reads the host's zoneinfo before the tzdata embedded in the binary (tzdata 2025c in a build with Go 1.26.4). So the answer depends on the host. On Linux with `/usr/share/zoneinfo`, `localtime` and `posixrules` are accepted as well. A host with a newer tzdata accepts zones that 2025c lacks. On a file system that ignores case, such as macOS's default, `america/new_york` is accepted.
+- workflint: accepts exactly the 598 names of that embedded tzdata, with case. It rejects `UTC` in any case, `local` in any case, and the empty string, as upstream does before it calls `time.LoadLocation`.
+- Why: the same input must give the same output on every host (ADR 0013).
+- Upstream issue: none.
+- Milestone: M4.
+- Status: planned.
+
 <a id="deterministic-order"></a>
 ### Deterministic job order
 

@@ -15,3 +15,6 @@
 
 # Expression parity cases are compared with their spaces and positions, so they must reach both checkers byte for byte.
 /tests/expr-parity/** -text
+
+# `cargo xtask vendor-testdata` compares the time zone list byte for byte with what it would write.
+/tests/conformance/go/** -text

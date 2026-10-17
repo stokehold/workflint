@@ -69,6 +69,7 @@ jobs:
         .go-version
         .gitattributes
         tests/conformance/actionlint/**
+        tests/conformance/go/**
         Cargo.lock
         Cargo.toml
         rust-toolchain.toml
@@ -265,7 +266,8 @@ jobs:
         run: |
           cargo xtask vendor-testdata | tee vendor-run.txt
           grep -q '^vendor-testdata: tests/conformance/actionlint is up to date' vendor-run.txt
-          changes="$(git status --porcelain --ignored --untracked-files=all -- tests/conformance/actionlint)"
+          grep -q '^vendor-testdata: tests/conformance/go/time-zones.txt is up to date' vendor-run.txt
+          changes="$(git status --porcelain --ignored --untracked-files=all -- tests/conformance/actionlint tests/conformance/go)"
           if [ -n "$changes" ]; then
             echo "cargo xtask vendor-testdata changed these files:"
             echo "$changes"

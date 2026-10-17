@@ -101,8 +101,9 @@ enum Command {
     /// `.reference/`. Needs git and the Go version in `.go-version`.
     Reference,
     /// Copy the reference's test data from `.reference/actionlint` into
-    /// `tests/conformance/actionlint/`. Clones the checkout first if it is
-    /// missing.
+    /// `tests/conformance/actionlint/`, and list the time zones of the Go
+    /// version in `.go-version` in `tests/conformance/go/time-zones.txt`.
+    /// Clones the checkout first if it is missing. Needs that Go version.
     VendorTestdata,
     /// Compare the YAML trees of workflint-yaml and go-yaml: node kinds,
     /// positions, decoded values, anchors, and aliases. Run it after

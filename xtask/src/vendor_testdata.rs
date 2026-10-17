@@ -4,7 +4,10 @@
 //!
 //! The copy keeps the upstream relative paths. The command owns every file in
 //! the directory except `README.md`, so it also removes files that upstream
-//! does not have.
+//! does not have. It then lists the time zones of the pinned Go in
+//! `tests/conformance/go/time-zones.txt` (see [`time_zones`]).
+
+mod time_zones;
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -24,6 +27,14 @@ pub(crate) const PATHS: &[&str] = &[
     "expr_sema.go",
     "availability.go",
     "expr_insecure.go",
+    "all_webhooks.go",
+    "rule_action.go",
+    "rule_deprecated_commands.go",
+    "rule_events.go",
+    "rule_permissions.go",
+    "rule_runner_label.go",
+    "rule_shell_name.go",
+    "cmd/actionlint/main.go",
     "LICENSE.txt",
 ];
 
@@ -48,6 +59,7 @@ pub(crate) struct Summary {
 
 /// Makes `.reference/actionlint` a clean checkout of the reference commit,
 /// then copies [`PATHS`] from it into [`DESTINATION`] and prints what changed.
+/// Then writes the time zones of the pinned Go, which needs that Go.
 pub(crate) fn run(layout: &Layout) -> Result<()> {
     reference::report_checkout(layout)?;
     let files = reference::tracked_files(layout, PATHS)?;
@@ -66,7 +78,7 @@ pub(crate) fn run(layout: &Layout) -> Result<()> {
             summary.files, summary.added, summary.updated, summary.removed
         );
     }
-    Ok(())
+    time_zones::run(layout)
 }
 
 /// Fails if an entry of [`PATHS`] matched no tracked file, which means the
@@ -387,6 +399,14 @@ mod tests {
             "expr_sema.go".to_owned(),
             "availability.go".to_owned(),
             "expr_insecure.go".to_owned(),
+            "all_webhooks.go".to_owned(),
+            "rule_action.go".to_owned(),
+            "rule_deprecated_commands.go".to_owned(),
+            "rule_events.go".to_owned(),
+            "rule_permissions.go".to_owned(),
+            "rule_runner_label.go".to_owned(),
+            "rule_shell_name.go".to_owned(),
+            "cmd/actionlint/main.go".to_owned(),
             "LICENSE.txt".to_owned(),
         ];
 
