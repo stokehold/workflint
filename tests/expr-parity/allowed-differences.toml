@@ -1,0 +1,158 @@
+# Differences between the reference's expression checker and workflint-expr
+# that docs/differences.md explains. README.md describes the format.
+
+[[difference]]
+anchor = "int-literal-range"
+expression = "2147483648"
+upstream = "parse error at 1:1: parsing invalid integer literal \"2147483648\": strconv.ParseInt: parsing \"2147483648\": value out of range"
+workflint = "type: number, constant: true"
+
+[[difference]]
+anchor = "int-literal-range"
+expression = "-2147483649"
+upstream = "parse error at 1:1: parsing invalid integer literal \"-2147483649\": strconv.ParseInt: parsing \"-2147483649\": value out of range"
+workflint = "type: number, constant: true"
+
+[[difference]]
+anchor = "int-literal-range"
+expression = "9007199254740993"
+upstream = "parse error at 1:1: parsing invalid integer literal \"9007199254740993\": strconv.ParseInt: parsing \"9007199254740993\": value out of range"
+workflint = "type: number, constant: true"
+
+[[difference]]
+anchor = "int-literal-range"
+expression = "0x80000000"
+upstream = "parse error at 1:1: parsing invalid integer literal \"0x80000000\": strconv.ParseInt: parsing \"0x80000000\": value out of range"
+workflint = "type: number, constant: true"
+
+[[difference]]
+anchor = "exponent-plus-sign"
+expression = "1e+5"
+upstream = "parse error at 1:3: got unexpected character '+' while lexing exponent part of float number, expecting '0'..'9'"
+workflint = "type: number, constant: true"
+
+[[difference]]
+anchor = "comparison-precedence"
+expression = "'a' < 'b' == true"
+upstream = '''
+type: bool, constant: true
+1:1: "string" value cannot be compared to "bool" value with "<" operator
+'''
+workflint = "type: bool, constant: true"
+
+[[difference]]
+anchor = "comparison-precedence"
+expression = "1 < 2 == true"
+upstream = '''
+type: bool, constant: true
+1:1: "number" value cannot be compared to "bool" value with "<" operator
+'''
+workflint = "type: bool, constant: true"
+
+[[difference]]
+anchor = "literal-index-case"
+expression = "github['REF']"
+upstream = '''
+type: any, constant: false
+1:1: property "REF" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string}
+'''
+workflint = "type: string, constant: false"
+
+[[difference]]
+anchor = "literal-index-case"
+expression = "github['EVENT']"
+upstream = '''
+type: any, constant: false
+1:1: property "EVENT" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string}
+'''
+workflint = "type: object, constant: false"
+
+[[difference]]
+anchor = "literal-index-case"
+setups = ["step-run"]
+expression = "github['EVENT']['ISSUE']['TITLE']"
+upstream = '''
+type: any, constant: false
+1:1: property "EVENT" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string}
+'''
+workflint = '''
+type: any, constant: false
+1:1: "github.event.issue.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "literal-index-case"
+setups = ["step-if", "job-if", "workflow-call-output"]
+expression = "github['EVENT']['ISSUE']['TITLE']"
+upstream = '''
+type: any, constant: false
+1:1: property "EVENT" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string}
+'''
+workflint = "type: any, constant: false"
+
+[[difference]]
+anchor = "literal-index-case"
+setups = ["step-run", "job-if"]
+expression = "github.event['INPUTS'].a"
+upstream = "type: any, constant: false"
+workflint = '''
+type: any, constant: false
+1:1: property "a" is not defined in object type {environment: string; verbose: string}
+'''
+
+[[difference]]
+anchor = "literal-index-case"
+setups = ["step-run"]
+expression = "steps['BUILD'].outputs"
+upstream = '''
+type: any, constant: false
+1:1: property "BUILD" is not defined in object type {build: {conclusion: string; outcome: string; outputs: {string => string}}; checkout: {conclusion: string; outcome: string; outputs: {commit: string; ref: string}}}
+'''
+workflint = "type: {string => string}, constant: false"
+
+[[difference]]
+anchor = "literal-index-case"
+setups = ["step-run"]
+expression = "matrix['OS']"
+upstream = '''
+type: any, constant: false
+1:1: property "OS" is not defined in object type {arch: string; include: object; node: number; os: string; targets: array<{name: string}>}
+'''
+workflint = "type: string, constant: false"
+
+[[difference]]
+anchor = "fromjson-key-case"
+expression = "fromJSON('{\"Foo\":1}').Foo"
+upstream = '''
+type: any, constant: false
+1:1: property "foo" is not defined in object type {Foo: number}
+'''
+workflint = "type: number, constant: false"
+
+[[difference]]
+anchor = "fromjson-key-case"
+expression = "fromJSON('{\"Foo\":1}').foo"
+upstream = '''
+type: any, constant: false
+1:1: property "foo" is not defined in object type {Foo: number}
+'''
+workflint = "type: number, constant: false"
+
+[[difference]]
+anchor = "fromjson-key-case"
+expression = "fromJSON('{\"A\":1}').a"
+upstream = '''
+type: any, constant: false
+1:1: property "a" is not defined in object type {A: number}
+'''
+workflint = "type: number, constant: false"
+
+[[difference]]
+anchor = "object-filter-mutation"
+setups = ["step-run"]
+expression = "format('{0}{1}', matrix.targets.*.name, matrix.targets.name)"
+upstream = "type: string, constant: false"
+workflint = '''
+type: string, constant: false
+1:41: receiver of object dereference "name" must be type of object but got "array<{name: string}>"
+'''

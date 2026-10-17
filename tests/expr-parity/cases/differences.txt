@@ -1,0 +1,26 @@
+# Expressions on which workflint differs from the reference on purpose. Each
+# has a record in ../allowed-differences.toml with its docs/differences.md
+# anchor, so that the documented outcome cannot change unnoticed.
+
+# int-literal-range
+2147483648
+-2147483649
+9007199254740993
+0x80000000
+# exponent-plus-sign
+1e+5
+# comparison-precedence
+'a' < 'b' == true
+1 < 2 == true
+1 == 1 < 2
+# literal-index-case
+github['EVENT']
+github['EVENT']['ISSUE']['TITLE']
+steps['BUILD'].outputs
+matrix['OS']
+# fromjson-key-case
+fromJSON('{"Foo":1}').Foo
+fromJSON('{"Foo":1}').foo
+fromJSON('{"foo":1,"Foo":"x"}').Foo
+# object-filter-mutation
+format('{0}{1}', matrix.targets.*.name, matrix.targets.name)

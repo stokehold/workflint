@@ -1,0 +1,36 @@
+# Object filters, index access with values of each type, and merged types of
+# `||` and `&&`.
+fromJSON('[1]')['0']
+fromJSON('[1]')[null]
+fromJSON('[1]')[fromJSON('[1]')]
+github[fromJSON('{}')]
+github[matrix.x]
+(fromJSON('[{"a":1}]').* || fromJSON('[{"a":2}]').*).a
+(fromJSON('[{"a":1}]').* && fromJSON('[{"a":2}]').*).a
+(fromJSON('[1]').* || github.event.*).a
+(github.event.* || fromJSON('[{"a":2}]').*).a
+fromJSON('[[1]]').*.*
+fromJSON('[[{"a":1}]]').*.*.a
+fromJSON('[{"a":[{"b":1}]}]').*.a.*.b
+fromJSON('[{"a":[{"b":1}]}]').*.a.b
+fromJSON('[{"a":[{"b":1}]}]').*.a[0].b
+github.event.*[0]
+github.event.*['x']
+env.*.x
+job.services.*.ports.*
+job.services.*.ports
+job.services.*.ports.x
+job.services.*.*
+steps.*.outputs
+needs.*.result
+matrix.* || 1
+(matrix.a || matrix.b).c
+(1 || 'a')[0]
+(github || env).foo
+(env || secrets).foo
+(env || github).foo
+(env || fromJSON('{"a":1}')).a
+(fromJSON('{"a":1}') || fromJSON('{"b":"x"}')).c
+(fromJSON('{"a":1}') || env).c
+(fromJSON('{"a":1}') || strategy).c
+(strategy || fromJSON('{"a":1}')).c

@@ -119,7 +119,7 @@ All rows are reported by the parser. Every message is byte-identical to upstream
 
 ### Expression checks (kind `expression`)
 
-The lexer, parser, type system and semantic checker live in `workflint-expr` (M3). Rows that depend on the workflow, such as contextual typing, live in `workflint-rules` (M4).
+The lexer, parser, type system and semantic checker live in `workflint-expr` (M3). Rows that depend on the workflow, such as contextual typing, live in `workflint-rules` (M4). `cargo xtask expr-parity` compares `workflint-expr` with the reference's checker on about 14,000 expressions, in CI job `Oracle`, and covers the rows of this section that need no workflow (`tests/expr-parity/README.md`).
 
 | Item | Upstream source | Rule ID (kind) | Crate | Milestone | Upstream fixtures | Notes |
 |---|---|---|---|---|---|---|

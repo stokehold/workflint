@@ -26,7 +26,7 @@ Parse-stage rules are an exception to "rules live in `workflint-rules`". `workfl
 
 ## Outside the crates
 
-- `xtask/` is the package behind `cargo xtask`, the developer commands. `cargo xtask --help` lists them. Its `conformance` test target is the conformance suite, and `xtask/goyaml-dump/` is the Go program that `cargo xtask yaml-parity` builds to dump go-yaml's tree. It is never published (ADR 0006).
+- `xtask/` is the package behind `cargo xtask`, the developer commands. `cargo xtask --help` lists them. Its `conformance` test target is the conformance suite, `xtask/goyaml-dump/` is the Go program that `cargo xtask yaml-parity` builds to dump go-yaml's tree, and `xtask/expr-check/` is the Go program that `cargo xtask expr-parity` builds around the reference's expression checker. It is never published (ADR 0006).
 - `fuzz/` holds the cargo-fuzz targets. It is a Cargo workspace of its own, with its own `Cargo.lock` and a pinned nightly toolchain, because `cargo fuzz` needs nightly (ADR 0025). It is never published.
 
 ## How a run works
@@ -72,6 +72,7 @@ Parse-stage rules are an exception to "rules live in `workflint-rules`". `workfl
 | Snapshot tests | each crate's `tests/` | Rendered output for representative inputs, with `insta`. |
 | Conformance suite | `tests/conformance/`, run by `xtask/tests/conformance.rs` | The reference's fixtures and workflint's own through the real CLI, compared with expected errors (ADR 0004). |
 | YAML parity | `cargo xtask yaml-parity` | The `workflint-yaml` tree against go-yaml's on fixtures and the 1,503-file corpus: node kinds, positions, decoded values, anchors, and aliases. |
+| Expression parity | `cargo xtask expr-parity` | `workflint-expr` against the reference's expression checker on about 14,000 expressions in several setups: parse errors, types, the constant flag, and each error with its position. |
 | Oracle diff | `cargo xtask oracle` | workflint against the reference binary on fixtures and the 1,503-file corpus. |
 | Rule examples | `docs/rules/*.md` | Every documented example runs as a test. |
 | Fuzzing | `fuzz/` | Parsers and the full lint of one file must never panic (ADR 0018). |

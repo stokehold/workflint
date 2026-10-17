@@ -6,6 +6,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod bench;
+mod expr_parity;
 mod fuzz_seeds;
 mod oracle;
 mod reference;
@@ -53,6 +54,15 @@ enum Command {
         #[arg(long, value_name = "FILE")]
         issue_body: Option<PathBuf>,
     },
+    /// Run expressions through the reference's expression checker and
+    /// through workflint-expr, and compare the parse error or the type, the
+    /// constant flag, and each error with its position. The expressions and
+    /// the setups they run in are in tests/expr-parity/. Needs git and the Go
+    /// version in `.go-version`.
+    ///
+    /// It exits with an error if a difference is not explained by
+    /// tests/expr-parity/allowed-differences.toml.
+    ExprParity,
     /// Write seed inputs for the fuzz targets into `fuzz/corpus/<target>/`:
     /// the YAML files of the vendored test data, the corpus archive, the YAML
     /// test suite, and the fuzz regression inputs, or, for the expression
@@ -137,6 +147,7 @@ fn main() -> anyhow::Result<()> {
             };
             bench::history::run(&history, &results, issue_body.as_deref())?;
         }
+        Some(Command::ExprParity) => expr_parity::run(&reference::Layout::repository())?,
         Some(Command::FuzzSeeds) => fuzz_seeds::run(reference::Layout::repository().root())?,
         Some(Command::Oracle {
             paths,
@@ -182,6 +193,12 @@ mod tests {
     fn help_flag_requests_help() {
         let error = Cli::try_parse_from(["xtask", "--help"]).unwrap_err();
         assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
+    }
+
+    #[test]
+    fn expr_parity_selects_the_expr_parity_subcommand() {
+        let cli = Cli::try_parse_from(["xtask", "expr-parity"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::ExprParity)));
     }
 
     #[test]
