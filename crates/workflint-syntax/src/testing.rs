@@ -8,8 +8,38 @@ use std::fmt::Write as _;
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, sort_and_dedup};
 use workflint_yaml::{Document, Node, NodeKind, parse};
 
-use crate::Str;
 use crate::parser::Parser;
+use crate::{EnvVar, Str, Template};
+
+/// The text of a string leaf, as the tests print it.
+pub(crate) trait Text {
+    /// Returns the decoded value, or `-` for a value that is not a string.
+    fn text(&self) -> &str;
+}
+
+impl Text for Str<'_> {
+    fn text(&self) -> &str {
+        self.value()
+    }
+}
+
+impl Text for Template<'_> {
+    fn text(&self) -> &str {
+        self.value()
+    }
+}
+
+impl Text for EnvVar<'_> {
+    fn text(&self) -> &str {
+        self.value.text()
+    }
+}
+
+impl<T: Text> Text for Option<T> {
+    fn text(&self) -> &str {
+        self.as_ref().map_or("-", Text::text)
+    }
+}
 
 /// Parses `text` as the YAML of a file with ID 0.
 pub(crate) fn document(text: &str) -> Document {

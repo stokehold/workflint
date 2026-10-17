@@ -90,7 +90,7 @@ fn uses_parts<'a>(workflow: &Workflow<'a>) -> Vec<(Str<'a>, Vec<UsesPart<'a>>)> 
                         .flatten()
                         .collect(),
                 };
-                out.push((uses.source, parts));
+                out.push((uses.template.source, parts));
             }
         }
         if let Some(uses) = job
@@ -108,7 +108,7 @@ fn uses_parts<'a>(workflow: &Workflow<'a>) -> Vec<(Str<'a>, Vec<UsesPart<'a>>)> 
                     git_ref,
                 } => vec![owner, repo, path, git_ref],
             };
-            out.push((uses.source, parts));
+            out.push((uses.template.source, parts));
         }
     }
     out

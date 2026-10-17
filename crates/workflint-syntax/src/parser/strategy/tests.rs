@@ -178,14 +178,18 @@ fn keyed(file: &SourceFile, entries: &Keyed<'_, RawValue<'_>>) -> String {
 fn raw(file: &SourceFile, value: &RawValue<'_>) -> String {
     match value {
         RawValue::Scalar(scalar) => {
-            let style = match scalar.style() {
+            let style = match scalar.source.style() {
                 ScalarStyle::Plain => "plain",
                 ScalarStyle::SingleQuoted => "single",
                 ScalarStyle::DoubleQuoted => "double",
                 ScalarStyle::Literal(_) => "literal",
                 ScalarStyle::Folded(_) => "folded",
             };
-            format!("{} {style} {:?}", scalar.tag().as_str(), scalar.value())
+            format!(
+                "{} {style} {:?}",
+                scalar.source.tag().as_str(),
+                scalar.value()
+            )
         }
         RawValue::Sequence { span, items } => {
             let items: Vec<_> = items.iter().map(|item| raw(file, item)).collect();

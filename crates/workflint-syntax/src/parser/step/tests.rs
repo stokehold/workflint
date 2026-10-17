@@ -2,10 +2,10 @@
 
 use workflint_diagnostics::{FileId, SourceFile, Span};
 
-use crate::testing::render;
+use crate::testing::{Text, render};
 use crate::{
     Exec, ExecAction, ExecRun, Field, InvalidAction, Keyed, Step, StepUses, StepUsesKind, Str,
-    parse,
+    Template, parse,
 };
 
 /// The workflow that each test's steps are appended to. The first step is
@@ -57,21 +57,18 @@ fn pos(file: &SourceFile, span: Span) -> String {
     format!("{}:{}", pos.line, pos.column)
 }
 
-fn string(field: &Field<'_, Str<'_>>) -> Option<String> {
-    field.value().map(|s| s.value().to_owned())
+fn string(field: &Field<'_, impl Text>) -> Option<String> {
+    field.value().map(|s| s.text().to_owned())
 }
 
 fn uses(field: &Field<'_, StepUses<'_>>) -> Option<String> {
     field.value().map(|uses| uses.value().to_owned())
 }
 
-fn keyed_strings(keyed: &Keyed<'_, Option<Str<'_>>>) -> Vec<String> {
+fn keyed_strings(keyed: &Keyed<'_, impl Text>) -> Vec<String> {
     keyed
         .iter()
-        .map(|entry| {
-            let value = entry.value.map_or("-", |value| value.value());
-            format!("{}={value}", entry.key.value())
-        })
+        .map(|entry| format!("{}={}", entry.key.value(), entry.value.text()))
         .collect()
 }
 
@@ -294,7 +291,7 @@ fn the_later_of_run_and_uses_gives_the_steps_exec() {
     let docker = action(&steps[0]);
     assert_eq!(string(&docker.args).as_deref(), Some("x"));
     assert_eq!(
-        run(&steps[1]).run.value().map(Str::value),
+        run(&steps[1]).run.value().map(Template::value),
         Some("echo hello")
     );
     // The key that lost is not parsed.

@@ -7,7 +7,7 @@
 
 use workflint_diagnostics::{SourceFile, Span};
 
-use crate::{Str, contains_expression};
+use crate::{Template, contains_expression};
 
 /// A part of a `uses` value, such as the owner or the ref.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,10 +20,11 @@ pub struct UsesPart<'a> {
 }
 
 /// `uses` of a step: the action that the step runs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StepUses<'a> {
-    /// The scalar of the value.
-    pub source: Str<'a>,
+    /// The value, with its placeholders, which the `expression` rule
+    /// checks whatever the kind.
+    pub template: Template<'a>,
     /// The kind of action.
     pub kind: StepUsesKind<'a>,
 }
@@ -97,34 +98,36 @@ impl InvalidAction {
 }
 
 impl<'a> StepUses<'a> {
-    /// Classifies `source`, a scalar parsed from `file`.
+    /// Classifies `template`, a scalar parsed from `file`.
     ///
-    /// If `file` is not the file of `source`, every part's span is the span
-    /// of `source`.
+    /// If `file` is not the file of `template`, every part's span is the
+    /// span of `template`.
     #[must_use]
-    pub fn new(source: Str<'a>, file: &SourceFile) -> Self {
-        let kind = with_spans(source, file, |span| classify_step(source.value(), span));
-        Self { source, kind }
+    pub fn new(template: Template<'a>, file: &SourceFile) -> Self {
+        let value = template.value();
+        let kind = with_spans(&template, file, |span| classify_step(value, span));
+        Self { template, kind }
     }
 
     /// Returns the value as written, decoded.
     #[must_use]
     pub fn value(&self) -> &'a str {
-        self.source.value()
+        self.template.value()
     }
 
     /// Returns the span of the scalar.
     #[must_use]
     pub fn span(&self) -> Span {
-        self.source.span()
+        self.template.span()
     }
 }
 
 /// `uses` of a job: the reusable workflow that the job calls.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct JobUses<'a> {
-    /// The scalar of the value.
-    pub source: Str<'a>,
+    /// The value, with its placeholders, which the `expression` rule
+    /// checks whatever the kind.
+    pub template: Template<'a>,
     /// The kind of reusable workflow.
     pub kind: JobUsesKind<'a>,
 }
@@ -197,39 +200,41 @@ pub enum InvalidWorkflow {
 }
 
 impl<'a> JobUses<'a> {
-    /// Classifies `source`, a scalar parsed from `file`.
+    /// Classifies `template`, a scalar parsed from `file`.
     ///
-    /// If `file` is not the file of `source`, every part's span is the span
-    /// of `source`.
+    /// If `file` is not the file of `template`, every part's span is the
+    /// span of `template`.
     #[must_use]
-    pub fn new(source: Str<'a>, file: &SourceFile) -> Self {
-        let kind = with_spans(source, file, |span| classify_job(source.value(), span));
-        Self { source, kind }
+    pub fn new(template: Template<'a>, file: &SourceFile) -> Self {
+        let value = template.value();
+        let kind = with_spans(&template, file, |span| classify_job(value, span));
+        Self { template, kind }
     }
 
     /// Returns the value as written, decoded.
     #[must_use]
     pub fn value(&self) -> &'a str {
-        self.source.value()
+        self.template.value()
     }
 
     /// Returns the span of the scalar.
     #[must_use]
     pub fn span(&self) -> Span {
-        self.source.span()
+        self.template.span()
     }
 }
 
 /// Calls `classify` with a function that turns a byte range of the value of
-/// `source` into a span in `file`.
+/// `template` into a span in `file`.
 fn with_spans<T>(
-    source: Str<'_>,
+    template: &Template<'_>,
     file: &SourceFile,
     classify: impl FnOnce(&dyn Fn(usize, usize) -> Span) -> T,
 ) -> T {
-    match source.source_map(file) {
+    let span = template.span();
+    match template.source.source_map(file) {
         Some(map) => classify(&|start, end| map.source_span(start..end)),
-        None => classify(&|_, _| source.span()),
+        None => classify(&|_, _| span),
     }
 }
 

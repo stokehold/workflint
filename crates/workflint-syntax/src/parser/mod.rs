@@ -19,16 +19,19 @@ mod event;
 mod job;
 mod leaf;
 mod mapping;
+mod report;
 mod shared;
 mod step;
 mod strategy;
 mod uses;
 mod workflow;
 
+use std::collections::HashMap;
+
 use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
 use workflint_yaml::{Document, Node, NodeId, NodeKind, Tag};
 
-use crate::Workflow;
+use crate::{Expr, Template, Workflow};
 
 pub(crate) use mapping::{Key, KeySpec, Label, MapEntry, Section};
 
@@ -46,8 +49,9 @@ pub struct Parsed<'a> {
 
 /// Parses the span tree of `file` into a workflow.
 ///
-/// The diagnostics are the reference's generic `syntax-check` errors, with
-/// byte-identical messages. They do not include the YAML layer's
+/// The diagnostics are the reference's generic `syntax-check` errors and
+/// the syntax errors of the expressions that its `expression` rule checks,
+/// with byte-identical messages. They do not include the YAML layer's
 /// diagnostics, which come with `document`.
 ///
 /// ```
@@ -66,18 +70,27 @@ pub struct Parsed<'a> {
 pub fn parse<'a>(file: &SourceFile, document: &'a Document) -> Parsed<'a> {
     let mut parser = Parser::new(file, document);
     let workflow = parser.workflow();
+    parser.report_expressions(&workflow);
     Parsed {
         workflow,
         diagnostics: parser.into_diagnostics(),
     }
 }
 
-/// The state of one parse: the file, its span tree, and the diagnostics so
-/// far.
+/// The state of one parse: the file, its span tree, the diagnostics so far,
+/// and the expressions parsed so far.
 pub(crate) struct Parser<'a, 'f> {
     file: &'f SourceFile,
     document: &'a Document,
     diagnostics: Vec<Diagnostic>,
+    /// The templates parsed so far, keyed by the address of their node and
+    /// whether the node is an `if` condition. A scalar reached through
+    /// several aliases is parsed once and its placeholders are shared, so
+    /// the work stays linear in the size of the file.
+    templates: HashMap<(usize, bool), Template<'a>>,
+    /// The single expressions parsed so far, keyed by the address of their
+    /// node, for the same reason.
+    expressions: HashMap<usize, Expr<'a>>,
 }
 
 impl<'a, 'f> Parser<'a, 'f> {
@@ -86,6 +99,8 @@ impl<'a, 'f> Parser<'a, 'f> {
             file,
             document,
             diagnostics: Vec::new(),
+            templates: HashMap::new(),
+            expressions: HashMap::new(),
         }
     }
 

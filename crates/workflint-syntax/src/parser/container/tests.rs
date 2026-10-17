@@ -2,7 +2,7 @@
 
 use workflint_diagnostics::{FileId, SourceFile};
 
-use crate::testing::render;
+use crate::testing::{Text, render};
 use crate::{Container, Credentials, Field, Job, Services, Str, Value, Workflow, parse};
 
 /// Parses the workflow `text` and returns its diagnostics as [`render`]
@@ -47,16 +47,16 @@ fn services<'w, 'a>(workflow: &'w Workflow<'a>) -> &'w Services<'a> {
     job(workflow).services.literal().unwrap()
 }
 
-fn string<'a>(field: &Field<'a, Str<'a>>) -> Option<&'a str> {
-    field.value().map(Str::value)
+fn string<'f>(field: &'f Field<'_, impl Text>) -> Option<&'f str> {
+    field.value().map(Text::text)
 }
 
-fn strings(field: &Field<'_, std::sync::Arc<[Str<'_>]>>) -> Vec<String> {
+fn strings(field: &Field<'_, std::sync::Arc<[impl Text]>>) -> Vec<String> {
     field
         .value()
         .unwrap()
         .iter()
-        .map(|s| s.value().to_owned())
+        .map(|s| s.text().to_owned())
         .collect()
 }
 
@@ -119,7 +119,16 @@ container:
         assert_eq!(string(&container.image), Some("ghcr.io/o/test"));
         assert_eq!(container.image.key().map(Str::value), Some("image"));
         let env = container.env.literal().unwrap();
-        assert_eq!(env.get("foo").unwrap().value.unwrap().value(), "foo");
+        assert_eq!(
+            env.get("foo")
+                .unwrap()
+                .value
+                .value
+                .as_ref()
+                .unwrap()
+                .value(),
+            "foo"
+        );
         assert_eq!(strings(&container.ports), ["8080", "8081"]);
         assert_eq!(container.ports.key().map(Str::value), Some("ports"));
         assert_eq!(strings(&container.volumes), ["/foo:/bar"]);

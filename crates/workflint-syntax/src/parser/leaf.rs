@@ -11,7 +11,11 @@ use crate::rules::{
     EMPTY_SECTION, EMPTY_STRING, EXPECTED_SINGLE_EXPRESSION, INVALID_LITERAL_VALUE,
     UNEXPECTED_NODE_KIND,
 };
-use crate::{Expr, Field, Str, Value, is_expression_assigned, strconv};
+use crate::{
+    Expr, Field, Keyed, KeyedEntry, Str, Template, Value, is_expression_assigned, strconv,
+};
+
+use super::MapEntry;
 
 impl<'a> Parser<'a, '_> {
     /// Checks that `node` is a scalar, and unless `allow_empty`, that it is
@@ -157,12 +161,129 @@ impl<'a> Parser<'a, '_> {
         }
     }
 
+    /// Parses the placeholders of `source`, or returns them from the cache.
+    /// Their errors are reported after the walk, by
+    /// [`report_expressions`](Self::report_expressions).
+    pub(crate) fn template(&mut self, source: Str<'a>) -> Template<'a> {
+        self.cached_template(source, false)
+    }
+
+    /// Parses `source` as an `if` condition, or returns it from the cache.
+    pub(crate) fn condition(&mut self, source: Str<'a>) -> Template<'a> {
+        self.cached_template(source, true)
+    }
+
+    fn cached_template(&mut self, source: Str<'a>, condition: bool) -> Template<'a> {
+        let key = (address(source.node()), condition);
+        if let Some(template) = self.templates.get(&key) {
+            return template.clone();
+        }
+        let template = if condition {
+            Template::condition(source)
+        } else {
+            Template::new(source)
+        };
+        self.templates.insert(key, template.clone());
+        template
+    }
+
+    /// Parses `source` as a single expression, or returns it from the
+    /// cache. Returns `None` if `source` is not a single expression.
+    fn expression(&mut self, source: Str<'a>) -> Option<Expr<'a>> {
+        let key = address(source.node());
+        if let Some(expr) = self.expressions.get(&key) {
+            return Some(expr.clone());
+        }
+        let expr = Expr::new(source)?;
+        self.expressions.insert(key, expr.clone());
+        Some(expr)
+    }
+
+    /// Parses `node`, the value of `key`, as a string with placeholders.
+    pub(crate) fn parse_template(
+        &mut self,
+        key: Option<Str<'a>>,
+        node: &'a Node,
+        allow_empty: bool,
+    ) -> Field<'a, Template<'a>> {
+        self.parse_string(key, node, allow_empty)
+            .map(|value| self.template(value))
+    }
+
+    /// Parses `node`, the value of `key`, as an `if` condition.
+    pub(crate) fn parse_condition(
+        &mut self,
+        key: Option<Str<'a>>,
+        node: &'a Node,
+    ) -> Field<'a, Template<'a>> {
+        self.parse_string(key, node, false)
+            .map(|value| self.condition(value))
+    }
+
+    /// Parses `node`, the value of `key`, as a sequence of strings with
+    /// placeholders. See [`parse_string_sequence`](Self::parse_string_sequence).
+    pub(crate) fn parse_template_sequence(
+        &mut self,
+        key: Option<Str<'a>>,
+        section: &str,
+        node: &'a Node,
+        allow_empty: bool,
+        allow_item_empty: bool,
+    ) -> Field<'a, Arc<[Template<'a>]>> {
+        self.parse_string_sequence(key, section, node, allow_empty, allow_item_empty)
+            .map(|strings| self.templates(&strings))
+    }
+
+    /// Parses `node`, the value of `key`, as a string or a sequence of
+    /// strings with placeholders. See
+    /// [`parse_string_or_string_sequence`](Self::parse_string_or_string_sequence).
+    pub(crate) fn parse_template_or_template_sequence(
+        &mut self,
+        key: Option<Str<'a>>,
+        section: &str,
+        node: &'a Node,
+        allow_empty: bool,
+        allow_item_empty: bool,
+    ) -> Field<'a, Arc<[Template<'a>]>> {
+        self.parse_string_or_string_sequence(key, section, node, allow_empty, allow_item_empty)
+            .map(|strings| self.templates(&strings))
+    }
+
+    /// Parses the placeholders of each of `strings`.
+    pub(crate) fn templates(&mut self, strings: &[Str<'a>]) -> Arc<[Template<'a>]> {
+        strings
+            .iter()
+            .map(|&string| self.template(string))
+            .collect()
+    }
+
+    /// Collects the entries of a case-insensitive mapping of strings with
+    /// placeholders, such as `with` or `outputs`. A value that is not a
+    /// string, or is empty unless `allow_empty`, is reported and kept as
+    /// `None`. See [`keyed_strings`](Self::keyed_strings).
+    pub(crate) fn keyed_templates(
+        &mut self,
+        entries: Vec<MapEntry<'a>>,
+        allow_empty: bool,
+    ) -> Keyed<'a, Option<Template<'a>>> {
+        let mut keyed = Vec::with_capacity(entries.len());
+        for entry in entries {
+            let value = self
+                .check_string(entry.value, allow_empty)
+                .map(|value| self.template(value));
+            if let Some(name) = entry.key.string {
+                keyed.push(KeyedEntry::new(name, entry.value.span, value));
+            }
+        }
+        Keyed::new(keyed)
+    }
+
     /// Parses `node` as a single `${{ }}` expression, and otherwise reports
     /// that it should be one or `expecting`. The reference's
     /// `parseExpression`, which does not check the tag.
     pub(crate) fn parse_expression(&mut self, node: &'a Node, expecting: &str) -> Option<Expr<'a>> {
         match Str::new(node) {
-            Some(source) if is_expression_assigned(source.value()) => Some(Expr::new(source)),
+            Some(source) if is_expression_assigned(source.value()) => self.expression(source),
             _ => {
                 self.error(
                     &EXPECTED_SINGLE_EXPRESSION,
@@ -179,10 +300,10 @@ impl<'a> Parser<'a, '_> {
     /// Returns `node` as an expression if it is a `!!str` scalar that is a
     /// single `${{ }}` expression, and reports nothing otherwise. The
     /// reference's `mayParseExpression`.
-    pub(crate) fn may_parse_expression(node: &'a Node) -> Option<Expr<'a>> {
+    pub(crate) fn may_parse_expression(&mut self, node: &'a Node) -> Option<Expr<'a>> {
         Str::new(node)
             .filter(|source| *source.tag() == Tag::Str && is_expression_assigned(source.value()))
-            .map(Expr::new)
+            .and_then(|source| self.expression(source))
     }
 
     /// Parses `node`, the value of `key`, as a boolean: a `!!bool` scalar or
@@ -307,12 +428,18 @@ impl<'a> Parser<'a, '_> {
     }
 }
 
+/// Returns the address of `node`, which tells nodes apart while the
+/// document lives.
+fn address(node: &Node) -> usize {
+    std::ptr::from_ref(node).addr()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
     use super::*;
-    use crate::testing::parse_with;
+    use crate::testing::{Text, parse_with};
 
     /// Runs `leaf` on the value of `v` in `text`, and returns the
     /// diagnostics followed by the result as `Debug` text of what it holds.
@@ -330,18 +457,18 @@ mod tests {
         })
     }
 
-    fn string(field: &Field<'_, Str<'_>>) -> String {
+    fn string(field: &Field<'_, impl Text>) -> String {
         match field {
-            Field::Valid { value, .. } => format!("valid {:?}", value.value()),
+            Field::Valid { value, .. } => format!("valid {:?}", value.text()),
             Field::Invalid { .. } => "invalid".to_owned(),
             Field::Absent => "absent".to_owned(),
         }
     }
 
-    fn strings(field: &Field<'_, Arc<[Str<'_>]>>) -> String {
+    fn strings(field: &Field<'_, Arc<[impl Text]>>) -> String {
         match field {
             Field::Valid { value, .. } => {
-                let values: Vec<_> = value.iter().map(Str::value).collect();
+                let values: Vec<_> = value.iter().map(Text::text).collect();
                 format!("valid {values:?}")
             }
             Field::Invalid { .. } => "invalid".to_owned(),
@@ -644,11 +771,8 @@ mod tests {
     #[test]
     fn may_parse_expression_needs_a_str_tag_and_reports_nothing() {
         let parse = |text| {
-            leaf(text, |_, n| {
-                format!(
-                    "{:?}",
-                    Parser::may_parse_expression(n).map(|e| e.source.value())
-                )
+            leaf(text, |p, n| {
+                format!("{:?}", p.may_parse_expression(n).map(|e| e.source.value()))
             })
         };
         assert_eq!(parse("v: ${{ a }}\n"), [r#"Some("${{ a }}")"#]);
@@ -656,5 +780,190 @@ mod tests {
         assert_eq!(parse("v: !custom ${{ a }}\n"), ["None"]);
         assert_eq!(parse("v: a ${{ b }}\n"), ["None"]);
         assert_eq!(parse("v: [x]\n"), ["None"]);
+    }
+
+    /// Parses the value of `v` in `text` with `parse` and reports the
+    /// errors of its placeholders. Returns where each diagnostic is and its
+    /// rule, without the message, followed by the number of placeholders.
+    fn positions(
+        text: &str,
+        parse: impl for<'a, 'f> Fn(&mut Parser<'a, 'f>, &'a Node) -> Field<'a, Template<'a>>,
+    ) -> Vec<String> {
+        leaf(text, |p, n| {
+            let field = parse(p, n);
+            let placeholders = field.value().map_or(&[][..], Template::placeholders);
+            for placeholder in placeholders {
+                p.report_placeholder(Str::new(n).unwrap(), placeholder);
+            }
+            format!("{} placeholders", placeholders.len())
+        })
+        .into_iter()
+        .map(
+            |line| match (line.split_once(": "), line.rsplit_once(' ')) {
+                (Some((pos, _)), Some((_, rule))) if rule.starts_with('[') => {
+                    format!("{pos} {rule}")
+                }
+                _ => line,
+            },
+        )
+        .collect()
+    }
+
+    fn template_positions(text: &str) -> Vec<String> {
+        positions(text, |p, n| p.parse_template(None, n, true))
+    }
+
+    #[test]
+    fn a_string_without_placeholders_reports_nothing() {
+        assert_eq!(template_positions("v: echo hello\n"), ["0 placeholders"]);
+    }
+
+    #[test]
+    fn an_error_in_a_plain_scalar_is_at_its_character() {
+        // `b` is the token the parser did not expect.
+        assert_eq!(
+            template_positions("v: echo ${{ a b }}\n"),
+            ["1:15 [invalid-expression-syntax]", "1 placeholders"]
+        );
+    }
+
+    #[test]
+    fn every_placeholder_with_an_error_is_reported() {
+        assert_eq!(
+            template_positions("v: ${{ a b }} ${{ ok }} ${{ c d }}\n"),
+            [
+                "1:10 [invalid-expression-syntax]",
+                "1:31 [invalid-expression-syntax]",
+                "3 placeholders"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_closing_pair_in_a_string_literal_does_not_end_the_placeholder() {
+        assert_eq!(
+            template_positions("v: ${{ x == '}}' }} ${{ y z }}\n"),
+            ["1:27 [invalid-expression-syntax]", "2 placeholders"]
+        );
+    }
+
+    #[test]
+    fn an_unterminated_placeholder_is_reported_at_the_end_of_the_scalar() {
+        assert_eq!(
+            template_positions("v: echo ${{ github.ref\n"),
+            ["1:23 [invalid-expression-syntax]", "1 placeholders"]
+        );
+    }
+
+    #[test]
+    fn an_error_in_a_single_quoted_scalar_counts_the_escaped_quote() {
+        // The value is `it's ${{ a b }}`. The reference adds the offset of
+        // `b` in the value to the column after the quote and reports
+        // column 16, one short because of the `''`.
+        assert_eq!(
+            template_positions("v: 'it''s ${{ a b }}'\n"),
+            ["1:17 [invalid-expression-syntax]", "1 placeholders"]
+        );
+    }
+
+    #[test]
+    fn an_error_from_an_escape_in_a_double_quoted_scalar_is_at_the_backslash() {
+        // `\"` decodes to the `"` the lexer rejects.
+        assert_eq!(
+            template_positions("v: \"\\t${{ \\\"a\\\" }}\"\n"),
+            ["1:11 [invalid-expression-syntax]", "1 placeholders"]
+        );
+    }
+
+    #[test]
+    fn an_error_in_a_literal_block_scalar_is_on_its_line() {
+        assert_eq!(
+            template_positions("v: |\n  echo hi\n  echo ${{ a b }}\n"),
+            ["3:14 [invalid-expression-syntax]", "1 placeholders"]
+        );
+    }
+
+    #[test]
+    fn an_error_in_a_folded_block_scalar_is_on_its_line() {
+        assert_eq!(
+            template_positions("v: >\n  echo hi\n  ${{ a b }}\n"),
+            ["3:9 [invalid-expression-syntax]", "1 placeholders"]
+        );
+    }
+
+    #[test]
+    fn an_error_after_non_ascii_text_counts_columns_in_characters() {
+        assert_eq!(
+            template_positions("v: æøå ${{ a b }}\n"),
+            ["1:14 [invalid-expression-syntax]", "1 placeholders"]
+        );
+    }
+
+    #[test]
+    fn a_number_beyond_a_double_is_an_invalid_number_literal() {
+        let number = "9".repeat(400);
+        assert_eq!(
+            template_positions(&format!("v: ${{{{ {number} }}}}\n")),
+            ["1:8 [invalid-number-literal]", "1 placeholders"]
+        );
+    }
+
+    #[test]
+    fn a_condition_without_placeholders_is_one_implicit_expression() {
+        // The reference ignores the quote and reports column 13 for this
+        // `if` in a step. workflint reports the character after it.
+        let condition = |text| positions(text, |p, n| p.parse_condition(None, n));
+        assert_eq!(
+            condition("v: \"foo bar\"\n"),
+            ["1:9 [invalid-expression-syntax]", "1 placeholders"]
+        );
+        assert_eq!(
+            condition("v: github.\n"),
+            ["1:11 [invalid-expression-syntax]", "1 placeholders"]
+        );
+        assert_eq!(condition("v: a && ${{ b }}\n"), ["1 placeholders"]);
+        assert_eq!(condition("v: ${{ a }} && ${{ b }}\n"), ["2 placeholders"]);
+    }
+
+    #[test]
+    fn a_scalar_reached_through_aliases_is_parsed_once() {
+        let lines = parse_with("a: &a ${{ a b }}\nb: *a\nc: *a\n", |p, root| {
+            let NodeKind::Mapping(mapping) = &root.kind else {
+                panic!("not a mapping");
+            };
+            let mut shared = Vec::new();
+            for entry in p.document.entries(mapping).to_vec() {
+                let node = p.node(entry.value).unwrap();
+                let template = p.template(Str::new(node).unwrap());
+                shared.push(template.placeholders().as_ptr());
+            }
+            vec![format!(
+                "shared: {}",
+                shared.windows(2).all(|w| w[0] == w[1])
+            )]
+        });
+        assert_eq!(lines, ["shared: true"]);
+    }
+
+    #[test]
+    fn a_single_expression_holds_its_parsed_placeholder() {
+        assert_eq!(
+            leaf("v: ${{ inputs.debug }}\n", |p, n| {
+                let expr = p.parse_expression(n, "x").unwrap();
+                let placeholder = expr.placeholder();
+                let parsed = placeholder.expr.as_ref().unwrap();
+                expr.source.value()[placeholder.to_value(parsed.range())].to_owned()
+            }),
+            ["inputs.debug"]
+        );
+        assert_eq!(
+            leaf("v: ${{ a b }}\n", |p, n| format!(
+                "{:?}",
+                p.parse_bool(None, n)
+                    .expression()
+                    .map(|e| e.placeholder().expr.is_err())
+            )),
+            ["Some(true)"]
+        );
     }
 }

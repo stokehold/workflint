@@ -19,13 +19,13 @@ use crate::rules::{
 };
 use crate::{
     Event, Field, ImageVersionEvent, Keyed, KeyedEntry, RepositoryDispatchEvent, ScheduleEntry,
-    ScheduleEvent, Str, WebhookEvent, WorkflowCallEvent, WorkflowCallEventInput,
+    ScheduleEvent, Str, Template, WebhookEvent, WorkflowCallEvent, WorkflowCallEventInput,
     WorkflowCallEventOutput, WorkflowCallEventSecret, WorkflowCallInputType, WorkflowDispatchEvent,
     WorkflowDispatchInput, WorkflowDispatchInputType,
 };
 
 /// A string or a sequence of strings, such as a webhook filter.
-type Strings<'a> = Field<'a, Arc<[Str<'a>]>>;
+type Strings<'a> = Field<'a, Arc<[Template<'a>]>>;
 
 /// The filters of a webhook event, parsed before the event is built so that
 /// the body of an event whose key is not a scalar is still checked.
@@ -87,11 +87,11 @@ impl Section for ScheduleEntry<'static> {
 static SCHEDULE_KEYS: [KeySpec<ScheduleEntry<'static>>; 2] = [
     KeySpec {
         name: "cron",
-        parse: |p, s, e| s.cron = p.parse_string(e.key.string, e.value, false),
+        parse: |p, s, e| s.cron = p.parse_template(e.key.string, e.value, false),
     },
     KeySpec {
         name: "timezone",
-        parse: |p, s, e| s.timezone = p.parse_string(e.key.string, e.value, false),
+        parse: |p, s, e| s.timezone = p.parse_template(e.key.string, e.value, false),
     },
 ];
 
@@ -114,7 +114,7 @@ impl Section for WorkflowDispatchInput<'static> {
 static DISPATCH_INPUT_KEYS: [KeySpec<WorkflowDispatchInput<'static>>; 5] = [
     KeySpec {
         name: "description",
-        parse: |p, i, e| i.description = p.parse_string(e.key.string, e.value, true),
+        parse: |p, i, e| i.description = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "required",
@@ -122,7 +122,7 @@ static DISPATCH_INPUT_KEYS: [KeySpec<WorkflowDispatchInput<'static>>; 5] = [
     },
     KeySpec {
         name: "default",
-        parse: |p, i, e| i.default = p.parse_string(e.key.string, e.value, true),
+        parse: |p, i, e| i.default = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "type",
@@ -131,7 +131,7 @@ static DISPATCH_INPUT_KEYS: [KeySpec<WorkflowDispatchInput<'static>>; 5] = [
     KeySpec {
         name: "options",
         parse: |p, i, e| {
-            i.options = p.parse_string_sequence(e.key.string, "options", e.value, false, false);
+            i.options = p.parse_template_sequence(e.key.string, "options", e.value, false, false);
         },
     },
 ];
@@ -171,7 +171,7 @@ impl Section for WorkflowCallEventInput<'static> {
 static CALL_INPUT_KEYS: [KeySpec<WorkflowCallEventInput<'static>>; 4] = [
     KeySpec {
         name: "description",
-        parse: |p, i, e| i.description = p.parse_string(e.key.string, e.value, true),
+        parse: |p, i, e| i.description = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "required",
@@ -179,7 +179,7 @@ static CALL_INPUT_KEYS: [KeySpec<WorkflowCallEventInput<'static>>; 4] = [
     },
     KeySpec {
         name: "default",
-        parse: |p, i, e| i.default = p.parse_string(e.key.string, e.value, true),
+        parse: |p, i, e| i.default = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "type",
@@ -194,7 +194,7 @@ impl Section for WorkflowCallEventSecret<'static> {
 static CALL_SECRET_KEYS: [KeySpec<WorkflowCallEventSecret<'static>>; 2] = [
     KeySpec {
         name: "description",
-        parse: |p, s, e| s.description = p.parse_string(e.key.string, e.value, true),
+        parse: |p, s, e| s.description = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "required",
@@ -209,11 +209,11 @@ impl Section for WorkflowCallEventOutput<'static> {
 static CALL_OUTPUT_KEYS: [KeySpec<WorkflowCallEventOutput<'static>>; 2] = [
     KeySpec {
         name: "description",
-        parse: |p, o, e| o.description = p.parse_string(e.key.string, e.value, true),
+        parse: |p, o, e| o.description = p.parse_template(e.key.string, e.value, true),
     },
     KeySpec {
         name: "value",
-        parse: |p, o, e| o.value = p.parse_string(e.key.string, e.value, false),
+        parse: |p, o, e| o.value = p.parse_template(e.key.string, e.value, false),
     },
 ];
 
@@ -225,13 +225,13 @@ static IMAGE_VERSION_KEYS: [KeySpec<ImageVersionEvent<'static>>; 2] = [
     KeySpec {
         name: "names",
         parse: |p, i, e| {
-            i.names = p.parse_string_sequence(e.key.string, "names", e.value, false, false);
+            i.names = p.parse_template_sequence(e.key.string, "names", e.value, false, false);
         },
     },
     KeySpec {
         name: "versions",
         parse: |p, i, e| {
-            i.versions = p.parse_string_sequence(e.key.string, "versions", e.value, false, false);
+            i.versions = p.parse_template_sequence(e.key.string, "versions", e.value, false, false);
         },
     },
 ];
@@ -437,7 +437,7 @@ impl<'a> Parser<'a, '_> {
     /// `repository_dispatch`, as a string or a non-empty sequence of
     /// non-empty strings. The reference's `parseWebhookEventFilter`.
     fn parse_filter(&mut self, entry: &MapEntry<'a>) -> Strings<'a> {
-        self.parse_string_or_string_sequence(
+        self.parse_template_or_template_sequence(
             entry.key.string,
             entry.key.value(),
             entry.value,

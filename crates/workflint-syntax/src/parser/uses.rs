@@ -1,9 +1,10 @@
-//! `uses` of steps and jobs: a non-empty string, classified.
+//! `uses` of steps and jobs: a non-empty string with placeholders,
+//! classified.
 
 use workflint_diagnostics::SourceFile;
 
 use super::{MapEntry, Parser};
-use crate::{Field, JobUses, StepUses, Str};
+use crate::{Field, JobUses, StepUses, Template};
 
 impl<'a> Parser<'a, '_> {
     /// Parses `uses` of a step, a string that must not be empty, and
@@ -21,16 +22,9 @@ impl<'a> Parser<'a, '_> {
     fn parse_uses<T>(
         &mut self,
         entry: &MapEntry<'a>,
-        classify: fn(Str<'a>, &SourceFile) -> T,
+        classify: fn(Template<'a>, &SourceFile) -> T,
     ) -> Field<'a, T> {
-        match self.parse_string(entry.key.string, entry.value, false) {
-            Field::Valid { key, span, value } => Field::Valid {
-                key,
-                span,
-                value: classify(value, self.file),
-            },
-            Field::Invalid { key, span } => Field::Invalid { key, span },
-            Field::Absent => Field::Absent,
-        }
+        self.parse_template(entry.key.string, entry.value, false)
+            .map(|template| classify(template, self.file))
     }
 }

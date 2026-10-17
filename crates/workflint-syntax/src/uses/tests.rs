@@ -3,6 +3,7 @@
 use workflint_diagnostics::{FileId, SourceFile, Span};
 
 use super::*;
+use crate::Str;
 use crate::testing::{document, node_at};
 
 /// Classifies a step's `uses` value. Each part's span is its byte range in
@@ -338,7 +339,7 @@ fn parsed_step(text: &str, check: impl FnOnce(&SourceFile, StepUses<'_>)) {
     let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
     let document = document(text);
     let source = Str::new(node_at(&document, &["uses"])).unwrap();
-    check(&file, StepUses::new(source, &file));
+    check(&file, StepUses::new(Template::new(source), &file));
 }
 
 fn text_at<'f>(file: &'f SourceFile, part: &UsesPart<'_>) -> &'f str {
@@ -349,7 +350,7 @@ fn text_at<'f>(file: &'f SourceFile, part: &UsesPart<'_>) -> &'f str {
 fn a_part_span_points_into_the_source_file() {
     parsed_step("uses: \"actions/\\x63heckout@v6\"\n", |file, uses| {
         assert_eq!(uses.value(), "actions/checkout@v6");
-        assert_eq!(uses.span(), uses.source.span());
+        assert_eq!(uses.span(), uses.template.source.span());
         let StepUsesKind::Repository {
             owner,
             repo,
@@ -373,7 +374,7 @@ fn a_job_uses_part_span_points_into_the_source_file() {
     let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
     let document = document(text);
     let source = Str::new(node_at(&document, &["uses"])).unwrap();
-    let uses = JobUses::new(source, &file);
+    let uses = JobUses::new(Template::new(source), &file);
     let JobUsesKind::Repository { path, git_ref, .. } = uses.kind else {
         panic!("{:?}", uses.kind);
     };

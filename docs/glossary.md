@@ -52,8 +52,10 @@ Use these words with these meanings in code, docs, and pull requests.
 | source map | The mapping from a decoded scalar's characters back to source bytes, used for positions inside `run:` scripts and quoted strings. `Node::source_map` builds it on demand (ADR 0022). |
 | AST | The typed tree of a workflow that `workflint-syntax` builds from the span tree (`Workflow`). It borrows its strings from the span tree. |
 | string leaf | A key or string value in the AST (`Str`): the decoded value of a YAML scalar and the node it comes from, which gives its span, tag, style, and source map. |
+| template | A string in a place where GitHub evaluates `${{ }}`, such as `run`, `name`, or an `env` value, with each placeholder parsed (`Template`). These are the places that actionlint's `expression` rule checks. Strings elsewhere are plain string leaves. |
+| placeholder | One `${{ }}` in a template: its byte range in the decoded value, and its parsed expression or the parse error (`Placeholder`). An `if` condition written without `${{ }}` is one implicit placeholder that covers the whole value. |
 | field | A key with a fixed name in a section, such as `name` or `steps` of a job, and its value. It is absent, invalid, or valid (`Field`). |
-| expression value | A value that may be a literal or a single `${{ }}` expression, such as `continue-on-error`. It is absent, invalid, a literal, or an expression (`Value`). |
+| expression value | A value that may be a literal or a single `${{ }}` expression, such as `continue-on-error`. It is absent, invalid, a literal, or an expression (`Value`). The expression (`Expr`) holds its parsed placeholder. |
 | invalid value | A value that is written but has the wrong type or is otherwise unusable. The parser reports it once, and the AST marks it (`Field::Invalid`, `Value::Invalid`) so that rules skip it. |
 | short form | A string written where a mapping is also accepted, such as `concurrency: ci` or `container: node:24`. The string fills one field of the mapping form, and that field has no key. |
 | keyed collection | Entries keyed by names that compare case-insensitively, such as jobs, `env`, or `with` (`Keyed`). It keeps source order, and each entry keeps its key as written and its folded key. |
