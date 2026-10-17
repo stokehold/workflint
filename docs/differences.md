@@ -701,6 +701,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M5.
 - Status: planned.
 
+<a id="closed-pipe"></a>
+### A closed output pipe ends the run with its exit code
+
+- Upstream: when the reader of stdout goes away, as in `actionlint x.yaml | head -1`, the next write kills the process with SIGPIPE. It prints nothing more, and a shell reports exit status 141.
+- workflint: it stops writing, prints nothing to stderr, and exits with the code the run would have had: 1 when there are diagnostics, 0 when there are none. Rust ignores SIGPIPE, and workflint forbids the unsafe code it would take to restore it.
+- Why: the exit code still says whether the files have problems, and a shell pipeline without `pipefail` reports the last command either way.
+- Upstream issue: none.
+- Milestone: M2.
+- Status: planned.
+
 ## External tools
 
 <a id="tool-failures"></a>

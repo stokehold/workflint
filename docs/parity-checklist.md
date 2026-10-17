@@ -354,7 +354,7 @@ Every flag uses Go `flag` syntax (ADR 0003). The upstream tests named in the fix
 | - [ ] Exactly one argument `-` reads stdin to the end. `-` together with other arguments is a file name. | `command.go:107`, `linter.go:474` | n/a | workflint | M5 | none |  |
 | - [ ] Empty stdin reports `workflow is empty` and exits 1. | `parse.go:1512` | n/a | workflint | M5 | `err/empty` |  |
 | - [ ] Other arguments are files, each with its own project. A directory or unreadable file is fatal: `could not read %q: %w`, exit 3. Duplicate arguments are not merged. | `linter.go:370` | n/a | workflint-linter | M5 | none |  |
-| - [ ] Printed paths are relative to the current directory when possible, so a run from a subdirectory prints `../.github/workflows/x.yaml`. | `linter.go:374` | n/a | workflint-linter | M5 | none |  |
+| - [ ] Printed paths are relative to the current directory when possible, so a run from a subdirectory prints `../.github/workflows/x.yaml`. | `linter.go:374` | n/a | workflint-linter | M5 | none | The M2 binary already does this, with Go's `filepath.Rel` and `os.Getwd` in `crates/workflint/src/path.rs` (M2.18). M5 moves it into `workflint-linter`. |
 | - [ ] A fatal error in any file aborts the run with no lint output. | `linter.go:364` | n/a | workflint-linter | M5 | none | Kept for read and config errors. Differs: see [differences.md#tool-failures](differences.md#tool-failures). |
 
 ### Exit codes
