@@ -228,7 +228,7 @@ impl<'a> Parser<'a, '_> {
             [] => format!("unexpected key {got} for {section}"),
             [only] => format!("expected {} key for {section} but got {got}", quote(only)),
             _ => format!(
-                "unexpected  key {got} for {section}. expected one of {}",
+                "unexpected key {got} for {section}. expected one of {}",
                 sorted_quotes(expected)
             ),
         };
