@@ -1,11 +1,12 @@
 //! `strategy.matrix` and the YAML values it holds.
 
+use std::fmt;
 use std::mem;
 use std::sync::Arc;
 
 use workflint_diagnostics::Span;
 
-use crate::{Expr, Keyed, Template, Value};
+use crate::{Expr, Keyed, KeyedEntry, Template, Value};
 
 /// The mapping form of `strategy.matrix`.
 ///
@@ -60,7 +61,11 @@ pub enum MatrixCombination<'a> {
 /// Scalars keep their tag and style, so rules can tell `1` from `"1"`
 /// (`docs/differences.md#quoted-scalar-types`). The reference turns every
 /// scalar into a `RawYAMLString`.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Comparing, printing with `{:?}`, and dropping a value loop over a stack
+/// instead of recursing, so that a value nested as deep as the YAML layer
+/// allows (ADR 0022) cannot overflow the stack.
+#[derive(Clone)]
 pub enum RawValue<'a> {
     /// A scalar, the reference's `RawYAMLString`.
     Scalar(Template<'a>),
@@ -109,6 +114,212 @@ impl<'a> RawValue<'a> {
     }
 }
 
+impl PartialEq for RawValue<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        let mut pending = vec![(self, other)];
+        while let Some(pair) = pending.pop() {
+            match pair {
+                (Self::Scalar(a), Self::Scalar(b)) => {
+                    if a != b {
+                        return false;
+                    }
+                }
+                (
+                    Self::Sequence { span, items },
+                    Self::Sequence {
+                        span: other_span,
+                        items: other_items,
+                    },
+                ) => {
+                    if span != other_span || items.len() != other_items.len() {
+                        return false;
+                    }
+                    pending.extend(items.iter().zip(other_items.iter()));
+                }
+                (
+                    Self::Mapping { span, entries },
+                    Self::Mapping {
+                        span: other_span,
+                        entries: other_entries,
+                    },
+                ) => {
+                    if span != other_span || entries.len() != other_entries.len() {
+                        return false;
+                    }
+                    for (a, b) in entries.iter().zip(other_entries) {
+                        if a.key != b.key || a.span != b.span || a.folded() != b.folded() {
+                            return false;
+                        }
+                        pending.push((&a.value, &b.value));
+                    }
+                }
+                _ => return false,
+            }
+        }
+        true
+    }
+}
+
+/// Prints the value as `#[derive(Debug)]` would, except that the entries of
+/// a mapping print as a list of `KeyedEntry { key, span, value }`.
+impl fmt::Debug for RawValue<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let pretty = f.alternate();
+        // The number of groups that are open, for the indentation of `{:#?}`.
+        let mut depth = 0;
+        let mut parts = vec![DebugPart::Value(self)];
+        while let Some(part) = parts.pop() {
+            let group = match part {
+                DebugPart::Value(RawValue::Scalar(scalar)) => Group {
+                    open: "Scalar(",
+                    kind: GroupKind::Tuple,
+                    items: vec![(None, DebugPart::Leaf(scalar))],
+                },
+                DebugPart::Value(RawValue::Sequence { span, items }) => Group {
+                    open: "Sequence {",
+                    kind: GroupKind::Struct,
+                    items: vec![
+                        (Some("span"), DebugPart::Leaf(span)),
+                        (Some("items"), DebugPart::Items(items)),
+                    ],
+                },
+                DebugPart::Value(RawValue::Mapping { span, entries }) => Group {
+                    open: "Mapping {",
+                    kind: GroupKind::Struct,
+                    items: vec![
+                        (Some("span"), DebugPart::Leaf(span)),
+                        (Some("entries"), DebugPart::Entries(entries)),
+                    ],
+                },
+                DebugPart::Items(items) => Group {
+                    open: "[",
+                    kind: GroupKind::List,
+                    items: items.iter().map(|item| (None, DebugPart::Value(item))).collect(),
+                },
+                DebugPart::Entries(entries) => Group {
+                    open: "[",
+                    kind: GroupKind::List,
+                    items: entries
+                        .iter()
+                        .map(|entry| (None, DebugPart::Entry(entry)))
+                        .collect(),
+                },
+                DebugPart::Entry(entry) => Group {
+                    open: "KeyedEntry {",
+                    kind: GroupKind::Struct,
+                    items: vec![
+                        (Some("key"), DebugPart::Leaf(&entry.key)),
+                        (Some("span"), DebugPart::Leaf(&entry.span)),
+                        (Some("value"), DebugPart::Value(&entry.value)),
+                    ],
+                },
+                DebugPart::Leaf(leaf) => {
+                    if pretty {
+                        let indent = format!("\n{}", "    ".repeat(depth));
+                        f.write_str(&format!("{leaf:#?}").replace('\n', &indent))?;
+                    } else {
+                        write!(f, "{leaf:?}")?;
+                    }
+                    continue;
+                }
+                DebugPart::Name(name) => {
+                    f.write_str(name)?;
+                    f.write_str(": ")?;
+                    continue;
+                }
+                DebugPart::ItemStart { first, kind } => {
+                    if pretty {
+                        f.write_str("\n")?;
+                        f.write_str(&"    ".repeat(depth))?;
+                    } else if !first {
+                        f.write_str(", ")?;
+                    } else if kind == GroupKind::Struct {
+                        f.write_str(" ")?;
+                    }
+                    continue;
+                }
+                DebugPart::ItemEnd => {
+                    if pretty {
+                        f.write_str(",")?;
+                    }
+                    continue;
+                }
+                DebugPart::Close { kind, empty } => {
+                    depth -= 1;
+                    if pretty && !empty {
+                        f.write_str("\n")?;
+                        f.write_str(&"    ".repeat(depth))?;
+                    } else if !pretty && !empty && kind == GroupKind::Struct {
+                        f.write_str(" ")?;
+                    }
+                    f.write_str(match kind {
+                        GroupKind::Tuple => ")",
+                        GroupKind::Struct => "}",
+                        GroupKind::List => "]",
+                    })?;
+                    continue;
+                }
+            };
+            f.write_str(group.open)?;
+            depth += 1;
+            let kind = group.kind;
+            parts.push(DebugPart::Close {
+                kind,
+                empty: group.items.is_empty(),
+            });
+            for (index, (name, item)) in group.items.into_iter().enumerate().rev() {
+                parts.push(DebugPart::ItemEnd);
+                parts.push(item);
+                if let Some(name) = name {
+                    parts.push(DebugPart::Name(name));
+                }
+                parts.push(DebugPart::ItemStart {
+                    first: index == 0,
+                    kind,
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+/// A part of the `Debug` output of a [`RawValue`] still to write.
+enum DebugPart<'v, 'a> {
+    Value(&'v RawValue<'a>),
+    Items(&'v [RawValue<'a>]),
+    Entries(&'v Keyed<'a, RawValue<'a>>),
+    Entry(&'v KeyedEntry<'a, RawValue<'a>>),
+    /// A value with a `Debug` implementation that does not recurse into
+    /// a `RawValue`.
+    Leaf(&'v dyn fmt::Debug),
+    /// The name of a struct field.
+    Name(&'static str),
+    ItemStart {
+        first: bool,
+        kind: GroupKind,
+    },
+    ItemEnd,
+    Close {
+        kind: GroupKind,
+        empty: bool,
+    },
+}
+
+/// A tuple, struct, or list in the `Debug` output of a [`RawValue`].
+struct Group<'v, 'a> {
+    open: &'static str,
+    kind: GroupKind,
+    /// The items, each with its field name in a struct.
+    items: Vec<(Option<&'static str>, DebugPart<'v, 'a>)>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum GroupKind {
+    Tuple,
+    Struct,
+    List,
+}
+
 /// The items or entries that [`RawValue`]'s `drop` has taken from a value.
 enum Children<'a> {
     Items(Arc<[RawValue<'a>]>),
@@ -136,5 +347,117 @@ impl Drop for RawValue<'_> {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use crate::Str;
+    use crate::testing::{document, root_entries};
+
+    /// The YAML layer accepts 10,000 levels of nesting (ADR 0022).
+    const DEPTH: usize = 10_000;
+
+    /// Runs `f` on a thread with a 2 MiB stack.
+    fn on_a_small_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
+        std::thread::Builder::new()
+            .stack_size(2 << 20)
+            .spawn(f)
+            .unwrap()
+            .join()
+            .unwrap()
+    }
+
+    /// Wraps `leaf` in `DEPTH` levels, alternately a sequence and a mapping
+    /// with the key `key`.
+    fn nest<'a>(leaf: RawValue<'a>, key: Str<'a>) -> RawValue<'a> {
+        let span = key.span();
+        let mut value = leaf;
+        for level in 0..DEPTH {
+            value = if level % 2 == 0 {
+                RawValue::Sequence {
+                    span,
+                    items: Arc::new([value]),
+                }
+            } else {
+                RawValue::Mapping {
+                    span,
+                    entries: Keyed::new(vec![KeyedEntry::new(key, span, value)]),
+                }
+            };
+        }
+        value
+    }
+
+    #[test]
+    fn deep_values_compare_and_print_on_a_small_stack() {
+        let (equal, different, printed) = on_a_small_stack(|| {
+            let document = document("k: a\nother: b\n");
+            let entries = root_entries(&document);
+            let (key, a) = entries[0];
+            let b = entries[1].1;
+            let first = nest(RawValue::Scalar(Template::new(a)), key);
+            let second = nest(RawValue::Scalar(Template::new(a)), key);
+            let third = nest(RawValue::Scalar(Template::new(b)), key);
+            let printed = format!("{first:?}");
+            (first == second, first == third, printed)
+        });
+        assert!(equal);
+        assert!(!different);
+        assert_eq!(printed.matches("Sequence {").count(), DEPTH / 2);
+        assert_eq!(printed.matches("KeyedEntry {").count(), DEPTH / 2);
+        assert!(printed.starts_with("Mapping { span: "));
+    }
+
+    #[test]
+    fn values_print_as_a_derived_debug_would() {
+        let document = document("k: a\n");
+        let (key, a) = root_entries(&document)[0];
+        let span = key.span();
+        let template = Template::new(a);
+        let scalar = RawValue::Scalar(template.clone());
+        let value = RawValue::Mapping {
+            span,
+            entries: Keyed::new(vec![KeyedEntry::new(
+                key,
+                a.span(),
+                RawValue::Sequence {
+                    span: a.span(),
+                    items: Arc::new([scalar.clone()]),
+                },
+            )]),
+        };
+        let inner = a.span();
+        assert_eq!(
+            format!("{value:?}"),
+            format!(
+                "Mapping {{ span: {span:?}, entries: [KeyedEntry {{ key: {key:?}, \
+                 span: {inner:?}, value: Sequence {{ span: {inner:?}, items: \
+                 [Scalar({template:?})] }} }}] }}"
+            )
+        );
+        let empty = RawValue::Sequence {
+            span,
+            items: Arc::new([]),
+        };
+        assert_eq!(
+            format!("{empty:?}"),
+            format!("Sequence {{ span: {span:?}, items: [] }}")
+        );
+        let indent = |text: String| text.replace('\n', "\n    ");
+        assert_eq!(
+            format!("{empty:#?}"),
+            format!(
+                "Sequence {{\n    span: {},\n    items: [],\n}}",
+                indent(format!("{span:#?}"))
+            )
+        );
+        assert_eq!(
+            format!("{scalar:#?}"),
+            format!("Scalar(\n    {},\n)", indent(format!("{template:#?}")))
+        );
     }
 }

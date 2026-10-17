@@ -844,3 +844,72 @@ fn excessive_aliasing_ends_decoding() {
         "error: yaml: document contains excessive aliasing\n"
     );
 }
+
+/// Decodes `text` on a thread with a 2 MiB stack, the default size of a
+/// spawned thread.
+fn decode_on_a_small_stack(text: String) -> String {
+    std::thread::Builder::new()
+        .stack_size(2 << 20)
+        .spawn(move || decode(&text))
+        .unwrap()
+        .join()
+        .unwrap()
+}
+
+#[test]
+fn deeply_nested_steps_decode_on_a_small_stack() {
+    let text = format!(
+        "name: x\nruns:\n  steps: {}{}\n",
+        "[".repeat(9999),
+        "]".repeat(9999)
+    );
+    assert_eq!(
+        decode_on_a_small_stack(text),
+        format!(
+            "name: \"x\"\ndescription: \"\"\n{}",
+            NO_RUNS.replace("steps=false", "steps=true")
+        ),
+    );
+}
+
+#[test]
+fn a_deeply_nested_map_key_is_printed_in_the_error_on_a_small_stack() {
+    let text = format!(
+        "name: x\nruns:\n  steps: [{{? {}x{} : y}}]\n",
+        "[".repeat(6000),
+        "]".repeat(6000)
+    );
+    let key = format!(
+        "{}\"x\"{}",
+        "[]interface {}{".repeat(6000),
+        "}".repeat(6000)
+    );
+    assert_eq!(
+        decode_on_a_small_stack(text),
+        format!("error: yaml: cannot use '{key}' as a map key; try decoding into yaml.Node\n"),
+    );
+}
+
+#[test]
+fn deeply_nested_merges_decode_on_a_small_stack() {
+    let merges = |inner: &str| format!("{}{inner}{}", "{<<: ".repeat(5000), "}".repeat(5000));
+    assert_eq!(
+        decode_on_a_small_stack(format!("name: x\nbranding: {}\n", merges("{icon: x}"))),
+        format!(
+            "name: \"x\"\ndescription: \"\"\n{}",
+            NO_RUNS.replace("icon=\"\"", "icon=\"x\"")
+        ),
+    );
+    assert_eq!(
+        decode_on_a_small_stack(format!("runs:\n  env: {}\n", merges("{A: x}"))),
+        format!("name: \"\"\ndescription: \"\"\n{NO_RUNS}"),
+    );
+    // The inputs list merged entries as docs/differences.md#action-metadata-aliases
+    // describes.
+    assert_eq!(
+        decode_on_a_small_stack(format!("inputs: {}\n", merges("{A: {required: true}}"))),
+        format!(
+            "name: \"\"\ndescription: \"\"\ninput \"a\": name=\"A\" required=true deprecated=false message=\"\"\n{NO_RUNS}"
+        ),
+    );
+}

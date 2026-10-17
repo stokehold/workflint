@@ -9,7 +9,6 @@ use workflint_diagnostics::quote::quote;
 use super::scalar::Resolved;
 
 /// A value that go-yaml stores in an `interface{}`.
-#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum GoValue {
     /// A scalar.
     Scalar(Resolved),
@@ -78,54 +77,93 @@ impl GoValue {
 
     /// Formats the value as Go's `%#v` does.
     pub(crate) fn go_syntax(&self) -> String {
+        /// A part of the output still to write.
+        enum Part<'v> {
+            /// A value. The flag is true for an element of a container,
+            /// whose static type is `interface{}`, so `nil` prints as
+            /// `interface {}(nil)`.
+            Value(&'v GoValue, bool),
+            Text(&'static str),
+        }
         let mut out = String::new();
-        self.write(&mut out, false);
+        // A stack instead of recursion, so that a value nested as deep as
+        // the YAML layer allows (ADR 0022) cannot overflow the stack.
+        let mut parts = vec![Part::Value(self, false)];
+        while let Some(part) = parts.pop() {
+            let (value, in_interface) = match part {
+                Part::Text(text) => {
+                    out.push_str(text);
+                    continue;
+                }
+                Part::Value(value, in_interface) => (value, in_interface),
+            };
+            match value {
+                Self::Scalar(Resolved::Null) if in_interface => out.push_str("interface {}(nil)"),
+                Self::Scalar(Resolved::Null) => out.push_str("<nil>"),
+                Self::Scalar(Resolved::Bool(b)) => {
+                    let _ = write!(out, "{b}");
+                }
+                Self::Scalar(Resolved::Int(n)) => {
+                    let _ = write!(out, "{n}");
+                }
+                Self::Scalar(Resolved::Uint(n)) => {
+                    let _ = write!(out, "{n:#x}");
+                }
+                Self::Scalar(Resolved::Float(f)) => out.push_str(&format_float(*f)),
+                Self::Scalar(Resolved::Str(s)) => out.push_str(&quote(s)),
+                Self::Slice(items) => {
+                    out.push_str("[]interface {}{");
+                    parts.push(Part::Text("}"));
+                    for (i, item) in items.iter().enumerate().rev() {
+                        parts.push(Part::Value(item, true));
+                        if i > 0 {
+                            parts.push(Part::Text(", "));
+                        }
+                    }
+                }
+                Self::Map { entries, .. } => {
+                    out.push_str(value.type_name());
+                    out.push('{');
+                    let mut sorted: Vec<&(GoValue, GoValue)> = entries.iter().collect();
+                    sorted.sort_by(|(a, _), (b, _)| compare_keys(a, b));
+                    parts.push(Part::Text("}"));
+                    for (i, (key, value)) in sorted.into_iter().enumerate().rev() {
+                        parts.push(Part::Value(value, true));
+                        parts.push(Part::Text(":"));
+                        parts.push(Part::Value(key, true));
+                        if i > 0 {
+                            parts.push(Part::Text(", "));
+                        }
+                    }
+                }
+            }
+        }
         out
     }
 
-    /// Writes the value. `in_interface` is true for an element of a
-    /// container, whose static type is `interface{}`, so `nil` prints as
-    /// `interface {}(nil)`.
-    fn write(&self, out: &mut String, in_interface: bool) {
+    /// Moves the items, or the keys and values, of the value to `stack`.
+    fn take_children(&mut self, stack: &mut Vec<GoValue>) {
         match self {
-            Self::Scalar(Resolved::Null) if in_interface => out.push_str("interface {}(nil)"),
-            Self::Scalar(Resolved::Null) => out.push_str("<nil>"),
-            Self::Scalar(Resolved::Bool(b)) => {
-                let _ = write!(out, "{b}");
-            }
-            Self::Scalar(Resolved::Int(n)) => {
-                let _ = write!(out, "{n}");
-            }
-            Self::Scalar(Resolved::Uint(n)) => {
-                let _ = write!(out, "{n:#x}");
-            }
-            Self::Scalar(Resolved::Float(f)) => out.push_str(&format_float(*f)),
-            Self::Scalar(Resolved::Str(s)) => out.push_str(&quote(s)),
-            Self::Slice(items) => {
-                out.push_str("[]interface {}{");
-                for (i, item) in items.iter().enumerate() {
-                    if i > 0 {
-                        out.push_str(", ");
-                    }
-                    item.write(out, true);
-                }
-                out.push('}');
-            }
+            Self::Scalar(_) => {}
+            Self::Slice(items) => stack.append(items),
             Self::Map { entries, .. } => {
-                out.push_str(self.type_name());
-                out.push('{');
-                let mut sorted: Vec<&(GoValue, GoValue)> = entries.iter().collect();
-                sorted.sort_by(|(a, _), (b, _)| compare_keys(a, b));
-                for (i, (key, value)) in sorted.into_iter().enumerate() {
-                    if i > 0 {
-                        out.push_str(", ");
-                    }
-                    key.write(out, true);
-                    out.push(':');
-                    value.write(out, true);
+                for (key, value) in entries.drain(..) {
+                    stack.push(key);
+                    stack.push(value);
                 }
-                out.push('}');
             }
+        }
+    }
+}
+
+/// Drops the nested values with a loop, so that a value nested as deep as
+/// the YAML layer allows (ADR 0022) cannot overflow the stack.
+impl Drop for GoValue {
+    fn drop(&mut self) {
+        let mut stack = Vec::new();
+        self.take_children(&mut stack);
+        while let Some(mut value) = stack.pop() {
+            value.take_children(&mut stack);
         }
     }
 }
