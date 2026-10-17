@@ -6,7 +6,6 @@
 //! nothing changes a type that other expressions use (`docs/differences.md#object-filter-mutation`).
 
 use std::collections::BTreeMap;
-use std::collections::btree_map::Entry;
 use std::fmt;
 use std::sync::Arc;
 
@@ -142,15 +141,24 @@ impl Ty {
     /// `string`.
     #[must_use]
     pub fn merge(&self, other: &Ty) -> Ty {
-        match (self, other) {
-            (Ty::Null, Ty::Null) => Ty::Null,
-            (Ty::Number, Ty::Number) => Ty::Number,
-            (Ty::Bool, Ty::Bool) => Ty::Bool,
-            (Ty::Number | Ty::Bool, Ty::String)
-            | (Ty::String, Ty::String | Ty::Number | Ty::Bool) => Ty::String,
-            (Ty::Object(ty), Ty::Object(other)) => ObjectTy::merge(ty, other),
-            (Ty::Array(ty), Ty::Array(other)) => ty.merge(other),
-            _ => Ty::Any,
+        let mut merged = self.clone();
+        merged.merge_in_place(other);
+        merged
+    }
+
+    /// Replaces this type with its [`merge`](Self::merge) with `other`. An object or array
+    /// whose parts no other type shares changes in place instead of being copied, so merging
+    /// many types into one accumulator takes time linear in their total size.
+    pub(crate) fn merge_in_place(&mut self, other: &Ty) {
+        match (&mut *self, other) {
+            (Ty::Null, Ty::Null)
+            | (Ty::Number, Ty::Number)
+            | (Ty::Bool, Ty::Bool)
+            | (Ty::String, Ty::String | Ty::Number | Ty::Bool) => {}
+            (Ty::Number | Ty::Bool, Ty::String) => *self = Ty::String,
+            (Ty::Object(ty), Ty::Object(other)) => ObjectTy::merge_in_place(ty, other),
+            (Ty::Array(ty), Ty::Array(other)) => ty.merge_in_place(other),
+            _ => *self = Ty::Any,
         }
     }
 }
@@ -329,38 +337,48 @@ impl ObjectTy {
     /// The reference's `ObjectType.Merge`. It adds the new properties of `other` to the
     /// element type in byte order of their names, where the reference uses Go map order.
     /// The result can depend on that order (`docs/differences.md#object-merge-order`).
-    fn merge(ty: &Arc<ObjectTy>, other: &Arc<ObjectTy>) -> Ty {
+    ///
+    /// It changes `ty` in place when no other type shares it, and copies it otherwise.
+    fn merge_in_place(ty: &mut Arc<ObjectTy>, other: &Arc<ObjectTy>) {
         // The reference returns one of its inputs in these two cases. The general case below
         // would build an equal type.
         if ty.props.is_empty() && other.is_loose() {
-            return Ty::Object(Arc::clone(other));
+            *ty = Arc::clone(other);
+            return;
         }
         if other.props.is_empty() && ty.is_loose() {
-            return Ty::Object(Arc::clone(ty));
+            return;
         }
 
-        let mut mapped = match (ty.unknown_prop_ty(), other.unknown_prop_ty()) {
-            (None, mapped) => mapped.cloned(),
-            (Some(mapped), None) => Some(mapped.clone()),
-            (Some(ty), Some(other)) => Some(ty.merge(other)),
+        let object = Arc::make_mut(ty);
+        let own_mapped = match std::mem::replace(&mut object.rest, Rest::Strict) {
+            Rest::Strict => None,
+            Rest::Loose => Some(Ty::Any),
+            Rest::Map(elem) => Some(elem),
         };
-        let mut props = ty.props.clone();
+        let mut mapped = match (own_mapped, other.unknown_prop_ty()) {
+            (None, mapped) => mapped.cloned(),
+            (Some(mapped), None) => Some(mapped),
+            (Some(mut mapped), Some(other)) => {
+                mapped.merge_in_place(other);
+                Some(mapped)
+            }
+        };
         for (name, other) in &other.props {
-            match props.entry(name.clone()) {
-                Entry::Occupied(mut entry) => {
-                    let merged = entry.get().merge(other);
-                    entry.insert(merged);
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(other.clone());
-                    if let Some(ty) = &mut mapped {
-                        *ty = ty.merge(other);
-                    }
-                }
+            if let Some(prop) = object.props.get_mut(name) {
+                prop.merge_in_place(other);
+                continue;
+            }
+            object.props.insert(name.clone(), other.clone());
+            if let Some(ty) = &mut mapped {
+                ty.merge_in_place(other);
             }
         }
-        let rest = mapped.map_or(Rest::Strict, Rest::Map);
-        ObjectTy::from_parts(props, rest).into()
+        object.rest = match mapped {
+            None => Rest::Strict,
+            Some(Ty::Any) => Rest::Loose,
+            Some(elem) => Rest::Map(elem),
+        };
     }
 }
 
@@ -421,16 +439,19 @@ impl ArrayTy {
         }
     }
 
-    /// The reference's `ArrayType.Merge`.
-    fn merge(&self, other: &ArrayTy) -> Ty {
+    /// The reference's `ArrayType.Merge`. It changes the element type in place when no other
+    /// type shares it, and copies it otherwise.
+    fn merge_in_place(&mut self, other: &ArrayTy) {
         // The reference returns one of its inputs in these two cases, with its flag.
         if matches!(self.elem(), Ty::Any) {
-            return Ty::Array(self.clone());
+            return;
         }
         if matches!(other.elem(), Ty::Any) {
-            return Ty::Array(other.clone());
+            *self = other.clone();
+            return;
         }
+        Arc::make_mut(&mut self.elem).merge_in_place(other.elem());
         // Merging two filtered arrays breaks the chain of property reads.
-        Ty::array(self.elem().merge(other.elem()))
+        self.filtered = false;
     }
 }

@@ -14,7 +14,7 @@
 
 #![allow(clippy::expect_used, clippy::panic)]
 
-use workflint_data::global_context;
+use workflint_data::{Availability, global_context};
 use workflint_diagnostics::RuleMeta;
 use workflint_expr::rules::{
     CASE_ARGUMENT_COUNT, INVALID_COMPARISON, INVALID_CONFIG_VARIABLE_NAME, INVALID_INDEX_ACCESS,
@@ -24,7 +24,7 @@ use workflint_expr::rules::{
 };
 use workflint_expr::{Expr, ExprError, ObjectTy, Rest, Ty, TypeEnv, parse_expression};
 
-/// The names in the message of an undefined variable in the default environment.
+/// The names in the message of an undefined variable in an environment without `jobs`.
 const GLOBAL_NAMES: &str = r#""env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars""#;
 
 /// The names in the message of an undefined function.
@@ -42,6 +42,14 @@ fn parse(input: &str) -> Expr {
     }
 }
 
+/// An environment that allows every context and special function, so that the tests outside
+/// `availability` check types without the limits of a workflow key.
+fn open_env() -> TypeEnv {
+    let mut env = TypeEnv::new();
+    env.set_availability(Availability::ALL);
+    env
+}
+
 /// Checks `input` and returns its type. Fails if the check reports an error.
 fn ty_in(env: &TypeEnv, input: &str) -> Ty {
     let (ty, errors) = env.check(&parse(input));
@@ -49,9 +57,9 @@ fn ty_in(env: &TypeEnv, input: &str) -> Ty {
     ty
 }
 
-/// Checks `input` in the default environment and returns its type.
+/// Checks `input` in [`open_env`] and returns its type.
 fn ty(input: &str) -> Ty {
-    ty_in(&TypeEnv::new(), input)
+    ty_in(&open_env(), input)
 }
 
 /// An expected error: the rule ID, the byte offset, and the message.
@@ -70,9 +78,9 @@ fn errors_in(env: &TypeEnv, input: &str) -> Vec<Error> {
         .collect()
 }
 
-/// Checks `input` in the default environment and returns its errors.
+/// Checks `input` in [`open_env`] and returns its errors.
 fn errors(input: &str) -> Vec<Error> {
-    errors_in(&TypeEnv::new(), input)
+    errors_in(&open_env(), input)
 }
 
 fn strict<const N: usize>(props: [(&str, Ty); N]) -> ObjectTy {
@@ -110,7 +118,7 @@ fn needs_foo() -> ObjectTy {
 }
 
 fn env_with_matrix(matrix: ObjectTy) -> TypeEnv {
-    let mut env = TypeEnv::new();
+    let mut env = open_env();
     env.set_matrix(matrix);
     env
 }
@@ -268,14 +276,14 @@ mod semantics_check_ok {
 
     #[test]
     fn step_output_value_with_typed_steps_outputs() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_steps(steps_with("foo"));
         assert_eq!(ty_in(&env, "steps.foo.outputs"), Ty::empty_loose());
     }
 
     #[test]
     fn step_conclusion_with_typed_steps_outputs() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_steps(steps_with("foo"));
         assert_eq!(ty_in(&env, "steps.foo.conclusion"), Ty::String);
     }
@@ -287,14 +295,14 @@ mod semantics_check_ok {
 
     #[test]
     fn output_string_in_needs_context_object() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_needs(needs_foo());
         assert_eq!(ty_in(&env, "needs.foo.outputs.out1"), Ty::String);
     }
 
     #[test]
     fn result_in_needs_context_object() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_needs(needs_foo());
         assert_eq!(ty_in(&env, "needs.foo.result"), Ty::String);
     }
@@ -356,14 +364,14 @@ mod semantics_check_ok {
 
     #[test]
     fn narrowed_inputs_object() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.add_inputs(strict([("hello", Ty::Number)]));
         assert_eq!(ty_in(&env, "inputs.hello"), Ty::Number);
     }
 
     #[test]
     fn narrowed_secrets_object() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_secrets(strict([("token", Ty::String)]));
         assert_eq!(ty_in(&env, "secrets.token"), Ty::String);
     }
@@ -375,7 +383,7 @@ mod semantics_check_ok {
 
     #[test]
     fn automatically_supplied_secrets() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_secrets(strict([("foo", Ty::String)]));
         for input in [
             "secrets.github_token",
@@ -388,7 +396,7 @@ mod semantics_check_ok {
 
     #[test]
     fn jobs_object() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_jobs(strict([("some_job", Ty::empty_loose())]));
         assert_eq!(ty_in(&env, "jobs.some_job"), Ty::empty_loose());
     }
@@ -400,14 +408,14 @@ mod semantics_check_ok {
 
     #[test]
     fn known_configuration_variable() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_config_vars(["SOME_VARIABLE"]);
         assert_eq!(ty_in(&env, "vars.SOME_VARIABLE"), Ty::String);
     }
 
     #[test]
     fn configuration_variable_name_is_case_insensitive() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_config_vars(["some_variable"]);
         assert_eq!(ty_in(&env, "vars.SOME_VARIABLE"), Ty::String);
     }
@@ -914,7 +922,7 @@ mod semantics_check_error {
 
     #[test]
     fn undefined_step_id() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_steps(steps_with("bar"));
         assert_eq!(
             errors_in(&env, "steps.foo"),
@@ -928,7 +936,7 @@ mod semantics_check_error {
 
     #[test]
     fn invalid_property_in_step_object() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_steps(steps_with("bar"));
         assert_eq!(
             errors_in(&env, "steps.bar.foo"),
@@ -954,7 +962,7 @@ mod semantics_check_error {
 
     #[test]
     fn undefined_job_id_in_needs_context() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_needs(needs_foo());
         assert_eq!(
             errors_in(&env, "needs.bar"),
@@ -968,7 +976,7 @@ mod semantics_check_error {
 
     #[test]
     fn undefined_output_in_needs_context() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_needs(needs_foo());
         assert_eq!(
             errors_in(&env, "needs.foo.outputs.out3"),
@@ -982,7 +990,7 @@ mod semantics_check_error {
 
     #[test]
     fn undefined_prop_in_needs_context() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_needs(needs_foo());
         assert_eq!(
             errors_in(&env, "needs.foo.bar"),
@@ -1044,7 +1052,7 @@ mod semantics_check_error {
 
     #[test]
     fn no_configuration_variable_is_allowed() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_config_vars([] as [&str; 0]);
         assert_eq!(
             errors_in(&env, "vars.UNKNOWN_VARIABLE"),
@@ -1058,7 +1066,7 @@ mod semantics_check_error {
 
     #[test]
     fn unknown_configuration_variable() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_config_vars(["FOO_BAR"]);
         assert_eq!(
             errors_in(&env, "vars.UNKNOWN_VARIABLE"),
@@ -1551,7 +1559,7 @@ mod update_inputs_multiple_times {
     use super::*;
 
     fn inputs_after(first: ObjectTy, second: ObjectTy) -> Ty {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.add_inputs(first);
         env.add_dispatch_inputs(second);
         ty_in(&env, "inputs")
@@ -1588,7 +1596,7 @@ mod update_dispatch_inputs {
 
     #[test]
     fn event_inputs_are_strict_strings() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.add_dispatch_inputs(strict([("foo", Ty::Null)]));
         assert_eq!(
             ty_in(&env, "github.event.inputs"),
@@ -1609,7 +1617,7 @@ mod update_dispatch_inputs {
 
     #[test]
     fn other_environments_keep_the_untyped_event() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.add_dispatch_inputs(strict([("foo", Ty::Null)]));
         assert_eq!(ty("github.event.inputs"), Ty::Any);
         assert_eq!(ty("github.event.inputs.bar"), Ty::Any);
@@ -1645,7 +1653,7 @@ mod environment_overrides {
 
     #[test]
     fn jobs_is_a_variable_only_when_set() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         assert_eq!(
             errors_in(&env, "jobs"),
             [error(
@@ -1667,7 +1675,7 @@ mod environment_overrides {
 
     #[test]
     fn declared_secrets_are_strict_and_keep_the_built_in_ones() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.set_secrets(strict([("token", Ty::String)]));
         assert_eq!(
             ty_in(&env, "secrets"),
@@ -1682,7 +1690,7 @@ mod environment_overrides {
 
     #[test]
     fn first_inputs_replace_the_empty_default() {
-        let mut env = TypeEnv::new();
+        let mut env = open_env();
         env.add_inputs(strict([("a", Ty::Number)]));
         assert_eq!(ty_in(&env, "inputs"), Ty::strict([("a", Ty::Number)]));
     }
@@ -1708,7 +1716,7 @@ mod function_calls {
 
     #[test]
     fn arguments_of_a_defined_function_are_checked() {
-        let (ty, errors) = TypeEnv::new().check(&parse("contains(foo, 'a')"));
+        let (ty, errors) = open_env().check(&parse("contains(foo, 'a')"));
         assert_eq!(ty, Ty::Bool);
         let errors: Vec<Error> = errors
             .iter()
@@ -1726,7 +1734,7 @@ mod function_calls {
 
     #[test]
     fn failed_call_has_type_any() {
-        let (ty, _) = TypeEnv::new().check(&parse("startsWith('foo', null)"));
+        let (ty, _) = open_env().check(&parse("startsWith('foo', null)"));
         assert_eq!(ty, Ty::Any);
     }
 
@@ -2045,8 +2053,8 @@ mod error_ranges {
 
     #[test]
     fn error_covers_the_node() {
-        assert_eq!(ranges(&TypeEnv::new(), "github.foo"), [(0, 10)]);
-        assert_eq!(ranges(&TypeEnv::new(), "env[0] == 1"), [(4, 5)]);
+        assert_eq!(ranges(&open_env(), "github.foo"), [(0, 10)]);
+        assert_eq!(ranges(&open_env(), "env[0] == 1"), [(4, 5)]);
     }
 
     #[test]
@@ -2057,16 +2065,13 @@ mod error_ranges {
 
     #[test]
     fn argument_error_covers_the_argument() {
-        assert_eq!(
-            ranges(&TypeEnv::new(), "startsWith('foo', (null))"),
-            [(19, 23)]
-        );
+        assert_eq!(ranges(&open_env(), "startsWith('foo', (null))"), [(19, 23)]);
     }
 
     #[test]
     fn call_error_covers_the_call() {
-        assert_eq!(ranges(&TypeEnv::new(), "!toJSON()"), [(1, 9)]);
-        assert_eq!(ranges(&TypeEnv::new(), "!foo(1)"), [(1, 7)]);
+        assert_eq!(ranges(&open_env(), "!toJSON()"), [(1, 9)]);
+        assert_eq!(ranges(&open_env(), "!foo(1)"), [(1, 7)]);
     }
 
     #[test]
@@ -2155,7 +2160,6 @@ mod is_constant {
 /// The cases of `TestExprSemanticsCheckOK` and `TestExprSemanticsCheckError` that check where
 /// contexts and special functions are allowed, and the cases where the reference has no test.
 mod availability {
-    use workflint_data::Availability;
     use workflint_expr::rules::{CONTEXT_NOT_ALLOWED, FUNCTION_NOT_ALLOWED};
 
     use super::*;
@@ -2306,11 +2310,43 @@ mod availability {
 
     // workflint's own cases.
 
+    /// The reference's checker allows nothing until `SetContextAvailability` and
+    /// `SetSpecialFunctionAvailability` say otherwise, so a place without a workflow key
+    /// reports every context.
     #[test]
-    fn environment_without_availability_allows_every_context_and_special_function() {
+    fn new_environment_allows_no_context_and_no_special_function() {
         assert_eq!(
-            errors("github.sha == env.FOO && success() && hashFiles('a')"),
+            errors_in(&TypeEnv::new(), "github.ref"),
+            [context_error(0, "github", "no context is available here")]
+        );
+        assert_eq!(
+            errors_in(&TypeEnv::new(), "success()"),
+            [function_error(0, "success", STATUS_KEYS)]
+        );
+    }
+
+    #[test]
+    fn all_allows_every_context_and_special_function() {
+        let mut env = TypeEnv::new();
+        env.set_jobs(strict([("build", Ty::String)]));
+        env.set_availability(Availability::ALL);
+        assert_eq!(
+            errors_in(
+                &env,
+                "github.sha == env.FOO && jobs.build && success() && hashFiles('a')"
+            ),
             []
+        );
+    }
+
+    #[test]
+    fn workflow_key_replaces_the_availability_of_an_earlier_one() {
+        let mut env = env_at("jobs.<job_id>.steps.if");
+        env.set_matrix(strict([("shell", Ty::String)]));
+        env.set_workflow_key("jobs.<job_id>.steps.shell");
+        assert_eq!(
+            errors_in(&env, "matrix.shell"),
+            [context_error(0, "matrix", "no context is available here")]
         );
     }
 

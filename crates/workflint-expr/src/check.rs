@@ -2,6 +2,7 @@
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `ExprSemanticsChecker` in `expr_sema.go`.
 
+use workflint_data::{RESERVED_CONFIG_VARIABLE_PREFIX, is_config_variable_name_char};
 use workflint_diagnostics::RuleMeta;
 use workflint_diagnostics::quote::{ordinal, quote, quotes, sorted_quotes};
 
@@ -181,9 +182,7 @@ impl Checker<'_> {
     /// The reference's `checkAvailableContext`. The message names the context in lower case,
     /// as the reference does.
     fn check_available_context(&mut self, expr: &Expr, name: &Name) {
-        let Some(availability) = self.env.availability() else {
-            return;
-        };
+        let availability = self.env.availability();
         let context = name.as_str();
         if availability.contexts.contains(&context) {
             return;
@@ -284,7 +283,7 @@ impl Checker<'_> {
 
     /// The reference's `checkConfigVariables`. `name` is lower case.
     fn check_config_variable(&mut self, expr: &Expr, name: &str) {
-        if name.starts_with("github_") {
+        if name.starts_with(RESERVED_CONFIG_VARIABLE_PREFIX) {
             let message = format!(
                 "configuration variable name {} must not start with the GITHUB_ prefix (case insensitive). {CONFIG_VARIABLE_CONVENTION}",
                 quote(name)
@@ -293,10 +292,7 @@ impl Checker<'_> {
             return;
         }
         // The lexer already rejects a name that starts with a digit.
-        if !name
-            .bytes()
-            .all(|b| b.is_ascii_digit() || b.is_ascii_lowercase() || b == b'_')
-        {
+        if !name.chars().all(is_config_variable_name_char) {
             let message = format!(
                 "configuration variable name {} can only contain alphabets, decimal numbers, and '_'. {CONFIG_VARIABLE_CONVENTION}",
                 quote(name)
@@ -544,9 +540,7 @@ impl Checker<'_> {
     /// arguments an overload accepts, so a call with the wrong arguments gets one error. The
     /// message keeps the spelling of the call.
     fn check_special_function_availability(&mut self, expr: &Expr, callee: &Name) {
-        let Some(availability) = self.env.availability() else {
-            return;
-        };
+        let availability = self.env.availability();
         let name = callee.as_str();
         let Some(keys) = workflint_data::special_function_keys(name) else {
             return;

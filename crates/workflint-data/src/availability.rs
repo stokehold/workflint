@@ -23,6 +23,24 @@ impl Availability {
         contexts: &[],
         special_functions: &[],
     };
+
+    /// Allows every context that some workflow key allows and every special function. No
+    /// workflow key allows all of them. Tests use it to check an expression without the
+    /// limits of a place in a workflow.
+    pub const ALL: Self = Self {
+        contexts: &[
+            "env", "github", "inputs", "job", "jobs", "matrix", "needs", "runner", "secrets",
+            "steps", "strategy", "vars",
+        ],
+        special_functions: SPECIAL_FUNCTIONS_ARRAY,
+    };
+}
+
+impl Default for Availability {
+    /// [`Availability::NONE`].
+    fn default() -> Self {
+        Self::NONE
+    }
 }
 
 /// A workflow key, such as `jobs.<job_id>.steps.if`, and what its expressions may use.
@@ -35,7 +53,11 @@ pub struct WorkflowKey {
 }
 
 /// The functions that only some workflow keys allow, in lower case and sorted.
-pub static SPECIAL_FUNCTIONS: &[&str] = &["always", "cancelled", "failure", "hashfiles", "success"];
+pub static SPECIAL_FUNCTIONS: &[&str] = SPECIAL_FUNCTIONS_ARRAY;
+
+/// [`SPECIAL_FUNCTIONS`] as a constant, so that [`Availability::ALL`] can use it.
+const SPECIAL_FUNCTIONS_ARRAY: &[&str] =
+    &["always", "cancelled", "failure", "hashfiles", "success"];
 
 const fn key(name: &'static str, availability: Availability) -> WorkflowKey {
     WorkflowKey { name, availability }

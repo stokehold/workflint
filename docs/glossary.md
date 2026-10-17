@@ -28,7 +28,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | untrusted input | A context property that someone outside the repository can set, such as `github.event.issue.title` or `github.head_ref`, which can inject code when a script reads it in `${{ }}` (`UNTRUSTED_INPUTS`). Paths write array elements as `*`, as in `github.event.commits.*.message`. |
 | workflow key | The path of a place in a workflow where expressions can appear, as GitHub's context availability table writes it, such as `jobs.<job_id>.steps.if` (`WORKFLOW_KEYS`). |
 | special function | A built-in function that only some workflow keys allow: `always`, `cancelled`, `failure`, `hashFiles`, and `success` (`SPECIAL_FUNCTIONS`). |
-| availability | Which contexts and special functions a given workflow key allows (`Availability`). A key that the table does not list allows none. |
+| availability | Which contexts and special functions a given workflow key allows (`Availability`). A key that the table does not list allows none, and so does a type environment without a workflow key. |
 | platform data | Facts about GitHub that change over time: runner labels, permissions, events, contexts, popular actions (ADR 0011). |
 | rule | One check with a stable ID and rule metadata, listed in the registry in `workflint-rules`. |
 | rule metadata | A rule's `RuleMeta`: its rule ID, kind, category, default severity, and docs URL. |
