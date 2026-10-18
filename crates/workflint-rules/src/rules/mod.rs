@@ -5,6 +5,7 @@ use workflint_diagnostics::RuleMeta;
 use crate::Rule;
 use crate::kind::{self, Kind};
 
+mod events;
 mod expression;
 
 /// The kinds of the reference's rules in the order its linter creates them for each file
@@ -36,9 +37,23 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 3] = [
+pub(crate) static ALL: [&RuleMeta; 17] = [
+    &events::ACTIVITY_TYPES_NOT_SUPPORTED,
+    &events::CHOICE_INPUT_WITHOUT_OPTIONS,
+    &events::CONFLICTING_FILTERS,
+    &events::DEFAULT_NOT_IN_OPTIONS,
+    &events::DUPLICATE_INPUT_OPTION,
+    &events::FILTER_NOT_SUPPORTED,
+    &events::INVALID_ACTIVITY_TYPE,
+    &events::INVALID_INPUT_DEFAULT,
+    &events::MISSING_WORKFLOW_RUN_WORKFLOWS,
     &expression::OBJECT_IN_TEMPLATE,
+    &events::OPTIONS_ON_NON_CHOICE_INPUT,
+    &events::REQUIRED_INPUT_WITH_DEFAULT,
     &expression::SINGLE_EXPRESSION_REQUIRED,
+    &events::TOO_MANY_DISPATCH_INPUTS,
+    &events::UNKNOWN_EVENT,
+    &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
     &expression::WRONG_EXPRESSION_TYPE,
 ];
 
@@ -53,10 +68,11 @@ pub fn create_rules<'a>() -> Vec<Box<dyn Rule<'a> + 'a>> {
 /// Each task that ports a reference rule adds an arm here. shellcheck and pyflakes come with
 /// M5.5, and only when their executable is found.
 fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
-    if *kind == kind::EXPRESSION {
-        return Some(Box::new(expression::Expression::new()));
+    match kind.name {
+        "events" => Some(Box::new(events::Events)),
+        "expression" => Some(Box::new(expression::Expression::new())),
+        _ => None,
     }
-    None
 }
 
 /// Calls `create` for each kind of [`CREATION_ORDER`] and keeps the rules it returns.

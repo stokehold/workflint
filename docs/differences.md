@@ -279,13 +279,14 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Upstream: the parser reports a value that is not a valid string and keeps it as the string `""`. The rules then check that string as if the file had it, and these cases get a second error:
   - An activity type that is empty, null, or not a scalar, as in `types: [[x]]`, `types: ['']`, `types: ''`, or `types:`, also gets `invalid activity type "" for "pull_request" Webhook event` (`events`).
   - An event key that is not a scalar, as in `[a]: x` under `on`, also gets `unknown Webhook event ""` (`events`).
+  - A `default` of a `workflow_call` or `workflow_dispatch` input that is not a scalar, as in `default: [x]`, is checked as `""`. It gets `cannot be parsed as a float number` for a `number` input, `must be "true" or "false"` for a `boolean` input, `is not included in its options` for a `choice` input, and `has the default value "", but it is also required` for a required `workflow_call` input (`events`).
   - A `shell` of `defaults.run` or of a step that is empty or not a scalar also gets `shell name "" is invalid` (`shell-name`).
   - A `runs-on` label that is empty or not a scalar also gets `label "" is unknown` (`runner-label`).
-- workflint: the parser reports the value once, and the rules skip it. The value keeps its place in its list, so a check that only needs the value to be written still runs. `options: [[x]]` on a `string` input of `workflow_dispatch` still gets `"options" can not be set to "text" input because its input type is not "choice"`, and `options: ['']` on a `choice` input counts as set, as upstream. The keys of `permissions` and `env` are in [Keys that are not strings in `permissions` and `env`](#non-scalar-keys).
+- workflint: the parser reports the value once, and the rules skip it. The value keeps its place in its list, so a check that only needs the value to be written still runs. `options: [[x]]` on a `string` input of `workflow_dispatch` still gets `"options" can not be set to "text" input because its input type is not "choice"`, and `options: ['']` on a `choice` input counts as set, as upstream. A `choice` input with an invalid option does not compare its default with the options, because the invalid option has no value to compare. Upstream compares the default with `""` in its place. A required `workflow_call` input with an invalid default is not reported either, although that check only needs the default to be written, because its message would quote `""`. The keys of `permissions` and `env` are in [Keys that are not strings in `permissions` and `env`](#non-scalar-keys).
 - Why: the second error repeats the first and names a value that is not in the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the parser. The rules that skip the value follow in M4.
+- Status: implemented in the parser and in the `events` rule (M4.13). The `shell-name` and `runner-label` rules follow in M4.
 - Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
 
 <a id="typed-decoding-edge-cases"></a>
@@ -563,7 +564,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the escaped quotes are unreadable.
 - Upstream issue: none.
 - Milestone: M4.
-- Status: planned.
+- Status: implemented.
 - Fixtures: `err/workflow_dispatch_input_types`, `examples/workflow_dispatch_input_types`.
 
 <a id="deprecated-command-digits"></a>

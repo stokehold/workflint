@@ -33,20 +33,28 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 <!-- rules-index:start -->
 | Rule | Kind | Category | Default severity | Description |
 |---|---|---|---|---|
+| [`activity-types-not-supported`](activity-types-not-supported.md) | `events` | correctness | error | `types` is set on an event that has no activity types |
 | `case-argument-count` | `expression` | correctness | error | `case()` has an even number of arguments, so it has no default value |
+| [`choice-input-without-options`](choice-input-without-options.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` has no `options` |
+| [`conflicting-filters`](conflicting-filters.md) | `events` | correctness | error | A filter and its `-ignore` filter are both set on one event |
 | `context-not-allowed` | `expression` | correctness | error | An expression reads a context that its workflow key does not allow |
+| [`default-not-in-options`](default-not-in-options.md) | `events` | correctness | error | The default of a `choice` input of `workflow_dispatch` is not one of its options |
+| [`duplicate-input-option`](duplicate-input-option.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` lists an option more than once |
 | [`duplicate-key`](duplicate-key.md) | `syntax-check` | correctness | error | A mapping repeats a key |
 | [`empty-section`](empty-section.md) | `syntax-check` | correctness | error | A mapping or sequence that must have entries is empty or null |
 | [`empty-string`](empty-string.md) | `syntax-check` | correctness | error | A string that must not be empty is empty |
 | [`empty-workflow`](empty-workflow.md) | `syntax-check` | correctness | error | The file has no YAML document, or only comments |
 | [`expected-single-expression`](expected-single-expression.md) | `syntax-check` | correctness | error | A value that must be a literal or a single `${{ }}` expression is other text |
+| [`filter-not-supported`](filter-not-supported.md) | `events` | correctness | error | A branch, tag, or path filter is set on an event that does not support it |
 | `function-not-allowed` | `expression` | correctness | error | An expression calls a special function that its workflow key does not allow |
 | [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
+| [`invalid-activity-type`](invalid-activity-type.md) | `events` | correctness | error | `types` lists an activity type that the event does not have |
 | `invalid-comparison` | `expression` | correctness | error | A comparison has operands that GitHub cannot compare |
 | `invalid-config-variable-name` | `expression` | correctness | error | The name in `vars.NAME` breaks GitHub's naming rules for configuration variables |
 | [`invalid-dispatch-input-type`](invalid-dispatch-input-type.md) | `syntax-check` | correctness | error | A `workflow_dispatch` input has an unknown `type` |
 | `invalid-expression-syntax` | `expression` | correctness | error | An expression in `${{ }}` cannot be lexed or parsed |
 | `invalid-index-access` | `expression` | correctness | error | An index has the wrong type, or its operand is neither an object nor an array |
+| [`invalid-input-default`](invalid-input-default.md) | `events` | correctness | error | The default of a `number` or `boolean` input of `workflow_call` or `workflow_dispatch` does not match its type |
 | `invalid-json-literal` | `expression` | correctness | error | The string literal passed to `fromJSON()` is not valid JSON |
 | [`invalid-literal-value`](invalid-literal-value.md) | `syntax-check` | correctness | error | A boolean, integer, or float value has the wrong tag or does not parse |
 | `invalid-number-literal` | `expression` | correctness | error | A number literal in an expression has no value as a double |
@@ -57,13 +65,17 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`merge-key-unsupported`](merge-key-unsupported.md) | `syntax-check` | correctness | error | A mapping has a `<<` merge key, which GitHub Actions does not apply |
 | `missing-format-argument` | `expression` | correctness | error | The format string of `format()` has a placeholder beyond its arguments |
 | [`missing-required-key`](missing-required-key.md) | `syntax-check` | correctness | error | A required section or key is missing |
+| [`missing-workflow-run-workflows`](missing-workflow-run-workflows.md) | `events` | correctness | error | A `workflow_run` event has no `workflows` |
 | [`non-positive-number`](non-positive-number.md) | `syntax-check` | correctness | error | A literal `timeout-minutes` or `max-parallel` is zero or less |
 | [`object-in-template`](object-in-template.md) | `expression` | correctness | error | A `${{ }}` in a string evaluates to an object, an array, or null |
+| [`options-on-non-choice-input`](options-on-non-choice-input.md) | `events` | correctness | error | A `workflow_dispatch` input that is not a `choice` has `options` |
 | [`recursive-alias`](recursive-alias.md) | `syntax-check` | correctness | error | An alias refers to a node that encloses it |
+| [`required-input-with-default`](required-input-with-default.md) | `events` | correctness | error | A required `workflow_call` input has a default, which is never used |
 | [`reusable-call-key-without-uses`](reusable-call-key-without-uses.md) | `syntax-check` | correctness | error | A job without `uses` has `with` or `secrets` |
 | [`schedule-without-config`](schedule-without-config.md) | `syntax-check` | correctness | error | `schedule` is named in a string or a sequence item of `on`, so it has no `cron` entries |
 | [`single-expression-required`](single-expression-required.md) | `expression` | correctness | error | A value that must be one `${{ }}` holds another number of them |
 | [`step-without-run-or-uses`](step-without-run-or-uses.md) | `syntax-check` | correctness | error | A step has neither `run` nor `uses` |
+| [`too-many-dispatch-inputs`](too-many-dispatch-inputs.md) | `events` | correctness | error | `workflow_dispatch` has more inputs than GitHub allows |
 | [`too-many-yaml-nodes`](too-many-yaml-nodes.md) | `syntax-check` | correctness | error | The workflow has more YAML nodes, with its aliases expanded, than GitHub reads |
 | `undefined-config-variable` | `expression` | correctness | error | `vars.NAME` reads a configuration variable that the configuration does not list |
 | `undefined-function` | `expression` | correctness | error | An expression calls a function that is not built in |
@@ -72,10 +84,12 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`unexpected-key`](unexpected-key.md) | `syntax-check` | correctness | error | A mapping has a key that its section does not define |
 | [`unexpected-node-kind`](unexpected-node-kind.md) | `syntax-check` | correctness | error | A node has the wrong kind, such as a sequence where a mapping is expected |
 | [`unknown-anchor`](unknown-anchor.md) | `syntax-check` | correctness | error | An alias refers to an anchor that no earlier node defines |
+| [`unknown-event`](unknown-event.md) | `events` | correctness | error | `on` names an event that is not a GitHub webhook event |
 | `untrusted-input` | `expression` | correctness | error | A script reads a value that someone outside the repository can set |
 | `untrusted-object-filter` | `expression` | correctness | error | A script reads an object filter that extracts values that someone outside the repository can set |
 | [`unused-anchor`](unused-anchor.md) | `syntax-check` | correctness | error | No alias refers to an anchor |
 | `unused-format-argument` | `expression` | correctness | error | The format string of `format()` has no placeholder for an argument |
+| [`workflows-filter-not-supported`](workflows-filter-not-supported.md) | `events` | correctness | error | `workflows` is set on an event other than `workflow_run` |
 | `wrong-argument-count` | `expression` | correctness | error | A call of a built-in function has the wrong number of arguments |
 | `wrong-argument-type` | `expression` | correctness | error | An argument of a built-in function has a type that its parameter does not accept |
 | [`wrong-expression-type`](wrong-expression-type.md) | `expression` | correctness | error | A value written as one `${{ }}` has a type that its key does not accept |

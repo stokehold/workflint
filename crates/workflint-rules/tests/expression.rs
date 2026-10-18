@@ -23,6 +23,18 @@ fn diagnostics(workflow: &str) -> (SourceFile, Vec<Diagnostic>) {
     (file, diagnostics)
 }
 
+/// Lints `workflow` and returns the diagnostics of the `expression` kind in the one-line format.
+/// Other rules, such as `events`, report on some of the workflows here.
+fn lint_expressions(workflow: &str) -> Vec<String> {
+    lint(workflow)
+        .into_iter()
+        .filter(|line| {
+            let id = line.rsplit_once(" [").unwrap().1.trim_end_matches(']');
+            workflint_rules::registry::find(id).unwrap().kind == "expression"
+        })
+        .collect()
+}
+
 /// Lints `workflow` and returns the diagnostics in the one-line format.
 fn lint(workflow: &str) -> Vec<String> {
     let (file, diagnostics) = diagnostics(workflow);
@@ -237,7 +249,7 @@ fn expression_starts(text: &str) -> BTreeSet<String> {
 #[test]
 fn every_location_reports_a_context_or_function_that_its_workflow_key_does_not_allow() {
     for text in [EVERY_LOCATION, WORKFLOW_SECOND_FORMS] {
-        let lines = lint(text);
+        let lines = lint_expressions(text);
         let mut reported = BTreeSet::new();
         for line in &lines {
             let rest = line.strip_prefix("test.yaml:").unwrap();
@@ -255,7 +267,7 @@ fn every_location_reports_a_context_or_function_that_its_workflow_key_does_not_a
 
 #[test]
 fn locations_with_the_empty_workflow_key_allow_no_context() {
-    let lines = lint(EVERY_LOCATION);
+    let lines = lint_expressions(EVERY_LOCATION);
     let github: Vec<_> = lines
         .iter()
         .filter(|line| line.contains(r#"context "github" is not allowed here"#))

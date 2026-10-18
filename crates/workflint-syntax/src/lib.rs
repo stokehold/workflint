@@ -107,7 +107,7 @@ mod parser;
 mod reusable_workflow;
 pub mod rules;
 mod step;
-mod strconv;
+pub mod strconv;
 mod typed;
 mod uses;
 mod value;
