@@ -20,6 +20,7 @@ Tasks are GitHub issues in `stokehold/workflint` (ADR 0020). `docs/roadmap.md` i
 5. Run the checks under "Done", tick the matching rows in `docs/parity-checklist.md`, push, and fill in the pull request description from the template.
 6. If "Decisions to review" lists any decisions, ask the maintainer about them after pushing, with your question tool (`AskUserQuestion` in Claude Code). Ask one question per decision, put your recommended option first, and add "(Recommended)" to its label. Apply the answers, push again, and delete the section from the description. "What changed" then describes the options that were chosen.
 7. Mark the pull request ready for review.
+8. Watch CI on the pull request until every check has finished (`gh pr checks --watch`). If a check fails, fix the cause, push, and watch again. The task ends when all checks are green.
 
 The maintainer reviews and merges. Leave merging and auto-merge to the maintainer.
 
@@ -28,6 +29,7 @@ The maintainer reviews and merges. Leave merging and auto-merge to the maintaine
 A task is done when all of these hold:
 
 - `cargo fmt --all --check`, `cargo clippy --workspace --all-targets` with zero warnings, `cargo nextest run --workspace`, `cargo test --doc --workspace`, and `cargo deny check` for the root and the `fuzz/` workspace pass.
+- CI on the pull request has finished and every check is green.
 - The conformance suite passes. `cargo nextest run --workspace` runs it. Every new difference from the reference has an entry in `docs/differences.md`. A difference that changes a fixture's or the corpus's output also has records in `tests/conformance/allowed-differences.toml` (ADR 0023).
 - Docs touched by the change are updated in the same pull request.
 - The pull request title follows Conventional Commits (it becomes the squash commit). The description opens with a summary of what the pull request implements and why, and says how you verified the change.
