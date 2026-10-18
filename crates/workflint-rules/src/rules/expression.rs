@@ -14,18 +14,20 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use workflint_data::UNTRUSTED_INPUTS;
+use workflint_data::{UNTRUSTED_INPUTS, popular_action};
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
 use workflint_expr::{MAX_TYPE_DEPTH, ObjectTy, Rest, Ty, TypeEnv};
 use workflint_syntax::{
     Concurrency, Container, Credentials, Defaults, Env, Event, Exec, Expr, Field, Job, Keyed,
     KeyedEntry, Matrix, MatrixCombination, MatrixRow, Placeholder, RawValue, Runner, Snapshot,
-    Step, Str, Template, Value, Workflow, WorkflowCall, WorkflowCallEvent, WorkflowCallInputType,
-    WorkflowCallSecrets, WorkflowDispatchEvent, WorkflowDispatchInputType,
+    Step, StepUses, Str, Template, Value, Workflow, WorkflowCall, WorkflowCallEvent,
+    WorkflowCallInputType, WorkflowCallSecrets, WorkflowDispatchEvent, WorkflowDispatchInputType,
+    contains_expression,
 };
-use workflint_yaml::Tag;
+use workflint_yaml::{Tag, simple_lowercase};
 
+use crate::local::{Lookup, is_local_action};
 use crate::{Context, Rule};
 
 /// A template evaluates to an object, an array, or null, which GitHub cannot put in a string.
@@ -78,6 +80,12 @@ pub(crate) struct Expression {
     workflow: TypeEnv,
     /// The contexts of the job being visited, from its job-pre hook to its job-post hook.
     job: Option<TypeEnv>,
+    /// The steps of the job being visited that have an `id`, keyed by the lower-case `id`, as
+    /// far as the visit has come.
+    steps: BTreeMap<String, Ty>,
+    /// Whether a step of the job has an `id` that contains an expression, so that `steps`
+    /// accepts any step.
+    loose_steps: bool,
 }
 
 impl Expression {
@@ -129,6 +137,10 @@ impl<'a> Rule<'a> for Expression {
         // TODO(#147): type `needs` from the direct dependencies of the job and their outputs.
         env.set_needs(loose());
         self.job = Some(env);
+        // `steps` starts as the empty strict object of the global contexts, and each step with
+        // an `id` adds itself once its own keys are checked.
+        self.steps.clear();
+        self.loose_steps = false;
         let strategy = job.strategy.value();
         if let Some(strategy) = strategy {
             let matrix = self
@@ -197,12 +209,6 @@ impl<'a> Rule<'a> for Expression {
             self.at("jobs.<job_id>.snapshot.if")
                 .condition(cx, condition);
         }
-
-        // The steps of the job and the keys of its job-post hook see the steps before them.
-        // TODO(#146): type `steps` step by step from the outputs of each step with an `id`.
-        if let Some(env) = &mut self.job {
-            env.set_steps(loose());
-        }
     }
 
     fn step(&mut self, step: &'a Step<'a>, cx: &mut Context<'_>) {
@@ -250,6 +256,7 @@ impl<'a> Rule<'a> for Expression {
         // An `id` is checked only if it contains an expression: the parser stores no
         // placeholder otherwise.
         self.at("").string(cx, &step.id);
+        self.add_step(step, cx);
     }
 
     fn job_post(&mut self, entry: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
@@ -290,6 +297,36 @@ impl<'a> Rule<'a> for Expression {
 }
 
 impl Expression {
+    /// Adds `step` to `steps` if it has an `id`, so that the steps after it and the keys of the
+    /// job-post hook see it. A step does not see itself. An `id` that contains an expression
+    /// makes `steps` accept any step, because the value of the `id` is not known.
+    fn add_step(&mut self, step: &Step<'_>, cx: &Context<'_>) {
+        let Some(id) = step.id.value() else {
+            return;
+        };
+        let uses = match &step.exec {
+            Some(Exec::Action(action)) => action.uses.value(),
+            Some(Exec::Run(_)) | None => None,
+        };
+        let ty = Ty::strict([
+            ("outputs", Ty::Object(action_outputs(uses, cx))),
+            ("conclusion", Ty::String),
+            ("outcome", Ty::String),
+        ]);
+        self.steps
+            .insert(simple_lowercase(id.value()).into_owned(), ty);
+        self.loose_steps |= contains_expression(id.value());
+        let rest = if self.loose_steps {
+            Rest::Loose
+        } else {
+            Rest::Strict
+        };
+        let steps = ObjectTy::new(self.steps.clone(), rest);
+        if let Some(env) = &mut self.job {
+            env.set_steps(steps);
+        }
+    }
+
     /// Checks the expressions of `event`, and adds its inputs to the contexts of the workflow.
     fn event(&mut self, event: &Event<'_>, cx: &mut Context<'_>) {
         let none = self.at("");
@@ -451,6 +488,48 @@ impl Expression {
                 Some(secrets),
             );
         }
+    }
+}
+
+/// Returns the type of `steps.<step_id>.outputs` for a step that runs `uses`, or a script if
+/// `uses` is `None`. This is the reference's `getActionOutputsType`.
+///
+/// The outputs of a local action come from its metadata, and those of a popular action from
+/// `workflint-data`. Their names are in lower case. `actions/github-script` can set any output
+/// with `core.setOutput`, and so can a popular action whose data skips its outputs. Any other
+/// step has outputs of any name, which are strings.
+///
+/// Broken metadata of a local action gets outputs of any name, and this rule reports nothing.
+/// The `action` rule runs before this one on each step, and from M4.18 (#155) it looks the
+/// action up first and reports the error.
+fn action_outputs(uses: Option<&StepUses<'_>>, cx: &Context<'_>) -> Arc<ObjectTy> {
+    let any_string = || Arc::new(ObjectTy::new([] as [(&str, Ty); 0], Rest::Map(Ty::String)));
+    let Some(spec) = uses.map(StepUses::value) else {
+        return any_string();
+    };
+    if is_local_action(spec) {
+        return match cx.local_metadata().action(spec) {
+            Lookup::Found { metadata, .. } => Arc::new(ObjectTy::new(
+                metadata
+                    .metadata
+                    .outputs
+                    .keys()
+                    .map(|name| (name.clone(), Ty::String)),
+                Rest::Strict,
+            )),
+            Lookup::None | Lookup::Error(_) => any_string(),
+        };
+    }
+    if spec.starts_with("actions/github-script@") {
+        return loose();
+    }
+    match popular_action(spec) {
+        Some(action) if action.skip_outputs => loose(),
+        Some(action) => Arc::new(ObjectTy::new(
+            action.outputs.iter().map(|output| (output.id, Ty::String)),
+            Rest::Strict,
+        )),
+        None => any_string(),
     }
 }
 
