@@ -11,6 +11,7 @@
 //! (`docs/differences.md#all-expressions-in-string`), and reports each error at its exact
 //! position in the scalar (`docs/differences.md#positions-inside-scalars`).
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use workflint_data::UNTRUSTED_INPUTS;
@@ -20,7 +21,8 @@ use workflint_expr::{ObjectTy, Rest, Ty, TypeEnv};
 use workflint_syntax::{
     Concurrency, Container, Credentials, Defaults, Env, Event, Exec, Expr, Field, Job, Keyed,
     KeyedEntry, Matrix, MatrixCombination, MatrixRow, Placeholder, RawValue, Runner, Snapshot,
-    Step, Str, Template, Value, Workflow, WorkflowCall, WorkflowCallSecrets,
+    Step, Str, Template, Value, Workflow, WorkflowCall, WorkflowCallEvent, WorkflowCallInputType,
+    WorkflowCallSecrets, WorkflowDispatchEvent, WorkflowDispatchInputType,
 };
 
 use crate::{Context, Rule};
@@ -57,6 +59,17 @@ pub(crate) static SINGLE_EXPRESSION_REQUIRED: RuleMeta = RuleMeta {
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/single-expression-required.md",
 };
 
+/// A `boolean` or `number` input of `workflow_call` has a default written as one `${{ }}` of
+/// another type.
+pub(crate) static WRONG_INPUT_DEFAULT_TYPE: RuleMeta = RuleMeta {
+    id: "wrong-input-default-type",
+    description: "A `boolean` or `number` input of `workflow_call` has a default of another type",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/wrong-input-default-type.md",
+};
+
 /// The `expression` rule.
 #[derive(Debug, Default)]
 pub(crate) struct Expression {
@@ -86,7 +99,8 @@ impl Expression {
 
 impl<'a> Rule<'a> for Expression {
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
-        self.workflow = workflow_env(workflow);
+        // The events add their inputs to the contexts of the workflow, in the order of `on`.
+        self.workflow = TypeEnv::new();
         let none = self.at("");
         none.string(cx, &workflow.name);
         for event in workflow
@@ -96,6 +110,9 @@ impl<'a> Rule<'a> for Expression {
             .flat_map(|events| events.iter().flatten())
         {
             self.event(event, cx);
+        }
+        if let Some(secrets) = declared_secrets(workflow) {
+            self.workflow.set_secrets(secrets);
         }
         self.at("run-name").string(cx, &workflow.run_name);
         self.env_vars(cx, &workflow.env, "env");
@@ -248,9 +265,8 @@ impl<'a> Rule<'a> for Expression {
         let Some(outputs) = call.outputs.value().filter(|o| has_jobs && !o.is_empty()) else {
             return;
         };
-        // TODO(#144): type `jobs` from the jobs and their outputs.
         let mut env = self.workflow.clone();
-        env.set_jobs(loose());
+        env.set_jobs(jobs_ty(workflow.jobs.value().into_iter().flatten()));
         env.set_workflow_key("on.workflow_call.outputs.<output_id>.value");
         let checker = Checker { env };
         for output in outputs {
@@ -260,7 +276,8 @@ impl<'a> Rule<'a> for Expression {
 }
 
 impl Expression {
-    fn event(&self, event: &Event<'_>, cx: &mut Context<'_>) {
+    /// Checks the expressions of `event`, and adds its inputs to the contexts of the workflow.
+    fn event(&mut self, event: &Event<'_>, cx: &mut Context<'_>) {
         let none = self.at("");
         match event {
             Event::Webhook(webhook) => {
@@ -290,16 +307,14 @@ impl Expression {
                     none.bool(cx, &input.value.required);
                     none.strings(cx, &input.value.options);
                 }
+                self.workflow
+                    .add_dispatch_inputs(dispatch_inputs_ty(dispatch));
             }
             Event::RepositoryDispatch(dispatch) => none.strings(cx, &dispatch.types),
             Event::WorkflowCall(call) => {
-                // TODO(#144): a default sees only the inputs declared before it, and a typed
-                // input checks the type of its default.
-                let default = self.at("on.workflow_call.inputs.<inputs_id>.default");
-                for input in call.inputs.value().into_iter().flatten() {
-                    none.string(cx, &input.value.description);
-                    default.string(cx, &input.value.default);
-                }
+                let inputs = self.workflow_call_inputs(cx, call);
+                self.workflow
+                    .add_inputs(ObjectTy::new(inputs, Rest::Strict));
                 for secret in call.secrets.value().into_iter().flatten() {
                     none.string(cx, &secret.value.description);
                 }
@@ -313,6 +328,51 @@ impl Expression {
                 none.strings(cx, &image.versions);
             }
         }
+    }
+
+    /// Checks the description and the default of each input of `call`, and returns the types of
+    /// the inputs, keyed by their lower-case names.
+    ///
+    /// A default sees only the inputs declared before it, so a default that reads its own input
+    /// or a later one is reported. It also sees the inputs of a `workflow_dispatch` written
+    /// before `workflow_call` under `on`, as in the reference.
+    fn workflow_call_inputs(
+        &self,
+        cx: &mut Context<'_>,
+        call: &WorkflowCallEvent<'_>,
+    ) -> BTreeMap<String, Ty> {
+        let none = self.at("");
+        let mut inputs = BTreeMap::new();
+        for input in call.inputs.value().into_iter().flatten() {
+            none.string(cx, &input.value.description);
+            let mut env = self.workflow.clone();
+            env.add_inputs(ObjectTy::new(inputs.clone(), Rest::Strict));
+            env.set_workflow_key("on.workflow_call.inputs.<inputs_id>.default");
+            let default = input.value.default.value();
+            let types = default
+                .map(|default| Checker { env }.template(cx, default))
+                .unwrap_or_default();
+            let ty = match input.value.input_type.value() {
+                Some(WorkflowCallInputType::String) => Ty::String,
+                Some(WorkflowCallInputType::Boolean) => Ty::Bool,
+                Some(WorkflowCallInputType::Number) => Ty::Number,
+                None => Ty::Any,
+            };
+            if let (Some(default), [found]) = (default, types.as_slice())
+                && matches!(ty, Ty::Bool | Ty::Number)
+                && is_one_expression(default.value())
+                && !matches!(found, Ty::Any)
+                && *found != ty
+            {
+                let message = format!(
+                    "type of input {} must be {ty} but found type {found}",
+                    quote(input.key.value())
+                );
+                cx.report(&WRONG_INPUT_DEFAULT_TYPE, default.span(), message);
+            }
+            inputs.insert(input.folded().to_owned(), ty);
+        }
+        inputs
     }
 
     /// Checks `env` of a workflow, job, step, or container with the key `key`: each name and
@@ -380,24 +440,74 @@ impl Expression {
     }
 }
 
-/// Returns the contexts of `workflow`, which its jobs start from.
-fn workflow_env(workflow: &Workflow<'_>) -> TypeEnv {
-    let mut env = TypeEnv::new();
-    let events = workflow
-        .on
-        .value()
-        .into_iter()
-        .flat_map(|events| events.iter().flatten());
-    let has_inputs = events
-        .clone()
-        .any(|event| matches!(event, Event::WorkflowCall(_) | Event::WorkflowDispatch(_)));
-    if has_inputs {
-        // TODO(#144): type `inputs` and `github.event.inputs` from the inputs of
-        // `workflow_call` and `workflow_dispatch`, and `secrets` from the secrets of
-        // `workflow_call`. `secrets` accepts any name until then.
-        env.add_inputs(loose());
-    }
-    env
+/// Returns the types of the inputs of `dispatch`, keyed by their lower-case names. An input
+/// without a valid `type` has type `any`.
+fn dispatch_inputs_ty(dispatch: &WorkflowDispatchEvent<'_>) -> ObjectTy {
+    let inputs = dispatch.inputs.value().into_iter().flatten().map(|input| {
+        let ty = match input.value.input_type.value() {
+            Some(WorkflowDispatchInputType::Boolean) => Ty::Bool,
+            Some(WorkflowDispatchInputType::Number) => Ty::Number,
+            Some(
+                WorkflowDispatchInputType::String
+                | WorkflowDispatchInputType::Choice
+                | WorkflowDispatchInputType::Environment,
+            ) => Ty::String,
+            None => Ty::Any,
+        };
+        (input.folded().to_owned(), ty)
+    });
+    ObjectTy::new(inputs, Rest::Strict)
+}
+
+/// Returns the secrets that `on.workflow_call.secrets` declares, if `workflow_call` is the only
+/// trigger of `workflow` and the key is written. `secrets` then has only these and the
+/// built-in secrets. Otherwise it accepts any name: a caller may pass every secret with
+/// `secrets: inherit`, and another trigger runs the workflow with every repository secret
+/// (`docs/differences.md#secrets-context-mixed-triggers`). A value that is not a mapping
+/// declares no secret, as in the reference.
+fn declared_secrets(workflow: &Workflow<'_>) -> Option<ObjectTy> {
+    let events = workflow.on.value()?;
+    let [Some(Event::WorkflowCall(call))] = &events[..] else {
+        return None;
+    };
+    let secrets = match &call.secrets {
+        Field::Absent => return None,
+        Field::Invalid { .. } => Vec::new(),
+        Field::Valid { value, .. } => value
+            .iter()
+            .map(|secret| (secret.folded().to_owned(), Ty::String))
+            .collect(),
+    };
+    Some(ObjectTy::new(secrets, Rest::Strict))
+}
+
+/// Returns the type of `jobs` in `on.workflow_call.outputs.<output_id>.value`: each job with
+/// its `outputs` and its `result`. The reference has no `result`
+/// (`docs/differences.md#jobs-context-result`). A job that calls a reusable workflow has
+/// outputs of any name, because its outputs are not in this file.
+fn jobs_ty<'j, 'a: 'j>(jobs: impl Iterator<Item = &'j KeyedEntry<'a, Job<'a>>>) -> ObjectTy {
+    let jobs = jobs.map(|entry| {
+        let job = &entry.value;
+        let outputs = if job.workflow_call.is_some() {
+            loose()
+        } else {
+            let outputs = job.outputs.value().into_iter().flatten();
+            Arc::new(ObjectTy::new(
+                outputs.map(|output| (output.folded().to_owned(), Ty::String)),
+                Rest::Strict,
+            ))
+        };
+        let ty = Ty::strict([("outputs", Ty::Object(outputs)), ("result", Ty::String)]);
+        (entry.folded().to_owned(), ty)
+    });
+    ObjectTy::new(jobs, Rest::Strict)
+}
+
+/// Returns whether `value` is one `${{ }}` with only whitespace around it, the reference's
+/// `isExprAssigned`.
+fn is_one_expression(value: &str) -> bool {
+    let value = value.trim();
+    value.starts_with("${{") && value.ends_with("}}") && value.matches("${{").count() == 1
 }
 
 /// Returns the contexts of `job`, which its keys and steps start from.
