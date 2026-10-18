@@ -121,7 +121,9 @@ pub fn anchors(markdown: &str) -> BTreeSet<String> {
 /// An entry with `workflint` inserts that line before the first expected line
 /// that sorts after it by path, line, column and message. A pattern line
 /// sorts by the position at its start, if it has one, and counts as equal to
-/// any line at that position. An entry with both replaces the line.
+/// any line at that position. An entry with both replaces the line. A
+/// pattern line that replaces a line at its own position takes that line's
+/// place, because its order among the lines at that position is unknown.
 ///
 /// # Errors
 ///
@@ -129,6 +131,7 @@ pub fn anchors(markdown: &str) -> BTreeSet<String> {
 pub fn apply(expected: &[String], entries: &[&Entry]) -> Result<Vec<String>, String> {
     let mut lines = expected.to_vec();
     for entry in entries {
+        let mut removed = None;
         if let Some(upstream) = &entry.upstream {
             let index = lines
                 .iter()
@@ -140,9 +143,10 @@ pub fn apply(expected: &[String], entries: &[&Entry]) -> Result<Vec<String>, Str
                     )
                 })?;
             lines.remove(index);
+            removed = Some((index, upstream.as_str()));
         }
         if let Some(workflint) = &entry.workflint {
-            insert(&mut lines, workflint);
+            place(&mut lines, removed, workflint);
         }
     }
     Ok(lines)
@@ -157,6 +161,26 @@ pub fn insert(lines: &mut Vec<String>, line: &str) {
         .position(|other| compare(&sort_key(other), &key) == Ordering::Greater)
         .unwrap_or(lines.len());
     lines.insert(index, line.to_owned());
+}
+
+/// Inserts `line`, the `workflint` line of an entry, as [`apply`] does.
+/// `removed` is the index that the entry's `upstream` line was removed from,
+/// with that line, if the entry has one.
+pub fn place(lines: &mut Vec<String>, removed: Option<(usize, &str)>, line: &str) {
+    match removed {
+        Some((index, upstream)) if pattern(line).is_some() && same_position(upstream, line) => {
+            lines.insert(index, line.to_owned());
+        }
+        _ => insert(lines, line),
+    }
+}
+
+/// Whether two expected lines have a position and it is the same.
+fn same_position(a: &str, b: &str) -> bool {
+    match (sort_key(a), sort_key(b)) {
+        (Some(a), Some(b)) => (a.0, a.1, a.2) == (b.0, b.1, b.2),
+        _ => false,
+    }
 }
 
 /// The file path of an expected line: the path of an exact line, or the path
@@ -383,6 +407,24 @@ workflint = "workflows/a.yaml:1:1: b [action]"
         );
         assert_eq!(line_path("/is unknown/"), None);
         assert_eq!(line_path("Hello, world!"), None);
+    }
+
+    #[test]
+    fn a_pattern_line_that_replaces_a_line_at_its_position_takes_its_place() {
+        let expected = lines(&[
+            "/test.yaml:1:1: a/",
+            "/test.yaml:1:1: b/",
+            "/test.yaml:1:1: c/",
+        ]);
+        let replaced = entry(Some("/test.yaml:1:1: a/"), Some("/test.yaml:1:1: A/"));
+        assert_eq!(
+            apply(&expected, &[&replaced]).unwrap(),
+            lines(&[
+                "/test.yaml:1:1: A/",
+                "/test.yaml:1:1: b/",
+                "/test.yaml:1:1: c/"
+            ])
+        );
     }
 
     #[test]

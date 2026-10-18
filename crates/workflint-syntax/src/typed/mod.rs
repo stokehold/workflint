@@ -674,13 +674,14 @@ impl<'s> Decoder<'s> {
     }
 
     /// Decodes `id` into a `map[string]interface{}`, whose values the
-    /// reference never reads.
-    pub(crate) fn any_map(&mut self, id: NodeId) -> Result<bool, Fatal> {
+    /// reference never reads. `non_nil` says whether the map is set.
+    pub(crate) fn any_map(&mut self, id: NodeId, non_nil: &mut bool) -> Result<bool, Fatal> {
         self.unmarshal(id, |d, id, node| match &node.kind {
             NodeKind::Mapping(_) => {
                 if !d.unique_keys(id) {
                     return Ok(false);
                 }
+                *non_nil = true;
                 d.walk(Request::Entries {
                     id,
                     string_keys: true,
@@ -688,7 +689,10 @@ impl<'s> Decoder<'s> {
                 })?;
                 Ok(true)
             }
-            NodeKind::Scalar(scalar) if resolve(scalar)? == Resolved::Null => Ok(true),
+            NodeKind::Scalar(scalar) if resolve(scalar)? == Resolved::Null => {
+                *non_nil = false;
+                Ok(true)
+            }
             _ => {
                 d.collection_mismatch(id, node, "map[string]interface {}");
                 Ok(false)

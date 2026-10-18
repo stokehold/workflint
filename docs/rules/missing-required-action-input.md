@@ -6,7 +6,7 @@
 
 A step does not set an input that its action requires.
 
-An input is required when the action's metadata has `required: true` and no `default`. workflint knows the inputs of popular actions at their common versions, such as `actions/cache@v4`. Each missing input gets its own error at `uses:`.
+An input is required when the action's metadata has `required: true` and no `default`. workflint knows the inputs of popular actions at their common versions, such as `actions/cache@v4`, and reads the `action.yml` of local actions. Each missing input gets its own error at `uses:`.
 
 ## Why
 

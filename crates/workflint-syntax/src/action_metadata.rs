@@ -353,7 +353,10 @@ fn decode_runs(d: &mut Decoder<'_>, id: NodeId, runs: &mut ActionRuns) -> Result
                 4 => &mut runs.post,
                 5 => &mut runs.post_if,
                 6 => {
-                    d.any_slice(value, &mut runs.has_steps)?;
+                    let mut non_nil = false;
+                    d.any_slice(value, &mut non_nil)?;
+                    let source = d.source();
+                    runs.steps = non_nil.then(|| source.written(source.resolve_alias(value)).len());
                     return Ok(());
                 }
                 7 => &mut runs.image,
@@ -361,11 +364,11 @@ fn decode_runs(d: &mut Decoder<'_>, id: NodeId, runs: &mut ActionRuns) -> Result
                 9 => &mut runs.entrypoint,
                 10 => &mut runs.post_entrypoint,
                 11 => {
-                    d.any_slice(value, &mut false)?;
+                    d.any_slice(value, &mut runs.has_args)?;
                     return Ok(());
                 }
                 _ => {
-                    d.any_map(value)?;
+                    d.any_map(value, &mut runs.has_env)?;
                     return Ok(());
                 }
             };
@@ -440,9 +443,16 @@ pub struct ActionRuns {
     pub entrypoint: String,
     /// `post-entrypoint`, for a Docker action.
     pub post_entrypoint: String,
-    /// Whether `steps` is a sequence, for a composite action. The
-    /// reference checks only this, so the steps themselves are not kept.
-    pub has_steps: bool,
+    /// The number of items of `steps` if it is a sequence, for a composite
+    /// action. A missing or null value is `None`. The reference checks only
+    /// this, so the steps themselves are not kept.
+    pub steps: Option<usize>,
+    /// Whether `args` is a sequence, for a Docker action. A null value is
+    /// unset.
+    pub has_args: bool,
+    /// Whether `env` is a mapping, for a Docker action. A null value is
+    /// unset.
+    pub has_env: bool,
 }
 
 /// The `branding` section of a local action.

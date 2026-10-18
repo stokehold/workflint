@@ -1226,7 +1226,7 @@ fn outputs_come_from_the_action_that_the_step_runs() {
 
 #[test]
 fn a_local_action_with_broken_metadata_has_outputs_of_any_name() {
-    // The `action` rule reports the broken metadata (M4.18). This rule reports nothing.
+    // The `action` rule reports the broken metadata. This rule reports nothing.
     let messages = steps_messages(
         "      - id: broken
         uses: ./.github/actions/broken
