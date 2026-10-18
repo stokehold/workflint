@@ -79,15 +79,28 @@ pub fn comparable_lines(
 /// binary, without the indicator lines. `kind` maps the code in the
 /// brackets of `actual`.
 ///
+/// Each of `replacements`, an `upstream` line and the `workflint` line that
+/// replaces it, takes the place of the first error line of `expected` that
+/// equals its `upstream` line. The snippet lines under it stay. A
+/// replacement whose line is not in `expected` does nothing, because the
+/// allow-list records of a fixture may cover lines that the example leaves
+/// out.
+///
 /// # Errors
 ///
 /// Returns both sets of lines when they differ.
 pub fn compare(
     expected: &str,
     actual: &str,
+    replacements: &[(&str, &str)],
     kind: impl Fn(&str) -> Result<String, String>,
 ) -> Result<(), String> {
-    let want = comparable_lines(expected, |code| Ok(code.to_owned()))?;
+    let mut want = comparable_lines(expected, |code| Ok(code.to_owned()))?;
+    for (upstream, workflint) in replacements {
+        if let Some(line) = want.iter_mut().find(|line| line == upstream) {
+            (*workflint).clone_into(line);
+        }
+    }
     let have = comparable_lines(actual, kind)?;
     if want == have {
         return Ok(());
@@ -154,25 +167,43 @@ Only prose.
     fn output_matches_with_rule_ids_mapped_and_indicators_left_out() {
         let expected = "test.yaml:1:1: bad [syntax-check]\n  |\n1 | on: push\n  | ^~~\n";
         let actual = "test.yaml:1:1: bad [some-rule]\n  |\n1 | on: push\n  | ^~~~~~~~\n";
-        assert_eq!(compare(expected, actual, kind), Ok(()));
+        assert_eq!(compare(expected, actual, &[], kind), Ok(()));
     }
 
     #[test]
     fn another_message_or_snippet_line_is_a_difference() {
         let expected = "test.yaml:1:1: bad [syntax-check]\n  |\n1 | on: push\n  | ^~~\n";
         let actual = "test.yaml:1:1: worse [some-rule]\n  |\n1 | on: push\n  | ^~~\n";
-        let error = compare(expected, actual, kind).unwrap_err();
+        let error = compare(expected, actual, &[], kind).unwrap_err();
         assert!(
             error.contains("test.yaml:1:1: worse [syntax-check]"),
             "{error}"
         );
         let moved = "test.yaml:1:1: bad [some-rule]\n  |\n1 | on: pull\n  | ^~~\n";
-        assert!(compare(expected, moved, kind).is_err());
+        assert!(compare(expected, moved, &[], kind).is_err());
+    }
+
+    #[test]
+    fn a_replacement_changes_the_expected_line_and_keeps_its_snippet() {
+        let expected = "test.yaml:1:1: bad [syntax-check]\n  |\n1 | on: push\n  | ^~~\n";
+        let actual = "test.yaml:1:1: better [some-rule]\n  |\n1 | on: push\n  | ^~~\n";
+        let replacements = [
+            (
+                "test.yaml:1:1: bad [syntax-check]",
+                "test.yaml:1:1: better [syntax-check]",
+            ),
+            (
+                "test.yaml:9:9: absent [syntax-check]",
+                "test.yaml:9:9: x [syntax-check]",
+            ),
+        ];
+        assert_eq!(compare(expected, actual, &replacements, kind), Ok(()));
+        assert!(compare(expected, actual, &[], kind).is_err());
     }
 
     #[test]
     fn an_unknown_rule_id_is_an_error() {
-        let error = compare("", "test.yaml:1:1: bad [other]\n", kind).unwrap_err();
+        let error = compare("", "test.yaml:1:1: bad [other]\n", &[], kind).unwrap_err();
         assert_eq!(error, "no kind for other");
     }
 }

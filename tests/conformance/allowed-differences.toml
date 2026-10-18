@@ -68,3 +68,9 @@ upstream = '/test\.yaml:58:15: label "" is unknown\. available labels are .+\. i
 anchor = "invalid-value-reported-once"
 fixture = "err/issue280_runs_on"
 upstream = '/test\.yaml:64:21: label "" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+
+[[difference]]
+anchor = "if-cond-suggestion"
+fixture = "examples/if_cond_always_true"
+upstream = '''test.yaml:29:13: if: condition "${{ github.event_name == 'push' }} && ${{ github.ref_name == 'main' }}" is always evaluated to true because extra characters are around ${{ }} [if-cond]'''
+workflint = '''test.yaml:29:13: if: condition "${{ github.event_name == 'push' }} && ${{ github.ref_name == 'main' }}" is always evaluated to true because extra characters are around ${{ }}. did you mean "${{ github.event_name == 'push' && github.ref_name == 'main' }}"? [if-cond]'''

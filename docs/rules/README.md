@@ -33,6 +33,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | Rule | Kind | Category | Default severity | Description |
 |---|---|---|---|---|
 | `case-argument-count` | `expression` | correctness | error | `case()` has an even number of arguments, so it has no default value |
+| [`constant-condition`](constant-condition.md) | `if-cond` | correctness | error | An `if:` condition has the same value in every run |
 | `context-not-allowed` | `expression` | correctness | error | An expression reads a context that its workflow key does not allow |
 | [`duplicate-key`](duplicate-key.md) | `syntax-check` | correctness | error | A mapping repeats a key |
 | [`empty-section`](empty-section.md) | `syntax-check` | correctness | error | A mapping or sequence that must have entries is empty or null |
@@ -40,6 +41,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`empty-workflow`](empty-workflow.md) | `syntax-check` | correctness | error | The file has no YAML document, or only comments |
 | [`expected-single-expression`](expected-single-expression.md) | `syntax-check` | correctness | error | A value that must be a literal or a single `${{ }}` expression is other text |
 | `function-not-allowed` | `expression` | correctness | error | An expression calls a special function that its workflow key does not allow |
+| [`if-always-true`](if-always-true.md) | `if-cond` | correctness | error | An `if:` condition has text around its `${{ }}`, so it is always true |
 | [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
 | `invalid-comparison` | `expression` | correctness | error | A comparison has operands that GitHub cannot compare |
 | `invalid-config-variable-name` | `expression` | correctness | error | The name in `vars.NAME` breaks GitHub's naming rules for configuration variables |

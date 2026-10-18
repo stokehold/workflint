@@ -3,6 +3,8 @@
 use crate::Rule;
 use crate::kind::{self, Kind};
 
+mod if_cond;
+
 /// The kinds of the reference's rules in the order its linter creates them for each file
 /// (`linter.go:558`): matrix, credentials, shell-name, runner-label, events, job-needs, action,
 /// env-var, id, glob, permissions, workflow-call, expression, deprecated-commands, if-cond,
@@ -32,7 +34,8 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&workflint_diagnostics::RuleMeta; 0] = [];
+pub(crate) static ALL: [&workflint_diagnostics::RuleMeta; 2] =
+    [&if_cond::CONSTANT_CONDITION, &if_cond::IF_ALWAYS_TRUE];
 
 /// Creates a fresh instance of each rule for one file, in [`CREATION_ORDER`].
 #[must_use]
@@ -45,8 +48,10 @@ pub fn create_rules<'a>() -> Vec<Box<dyn Rule<'a> + 'a>> {
 /// Each task that ports a reference rule adds an arm here. shellcheck and pyflakes come with
 /// M5.5, and only when their executable is found.
 fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
-    let _ = kind;
-    None
+    match kind.name {
+        "if-cond" => Some(Box::new(if_cond::IfCond)),
+        _ => None,
+    }
 }
 
 /// Calls `create` for each kind of [`CREATION_ORDER`] and keeps the rules it returns.

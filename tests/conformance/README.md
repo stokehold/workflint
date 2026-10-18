@@ -114,7 +114,7 @@ The binary has linted for real since M2.0, so the file lists only fixtures that 
 - A listed fixture whose binary crashes, hangs, or prints to standard error fails its test.
 - The test `expected_failures::expected-failures.toml` fails if a line names a fixture that does not exist, names another milestone than the rule above gives, or names a milestone in `milestones.toml`. It also fails if a note in the checklist says a row waits on a fixture that passes, or gives another milestone than this file.
 - The test `parity_checklist::parity-checklist.md` fails if a ticked row cites a fixture that does not exist or is listed here, if an open row with a milestone in `milestones.toml` cites a listed fixture, or if a row has more or fewer cells than its table's header.
-- The test `checks_md::checks.md` lints the `Example input` of each ticked row of the "docs/checks.md sections" table in the default output format, and compares the output with the section's `Output` block. It changes each rule ID to its kind and leaves out the `^~~~` lines, which differ by `docs/differences.md#column-units`.
+- The test `checks_md::checks.md` lints the `Example input` of each ticked row of the "docs/checks.md sections" table in the default output format, and compares the output with the section's `Output` block. It changes each rule ID to its kind and leaves out the `^~~~` lines, which differ by `docs/differences.md#column-units`. An allow-list record of a fixture in the row's "Upstream fixtures" cell that has both an `upstream` and a `workflint` line replaces that line of the `Output` block, if the block has it, and keeps the snippet under it.
 
 To see the full reason a listed fixture fails, remove its line and run its test.
 
