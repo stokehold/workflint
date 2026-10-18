@@ -25,12 +25,6 @@ const EXAMPLE_PATH: &str = "test.yaml";
 const INDEX_START: &str = "<!-- rules-index:start -->";
 const INDEX_END: &str = "<!-- rules-index:end -->";
 
-/// The rules that need no page yet: the `workflint-expr` rules, whose pages M4.11 (#148) writes.
-/// M4.11 removes this exemption.
-fn exempt(id: &str) -> bool {
-    workflint_expr::rules::ALL.iter().any(|rule| rule.id == id)
-}
-
 fn docs_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs")
 }
@@ -394,16 +388,12 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
     problems
 }
 
-/// Checks that every rule in `rules` has a page in `pages` unless `exempt`, that every page
-/// belongs to a rule, and that each `docs_url` names its page. Returns one message per problem.
-fn check_coverage(
-    rules: &[&RuleMeta],
-    pages: &BTreeMap<String, String>,
-    exempt: impl Fn(&str) -> bool,
-) -> Vec<String> {
+/// Checks that every rule in `rules` has a page in `pages`, that every page belongs to a rule, and
+/// that each `docs_url` names its page. Returns one message per problem.
+fn check_coverage(rules: &[&RuleMeta], pages: &BTreeMap<String, String>) -> Vec<String> {
     let mut problems = Vec::new();
     for rule in rules {
-        if !pages.contains_key(rule.id) && !exempt(rule.id) {
+        if !pages.contains_key(rule.id) {
             problems.push(format!("{} has no page docs/rules/{}.md", rule.id, rule.id));
         }
         let url = format!("{DOCS_URL_PREFIX}{}.md", rule.id);
@@ -466,7 +456,7 @@ fn every_page_follows_the_format_and_its_examples_give_the_listed_diagnostics() 
 
 #[test]
 fn every_registered_rule_has_a_page_and_every_page_a_registered_rule() {
-    let problems = check_coverage(registry::rules(), &read_pages(), exempt);
+    let problems = check_coverage(registry::rules(), &read_pages());
     assert!(problems.is_empty(), "{}", problems.join("\n"));
 }
 
@@ -671,7 +661,7 @@ static NEW_RULE: RuleMeta = RuleMeta {
 fn the_coverage_check_fails_when_a_registry_entry_has_no_page() {
     let mut rules = registry::rules().to_vec();
     rules.push(&NEW_RULE);
-    let problems = check_coverage(&rules, &read_pages(), exempt);
+    let problems = check_coverage(&rules, &read_pages());
     assert_eq!(problems, ["new-rule has no page docs/rules/new-rule.md"]);
 }
 
@@ -679,7 +669,7 @@ fn the_coverage_check_fails_when_a_registry_entry_has_no_page() {
 fn the_coverage_check_fails_when_a_page_has_no_registry_entry() {
     let mut pages = read_pages();
     pages.insert("old-rule".to_owned(), String::new());
-    let problems = check_coverage(registry::rules(), &pages, exempt);
+    let problems = check_coverage(registry::rules(), &pages);
     assert_eq!(
         problems,
         ["docs/rules/old-rule.md belongs to no registered rule"]
@@ -694,7 +684,7 @@ fn the_coverage_check_fails_when_a_docs_url_names_another_page() {
     };
     let mut pages = BTreeMap::new();
     pages.insert("new-rule".to_owned(), String::new());
-    let problems = check_coverage(&[&WRONG_URL], &pages, |_| false);
+    let problems = check_coverage(&[&WRONG_URL], &pages);
     assert_eq!(
         problems,
         [format!(
