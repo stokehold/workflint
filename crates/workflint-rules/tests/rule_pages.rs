@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use workflint_diagnostics::{
     Category, Color, FileId, RuleMeta, Severity, SourceFile, render_oneline, sort_and_dedup,
 };
+use workflint_rules::local::MemoryProject;
 use workflint_rules::registry;
 
 /// The prefix of every `docs_url`. The page name follows it.
@@ -56,11 +57,24 @@ fn read_pages() -> BTreeMap<String, String> {
     pages
 }
 
-/// A failing example: a workflow and the one-line diagnostics it gives.
+/// A file of the project of an example, from a `yaml file=<path>` block: its path from the
+/// project root and its text.
+type ProjectFile = (String, String);
+
+/// A failing example: a workflow, the project files beside it, and the one-line diagnostics it
+/// gives.
 #[derive(Debug)]
 struct Failing {
     workflow: String,
+    files: Vec<ProjectFile>,
     expected: Vec<String>,
+}
+
+/// A passing example: a workflow and the project files beside it.
+#[derive(Debug)]
+struct Passing {
+    workflow: String,
+    files: Vec<ProjectFile>,
 }
 
 /// A rule page, as `docs/rules/README.md` describes it.
@@ -74,7 +88,7 @@ struct Page {
     /// The `##` headings in page order.
     headings: Vec<String>,
     failing: Vec<Failing>,
-    passing: Vec<String>,
+    passing: Vec<Passing>,
     /// The rule IDs of the pages that this page links, such as `unexpected-key` for
     /// `[unexpected-key](unexpected-key.md)`.
     linked_rules: Vec<String>,
@@ -104,6 +118,21 @@ fn link_targets(line: &str) -> impl Iterator<Item = &str> {
         .filter_map(|rest| rest.split_once(')').map(|(target, _)| target))
 }
 
+/// Reads the lines of a code block up to its closing fence, each with a final line break.
+fn read_block<'t>(lines: &mut impl Iterator<Item = &'t str>) -> Result<String, String> {
+    let mut block = String::new();
+    loop {
+        let Some(inner) = lines.next() else {
+            return Err("a code block is not closed".to_owned());
+        };
+        if inner == "```" {
+            return Ok(block);
+        }
+        block.push_str(inner);
+        block.push('\n');
+    }
+}
+
 /// Parses a page. The error says what does not follow the format.
 fn parse_page(text: &str) -> Result<Page, String> {
     let mut page = Page::default();
@@ -118,10 +147,15 @@ fn parse_page(text: &str) -> Result<Page, String> {
     let mut head: Vec<&str> = Vec::new();
     // The YAML block of a failing example that waits for its `text` block.
     let mut pending: Option<String> = None;
+    // The project files for the next example of the section.
+    let mut files: Vec<ProjectFile> = Vec::new();
     while let Some(line) = lines.next() {
         if let Some(heading) = line.strip_prefix("## ") {
             if pending.is_some() {
                 return Err("a failing example has no `text` block".to_owned());
+            }
+            if !files.is_empty() {
+                return Err("a `yaml file=` block is not followed by an example".to_owned());
             }
             page.headings.push(heading.to_owned());
             section = if heading.starts_with("Failing example") {
@@ -144,28 +178,32 @@ fn parse_page(text: &str) -> Result<Page, String> {
             }
         }
         if let Some(lang) = line.strip_prefix("```") {
-            let mut block = String::new();
-            loop {
-                let Some(inner) = lines.next() else {
-                    return Err("a code block is not closed".to_owned());
-                };
-                if inner == "```" {
-                    break;
+            let block = read_block(&mut lines)?;
+            if let Some(path) = lang.strip_prefix("yaml file=") {
+                if !matches!(section, Section::Failing | Section::Passing) || pending.is_some() {
+                    return Err(
+                        "a `yaml file=` block must come before the workflow of an example"
+                            .to_owned(),
+                    );
                 }
-                block.push_str(inner);
-                block.push('\n');
+                files.push((path.to_owned(), block));
+                continue;
             }
             match (section, lang, pending.take()) {
                 (Section::Failing, "yaml", None) => pending = Some(block),
                 (Section::Failing, "text", Some(workflow)) => page.failing.push(Failing {
                     workflow,
+                    files: std::mem::take(&mut files),
                     expected: block
                         .lines()
                         .filter(|line| !line.is_empty())
                         .map(str::to_owned)
                         .collect(),
                 }),
-                (Section::Passing, "yaml", None) => page.passing.push(block),
+                (Section::Passing, "yaml", None) => page.passing.push(Passing {
+                    workflow: block,
+                    files: std::mem::take(&mut files),
+                }),
                 (Section::Other, _, None) => {}
                 (Section::Head, _, _) => {
                     return Err("a code block comes before the first `##` section".to_owned());
@@ -189,6 +227,9 @@ fn parse_page(text: &str) -> Result<Page, String> {
     }
     if pending.is_some() {
         return Err("a failing example has no `text` block".to_owned());
+    }
+    if !files.is_empty() {
+        return Err("a `yaml file=` block is not followed by an example".to_owned());
     }
 
     parse_head(&head, &mut page)?;
@@ -219,15 +260,26 @@ fn parse_head(head: &[&str], page: &mut Page) -> Result<(), String> {
 }
 
 /// Lints `workflow` as the binary does, without the file system: the YAML layer, the workflow
-/// parser, and the rules. Returns the diagnostics in the one-line format.
-fn lint(workflow: &str) -> Vec<String> {
+/// parser, and the rules. The workflow is `test.yaml` at the root of a project in memory that
+/// has `files`. Returns the diagnostics in the one-line format.
+fn lint(workflow: &str, files: &[ProjectFile]) -> Vec<String> {
+    let project = files
+        .iter()
+        .fold(MemoryProject::new(), |project, (path, text)| {
+            project.with_file(path, text)
+        })
+        .linting(EXAMPLE_PATH);
     let file = SourceFile::new(FileId::new(0), EXAMPLE_PATH, workflow).unwrap();
     let parsed = workflint_yaml::parse(&file);
     let mut diagnostics = parsed.diagnostics;
     if let Some(document) = &parsed.document {
         let syntax = workflint_syntax::parse(&file, document);
         diagnostics.extend(syntax.diagnostics);
-        diagnostics.extend(workflint_rules::run(&file, &syntax.workflow));
+        diagnostics.extend(workflint_rules::run_in_project(
+            &file,
+            &syntax.workflow,
+            &project,
+        ));
     }
     sort_and_dedup(&file, &mut diagnostics);
     let mut out = Vec::new();
@@ -296,7 +348,7 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
     }
     for (index, example) in page.failing.iter().enumerate() {
         let n = index + 1;
-        let actual = lint(&example.workflow);
+        let actual = lint(&example.workflow, &example.files);
         if actual != example.expected {
             problem(format!(
                 "failing example {n} gives\n{}\nbut the page lists\n{}",
@@ -317,8 +369,8 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
             }
         }
     }
-    for (index, workflow) in page.passing.iter().enumerate() {
-        let actual = lint(workflow);
+    for (index, example) in page.passing.iter().enumerate() {
+        let actual = lint(&example.workflow, &example.files);
         if !actual.is_empty() {
             problem(format!(
                 "passing example {} gives\n{}",
@@ -724,5 +776,92 @@ fn a_page_with_an_unreachable_section_must_have_no_failing_example() {
     assert!(
         problems.contains(&"single-expression-required: a failing example on the page of a rule that never reports".to_owned()),
         "{problems:#?}"
+    );
+}
+
+/// A page of `missing-required-workflow-input` whose examples are `examples`.
+fn workflow_call_page(examples: &str) -> String {
+    format!(
+        "\
+# missing-required-workflow-input
+
+| Kind | Category | Default severity |
+|---|---|---|
+| `workflow-call` | correctness | error |
+
+A call does not set an input that the local reusable workflow requires.
+
+## Why
+
+GitHub fails the run.
+
+{examples}"
+    )
+}
+
+/// A reusable workflow with the required input `name`, as a `yaml file=` block.
+const CALLEE_BLOCK: &str = "```yaml file=.github/workflows/greet.yaml
+on:
+  workflow_call:
+    inputs:
+      name:
+        type: string
+        required: true
+```
+";
+
+/// A workflow that calls the workflow of [`CALLEE_BLOCK`] without inputs.
+const CALLER_BLOCK: &str = "```yaml
+on: push
+jobs:
+  greet:
+    uses: ./.github/workflows/greet.yaml
+```
+";
+
+/// The diagnostic of [`CALLER_BLOCK`] when the project has [`CALLEE_BLOCK`].
+const MISSING_NAME: &str = "```text
+test.yaml:4:11: input \"name\" is required by \"./.github/workflows/greet.yaml\" reusable workflow [missing-required-workflow-input]
+```
+";
+
+#[test]
+fn a_file_block_adds_the_file_to_the_project_of_the_next_example_only() {
+    // Without the file, the passing example would report that the callee cannot be read.
+    let page = workflow_call_page(&format!(
+        "## Failing example\n\n{CALLEE_BLOCK}\n{CALLER_BLOCK}\n{MISSING_NAME}\n\
+         ## Passing example\n\n{CALLEE_BLOCK}\n```yaml\non: push\njobs:\n  greet:\n    \
+         uses: ./.github/workflows/greet.yaml\n    with:\n      name: world\n```\n"
+    ));
+    let rule = registry::find("missing-required-workflow-input");
+    assert_eq!(
+        check_page("missing-required-workflow-input", &page, rule),
+        [] as [String; 0]
+    );
+}
+
+#[test]
+fn a_file_block_without_an_example_after_it_fails() {
+    let page = workflow_call_page(&format!(
+        "## Failing example\n\n{CALLEE_BLOCK}\n{CALLER_BLOCK}\n{MISSING_NAME}\n\
+         ## Passing example\n\n```yaml\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    \
+         steps:\n      - run: echo\n```\n\n{CALLEE_BLOCK}"
+    ));
+    assert_eq!(
+        check_page("missing-required-workflow-input", &page, None),
+        ["missing-required-workflow-input: a `yaml file=` block is not followed by an example"]
+    );
+}
+
+#[test]
+fn a_file_block_between_a_workflow_and_its_diagnostics_fails() {
+    let page = workflow_call_page(&format!(
+        "## Failing example\n\n{CALLER_BLOCK}\n{CALLEE_BLOCK}\n{MISSING_NAME}"
+    ));
+    assert_eq!(
+        check_page("missing-required-workflow-input", &page, None),
+        [
+            "missing-required-workflow-input: a `yaml file=` block must come before the workflow of an example"
+        ]
     );
 }

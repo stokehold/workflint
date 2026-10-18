@@ -24,7 +24,15 @@ A page has these parts, in this order:
 6. `## Passing example`, or `## Passing examples`, with one or more `yaml` blocks. Each workflow gives no diagnostic at all.
 7. `## Differences from actionlint`, only when the rule behaves differently from actionlint. It lists links to the entries in [differences.md](../differences.md), and the test checks that each anchor exists.
 
-A page whose examples need files beside the workflow, such as a local action or a reusable workflow, comes with the rule that reads those files. M4.18 (#155) and M4.25 (#162) give the test the in-memory files of M4.3 (#140) for them.
+An example that needs files beside the workflow, such as a reusable workflow that it calls, puts each file in a `yaml` block before the workflow, with the file's path from the project root after `file=`:
+
+````markdown
+```yaml file=.github/workflows/build.yaml
+on: workflow_call
+```
+````
+
+The test holds these files in memory, in a project whose root also holds `test.yaml`. They belong to the next example of the section only. A block that no example follows, or that comes between a workflow and its `text` block, fails the test. A message that names a file has its path from the project root, where the binary prints an absolute path.
 
 ## Index
 
@@ -34,6 +42,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | Rule | Kind | Category | Default severity | Description |
 |---|---|---|---|---|
 | [`activity-types-not-supported`](activity-types-not-supported.md) | `events` | correctness | error | `types` is set on an event that has no activity types |
+| [`broken-reusable-workflow`](broken-reusable-workflow.md) | `workflow-call` | correctness | error | A called local reusable workflow has no valid `on.workflow_call` section |
 | `case-argument-count` | `expression` | correctness | error | `case()` has an even number of arguments, so it has no default value |
 | [`choice-input-without-options`](choice-input-without-options.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` has no `options` |
 | [`conflicting-filters`](conflicting-filters.md) | `events` | correctness | error | A filter and its `-ignore` filter are both set on one event |
@@ -66,12 +75,15 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | `invalid-object-filter` | `expression` | correctness | error | An object filter `.*` applies to a value without object elements |
 | `invalid-property-access` | `expression` | correctness | error | An expression reads a property with a dot from a value that is not an object |
 | [`invalid-reusable-call-key`](invalid-reusable-call-key.md) | `syntax-check` | correctness | error | A job that calls a reusable workflow has a key that only a job with steps may have |
+| [`invalid-reusable-workflow-ref`](invalid-reusable-workflow-ref.md) | `workflow-call` | correctness | error | A job's `uses:` is not `./path/to/workflow.yml` or `owner/repo/path/to/workflow.yml@ref` |
 | [`invalid-runner-label-pattern`](invalid-runner-label-pattern.md) | `runner-label` | correctness | error | A runner label pattern in the config is not a valid glob |
 | [`invalid-workflow-call-input-type`](invalid-workflow-call-input-type.md) | `syntax-check` | correctness | error | A `workflow_call` input has an unknown `type` |
 | [`merge-key-unsupported`](merge-key-unsupported.md) | `syntax-check` | correctness | error | A mapping has a `<<` merge key, which GitHub Actions does not apply |
 | `missing-format-argument` | `expression` | correctness | error | The format string of `format()` has a placeholder beyond its arguments |
 | [`missing-required-action-input`](missing-required-action-input.md) | `action` | correctness | error | A step does not set an input that its action requires |
 | [`missing-required-key`](missing-required-key.md) | `syntax-check` | correctness | error | A required section or key is missing |
+| [`missing-required-workflow-input`](missing-required-workflow-input.md) | `workflow-call` | correctness | error | A call does not set an input that the local reusable workflow requires |
+| [`missing-required-workflow-secret`](missing-required-workflow-secret.md) | `workflow-call` | correctness | error | A call does not pass a secret that the local reusable workflow requires |
 | [`missing-workflow-run-workflows`](missing-workflow-run-workflows.md) | `events` | correctness | error | A `workflow_run` event has no `workflows` |
 | [`non-positive-number`](non-positive-number.md) | `syntax-check` | correctness | error | A literal `timeout-minutes` or `max-parallel` is zero or less |
 | [`object-in-template`](object-in-template.md) | `expression` | correctness | error | A `${{ }}` in a string evaluates to an object, an array, or null |
@@ -80,6 +92,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`recursive-alias`](recursive-alias.md) | `syntax-check` | correctness | error | An alias refers to a node that encloses it |
 | [`required-input-with-default`](required-input-with-default.md) | `events` | correctness | error | A required `workflow_call` input has a default, which is never used |
 | [`reusable-call-key-without-uses`](reusable-call-key-without-uses.md) | `syntax-check` | correctness | error | A job without `uses` has `with` or `secrets` |
+| [`reusable-workflow-not-found`](reusable-workflow-not-found.md) | `workflow-call` | correctness | error | The file of a called local reusable workflow cannot be read |
 | [`runner-label-conflict`](runner-label-conflict.md) | `runner-label` | correctness | error | Two `runs-on` labels of a job cannot be on the same runner |
 | [`schedule-without-config`](schedule-without-config.md) | `syntax-check` | correctness | error | `schedule` is named in a string or a sequence item of `on`, so it has no `cron` entries |
 | [`single-expression-required`](single-expression-required.md) | `expression` | correctness | error | A value that must be one `${{ }}` holds another number of them |
@@ -91,6 +104,8 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | `undefined-function` | `expression` | correctness | error | An expression calls a function that is not built in |
 | `undefined-property` | `expression` | correctness | error | An expression reads a property that its strict object type does not have |
 | `undefined-variable` | `expression` | correctness | error | An expression reads a variable that is not a context |
+| [`undefined-workflow-input`](undefined-workflow-input.md) | `workflow-call` | correctness | error | `with:` sets an input that the local reusable workflow does not declare |
+| [`undefined-workflow-secret`](undefined-workflow-secret.md) | `workflow-call` | correctness | error | `secrets:` passes a secret that the local reusable workflow does not declare |
 | [`unexpected-key`](unexpected-key.md) | `syntax-check` | correctness | error | A mapping has a key that its section does not define |
 | [`unexpected-node-kind`](unexpected-node-kind.md) | `syntax-check` | correctness | error | A node has the wrong kind, such as a sequence where a mapping is expected |
 | [`unknown-anchor`](unknown-anchor.md) | `syntax-check` | correctness | error | An alias refers to an anchor that no earlier node defines |

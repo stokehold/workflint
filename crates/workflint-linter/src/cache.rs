@@ -135,6 +135,11 @@ impl LocalMetadata for FileMetadata<'_> {
         }
     }
 
+    fn record_invalid_workflow(&self, spec: &str) {
+        // A spec that is already set keeps its value.
+        let _ = slot(&self.cache.workflows, spec).set(None);
+    }
+
     fn action_file_exists(&self, action: &LocalAction, file: &str) -> bool {
         let path = clean(&action.dir.join(from_slash(file)));
         // As in the reference, only a file that is known not to exist is missing.

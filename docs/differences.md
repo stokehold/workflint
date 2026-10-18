@@ -618,8 +618,18 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the same input must give the same output.
 - Upstream issue: none.
 - Milestone: M5.
-- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The rules that report the errors arrive in M4.9, M4.10, M4.18, and M4.25, and the order by file path with M5.3.
+- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The `workflow-call` rule reports the errors of reusable workflows since M4.25. The other rules that report them arrive in M4.9, M4.10, and M4.18, and the order by file path with M5.3.
 - Fixtures: `projects/broken_local_action`, `projects/broken_reusable_workflow`, `projects/workflow_call_not_found`.
+
+<a id="dispatch-input-hint"></a>
+### Hint for inputs of `workflow_dispatch`
+
+- Upstream: a call to a local reusable workflow that sets an input the callee declares only under `on.workflow_dispatch.inputs` gets the plain `input "x" is not defined in "./w.yaml" reusable workflow. ...` message (`rule_workflow_call.go:113`).
+- workflint: the check still uses only `on.workflow_call.inputs`, and the message ends with `. "x" is defined in "workflow_dispatch" inputs, but a reusable workflow call sets only "workflow_call" inputs`.
+- Why: a workflow often declares the same inputs for both triggers. When the author forgets them under `workflow_call`, the plain message lists the `workflow_call` inputs and leaves the author wondering why an input they can see is undefined.
+- Upstream issue: #336.
+- Milestone: M4.
+- Status: implemented.
 
 ## Configuration and project discovery
 

@@ -1,13 +1,13 @@
 //! The metadata of a local reusable workflow, from its `on.workflow_call`
 //! section.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use workflint_diagnostics::SourceFile;
 use workflint_yaml::{NodeId, NodeKind, simple_lowercase};
 
 use crate::typed::{DecodeError, Decoder, Fatal, Source};
-use crate::{Field, MetadataError, WorkflowCallEvent, WorkflowCallInputType};
+use crate::{Event, Field, MetadataError, Workflow, WorkflowCallEvent, WorkflowCallInputType};
 
 /// The inputs, outputs, and secrets of a local reusable workflow, decoded
 /// from its `on.workflow_call` section as the reference decodes them.
@@ -19,6 +19,12 @@ pub struct ReusableWorkflowMetadata {
     pub outputs: BTreeMap<String, ReusableWorkflowOutput>,
     /// `secrets`, keyed by the secret name in lowercase.
     pub secrets: BTreeMap<String, ReusableWorkflowSecret>,
+    /// The names of the inputs of `on.workflow_dispatch`, in lowercase.
+    ///
+    /// The reference does not read them. The `undefined-workflow-input`
+    /// message names an input found here, because a call cannot set it
+    /// (rhysd/actionlint#336).
+    pub dispatch_inputs: BTreeSet<String>,
 }
 
 impl ReusableWorkflowMetadata {
@@ -78,9 +84,11 @@ impl ReusableWorkflowMetadata {
                     .written_entries(on)
                     .find(|entry| is_workflow_call(entry.key))
                 {
-                    return source
+                    let mut metadata = source
                         .decode(entry.value, decode_workflow_call)
-                        .map_err(error);
+                        .map_err(error)?;
+                    metadata.dispatch_inputs = dispatch_inputs(&source, on);
+                    return Ok(metadata);
                 }
             }
             Some(NodeKind::Scalar(_)) if is_workflow_call(on) => return Ok(Self::default()),
@@ -99,6 +107,31 @@ impl ReusableWorkflowMetadata {
             "\"workflow_call\" event trigger is not found in \"on:\" at line:{}, column:{}",
             position.line, position.column
         )))
+    }
+
+    /// Converts the first `workflow_call` event of `workflow` with
+    /// [`from_event`](Self::from_event), and adds the input names of its
+    /// first `workflow_dispatch` event. Returns `None` if `workflow` has no
+    /// `workflow_call` event.
+    #[must_use]
+    pub fn from_workflow(workflow: &Workflow<'_>) -> Option<Self> {
+        let mut metadata = Self::from_event(workflow.workflow_call_event()?);
+        let dispatch = workflow
+            .on
+            .value()
+            .into_iter()
+            .flat_map(|events| events.iter().flatten())
+            .find_map(|event| match event {
+                Event::WorkflowDispatch(event) => Some(event),
+                _ => None,
+            });
+        let inputs = dispatch.and_then(|event| event.inputs.value());
+        metadata.dispatch_inputs = inputs
+            .into_iter()
+            .flatten()
+            .map(|entry| entry.folded().to_owned())
+            .collect();
+        Some(metadata)
     }
 
     /// Converts the `workflow_call` event of a parsed workflow, as the
@@ -141,8 +174,35 @@ impl ReusableWorkflowMetadata {
                     (entry.folded().to_owned(), secret)
                 })
                 .collect(),
+            dispatch_inputs: BTreeSet::new(),
         }
     }
+}
+
+/// Returns the lowercase names of the inputs of the first
+/// `workflow_dispatch` event in the mapping `on`. An event or `inputs` that
+/// is not a mapping has no inputs. Merge keys are not followed.
+fn dispatch_inputs(source: &Source<'_>, on: NodeId) -> BTreeSet<String> {
+    let event = source
+        .written_entries(on)
+        .find(|entry| simple_lowercase(source.go_value(entry.key)) == "workflow_dispatch");
+    let mapping = |id: NodeId| {
+        let id = source.resolve_alias(id);
+        source.is_mapping(id).then_some(id)
+    };
+    let Some(event) = event.and_then(|event| mapping(event.value)) else {
+        return BTreeSet::new();
+    };
+    let inputs = source
+        .written_entries(event)
+        .find(|entry| source.go_value(entry.key) == "inputs");
+    let Some(inputs) = inputs.and_then(|inputs| mapping(inputs.value)) else {
+        return BTreeSet::new();
+    };
+    source
+        .written_entries(inputs)
+        .map(|entry| simple_lowercase(source.go_value(entry.key)).into_owned())
+        .collect()
 }
 
 /// Decodes the value of `workflow_call` into the reference's
