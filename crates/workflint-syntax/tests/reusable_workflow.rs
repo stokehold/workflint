@@ -54,6 +54,9 @@ fn dump(metadata: &ReusableWorkflowMetadata) -> String {
             secret.required,
         );
     }
+    for name in &metadata.dispatch_inputs {
+        let _ = writeln!(out, "dispatch input {}", quote(name));
+    }
     out
 }
 
@@ -467,15 +470,14 @@ fn deeply_nested_merges_decode_on_a_small_stack() {
 // `LocalReusableWorkflowCache.WriteWorkflowCallEvent` in `reusable_workflow.go`.
 
 /// Parses `text` as a workflow and prints the metadata of its first
-/// `workflow_call` event, or `none` if it has none.
+/// `workflow_call` event, with the inputs of its first `workflow_dispatch`
+/// event, or `none` if it has no `workflow_call` event.
 fn from_event(text: &str) -> String {
     let file = SourceFile::new(FileId::new(0), "reusable.yml", text).unwrap();
     let document = workflint_yaml::parse(&file).document.unwrap();
     let parsed = workflint_syntax::parse(&file, &document);
-    parsed.workflow.workflow_call_event().map_or_else(
-        || "none\n".to_owned(),
-        |event| dump(&ReusableWorkflowMetadata::from_event(event)),
-    )
+    ReusableWorkflowMetadata::from_workflow(&parsed.workflow)
+        .map_or_else(|| "none\n".to_owned(), |metadata| dump(&metadata))
 }
 
 #[test]
@@ -484,6 +486,16 @@ fn a_parsed_workflow_call_event_gives_the_metadata_that_decoding_gives() {
         "on:\n  workflow_call:\n",
         "on: workflow_call\n",
         "on: [push, workflow_call]\n",
+        "on:
+  workflow_dispatch:
+    inputs:
+      Env:
+        type: string
+  workflow_call:
+    inputs:
+      region:
+        type: string
+",
         "on:
   workflow_call:
     inputs:
@@ -569,4 +581,39 @@ fn a_required_flag_from_an_expression_is_not_required() {
         from_event(text),
         "input \"a\": name=\"a\" required=false type=any\nsecret \"s\": name=\"s\" required=false\n",
     );
+}
+
+#[test]
+fn the_inputs_of_workflow_dispatch_are_kept_by_their_lowercase_names() {
+    let text = "on:
+  WORKFLOW_DISPATCH:
+    inputs:
+      Env:
+        type: string
+      debug:
+        type: boolean
+  workflow_call:
+";
+    assert_eq!(
+        decode(text),
+        "dispatch input \"debug\"\ndispatch input \"env\"\n"
+    );
+    let text = text.replace("WORKFLOW_DISPATCH", "workflow_dispatch");
+    assert_eq!(from_event(&text), decode(&text));
+}
+
+#[test]
+fn workflow_dispatch_without_an_inputs_mapping_has_no_inputs() {
+    for text in [
+        "on:\n  workflow_dispatch:\n  workflow_call:\n",
+        "on:\n  workflow_dispatch:\n    inputs: x\n  workflow_call:\n",
+        "on: [workflow_dispatch, workflow_call]\n",
+    ] {
+        assert_eq!(decode(text), "", "{text}");
+    }
+}
+
+#[test]
+fn a_workflow_without_workflow_call_has_no_metadata_from_its_events() {
+    assert_eq!(from_event("on: workflow_dispatch\n"), "none\n");
 }

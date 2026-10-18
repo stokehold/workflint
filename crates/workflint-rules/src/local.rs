@@ -43,6 +43,12 @@ pub trait LocalMetadata: fmt::Debug {
     /// changes if the path was already registered or looked up.
     fn register_workflow_call(&self, metadata: ReusableWorkflowMetadata);
 
+    /// Records that `spec`, a `uses:` value that starts with `./`, is not a valid reference to
+    /// a local reusable workflow, which the rule that found it has reported. Later lookups of
+    /// `spec` in the run return [`Lookup::None`] without reading a file, as in the reference's
+    /// `RuleWorkflowCall.VisitJobPre`. Nothing changes if `spec` was already looked up.
+    fn record_invalid_workflow(&self, spec: &str);
+
     /// Returns whether the file at the relative path `file`, written with `/` separators, exists
     /// in the directory of `action`. A file that exists but cannot be inspected counts as
     /// existing, as in the reference.
@@ -159,6 +165,8 @@ impl LocalMetadata for NoProject {
     }
 
     fn register_workflow_call(&self, _metadata: ReusableWorkflowMetadata) {}
+
+    fn record_invalid_workflow(&self, _spec: &str) {}
 
     fn action_file_exists(&self, _action: &LocalAction, _file: &str) -> bool {
         false
@@ -319,6 +327,13 @@ impl LocalMetadata for MemoryProject {
                 .entry(spec.clone())
                 .or_insert_with(|| Some(Arc::new(metadata)));
         }
+    }
+
+    fn record_invalid_workflow(&self, spec: &str) {
+        self.looked()
+            .workflows
+            .entry(spec.to_owned())
+            .or_insert(None);
     }
 
     fn action_file_exists(&self, action: &LocalAction, file: &str) -> bool {

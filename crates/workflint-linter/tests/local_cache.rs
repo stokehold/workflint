@@ -480,3 +480,26 @@ fn a_workflow_outside_the_project_root_is_not_registered() {
         Lookup::Error(_)
     ));
 }
+
+#[test]
+fn a_recorded_invalid_workflow_is_not_read() {
+    let project = Project::new();
+    // The file exists, but the reference never reads a spec it found invalid.
+    project.write(".github/workflows/reusable.yaml@main", REUSABLE);
+    let cache = project.cache();
+    let spec = "./.github/workflows/reusable.yaml@main";
+    linting_ci(&cache).record_invalid_workflow(spec);
+    assert_eq!(linting_ci(&cache).reusable_workflow(spec), Lookup::None);
+}
+
+#[test]
+fn recording_an_invalid_workflow_keeps_an_earlier_lookup() {
+    let project = Project::new();
+    project.write(".github/workflows/reusable.yaml", REUSABLE);
+    let cache = project.cache();
+    let spec = "./.github/workflows/reusable.yaml";
+    let (read, _) = found(linting_ci(&cache).reusable_workflow(spec));
+    linting_ci(&cache).record_invalid_workflow(spec);
+    let (metadata, _) = found(linting_ci(&cache).reusable_workflow(spec));
+    assert!(Arc::ptr_eq(&read, &metadata));
+}
