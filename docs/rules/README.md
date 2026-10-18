@@ -58,6 +58,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`expected-single-expression`](expected-single-expression.md) | `syntax-check` | correctness | error | A value that must be a literal or a single `${{ }}` expression is other text |
 | [`filter-not-supported`](filter-not-supported.md) | `events` | correctness | error | A branch, tag, or path filter is set on an event that does not support it |
 | `function-not-allowed` | `expression` | correctness | error | An expression calls a special function that its workflow key does not allow |
+| [`hardcoded-password`](hardcoded-password.md) | `credentials` | correctness | error | `credentials.password` of a container or service is not a single `${{ }}` expression |
 | [`if-always-true`](if-always-true.md) | `if-cond` | correctness | error | An `if:` condition has text around its `${{ }}`, so it is always true |
 | [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
 | [`invalid-action-format`](invalid-action-format.md) | `action` | correctness | error | A step's `uses:` is not a local action, a Docker image, or `{owner}/{repo}@{ref}` |
@@ -66,6 +67,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | `invalid-config-variable-name` | `expression` | correctness | error | The name in `vars.NAME` breaks GitHub's naming rules for configuration variables |
 | [`invalid-dispatch-input-type`](invalid-dispatch-input-type.md) | `syntax-check` | correctness | error | A `workflow_dispatch` input has an unknown `type` |
 | [`invalid-docker-action`](invalid-docker-action.md) | `action` | correctness | error | A `docker://` action has an invalid URI or an empty tag |
+| [`invalid-env-var-name`](invalid-env-var-name.md) | `env-var` | correctness | error | A name in `env` contains `&`, `=`, a space, or a tab |
 | `invalid-expression-syntax` | `expression` | correctness | error | An expression in `${{ }}` cannot be lexed or parsed |
 | `invalid-index-access` | `expression` | correctness | error | An index has the wrong type, or its operand is neither an object nor an array |
 | [`invalid-input-default`](invalid-input-default.md) | `events` | correctness | error | The default of a `number` or `boolean` input of `workflow_call` or `workflow_dispatch` does not match its type |
