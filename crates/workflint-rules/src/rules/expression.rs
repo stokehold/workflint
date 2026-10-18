@@ -17,13 +17,14 @@ use std::sync::Arc;
 use workflint_data::UNTRUSTED_INPUTS;
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
-use workflint_expr::{ObjectTy, Rest, Ty, TypeEnv};
+use workflint_expr::{MAX_TYPE_DEPTH, ObjectTy, Rest, Ty, TypeEnv};
 use workflint_syntax::{
     Concurrency, Container, Credentials, Defaults, Env, Event, Exec, Expr, Field, Job, Keyed,
     KeyedEntry, Matrix, MatrixCombination, MatrixRow, Placeholder, RawValue, Runner, Snapshot,
     Step, Str, Template, Value, Workflow, WorkflowCall, WorkflowCallEvent, WorkflowCallInputType,
     WorkflowCallSecrets, WorkflowDispatchEvent, WorkflowDispatchInputType,
 };
+use workflint_yaml::Tag;
 
 use crate::{Context, Rule};
 
@@ -122,7 +123,21 @@ impl<'a> Rule<'a> for Expression {
 
     fn job_pre(&mut self, entry: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
         let job = &entry.value;
-        self.job = Some(job_env(&self.workflow, job));
+        // `needs` is typed before `matrix`, because the matrix may read `needs`. The type of
+        // `matrix` is set before the other keys are checked, because they all see it.
+        let mut env = self.workflow.clone();
+        // TODO(#147): type `needs` from the direct dependencies of the job and their outputs.
+        env.set_needs(loose());
+        self.job = Some(env);
+        let strategy = job.strategy.value();
+        if let Some(strategy) = strategy {
+            let matrix = self
+                .at("jobs.<job_id>.strategy")
+                .matrix(cx, &strategy.matrix);
+            if let (Some(matrix), Some(env)) = (matrix, &mut self.job) {
+                env.set_matrix(matrix);
+            }
+        }
 
         self.at("jobs.<job_id>.name").string(cx, &job.name);
         self.at("").strings(cx, &job.needs);
@@ -143,9 +158,8 @@ impl<'a> Rule<'a> for Expression {
         self.env_vars(cx, &job.env, "jobs.<job_id>.env");
         defaults(cx, &self.at("jobs.<job_id>.defaults.run"), &job.defaults);
         self.at("jobs.<job_id>.if").condition(cx, &job.condition);
-        if let Some(strategy) = job.strategy.value() {
+        if let Some(strategy) = strategy {
             let strategy_env = self.at("jobs.<job_id>.strategy");
-            strategy_env.matrix(cx, &strategy.matrix);
             strategy_env.bool(cx, &strategy.fail_fast);
             strategy_env.number(cx, &strategy.max_parallel, "integer value");
         }
@@ -510,20 +524,21 @@ fn is_one_expression(value: &str) -> bool {
     value.starts_with("${{") && value.ends_with("}}") && value.matches("${{").count() == 1
 }
 
-/// Returns the contexts of `job`, which its keys and steps start from.
-fn job_env(workflow: &TypeEnv, job: &Job<'_>) -> TypeEnv {
-    let mut env = workflow.clone();
-    // TODO(#147): type `needs` from the direct dependencies of the job and their outputs.
-    env.set_needs(loose());
-    if job
-        .strategy
-        .value()
-        .is_some_and(|strategy| strategy.matrix.is_present())
-    {
-        // TODO(#145): type `matrix` from the rows, `include`, and a whole-matrix expression.
-        env.set_matrix(loose());
+/// Returns the properties of the object type `ty`, or none if it is not an object.
+fn object_props(ty: &Ty) -> BTreeMap<String, Ty> {
+    match ty {
+        Ty::Object(object) => object.props().clone(),
+        _ => BTreeMap::new(),
     }
-    env
+}
+
+/// Returns the object type `ty` with the properties `props`.
+fn with_props(ty: &Ty, props: BTreeMap<String, Ty>) -> Ty {
+    let rest = match ty {
+        Ty::Object(object) => object.rest().clone(),
+        _ => Rest::Strict,
+    };
+    ObjectTy::new(props, rest).into()
 }
 
 /// An object type with no known property, which accepts any property.
@@ -676,21 +691,20 @@ impl Checker {
         self.typed(cx, expr, what, Want::Object);
     }
 
-    /// Checks the expressions of a matrix, which the reference checks while it types `matrix`
-    /// (`checkMatrix`). A value written as one `${{ }}` must be an object for the whole matrix,
-    /// an array for a row, and an array of objects for `exclude`.
+    /// Checks the expressions of a matrix and returns the type of `matrix`, the reference's
+    /// `checkMatrix`, or `None` if the matrix is absent or invalid. A value written as one
+    /// `${{ }}` must be an object for the whole matrix and for an element of `include` or
+    /// `exclude`, an array for a row and for `include`, and an array of objects for `exclude`.
     ///
-    /// TODO(#145): type `matrix` from these expressions and values, and check an element of
-    /// `include` written as one `${{ }}`, which the reference skips
-    /// (`docs/differences.md#matrix-include-expressions`).
-    fn matrix(&self, cx: &mut Context<'_>, matrix: &Value<'_, Matrix<'_>>) {
+    /// Each row has the merged type of its values, and `include` adds the properties of its
+    /// elements or merges them into the rows. `exclude` is checked but adds nothing. The
+    /// reference does not check an element of `include` written as one `${{ }}`, or merge its
+    /// type (`docs/differences.md#matrix-include-expressions`).
+    fn matrix(&self, cx: &mut Context<'_>, matrix: &Value<'_, Matrix<'_>>) -> Option<ObjectTy> {
         let matrix = match matrix {
-            Value::Expression { expr, .. } => {
-                self.object(cx, expr, "matrix");
-                return;
-            }
+            Value::Expression { expr, .. } => return Some(self.matrix_expression(cx, expr)),
             Value::Literal { value, .. } => value,
-            Value::Absent | Value::Invalid { .. } => return,
+            Value::Absent | Value::Invalid { .. } => return None,
         };
         match &matrix.exclude {
             Value::Expression { expr, .. } => {
@@ -705,7 +719,9 @@ impl Checker {
                     match combination {
                         MatrixCombination::Expression(expr) => self.object(cx, expr, "exclude"),
                         MatrixCombination::Assigns { assigns, .. } => {
-                            self.raw_values(cx, assigns.iter().map(|assign| &assign.value));
+                            for assign in assigns {
+                                self.raw_value(cx, &assign.value);
+                            }
                         }
                         MatrixCombination::Invalid(_) => {}
                     }
@@ -713,52 +729,196 @@ impl Checker {
             }
             Value::Absent | Value::Invalid { .. } => {}
         }
-        for row in &matrix.rows {
-            match &row.value {
-                MatrixRow::Values(values) => self.raw_values(cx, values.iter()),
-                MatrixRow::Expression(expr) => {
-                    self.typed(cx, expr, "matrix row", Want::Array);
-                }
-                MatrixRow::Invalid => {}
-            }
-        }
+
+        let rows = matrix
+            .rows
+            .iter()
+            .map(|row| (row.folded().to_owned(), self.matrix_row(cx, &row.value)));
+        let mut ty = Ty::strict(rows);
         match &matrix.include {
             Value::Expression { expr, .. } => {
-                self.one(cx, expr, "include");
+                // The merge of an object with anything but an object is `any`.
+                return Some(match self.one(cx, expr, "include") {
+                    Some(Ty::Array(array)) => match ty.merge(array.elem()) {
+                        Ty::Object(object) => (*object).clone(),
+                        _ => ObjectTy::new([] as [(&str, Ty); 0], Rest::Loose),
+                    },
+                    _ => ObjectTy::new([] as [(&str, Ty); 0], Rest::Loose),
+                });
             }
             Value::Literal { value, .. } => {
                 for combination in value.iter() {
-                    if let MatrixCombination::Assigns { assigns, .. } = combination {
-                        self.raw_values(cx, assigns.iter().map(|assign| &assign.value));
+                    match combination {
+                        MatrixCombination::Expression(expr) => {
+                            let what = "matrix combination at element of include section";
+                            let Some(element) = self.one(cx, expr, what) else {
+                                continue;
+                            };
+                            if !Want::Object.accepts(&element) {
+                                wrong_type(cx, expr, what, Want::Object, &element);
+                            }
+                            ty = match ty.merge(&element) {
+                                Ty::Object(object) => Ty::Object(object),
+                                _ => Ty::loose(object_props(&ty)),
+                            };
+                        }
+                        MatrixCombination::Assigns { assigns, .. } => {
+                            let mut props = object_props(&ty);
+                            for assign in assigns {
+                                let value = self.raw_value(cx, &assign.value);
+                                let merged = match props.get(assign.folded()) {
+                                    Some(row) => row.merge(&value),
+                                    None => value,
+                                };
+                                props.insert(assign.folded().to_owned(), merged);
+                            }
+                            ty = with_props(&ty, props);
+                        }
+                        MatrixCombination::Invalid(_) => {}
                     }
                 }
             }
             Value::Absent | Value::Invalid { .. } => {}
         }
+        match ty {
+            Ty::Object(object) => Some((*object).clone()),
+            _ => None,
+        }
     }
 
-    /// Checks the scalars in matrix values, with a stack of its own, because matrix values may
-    /// nest as deep as the YAML layer allows. A scalar is not a template: its value becomes a
-    /// matrix value, which may be an object.
-    fn raw_values<'v, 'a: 'v>(
-        &self,
-        cx: &mut Context<'_>,
-        values: impl Iterator<Item = &'v RawValue<'a>>,
-    ) {
-        let mut stack: Vec<&'v RawValue<'a>> = values.collect();
-        stack.reverse();
-        while let Some(value) = stack.pop() {
-            match value {
-                RawValue::Scalar(scalar) => {
-                    for placeholder in scalar.placeholders() {
-                        self.placeholder(cx, scalar.source, placeholder);
-                    }
+    /// Checks a whole `matrix: ${{ }}` and returns the type of `matrix`, the reference's
+    /// `checkMatrixExpression`: the object type of the expression with the properties of the
+    /// elements of its `include` merged in, and without `include` and `exclude`. A value of
+    /// another type, or with errors, gives an object with any property.
+    fn matrix_expression(&self, cx: &mut Context<'_>, expr: &Expr<'_>) -> ObjectTy {
+        let Some(Ty::Object(object)) = self.typed(cx, expr, "matrix", Want::Object) else {
+            return ObjectTy::new([] as [(&str, Ty); 0], Rest::Loose);
+        };
+        let mut props = object.props().clone();
+        if let Some(Ty::Array(include)) = props.remove("include")
+            && let Ty::Object(element) = include.elem()
+        {
+            for (name, ty) in element.props() {
+                let merged = match props.get(name) {
+                    Some(row) => row.merge(ty),
+                    None => ty.clone(),
+                };
+                props.insert(name.clone(), merged);
+            }
+        }
+        props.remove("exclude");
+        ObjectTy::new(props, object.rest().clone())
+    }
+
+    /// Checks a matrix row and returns the type of its values, the reference's
+    /// `checkMatrixRow`. A row without values, or whose expression has errors, has type `any`.
+    fn matrix_row(&self, cx: &mut Context<'_>, row: &MatrixRow<'_>) -> Ty {
+        match row {
+            MatrixRow::Values(values) => values
+                .iter()
+                .map(|value| self.raw_value(cx, value))
+                .reduce(|merged, ty| merged.merge(&ty))
+                .unwrap_or(Ty::Any),
+            MatrixRow::Expression(expr) => match self.typed(cx, expr, "matrix row", Want::Array) {
+                Some(Ty::Array(array)) => array.elem().clone(),
+                _ => Ty::Any,
+            },
+            MatrixRow::Invalid => Ty::Any,
+        }
+    }
+
+    /// Checks the scalars in a matrix value and returns its type, the reference's
+    /// `checkRawYAMLValue`: a mapping is a strict object, and a sequence an array of the merged
+    /// type of its items. A matrix value may nest as deep as the YAML layer allows, so the walk
+    /// keeps a stack of its own, and an object or array nested deeper than [`MAX_TYPE_DEPTH`]
+    /// has type `any`.
+    fn raw_value(&self, cx: &mut Context<'_>, value: &RawValue<'_>) -> Ty {
+        /// A step of the walk.
+        enum Task<'v, 'a> {
+            /// Type `value`, at the depth `depth`, and push its type.
+            Visit(&'v RawValue<'a>, usize),
+            /// Pop the types of the `len` items of a sequence and push the sequence's type.
+            Sequence { len: usize, typed: bool },
+            /// Pop the types of the values of `entries` and push the mapping's type.
+            Mapping {
+                entries: &'v Keyed<'a, RawValue<'a>>,
+                typed: bool,
+            },
+        }
+
+        let mut tasks = vec![Task::Visit(value, 0)];
+        // The types of the values typed so far whose sequence or mapping is not yet typed.
+        let mut done: Vec<Ty> = Vec::new();
+        while let Some(task) = tasks.pop() {
+            match task {
+                Task::Visit(RawValue::Scalar(scalar), _) => done.push(self.raw_scalar(cx, scalar)),
+                Task::Visit(RawValue::Sequence { items, .. }, depth) => {
+                    let typed = depth < MAX_TYPE_DEPTH;
+                    tasks.push(Task::Sequence {
+                        len: items.len(),
+                        typed,
+                    });
+                    tasks.extend(items.iter().rev().map(|item| Task::Visit(item, depth + 1)));
                 }
-                RawValue::Sequence { items, .. } => stack.extend(items.iter().rev()),
-                RawValue::Mapping { entries, .. } => {
-                    stack.extend(entries.iter().rev().map(|entry| &entry.value));
+                Task::Visit(RawValue::Mapping { entries, .. }, depth) => {
+                    let typed = depth < MAX_TYPE_DEPTH;
+                    tasks.push(Task::Mapping { entries, typed });
+                    tasks.extend(
+                        entries
+                            .iter()
+                            .rev()
+                            .map(|entry| Task::Visit(&entry.value, depth + 1)),
+                    );
+                }
+                Task::Sequence { len, typed } => {
+                    let items = done.split_off(done.len().saturating_sub(len));
+                    done.push(if typed {
+                        let elem = items.into_iter().reduce(|merged, ty| merged.merge(&ty));
+                        Ty::array(elem.unwrap_or(Ty::Any))
+                    } else {
+                        Ty::Any
+                    });
+                }
+                Task::Mapping { entries, typed } => {
+                    let values = done.split_off(done.len().saturating_sub(entries.len()));
+                    done.push(if typed {
+                        let names = entries.iter().map(|entry| entry.folded().to_owned());
+                        Ty::strict(names.zip(values))
+                    } else {
+                        Ty::Any
+                    });
                 }
             }
+        }
+        done.pop().unwrap_or(Ty::Any)
+    }
+
+    /// Checks the placeholders of a scalar in a matrix value and returns its type, the
+    /// reference's `checkRawYAMLString`. A scalar written as one `${{ }}` has the type of the
+    /// expression, or `any` if it has errors. Any other scalar has the type of its tag, so a
+    /// quoted or block scalar is a string, where the reference types its text
+    /// (`docs/differences.md#quoted-scalar-types`). A scalar is not a template: its value
+    /// becomes a matrix value, which may be an object.
+    fn raw_scalar(&self, cx: &mut Context<'_>, scalar: &Template<'_>) -> Ty {
+        let mut types = Vec::new();
+        let mut ok = true;
+        for placeholder in scalar.placeholders() {
+            match self.placeholder(cx, scalar.source, placeholder) {
+                Some(ty) => types.push(ty),
+                None => ok = false,
+            }
+        }
+        if is_one_expression(scalar.value()) {
+            return match (ok, types.pop()) {
+                (true, Some(ty)) if types.is_empty() => ty,
+                _ => Ty::Any,
+            };
+        }
+        match scalar.source.tag() {
+            Tag::Bool => Ty::Bool,
+            Tag::Null => Ty::Null,
+            Tag::Int | Tag::Float => Ty::Number,
+            Tag::Str | Tag::Map | Tag::Seq | Tag::Other(_) => Ty::String,
         }
     }
 
