@@ -282,11 +282,12 @@ The last section lists behaviour that was investigated and deliberately kept.
   - A `default` of a `workflow_call` or `workflow_dispatch` input that is not a scalar, as in `default: [x]`, is checked as `""`. It gets `cannot be parsed as a float number` for a `number` input, `must be "true" or "false"` for a `boolean` input, `is not included in its options` for a `choice` input, and `has the default value "", but it is also required` for a required `workflow_call` input (`events`).
   - A `shell` of `defaults.run` or of a step that is empty or not a scalar also gets `shell name "" is invalid` (`shell-name`).
   - A `runs-on` label that is empty or not a scalar also gets `label "" is unknown` (`runner-label`).
+  - A step's `uses` that is empty or not a scalar also gets `specifying action "" in invalid format because ref is missing` (`action`).
 - workflint: the parser reports the value once, and the rules skip it. The value keeps its place in its list, so a check that only needs the value to be written still runs. `options: [[x]]` on a `string` input of `workflow_dispatch` still gets `"options" can not be set to "text" input because its input type is not "choice"`, and `options: ['']` on a `choice` input counts as set, as upstream. A `choice` input with an invalid option does not compare its default with the options, because the invalid option has no value to compare. Upstream compares the default with `""` in its place. A required `workflow_call` input with an invalid default is not reported either, although that check only needs the default to be written, because its message would quote `""`. The keys of `permissions` and `env` are in [Keys that are not strings in `permissions` and `env`](#non-scalar-keys).
 - Why: the second error repeats the first and names a value that is not in the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the parser, the `events` rule (M4.13), and the `runner-label` rule (M4.16). The `shell-name` rule follows in M4.
+- Status: implemented in the parser, the `events` rule (M4.13), the `runner-label` rule (M4.16), and the `action` rule (M4.17). The `shell-name` rule follows in M4.
 - Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
 
 <a id="typed-decoding-edge-cases"></a>
