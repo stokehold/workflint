@@ -54,12 +54,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Exact positions inside multi-line and quoted strings
 
 - Upstream: the position of an error inside a string, such as an expression or glob error, is the scalar's start plus a byte offset, plus 1 if quoted. In a `run: |` block every error is reported on the indicator line. Escapes such as `\t` or `''` shift the column by one per escape. A bare `if: "foo"` ignores the quote and reports column 13 instead of 14. A `TODO` at `rule_expression.go:736` notes the problem.
-- workflint: errors are mapped through the scalar's source map (ADR 0005) to the exact line and column. The maps are exact in every scalar style, including escapes, `''`, line folding, and block indentation. A character that an escape produces maps to the escape's backslash. An error at the end of a value, such as an unclosed `${{` at the end of a `run: |` block, is reported just after the last character before the trailing line breaks. With `echo ${{ github.ref` as the last line of a `|` block, on line 8 and indented 10 spaces, workflint reports `8:30`. Upstream reports `8:22`, or `9:22` with `|+`.
+- workflint: errors are mapped through the scalar's source map (ADR 0005) to the exact line and column. The maps are exact in every scalar style, including escapes, `''`, line folding, and block indentation. A character that an escape produces maps to the escape's backslash. An error at the end of a value, such as an unclosed `${{` at the end of a `run: |` block, is reported just after the last character before the trailing line breaks. With `echo ${{ github.ref` as the last line of a `|` block, on line 8 and indented 10 spaces, workflint reports `8:30`. Upstream reports `8:22`, or `9:22` with `|+`. A glob error about the whole pattern, such as white space around a path, is reported at the pattern's first character. Upstream reports it there too for a plain or quoted scalar, but at the `|` or `>` for a block scalar, the line above.
 - Why: a position on the wrong line sends users to the wrong place.
 - Upstream issue: #330.
 - Milestone: M2, M3, M4. Expression syntax errors use the exact positions from M2.
-- Status: implemented for expression syntax errors from M2, and for the other errors of the `expression` rule from M4.6. Other errors inside strings follow with the M4 rules that report them.
-- Fixtures: `.out` lines for errors inside multi-line or escaped strings, such as line 11 of `err/github_script_untrusted_input`, which workflint reports on line 16.
+- Status: implemented for expression syntax errors from M2, for the other errors of the `expression` rule from M4.6, and for the `glob` rule from M4.15. Other errors inside strings follow with the M4 rules that report them.
+- Fixtures: `.out` lines for errors inside multi-line or escaped strings, such as line 11 of `err/github_script_untrusted_input`, which workflint reports on line 16, and the `glob` error at `20:9` of `err/glob_more`, which workflint reports at `21:9`.
 
 <a id="script-finding-positions"></a>
 ### shellcheck and pyflakes findings point into the script
@@ -565,8 +565,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the message names the wrong character.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the validator. The `glob` rule reports it from M4.15.
-- Fixtures: none. The `workflint-syntax` test `an_escaped_special_character_in_a_ref_glob_reports_that_character` covers it.
+- Status: implemented in the validator, and the `glob` rule reports it from M4.15.
+- Fixtures: none. The `workflint-syntax` test `an_escaped_special_character_in_a_ref_glob_reports_that_character` and the `workflint-rules` test `an_escaped_special_character_in_a_ref_pattern_is_reported_at_that_character` cover it.
 
 <a id="branding-color-message"></a>
 ### Branding color message names `branding.color`

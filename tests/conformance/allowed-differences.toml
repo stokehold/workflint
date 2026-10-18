@@ -87,6 +87,12 @@ upstream = 'test.yaml:11:162: "github.event.head_commit.author.name" is potentia
 workflint = 'test.yaml:16:32: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
 
 [[difference]]
+anchor = "positions-inside-scalars"
+fixture = "err/glob_more"
+upstream = "test.yaml:20:9: leading and trailing spaces are not allowed in glob path. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]"
+workflint = "test.yaml:21:9: leading and trailing spaces are not allowed in glob path. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]"
+
+[[difference]]
 anchor = "dispatch-options-quoting"
 fixture = "err/workflow_dispatch_input_types"
 upstream = 'test.yaml:18:18: default value "bar" of "choice_default_is_not_in_options" input is not included in its options "\"foo\"" [events]'
