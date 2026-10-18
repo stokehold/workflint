@@ -6,6 +6,8 @@ use crate::Rule;
 use crate::kind::{self, Kind};
 
 mod action;
+mod credentials;
+mod env_var;
 mod events;
 mod expression;
 mod if_cond;
@@ -40,7 +42,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 29] = [
+pub(crate) static ALL: [&RuleMeta; 31] = [
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
     &events::CONFLICTING_FILTERS,
@@ -49,10 +51,12 @@ pub(crate) static ALL: [&RuleMeta; 29] = [
     &action::DEPRECATED_ACTION_INPUT,
     &events::DUPLICATE_INPUT_OPTION,
     &events::FILTER_NOT_SUPPORTED,
+    &credentials::HARDCODED_PASSWORD,
     &if_cond::IF_ALWAYS_TRUE,
     &action::INVALID_ACTION_FORMAT,
     &events::INVALID_ACTIVITY_TYPE,
     &action::INVALID_DOCKER_ACTION,
+    &env_var::INVALID_ENV_VAR_NAME,
     &events::INVALID_INPUT_DEFAULT,
     &runner_label::INVALID_RUNNER_LABEL_PATTERN,
     &action::MISSING_REQUIRED_ACTION_INPUT,
@@ -85,6 +89,8 @@ pub fn create_rules<'a>() -> Vec<Box<dyn Rule<'a> + 'a>> {
 fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
     match kind.name {
         "action" => Some(Box::new(action::Action)),
+        "credentials" => Some(Box::new(credentials::Credentials)),
+        "env-var" => Some(Box::new(env_var::EnvVar)),
         "events" => Some(Box::new(events::Events)),
         "expression" => Some(Box::new(expression::Expression::new())),
         "if-cond" => Some(Box::new(if_cond::IfCond)),
