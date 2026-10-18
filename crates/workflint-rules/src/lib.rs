@@ -13,6 +13,7 @@
 
 pub mod kind;
 pub mod local;
+mod path_match;
 pub mod registry;
 mod rule;
 mod rules;

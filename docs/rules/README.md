@@ -66,6 +66,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | `invalid-object-filter` | `expression` | correctness | error | An object filter `.*` applies to a value without object elements |
 | `invalid-property-access` | `expression` | correctness | error | An expression reads a property with a dot from a value that is not an object |
 | [`invalid-reusable-call-key`](invalid-reusable-call-key.md) | `syntax-check` | correctness | error | A job that calls a reusable workflow has a key that only a job with steps may have |
+| [`invalid-runner-label-pattern`](invalid-runner-label-pattern.md) | `runner-label` | correctness | error | A runner label pattern in the config is not a valid glob |
 | [`invalid-workflow-call-input-type`](invalid-workflow-call-input-type.md) | `syntax-check` | correctness | error | A `workflow_call` input has an unknown `type` |
 | [`merge-key-unsupported`](merge-key-unsupported.md) | `syntax-check` | correctness | error | A mapping has a `<<` merge key, which GitHub Actions does not apply |
 | `missing-format-argument` | `expression` | correctness | error | The format string of `format()` has a placeholder beyond its arguments |
@@ -79,6 +80,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`recursive-alias`](recursive-alias.md) | `syntax-check` | correctness | error | An alias refers to a node that encloses it |
 | [`required-input-with-default`](required-input-with-default.md) | `events` | correctness | error | A required `workflow_call` input has a default, which is never used |
 | [`reusable-call-key-without-uses`](reusable-call-key-without-uses.md) | `syntax-check` | correctness | error | A job without `uses` has `with` or `secrets` |
+| [`runner-label-conflict`](runner-label-conflict.md) | `runner-label` | correctness | error | Two `runs-on` labels of a job cannot be on the same runner |
 | [`schedule-without-config`](schedule-without-config.md) | `syntax-check` | correctness | error | `schedule` is named in a string or a sequence item of `on`, so it has no `cron` entries |
 | [`single-expression-required`](single-expression-required.md) | `expression` | correctness | error | A value that must be one `${{ }}` holds another number of them |
 | [`step-without-run-or-uses`](step-without-run-or-uses.md) | `syntax-check` | correctness | error | A step has neither `run` nor `uses` |
@@ -93,6 +95,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`unexpected-node-kind`](unexpected-node-kind.md) | `syntax-check` | correctness | error | A node has the wrong kind, such as a sequence where a mapping is expected |
 | [`unknown-anchor`](unknown-anchor.md) | `syntax-check` | correctness | error | An alias refers to an anchor that no earlier node defines |
 | [`unknown-event`](unknown-event.md) | `events` | correctness | error | `on` names an event that is not a GitHub webhook event |
+| [`unknown-runner-label`](unknown-runner-label.md) | `runner-label` | correctness | error | A `runs-on` label is not a known runner label |
 | `untrusted-input` | `expression` | correctness | error | A script reads a value that someone outside the repository can set |
 | `untrusted-object-filter` | `expression` | correctness | error | A script reads an object filter that extracts values that someone outside the repository can set |
 | [`unused-anchor`](unused-anchor.md) | `syntax-check` | correctness | error | No alias refers to an anchor |
