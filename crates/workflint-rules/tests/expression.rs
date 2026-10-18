@@ -494,9 +494,11 @@ jobs:
           TITLE: ${{ github.event.issue.title }}
         working-directory: ${{ github.head_ref }}
 ";
+    // `other` is not an input of `actions/github-script@v7`, which the `action` rule reports.
     let lines = lint(text);
     let at: Vec<_> = lines
         .iter()
+        .filter(|line| line.ends_with("[untrusted-input]"))
         .map(|line| line.split(": ").next().unwrap())
         .collect();
     assert_eq!(at, ["test.yaml:6:24", "test.yaml:9:36"], "{lines:#?}");
