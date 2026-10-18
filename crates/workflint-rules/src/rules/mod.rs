@@ -10,6 +10,7 @@ mod credentials;
 mod env_var;
 mod events;
 mod expression;
+mod glob;
 mod if_cond;
 mod runner_label;
 mod workflow_call;
@@ -43,7 +44,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 38] = [
+pub(crate) static ALL: [&RuleMeta; 42] = [
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &workflow_call::BROKEN_REUSABLE_WORKFLOW,
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
@@ -53,13 +54,17 @@ pub(crate) static ALL: [&RuleMeta; 38] = [
     &action::DEPRECATED_ACTION_INPUT,
     &events::DUPLICATE_INPUT_OPTION,
     &events::FILTER_NOT_SUPPORTED,
+    &glob::GLOB_PATH_DOT,
+    &glob::GLOB_PATH_WHITESPACE,
     &credentials::HARDCODED_PASSWORD,
     &if_cond::IF_ALWAYS_TRUE,
     &action::INVALID_ACTION_FORMAT,
     &events::INVALID_ACTIVITY_TYPE,
     &action::INVALID_DOCKER_ACTION,
     &env_var::INVALID_ENV_VAR_NAME,
+    &glob::INVALID_GLOB,
     &events::INVALID_INPUT_DEFAULT,
+    &glob::INVALID_REF_NAME,
     &workflow_call::INVALID_REUSABLE_WORKFLOW_REF,
     &runner_label::INVALID_RUNNER_LABEL_PATTERN,
     &action::MISSING_REQUIRED_ACTION_INPUT,
@@ -101,6 +106,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
         "env-var" => Some(Box::new(env_var::EnvVar)),
         "events" => Some(Box::new(events::Events)),
         "expression" => Some(Box::new(expression::Expression::new())),
+        "glob" => Some(Box::new(glob::Glob)),
         "if-cond" => Some(Box::new(if_cond::IfCond)),
         // M5.2 passes the labels of the config's `self-hosted-runner.labels`.
         "runner-label" => Some(Box::new(runner_label::RunnerLabel::new(Vec::new()))),
