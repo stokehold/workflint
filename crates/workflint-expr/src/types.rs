@@ -13,6 +13,12 @@ use workflint_data::{Rest as RestDesc, TypeDesc};
 
 use crate::ast::simple_lower;
 
+/// The deepest nesting of objects and arrays that a value from data, such as a `fromJSON()`
+/// literal or a matrix value, gets a type for. An object or array nested deeper has type `any`,
+/// so that printing, merging, and comparing types, which recurse, cannot overflow the stack
+/// (`docs/differences.md#fromjson-nesting`).
+pub const MAX_TYPE_DEPTH: usize = 128;
+
 /// The type of an expression value.
 ///
 /// `==` compares the structure of two types, including the flag that an array came from a

@@ -398,6 +398,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M3.
 - Status: implemented in `workflint-expr`. It reaches the output from M4.6. No fixture covers it.
 
+<a id="matrix-value-nesting"></a>
+### Deeply nested matrix values
+
+- Upstream: a matrix value gets a type at any depth, up to the 10,000 levels that the YAML parser accepts. The typing recurses, as does every later walk of the type.
+- workflint: an object or array in a matrix value nested more than 128 levels deep has type `any`, as for `fromJSON()` literals ([Deeply nested `fromJSON` literals](#fromjson-nesting)). The rule still checks every `${{ }}` in the value, at any depth.
+- Why: printing, merging, and comparing types recurse, and a type 10,000 levels deep could overflow the stack (ADR 0018).
+- Upstream issue: none.
+- Milestone: M4.
+- Status: implemented. No fixture covers it.
+
 <a id="object-filter-mutation"></a>
 ### Object filters do not change shared types
 
@@ -422,11 +432,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Expressions in `matrix.include` elements are checked
 
 - Upstream: when an element of `include:` is a whole `${{ }}` expression, the rule checks `m.Include.Expression`, which is always nil on that path, instead of the element (`rule_expression.go:950`). `include: ["${{ undefined }}"]` gives no error, and the element's type is not merged into the matrix type, which causes false `property ... is not defined` errors later.
-- workflint: each element expression is checked, and its object type is merged into `matrix`. A syntax error in an element expression is reported from M2.
+- workflint: each element expression is checked, and its object type is merged into `matrix`. An element of another type is reported as `type of expression at "matrix combination at element of include section" must be object but found type ...`, and `matrix` then accepts any property. A syntax error in an element expression is reported from M2.
 - Why: the upstream code reads the wrong variable.
 - Upstream issue: none.
 - Milestone: M2, M4.
-- Status: implemented for syntax errors. From M4.6 the `expression` rule checks the other matrix expressions, but not an element of `include` written as one `${{ }}`, as upstream. The check of that element and the merge follow in M4.8.
+- Status: implemented. No fixture covers it.
 
 <a id="all-expressions-in-string"></a>
 ### Every `${{ }}` in a string is checked
@@ -516,12 +526,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="quoted-scalar-types"></a>
 ### Quoted values are strings
 
-- Upstream: literal values in `with:` and in matrix rows are typed from their decoded text, ignoring quotes. `with: { flag: 'true' }` to a `string` input reports `bool value cannot be assigned`, and the matrix value `"3.10"` is typed as a number.
-- workflint: types come from the YAML tag and style. Quoted and block scalars are strings. Plain scalars are typed as before.
+- Upstream: literal values in `with:` and in matrix rows are typed from their decoded text, ignoring quotes. `with: { flag: 'true' }` to a `string` input reports `bool value cannot be assigned`, and the matrix value `"3.10"` is typed as a number. A plain scalar is a bool if it is `true` or `false`, null if it is `null`, a number if Go's `strconv.ParseFloat` accepts it, and a string otherwise.
+- workflint: types come from the YAML tag, so quoted scalars, block scalars, and scalars tagged `!!str` are strings. A plain scalar has the tag that the YAML 1.2 core schema resolves ([Plain scalars follow the YAML 1.2 core schema](#yaml-core-schema)), which gives the upstream type in the common cases. Where the two disagree, the core schema wins: `True` is a bool, `~` and an empty value are null, `0x1F`, `0o17`, `.inf`, and `1e400` are numbers, and `inf` and `NaN` are strings. A scalar written as one `${{ }}` has the type of its expression, as upstream.
 - Why: upstream rejects valid code. Quoting is how users write a string in YAML.
 - Upstream issue: #225, #250, PR #727.
 - Milestone: M4.
-- Status: planned.
+- Status: implemented for matrix values in M4.8. `with:` values follow in M4.10. No fixture shows it, so the allow-list has no records for it.
 
 ## Rules
 

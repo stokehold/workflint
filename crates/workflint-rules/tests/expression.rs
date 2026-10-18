@@ -57,7 +57,7 @@ fn position(text: &str, offset: usize) -> String {
 }
 
 /// A workflow with an expression in every location of `docs/research/02-expressions.md`
-/// section 7.2 except the matrix, whose expressions M4.8 (#145) checks. Each expression reads a
+/// section 7.2. Each expression reads a
 /// context that its workflow key does not allow. Where the key allows every context, it calls a
 /// special function that the key does not allow instead. The locations with the empty workflow
 /// key read `github`, which every other key allows.
@@ -127,6 +127,15 @@ jobs:
         working-directory: ${{ secrets }}
     if: ${{ env }}
     strategy:
+      matrix:
+        r: ['${{ env }}', {k: ['${{ env }}']}]
+        e: ${{ env }}
+        include:
+          - r: ${{ env }}
+          - ${{ env }}
+        exclude:
+          - r: [{k: '${{ env }}'}]
+          - ${{ env }}
       fail-fast: ${{ env }}
       max-parallel: ${{ env }}
     continue-on-error: ${{ env }}
@@ -228,6 +237,16 @@ concurrency: ${{ env }}
 jobs:
   a:
     runs-on: linux
+    strategy:
+      matrix: ${{ env }}
+    steps:
+      - run: echo
+  b:
+    runs-on: linux
+    strategy:
+      matrix:
+        include: ${{ env }}
+        exclude: ${{ env }}
     steps:
       - run: echo
 ";
@@ -624,7 +643,7 @@ jobs:
 
 #[test]
 fn contexts_typed_by_later_tasks_accept_any_property() {
-    // M4.8 to M4.10 type these contexts. Until then they accept any property, so that no valid
+    // M4.9 and M4.10 type these contexts. Until then they accept any property, so that no valid
     // workflow gets an error.
     let text = "\
 on:
@@ -635,11 +654,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [linux]
     steps:
-      - run: echo ${{ matrix.anything }} ${{ steps.any.outputs.x }} ${{ needs.any.result }}
+      - run: echo ${{ steps.any.outputs.x }} ${{ needs.any.result }}
 ";
     assert_eq!(lint(text), Vec::<String>::new());
 }
@@ -833,4 +849,208 @@ jobs:
             r#"test.yaml:13:20: property "deploy" is not defined in object type {build: {outputs: {tag: string}; result: string}; call: {outputs: object; result: string}} [undefined-property]"#,
         ]
     );
+}
+
+/// Returns the message that reading the property `x` of a value of type `ty` reports.
+fn not_an_object(ty: &str) -> String {
+    format!(
+        r#"receiver of object dereference "x" must be type of object but got "{ty}" [invalid-property-access]"#
+    )
+}
+
+/// Lints a job whose `matrix:` has the lines `matrix`, and whose step reads the property `x` of
+/// each property `name` of `matrix` in `names`. Returns the messages without their positions.
+fn matrix_messages(matrix: &[&str], names: &[&str]) -> Vec<String> {
+    let matrix: String = matrix
+        .iter()
+        .flat_map(|line| ["        ", line, "\n"])
+        .collect();
+    let reads: Vec<String> = names
+        .iter()
+        .map(|name| format!("${{{{ matrix.{name}.x }}}}"))
+        .collect();
+    let text = format!(
+        "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n{matrix}    steps:\n      - run: echo {}\n",
+        reads.join(" ")
+    );
+    lint(&text)
+        .into_iter()
+        .map(|line| line.splitn(4, ':').nth(3).unwrap().trim_start().to_owned())
+        .collect()
+}
+
+#[test]
+fn matrix_scalars_are_typed_from_their_tag_and_style() {
+    let matrix = [
+        r#"double: ["3.10"]"#,
+        "single: ['true']",
+        "number: [3.10]",
+        "bool: [true]",
+        "nil: [null]",
+        "tagged: [!!str 1]",
+        "plain: [ubuntu-latest]",
+        "block:",
+        "  - |",
+        "    1",
+    ];
+    let names = [
+        "double", "single", "number", "bool", "nil", "tagged", "plain", "block",
+    ];
+    let types = [
+        "string", "string", "number", "bool", "null", "string", "string", "string",
+    ];
+    assert_eq!(
+        matrix_messages(&matrix, &names),
+        types.map(not_an_object).to_vec()
+    );
+}
+
+#[test]
+fn a_matrix_row_has_the_merged_type_of_its_values() {
+    let matrix = [
+        "mixed: [1, 'a', true]",
+        "conflict: [1, true]",
+        "objects: [{a: 1}, {b: 'x'}]",
+        "arrays: [[1], []]",
+        "expr: ${{ fromJSON('[1, 2]') }}",
+    ];
+    let names = ["mixed", "conflict", "objects.a", "arrays", "expr"];
+    assert_eq!(
+        matrix_messages(&matrix, &names),
+        [
+            not_an_object("string"),
+            not_an_object("number"),
+            not_an_object("array<any>"),
+            not_an_object("number"),
+        ]
+    );
+}
+
+#[test]
+fn include_adds_its_values_to_the_matrix_type() {
+    let matrix = [
+        "os: [linux]",
+        "include:",
+        "  - os: 1",
+        "    extra: 'x'",
+        r#"  - ${{ fromJSON('{"element":true}') }}"#,
+    ];
+    assert_eq!(
+        matrix_messages(&matrix, &["os", "extra", "element", "nothing"]),
+        [
+            not_an_object("string"),
+            not_an_object("string"),
+            not_an_object("bool"),
+            r#"property "nothing" is not defined in object type {element: bool; extra: string; os: string} [undefined-property]"#.to_owned(),
+        ]
+    );
+}
+
+#[test]
+fn an_include_element_written_as_one_expression_is_checked() {
+    let matrix = [
+        "os: [linux]",
+        "include:",
+        "  - ${{ inputs.nothing }}",
+        "  - ${{ 'not an object' }}",
+    ];
+    assert_eq!(
+        matrix_messages(&matrix, &[]),
+        [
+            r#"property "nothing" is not defined in object type {} [undefined-property]"#,
+            r#"type of expression at "matrix combination at element of include section" must be object but found type string [wrong-expression-type]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_whole_include_expression_merges_its_element_type() {
+    let objects = [
+        "os: [linux]",
+        r#"include: ${{ fromJSON('[{"os":1,"extra":true}]') }}"#,
+    ];
+    assert_eq!(
+        matrix_messages(&objects, &["os", "extra"]),
+        [not_an_object("string"), not_an_object("bool")]
+    );
+    // Any other type makes the matrix accept every property.
+    let unknown = ["os: [linux]", "include: ${{ fromJSON(github.event_name) }}"];
+    assert_eq!(
+        matrix_messages(&unknown, &["os", "anything"]),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn a_whole_matrix_expression_gives_its_object_type() {
+    let literal = [r#"${{ fromJSON('{"os":["linux"],"include":[{"extra":1}],"exclude":[]}') }}"#];
+    assert_eq!(
+        matrix_messages(&literal, &["os", "extra", "exclude"]),
+        [
+            // As in the reference, a row keeps the type of the whole array.
+            not_an_object("array<string>"),
+            not_an_object("number"),
+            r#"property "exclude" is not defined in object type {extra: number; os: array<string>} [undefined-property]"#.to_owned(),
+        ]
+    );
+    let unknown = ["${{ fromJSON(github.event_name) }}"];
+    assert_eq!(
+        matrix_messages(&unknown, &["anything"]),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn every_job_key_sees_the_matrix_type() {
+    let text = "\
+on: push
+jobs:
+  test:
+    name: ${{ matrix.nothing }}
+    runs-on: ${{ matrix.nothing }}
+    container: ${{ matrix.nothing }}
+    strategy:
+      matrix:
+        os: [linux]
+    steps:
+      - run: echo ${{ matrix.nothing }}
+";
+    let lines = lint(text);
+    assert_eq!(lines.len(), 4, "{lines:#?}");
+    for line in lines {
+        assert!(
+            line.ends_with(
+                r#"property "nothing" is not defined in object type {os: string} [undefined-property]"#
+            ),
+            "{line}"
+        );
+    }
+}
+
+#[test]
+fn a_matrix_value_nested_10000_levels_deep_is_typed_on_a_small_stack() {
+    // The row is the outermost of the 10,000 flow levels that the YAML layer accepts.
+    const DEPTH: usize = 10_000;
+    let lines = std::thread::Builder::new()
+        .stack_size(2 << 20)
+        .spawn(|| {
+            let row = format!(
+                "{}'${{{{ nothing }}}}'{}",
+                "[".repeat(DEPTH),
+                "]".repeat(DEPTH)
+            );
+            matrix_messages(&[&format!("deep: {row}")], &["deep"])
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    // The type nests 128 levels deep and then is `any`.
+    let ty = format!("{}any{}", "array<".repeat(128), ">".repeat(128));
+    assert_eq!(lines.len(), 2, "{lines:#?}");
+    assert!(
+        lines[0].starts_with(r#"undefined variable "nothing""#),
+        "{}",
+        lines[0]
+    );
+    assert_eq!(lines[1], not_an_object(&ty));
 }

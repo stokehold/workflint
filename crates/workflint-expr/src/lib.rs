@@ -75,5 +75,5 @@ pub use error::ExprError;
 pub use lexer::{Lexer, lex_expression};
 pub use parser::parse_expression;
 pub use token::{Token, TokenKind};
-pub use types::{ArrayTy, ObjectTy, Rest, Ty};
+pub use types::{ArrayTy, MAX_TYPE_DEPTH, ObjectTy, Rest, Ty};
 pub use untrusted::find_untrusted_inputs;
