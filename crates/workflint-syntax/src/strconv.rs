@@ -4,9 +4,10 @@
 //! The reference embeds the error of these functions in its messages, as in
 //! `invalid integer value: "1.5": strconv.Atoi: parsing "1.5": invalid
 //! syntax`, and prints numbers with `%v`, as in `must be greater than zero:
-//! -1e+06`. So the parser needs the same results and the same texts. The
-//! tests compare the functions with a table that Go 1.26 printed, in
-//! `tests/data/strconv.tsv`.
+//! -1e+06`. So the parser needs the same results and the same texts.
+//! [`parse_float`] is public because the `events` rule of `workflint-rules`
+//! puts its error in messages too. The tests compare the functions with a
+//! table that Go 1.26 printed, in `tests/data/strconv.tsv`.
 
 use workflint_diagnostics::quote::quote;
 
@@ -70,7 +71,22 @@ pub(crate) fn format_float(value: f64) -> String {
 /// words `Inf`, `Infinity`, and `NaN` in any case. A value too large for
 /// `f64` is out of range. The error is Go's error text, such as
 /// `strconv.ParseFloat: parsing "1e309": value out of range`.
-pub(crate) fn parse_float(s: &str) -> Result<f64, String> {
+///
+/// # Errors
+///
+/// Returns Go's error text if `s` is not a float in Go's syntax or is out
+/// of range.
+///
+/// ```
+/// use workflint_syntax::strconv::parse_float;
+///
+/// assert_eq!(parse_float("1_000"), Ok(1000.0));
+/// assert_eq!(
+///     parse_float(":8080").unwrap_err(),
+///     r#"strconv.ParseFloat: parsing ":8080": invalid syntax"#
+/// );
+/// ```
+pub fn parse_float(s: &str) -> Result<f64, String> {
     let error = |reason: &str| format!("strconv.ParseFloat: parsing {}: {reason}", quote(s));
     if let Some(value) = special(s) {
         return Ok(value);
