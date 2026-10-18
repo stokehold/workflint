@@ -7,6 +7,7 @@ use crate::kind::{self, Kind};
 
 mod events;
 mod expression;
+mod if_cond;
 
 /// The kinds of the reference's rules in the order its linter creates them for each file
 /// (`linter.go:558`): matrix, credentials, shell-name, runner-label, events, job-needs, action,
@@ -37,13 +38,15 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 17] = [
+pub(crate) static ALL: [&RuleMeta; 19] = [
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
     &events::CONFLICTING_FILTERS,
+    &if_cond::CONSTANT_CONDITION,
     &events::DEFAULT_NOT_IN_OPTIONS,
     &events::DUPLICATE_INPUT_OPTION,
     &events::FILTER_NOT_SUPPORTED,
+    &if_cond::IF_ALWAYS_TRUE,
     &events::INVALID_ACTIVITY_TYPE,
     &events::INVALID_INPUT_DEFAULT,
     &events::MISSING_WORKFLOW_RUN_WORKFLOWS,
@@ -71,6 +74,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
     match kind.name {
         "events" => Some(Box::new(events::Events)),
         "expression" => Some(Box::new(expression::Expression::new())),
+        "if-cond" => Some(Box::new(if_cond::IfCond)),
         _ => None,
     }
 }

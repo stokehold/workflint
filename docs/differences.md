@@ -527,12 +527,24 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="if-cond-closing-braces"></a>
 ### `}}` inside a string literal in `if:`
 
-- Upstream: the `if-cond` rule finds the end of `${{` with the first `}}` in the text, so `if: ${{ github.ref == '}}' }}` is reported as always true.
-- workflint: the end of the expression is found by the expression lexer, which skips string literals.
+- Upstream: the `if-cond` rule finds the end of `${{` with the first `}}` in the text, so `if: ${{ github.ref == '}}' }}` is reported as always true. It also counts every `${{` in the text, so `if: ${{ github.ref == '${{' }}` is reported as always true.
+- workflint: the expression lexer finds the end of each `${{ }}` and skips string literals. The rule uses the placeholders that the parser stored. When an expression does not parse, the rule falls back to the first `}}`, as upstream does.
 - Why: upstream rejects a valid condition.
 - Upstream issue: none.
-- Milestone: M4.
-- Status: planned.
+- Milestone: M4.12.
+- Status: implemented. No fixture covers it. The `workflint-rules` test `closing_braces_inside_a_string_literal_do_not_end_the_expression` does.
+
+<a id="if-cond-suggestion"></a>
+### Always-true conditions suggest one `${{ }}`
+
+- Upstream: `if: ${{ success() }} || ${{ failure() }}` gets `if: condition "${{ success() }} || ${{ failure() }}" is always evaluated to true because extra characters are around ${{ }}`.
+- workflint: the message ends with `. did you mean "${{ success() || failure() }}"?`. The suggestion puts the text around the placeholders and the text inside them into one `${{ }}`. A placeholder gets parentheses when an operator next to it binds tighter than its own, so `${{ a || b }} && ${{ c }}` suggests `${{ (a || b) && c }}`. There is no suggestion when the text around the placeholders is only whitespace, when a placeholder or the joined text does not parse, or when the joined expression is constant, which the `constant-condition` rule would report.
+- Why: the joined expression is what the author meant in most cases, and upstream's message does not say how to fix the condition.
+- Upstream issue: #367.
+- Milestone: M4.12.
+- Status: implemented.
+- Fixtures: `examples/if_cond_always_true` line 29.
+- Corpus: `apache_superset_.github_workflows_latest-release-tag.yml`, which suggests `${{ (! steps.latest-tag.outputs.SKIP_TAG ) }}`. The allow-list has no record for it, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
 
 <a id="glob-escape-character"></a>
 ### Escaped characters in branch and tag globs

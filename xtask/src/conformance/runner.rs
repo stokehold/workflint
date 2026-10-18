@@ -191,12 +191,18 @@ impl Setup {
 
     /// Lints `input` as `test.yaml` in the default output format, as the
     /// reference did for the `Output` blocks of `docs/checks.md`, and
-    /// compares the output with `output`. See [`checks_md::compare`].
+    /// compares the output with `output`, after `replacements`. See
+    /// [`checks_md::compare`].
     ///
     /// # Errors
     ///
     /// Returns the reason the comparison fails.
-    pub fn check_example(&self, input: &str, output: &str) -> Result<(), String> {
+    pub fn check_example(
+        &self,
+        input: &str,
+        output: &str,
+        replacements: &[(&str, &str)],
+    ) -> Result<(), String> {
         let temp = tempfile::tempdir().map_err(|error| format!("creating a directory: {error}"))?;
         let suite = temp.path().join("err");
         let path = suite.join("example.yaml");
@@ -208,7 +214,7 @@ impl Setup {
             .map_err(|error| format!("preparing {}: {error}", path.display()))?;
         invocation.args.retain(|arg| arg != "-oneline");
         let stdout = binary::run(self.program.path(), &invocation)?;
-        checks_md::compare(output, &stdout, |code| {
+        checks_md::compare(output, &stdout, replacements, |code| {
             if self.map_kinds {
                 rule_kinds::actionlint_kind(code)
                     .map(str::to_owned)
@@ -370,11 +376,20 @@ pub fn check_checks_md() -> Result<(), String> {
         let Some(anchor) = &item.anchor else {
             continue;
         };
+        // The example of a section is the input of the row's fixtures, so
+        // their allow-list records that replace a line apply to it. The
+        // reference's setup has no allow-list.
+        let replacements: Vec<(&str, &str)> = item
+            .fixtures
+            .iter()
+            .flat_map(|fixture| SETUP.allow_list.entries_for(fixture))
+            .filter_map(|entry| Some((entry.upstream.as_deref()?, entry.workflint.as_deref()?)))
+            .collect();
         let result = match sections.get(anchor) {
             Some(checks_md::Section {
                 input: Some(input),
                 output: Some(output),
-            }) => SETUP.check_example(input, output),
+            }) => SETUP.check_example(input, output, &replacements),
             Some(_) => Err("the section has no Example input or no Output block".to_owned()),
             None => Err("docs/checks.md has no such section".to_owned()),
         };

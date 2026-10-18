@@ -37,6 +37,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | `case-argument-count` | `expression` | correctness | error | `case()` has an even number of arguments, so it has no default value |
 | [`choice-input-without-options`](choice-input-without-options.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` has no `options` |
 | [`conflicting-filters`](conflicting-filters.md) | `events` | correctness | error | A filter and its `-ignore` filter are both set on one event |
+| [`constant-condition`](constant-condition.md) | `if-cond` | correctness | error | An `if:` condition has the same value in every run |
 | `context-not-allowed` | `expression` | correctness | error | An expression reads a context that its workflow key does not allow |
 | [`default-not-in-options`](default-not-in-options.md) | `events` | correctness | error | The default of a `choice` input of `workflow_dispatch` is not one of its options |
 | [`duplicate-input-option`](duplicate-input-option.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` lists an option more than once |
@@ -47,6 +48,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`expected-single-expression`](expected-single-expression.md) | `syntax-check` | correctness | error | A value that must be a literal or a single `${{ }}` expression is other text |
 | [`filter-not-supported`](filter-not-supported.md) | `events` | correctness | error | A branch, tag, or path filter is set on an event that does not support it |
 | `function-not-allowed` | `expression` | correctness | error | An expression calls a special function that its workflow key does not allow |
+| [`if-always-true`](if-always-true.md) | `if-cond` | correctness | error | An `if:` condition has text around its `${{ }}`, so it is always true |
 | [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
 | [`invalid-activity-type`](invalid-activity-type.md) | `events` | correctness | error | `types` lists an activity type that the event does not have |
 | `invalid-comparison` | `expression` | correctness | error | A comparison has operands that GitHub cannot compare |
