@@ -8,6 +8,7 @@ use crate::kind::{self, Kind};
 mod events;
 mod expression;
 mod if_cond;
+mod runner_label;
 
 /// The kinds of the reference's rules in the order its linter creates them for each file
 /// (`linter.go:558`): matrix, credentials, shell-name, runner-label, events, job-needs, action,
@@ -38,7 +39,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 20] = [
+pub(crate) static ALL: [&RuleMeta; 23] = [
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
     &events::CONFLICTING_FILTERS,
@@ -49,13 +50,16 @@ pub(crate) static ALL: [&RuleMeta; 20] = [
     &if_cond::IF_ALWAYS_TRUE,
     &events::INVALID_ACTIVITY_TYPE,
     &events::INVALID_INPUT_DEFAULT,
+    &runner_label::INVALID_RUNNER_LABEL_PATTERN,
     &events::MISSING_WORKFLOW_RUN_WORKFLOWS,
     &expression::OBJECT_IN_TEMPLATE,
     &events::OPTIONS_ON_NON_CHOICE_INPUT,
     &events::REQUIRED_INPUT_WITH_DEFAULT,
+    &runner_label::RUNNER_LABEL_CONFLICT,
     &expression::SINGLE_EXPRESSION_REQUIRED,
     &events::TOO_MANY_DISPATCH_INPUTS,
     &events::UNKNOWN_EVENT,
+    &runner_label::UNKNOWN_RUNNER_LABEL,
     &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
     &expression::WRONG_EXPRESSION_TYPE,
     &expression::WRONG_INPUT_DEFAULT_TYPE,
@@ -76,6 +80,8 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
         "events" => Some(Box::new(events::Events)),
         "expression" => Some(Box::new(expression::Expression::new())),
         "if-cond" => Some(Box::new(if_cond::IfCond)),
+        // M5.2 passes the labels of the config's `self-hosted-runner.labels`.
+        "runner-label" => Some(Box::new(runner_label::RunnerLabel::new(Vec::new()))),
         _ => None,
     }
 }

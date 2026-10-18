@@ -286,7 +286,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the second error repeats the first and names a value that is not in the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the parser and in the `events` rule (M4.13). The `shell-name` and `runner-label` rules follow in M4.
+- Status: implemented in the parser, the `events` rule (M4.13), and the `runner-label` rule (M4.16). The `shell-name` rule follows in M4.
 - Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
 
 <a id="typed-decoding-edge-cases"></a>
@@ -607,7 +607,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the same input must give the same output.
 - Upstream issue: none.
 - Milestone: M4.
-- Status: planned.
+- Status: jobs are visited in source order since M4.1, and the `runner-label` rule names the earliest partner since M4.16. The `job-needs` rule follows in M4.
 
 <a id="cached-metadata-errors"></a>
 ### Errors in shared local actions and reusable workflows
