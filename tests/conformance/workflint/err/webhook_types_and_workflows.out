@@ -1,0 +1,3 @@
+test.yaml:3:3: "types" cannot be specified for "push" Webhook event [events]
+test.yaml:9:3: no workflow is configured for "workflow_run" event [events]
+test.yaml:12:3: "workflows" cannot be configured for "pull_request" event. it is only for workflow_run event [events]

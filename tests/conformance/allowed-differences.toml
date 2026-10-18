@@ -68,3 +68,15 @@ upstream = '/test\.yaml:58:15: label "" is unknown\. available labels are .+\. i
 anchor = "invalid-value-reported-once"
 fixture = "err/issue280_runs_on"
 upstream = '/test\.yaml:64:21: label "" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+
+[[difference]]
+anchor = "dispatch-options-quoting"
+fixture = "err/workflow_dispatch_input_types"
+upstream = 'test.yaml:18:18: default value "bar" of "choice_default_is_not_in_options" input is not included in its options "\"foo\"" [events]'
+workflint = 'test.yaml:18:18: default value "bar" of "choice_default_is_not_in_options" input is not included in its options "foo" [events]'
+
+[[difference]]
+anchor = "dispatch-options-quoting"
+fixture = "examples/workflow_dispatch_input_types"
+upstream = 'test.yaml:16:18: default value "Chobi" of "name" input is not included in its options "\"Tama\", \"Mike\"" [events]'
+workflint = 'test.yaml:16:18: default value "Chobi" of "name" input is not included in its options "Tama", "Mike" [events]'

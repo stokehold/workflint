@@ -1,0 +1,145 @@
+# too-many-dispatch-inputs
+
+| Kind | Category | Default severity |
+|---|---|---|
+| `events` | correctness | error |
+
+`workflow_dispatch` has more inputs than GitHub allows.
+
+The limit is 25 inputs.
+
+## Why
+
+GitHub rejects a `workflow_dispatch` event with more than 25 inputs.
+
+## Failing example
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      input1:
+        type: string
+      input2:
+        type: string
+      input3:
+        type: string
+      input4:
+        type: string
+      input5:
+        type: string
+      input6:
+        type: string
+      input7:
+        type: string
+      input8:
+        type: string
+      input9:
+        type: string
+      input10:
+        type: string
+      input11:
+        type: string
+      input12:
+        type: string
+      input13:
+        type: string
+      input14:
+        type: string
+      input15:
+        type: string
+      input16:
+        type: string
+      input17:
+        type: string
+      input18:
+        type: string
+      input19:
+        type: string
+      input20:
+        type: string
+      input21:
+        type: string
+      input22:
+        type: string
+      input23:
+        type: string
+      input24:
+        type: string
+      input25:
+        type: string
+      input26:
+        type: string
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+```
+
+```text
+test.yaml:2:3: maximum number of inputs for "workflow_dispatch" event is 25 but 26 inputs are provided. see https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#providing-inputs [too-many-dispatch-inputs]
+```
+
+## Passing example
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      input1:
+        type: string
+      input2:
+        type: string
+      input3:
+        type: string
+      input4:
+        type: string
+      input5:
+        type: string
+      input6:
+        type: string
+      input7:
+        type: string
+      input8:
+        type: string
+      input9:
+        type: string
+      input10:
+        type: string
+      input11:
+        type: string
+      input12:
+        type: string
+      input13:
+        type: string
+      input14:
+        type: string
+      input15:
+        type: string
+      input16:
+        type: string
+      input17:
+        type: string
+      input18:
+        type: string
+      input19:
+        type: string
+      input20:
+        type: string
+      input21:
+        type: string
+      input22:
+        type: string
+      input23:
+        type: string
+      input24:
+        type: string
+      input25:
+        type: string
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+```

@@ -1,5 +1,7 @@
 //! The rules, one module per reference rule, and the order the linter creates them in.
 
+mod events;
+
 use crate::Rule;
 use crate::kind::{self, Kind};
 
@@ -32,7 +34,22 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&workflint_diagnostics::RuleMeta; 0] = [];
+pub(crate) static ALL: [&workflint_diagnostics::RuleMeta; 14] = [
+    &events::ACTIVITY_TYPES_NOT_SUPPORTED,
+    &events::CHOICE_INPUT_WITHOUT_OPTIONS,
+    &events::CONFLICTING_FILTERS,
+    &events::DEFAULT_NOT_IN_OPTIONS,
+    &events::DUPLICATE_INPUT_OPTION,
+    &events::FILTER_NOT_SUPPORTED,
+    &events::INVALID_ACTIVITY_TYPE,
+    &events::INVALID_INPUT_DEFAULT,
+    &events::MISSING_WORKFLOW_RUN_WORKFLOWS,
+    &events::OPTIONS_ON_NON_CHOICE_INPUT,
+    &events::REQUIRED_INPUT_WITH_DEFAULT,
+    &events::TOO_MANY_DISPATCH_INPUTS,
+    &events::UNKNOWN_EVENT,
+    &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
+];
 
 /// Creates a fresh instance of each rule for one file, in [`CREATION_ORDER`].
 #[must_use]
@@ -45,8 +62,10 @@ pub fn create_rules<'a>() -> Vec<Box<dyn Rule<'a> + 'a>> {
 /// Each task that ports a reference rule adds an arm here. shellcheck and pyflakes come with
 /// M5.5, and only when their executable is found.
 fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
-    let _ = kind;
-    None
+    match kind.name {
+        "events" => Some(Box::new(events::Events)),
+        _ => None,
+    }
 }
 
 /// Calls `create` for each kind of [`CREATION_ORDER`] and keeps the rules it returns.

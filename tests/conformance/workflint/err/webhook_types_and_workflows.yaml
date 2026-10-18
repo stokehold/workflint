@@ -1,0 +1,18 @@
+on:
+  # ERROR: push has no activity types
+  push:
+    types: [created]
+  # OK: repository_dispatch takes any type
+  repository_dispatch:
+    types: [anything]
+  # ERROR: workflow_run needs workflows
+  workflow_run:
+    types: [completed]
+  # ERROR: workflows is only for workflow_run
+  pull_request:
+    workflows: [ci.yaml]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
