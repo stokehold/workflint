@@ -303,6 +303,11 @@ fn path_globs_reject_surrounding_spaces_and_dot_directories() {
         assert_eq!(
             validate_path_glob(pattern),
             [GlobProblem {
+                kind: if message == PATH_DOT {
+                    GlobProblemKind::PathDot
+                } else {
+                    GlobProblemKind::PathWhitespace
+                },
                 message: message.to_owned(),
                 range: None,
             }],
@@ -419,4 +424,27 @@ fn ranges_cover_whole_characters() {
     let range_message = "invalid glob pattern. unexpected character 'a' while checking character range in []. start of range 'é' (233) is larger than end of range 'a' (97)";
     assert_eq!(ref_problems("[é-a]"), owned(&[(range_message, 4)]));
     assert_eq!(validate_ref_glob("é?"), []);
+}
+
+#[test]
+fn each_problem_has_the_kind_of_its_message() {
+    let kinds = |problems: Vec<GlobProblem>| -> Vec<GlobProblemKind> {
+        problems.into_iter().map(|problem| problem.kind).collect()
+    };
+    assert_eq!(kinds(validate_ref_glob("")), [GlobProblemKind::Syntax]);
+    assert_eq!(kinds(validate_ref_glob("v[0-")), [GlobProblemKind::Syntax]);
+    assert_eq!(
+        kinds(validate_ref_glob("a\\0b")),
+        [GlobProblemKind::RefName]
+    );
+    assert_eq!(kinds(validate_ref_glob("a\nb")), [GlobProblemKind::Syntax]);
+    assert_eq!(
+        kinds(validate_ref_glob("^a b")),
+        [GlobProblemKind::RefName, GlobProblemKind::RefName]
+    );
+    assert_eq!(kinds(validate_path_glob("a\0b")), [GlobProblemKind::Syntax]);
+    assert_eq!(
+        kinds(validate_path_glob(" ./a")),
+        [GlobProblemKind::PathWhitespace, GlobProblemKind::PathDot]
+    );
 }
