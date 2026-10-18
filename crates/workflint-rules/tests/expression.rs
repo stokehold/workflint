@@ -624,7 +624,7 @@ jobs:
 
 #[test]
 fn contexts_typed_by_later_tasks_accept_any_property() {
-    // M4.7 to M4.10 type these contexts. Until then they accept any property, so that no valid
+    // M4.8 to M4.10 type these contexts. Until then they accept any property, so that no valid
     // workflow gets an error.
     let text = "\
 on:
@@ -640,7 +640,197 @@ jobs:
         os: [linux]
     steps:
       - run: echo ${{ matrix.anything }} ${{ steps.any.outputs.x }} ${{ needs.any.result }}
-      - run: echo ${{ inputs.anything }} ${{ secrets.anything }} ${{ github.event.inputs.anything }}
 ";
     assert_eq!(lint(text), Vec::<String>::new());
+}
+
+#[test]
+fn inputs_has_the_inputs_of_workflow_dispatch_and_workflow_call() {
+    let text = "\
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        type: number
+      Verbose:
+        type: boolean
+  workflow_call:
+    inputs:
+      count:
+        type: string
+      name:
+        type: string
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ inputs.count }} ${{ inputs.verbose }} ${{ inputs.name }} ${{ inputs.other }}
+      - run: echo ${{ github.event.inputs.verbose }} ${{ github.event.inputs.name }}
+      - run: echo ${{ inputs.verbose.x }}
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:18:84: property "other" is not defined in object type {count: string; name: string; verbose: bool} [undefined-property]"#,
+            r#"test.yaml:19:58: property "name" is not defined in object type {count: string; verbose: string} [undefined-property]"#,
+            r#"test.yaml:20:23: receiver of object dereference "x" must be type of object but got "bool" [invalid-property-access]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_workflow_call_default_sees_only_the_inputs_declared_before_it() {
+    let text = "\
+on:
+  workflow_call:
+    inputs:
+      first:
+        type: string
+        default: ${{ inputs.second }}
+      second:
+        type: string
+        default: ${{ inputs.first }}
+      third:
+        type: string
+        default: ${{ inputs.third }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ inputs.first }} ${{ inputs.second }} ${{ inputs.third }}
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:6:22: property "second" is not defined in object type {} [undefined-property]"#,
+            r#"test.yaml:12:22: property "third" is not defined in object type {first: string; second: string} [undefined-property]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_boolean_or_number_input_whose_default_is_one_expression_of_another_type_is_reported() {
+    let text = "\
+on:
+  workflow_call:
+    inputs:
+      name:
+        type: string
+      flag:
+        type: boolean
+        default: ${{ inputs.name }}
+      count:
+        type: number
+        default: ${{ inputs.name }}
+      other_flag:
+        type: boolean
+        default: ${{ inputs.flag }}
+      any_count:
+        type: number
+        default: ${{ fromJSON(inputs.name) }}
+      text:
+        type: number
+        default: x${{ inputs.name }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:8:18: type of input "flag" must be bool but found type string [wrong-input-default-type]"#,
+            r#"test.yaml:11:18: type of input "count" must be number but found type string [wrong-input-default-type]"#,
+        ]
+    );
+}
+
+#[test]
+fn secrets_has_only_the_declared_and_built_in_secrets_when_workflow_call_is_the_only_trigger() {
+    let text = "\
+on:
+  workflow_call:
+    secrets:
+      token:
+        required: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ secrets.token }} ${{ secrets.GITHUB_TOKEN }} ${{ secrets.other }}
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:10:72: property "other" is not defined in object type {actions_runner_debug: string; actions_step_debug: string; github_token: string; token: string} [undefined-property]"#,
+        ]
+    );
+}
+
+#[test]
+fn secrets_accepts_any_name_when_the_workflow_has_another_trigger() {
+    let text = "\
+on:
+  push:
+  workflow_call:
+    secrets:
+      token:
+        required: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ secrets.token }} ${{ secrets.other }}
+";
+    assert_eq!(lint_expressions(text), Vec::<String>::new());
+}
+
+#[test]
+fn secrets_accepts_any_name_when_workflow_call_declares_no_secrets() {
+    let text = "\
+on: workflow_call
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ secrets.other }}
+";
+    assert_eq!(lint_expressions(text), Vec::<String>::new());
+}
+
+#[test]
+fn jobs_in_the_workflow_call_outputs_has_the_outputs_and_result_of_each_job() {
+    let text = "\
+on:
+  workflow_call:
+    outputs:
+      tag:
+        value: ${{ jobs.build.outputs.tag }}
+      result:
+        value: ${{ jobs.build.result }}
+      called:
+        value: ${{ jobs.call.outputs.anything }}
+      typo:
+        value: ${{ jobs.build.outputs.tags }}
+      missing:
+        value: ${{ jobs.deploy.result }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        run: echo
+  call:
+    uses: ./.github/workflows/called.yaml
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:11:20: property "tags" is not defined in object type {tag: string} [undefined-property]"#,
+            r#"test.yaml:13:20: property "deploy" is not defined in object type {build: {outputs: {tag: string}; result: string}; call: {outputs: object; result: string}} [undefined-property]"#,
+        ]
+    );
 }

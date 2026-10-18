@@ -104,5 +104,6 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | `wrong-argument-count` | `expression` | correctness | error | A call of a built-in function has the wrong number of arguments |
 | `wrong-argument-type` | `expression` | correctness | error | An argument of a built-in function has a type that its parameter does not accept |
 | [`wrong-expression-type`](wrong-expression-type.md) | `expression` | correctness | error | A value written as one `${{ }}` has a type that its key does not accept |
+| [`wrong-input-default-type`](wrong-input-default-type.md) | `expression` | correctness | error | A `boolean` or `number` input of `workflow_call` has a default of another type |
 | [`yaml-syntax-error`](yaml-syntax-error.md) | `syntax-check` | correctness | error | The input is not valid YAML |
 <!-- rules-index:end -->
