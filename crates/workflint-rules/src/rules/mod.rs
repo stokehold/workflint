@@ -44,12 +44,13 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 42] = [
+pub(crate) static ALL: [&RuleMeta; 45] = [
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &workflow_call::BROKEN_REUSABLE_WORKFLOW,
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
     &events::CONFLICTING_FILTERS,
     &if_cond::CONSTANT_CONDITION,
+    &events::CRON_TOO_FREQUENT,
     &events::DEFAULT_NOT_IN_OPTIONS,
     &action::DEPRECATED_ACTION_INPUT,
     &events::DUPLICATE_INPUT_OPTION,
@@ -60,6 +61,7 @@ pub(crate) static ALL: [&RuleMeta; 42] = [
     &if_cond::IF_ALWAYS_TRUE,
     &action::INVALID_ACTION_FORMAT,
     &events::INVALID_ACTIVITY_TYPE,
+    &events::INVALID_CRON,
     &action::INVALID_DOCKER_ACTION,
     &env_var::INVALID_ENV_VAR_NAME,
     &glob::INVALID_GLOB,
@@ -67,6 +69,7 @@ pub(crate) static ALL: [&RuleMeta; 42] = [
     &glob::INVALID_REF_NAME,
     &workflow_call::INVALID_REUSABLE_WORKFLOW_REF,
     &runner_label::INVALID_RUNNER_LABEL_PATTERN,
+    &events::INVALID_TIMEZONE,
     &action::MISSING_REQUIRED_ACTION_INPUT,
     &workflow_call::MISSING_REQUIRED_WORKFLOW_INPUT,
     &workflow_call::MISSING_REQUIRED_WORKFLOW_SECRET,

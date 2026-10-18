@@ -10,7 +10,6 @@
 # fails the test of a listed fixture that passes. The pull request that makes
 # a fixture pass removes its line. See tests/conformance/README.md.
 
-"err/cron_5minutes_limit" = "M4"
 "err/deprecated_workflow_commands" = "M4"
 "err/invalid_id" = "M4"
 "err/invalid_permissions" = "M4"
@@ -24,11 +23,9 @@
 "err/pyflakes_step_shell" = "M5"
 "err/pyflakes_workflow_default_shell" = "M5"
 "err/random_order_cycle_in_needs" = "M4"
-"err/schedule_invalid_timezone" = "M4"
 "err/shellcheck_default_shell_detection" = "M5"
 "examples/action_metadata_syntax_validation" = "M4"
 "examples/contextual_needs_object" = "M4"
-"examples/cron_schedule_check" = "M4"
 "examples/cyclic_deps_needs" = "M4"
 "examples/deprecated_workflow_commands" = "M4"
 "examples/id_naming_convention" = "M4"

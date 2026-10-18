@@ -605,10 +605,31 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 - Upstream: `on.schedule[*].timezone` is checked with Go's `time.LoadLocation`, which reads the host's zoneinfo before the tzdata embedded in the binary (tzdata 2025c in a build with Go 1.26.4). So the answer depends on the host. On Linux with `/usr/share/zoneinfo`, `localtime` and `posixrules` are accepted as well. A host with a newer tzdata accepts zones that 2025c lacks. On a file system that ignores case, such as macOS's default, `america/new_york` is accepted.
 - workflint: accepts exactly the 598 names of that embedded tzdata, with case. It rejects `UTC` in any case, `local` in any case, and the empty string, as upstream does before it calls `time.LoadLocation`.
+- The `TZ=` and `CRON_TZ=` prefix of a cron expression goes through the same lookup. There workflint accepts the names of the embedded tzdata, `UTC`, `Local`, and the empty name, as `time.LoadLocation` does. Any other name gives `unknown time zone <name>`, or `time: invalid location name` for a name with `..` or a leading `/` or `\`. Upstream on Linux accepts `TZ=localtime` and reports `TZ=America` with `provided bad location America: is a directory`.
 - Why: the same input must give the same output on every host (ADR 0013).
 - Upstream issue: none.
 - Milestone: M4.
-- Status: planned.
+- Status: implemented.
+
+<a id="cron-interval-in-utc"></a>
+### Schedule intervals are computed in UTC
+
+- Upstream: `cron-too-frequent` compares the first two runs of a schedule after the Unix epoch. robfig/cron computes them in the host's local time zone, or in the zone of a `TZ=` prefix. A schedule whose runs are unevenly spaced gets a different interval in different zones. `0,1 0 * * *` runs at 00:01 and then at 00:00 the next day in UTC, an interval of 86340 seconds. A host in `Asia/Tokyo` gets 00:00 and 00:01 instead and reports `it runs once per 60 seconds`. `TZ=Asia/Tokyo 0,1 0 * * *` is reported on every host.
+- workflint: computes both runs in UTC, whatever the host and the prefix, so neither example is reported.
+- Why: the same input must give the same output on every host (ADR 0013). Computing in the prefix's zone needs its offsets and daylight saving rules, which `workflint-data` does not have, and upstream only checks the first interval anyway.
+- Upstream issue: none.
+- Milestone: M4.
+- Status: implemented.
+
+<a id="cron-time-zone-without-fields"></a>
+### A cron time zone prefix without fields
+
+- Upstream: a cron expression that starts with `TZ=` or `CRON_TZ=` and has no space, such as `TZ=UTC`, crashes actionlint. robfig/cron v3.0.1 slices the name up to the index of the first space, which is -1 (`parser.go:99`).
+- workflint: the name is the rest of the expression and no fields follow. `TZ=UTC` gives `invalid CRON format "TZ=UTC" in schedule event: expected exactly 5 fields, found 0: []`, and `TZ=Nope` gives `provided bad location Nope: unknown time zone Nope`.
+- Why: a crash loses every other result.
+- Upstream issue: none.
+- Milestone: M4.
+- Status: implemented.
 
 <a id="deterministic-order"></a>
 ### Deterministic job order

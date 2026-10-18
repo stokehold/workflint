@@ -48,6 +48,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`conflicting-filters`](conflicting-filters.md) | `events` | correctness | error | A filter and its `-ignore` filter are both set on one event |
 | [`constant-condition`](constant-condition.md) | `if-cond` | correctness | error | An `if:` condition has the same value in every run |
 | [`context-not-allowed`](context-not-allowed.md) | `expression` | correctness | error | An expression reads a context that its workflow key does not allow |
+| [`cron-too-frequent`](cron-too-frequent.md) | `events` | correctness | error | A `schedule` cron expression runs more often than every 5 minutes |
 | [`default-not-in-options`](default-not-in-options.md) | `events` | correctness | error | The default of a `choice` input of `workflow_dispatch` is not one of its options |
 | [`deprecated-action-input`](deprecated-action-input.md) | `action` | correctness | error | `with:` sets an input that the action has deprecated |
 | [`duplicate-input-option`](duplicate-input-option.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` lists an option more than once |
@@ -67,6 +68,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-activity-type`](invalid-activity-type.md) | `events` | correctness | error | `types` lists an activity type that the event does not have |
 | [`invalid-comparison`](invalid-comparison.md) | `expression` | correctness | error | A comparison has operands that GitHub cannot compare |
 | [`invalid-config-variable-name`](invalid-config-variable-name.md) | `expression` | correctness | error | The name in `vars.NAME` breaks GitHub's naming rules for configuration variables |
+| [`invalid-cron`](invalid-cron.md) | `events` | correctness | error | A `schedule` cron expression does not parse |
 | [`invalid-dispatch-input-type`](invalid-dispatch-input-type.md) | `syntax-check` | correctness | error | A `workflow_dispatch` input has an unknown `type` |
 | [`invalid-docker-action`](invalid-docker-action.md) | `action` | correctness | error | A `docker://` action has an invalid URI or an empty tag |
 | [`invalid-env-var-name`](invalid-env-var-name.md) | `env-var` | correctness | error | A name in `env` contains `&`, `=`, a space, or a tab |
@@ -83,6 +85,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-reusable-call-key`](invalid-reusable-call-key.md) | `syntax-check` | correctness | error | A job that calls a reusable workflow has a key that only a job with steps may have |
 | [`invalid-reusable-workflow-ref`](invalid-reusable-workflow-ref.md) | `workflow-call` | correctness | error | A job's `uses:` is not `./path/to/workflow.yml` or `owner/repo/path/to/workflow.yml@ref` |
 | [`invalid-runner-label-pattern`](invalid-runner-label-pattern.md) | `runner-label` | correctness | error | A runner label pattern in the config is not a valid glob |
+| [`invalid-timezone`](invalid-timezone.md) | `events` | correctness | error | A `schedule` time zone is not an IANA time zone name |
 | [`invalid-workflow-call-input-type`](invalid-workflow-call-input-type.md) | `syntax-check` | correctness | error | A `workflow_call` input has an unknown `type` |
 | [`merge-key-unsupported`](merge-key-unsupported.md) | `syntax-check` | correctness | error | A mapping has a `<<` merge key, which GitHub Actions does not apply |
 | [`missing-format-argument`](missing-format-argument.md) | `expression` | correctness | error | The format string of `format()` has a placeholder beyond its arguments |
