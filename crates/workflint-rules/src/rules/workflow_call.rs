@@ -134,13 +134,7 @@ fn check_local(call: &Call<'_>, uses: &JobUses<'_>, cx: &mut Context<'_>) {
         Lookup::None => return,
         Lookup::Found { metadata, .. } => metadata,
         Lookup::Error(err) => {
-            let rule = match err {
-                LocalMetadataError::ReadWorkflow { .. } => &REUSABLE_WORKFLOW_NOT_FOUND,
-                LocalMetadataError::Workflow { .. } | LocalMetadataError::Action { .. } => {
-                    &BROKEN_REUSABLE_WORKFLOW
-                }
-            };
-            cx.report(rule, uses.span(), err.to_string());
+            report_lookup_error(cx, uses, &err);
             return;
         }
     };
@@ -210,6 +204,23 @@ fn check_local(call: &Call<'_>, uses: &JobUses<'_>, cx: &mut Context<'_>) {
             ),
         );
     }
+}
+
+/// Reports `err`, which the lookup of the local reusable workflow at `uses` returned, at
+/// `uses`. Only the first lookup of a callee in the run returns its error, so the `expression`
+/// rule reports it too when it looks the callee up first.
+pub(crate) fn report_lookup_error(
+    cx: &mut Context<'_>,
+    uses: &JobUses<'_>,
+    err: &LocalMetadataError,
+) {
+    let rule = match err {
+        LocalMetadataError::ReadWorkflow { .. } => &REUSABLE_WORKFLOW_NOT_FOUND,
+        LocalMetadataError::Workflow { .. } | LocalMetadataError::Action { .. } => {
+            &BROKEN_REUSABLE_WORKFLOW
+        }
+    };
+    cx.report(rule, uses.span(), err.to_string());
 }
 
 /// The entries of `keyed` in source order without the ones that repeat an earlier key, which

@@ -366,7 +366,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: GitHub rejects a non-boolean value for a `boolean` input of a reusable workflow at run time.
 - Upstream issue: none.
 - Milestone: M3, M4.
-- Status: implemented in `workflint-expr`, and in the output from M4.6: `if:` and `!` accept every type (`workflint/ok/if_condition_any_type.yaml`). The `with:` check follows in M4.10.
+- Status: implemented in `workflint-expr`, and in the output from M4.6: `if:` and `!` accept every type (`workflint/ok/if_condition_any_type.yaml`). The `with:` check is implemented since M4.10, and adds a line to `projects/workflow_call_input_type_check` for a string passed to a `boolean` input.
 
 <a id="literal-index-case"></a>
 ### Case-insensitive literal index keys
@@ -531,7 +531,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: upstream rejects valid code. Quoting is how users write a string in YAML.
 - Upstream issue: #225, #250, PR #727.
 - Milestone: M4.
-- Status: implemented for matrix values in M4.8. `with:` values follow in M4.10. No fixture shows it, so the allow-list has no records for it.
+- Status: implemented for matrix values in M4.8 and for `with:` values in M4.10. `projects/workflow_call_input_type_check` passes empty values to a `string` and a `number` input. Upstream reports a string for the `number` input only. workflint reports null for both.
 
 ## Rules
 
@@ -624,12 +624,22 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Errors in shared local actions and reusable workflows
 
 - Upstream: an error in a local `action.yml` or a local reusable workflow is reported once per run, at whichever use loaded it first. Files are linted in parallel goroutines and jobs in random order, so the file, the position and even the kind (`action`, `workflow-call` or `expression`) vary between runs. The cache is not single-flight, so two concurrent first uses can both report the error. `testdata/projects/broken_reusable_workflow/README.md` documents the race.
-- workflint: each action or workflow is loaded once. Its errors are reported once, at the first use in order of file path and then source position, by the `action` or `workflow-call` rule. The `expression` rule never reports them. The `action` rule skips a local action whose `uses:` contains `${{ }}`, so broken metadata behind such a value is not reported, where upstream's `expression` rule reports it.
+- workflint: each action or workflow is loaded once. Its errors are reported once, at the first use in order of file path and then source position, by the `action` or `workflow-call` rule. The `expression` rule reports the error of a reusable workflow when a job's `needs` names a later job that calls it, because typing `needs` looks the callee up before the `workflow-call` rule visits the later job. The position is the later job's `uses:`, as upstream. The `action` rule skips a local action whose `uses:` contains `${{ }}`, so broken metadata behind such a value is not reported, where upstream's `expression` rule reports it.
 - Why: the same input must give the same output.
 - Upstream issue: none.
 - Milestone: M5.
-- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The `workflow-call` rule reports the errors of reusable workflows since M4.25. The `expression` rule types step outputs without reporting them since M4.9. The other rules that report them arrive in M4.10 and M4.18, and the order by file path with M5.3.
+- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The `workflow-call` rule reports the errors of reusable workflows since M4.25. The `expression` rule types step outputs without reporting them since M4.9, and reports the errors of reusable workflows that typing `needs` finds since M4.10. The `action` rule reports them from M4.18, and the order by file path with M5.3.
 - Fixtures: `projects/broken_local_action`, `projects/broken_reusable_workflow`, `projects/workflow_call_not_found`.
+
+<a id="with-expression-errors"></a>
+### A `with:` value whose expression has an error is not type-checked
+
+- Upstream: a `with:` value whose `${{ }}` has an error, such as an undefined property, is typed as a string. A call that passes it to a `number` or `boolean` input of a local reusable workflow gets a second error, `string value cannot be assigned`, on top of the first.
+- workflint: the value gets no type check, so only the expression's own error is reported.
+- Why: the type of the value is not known. The second error describes a value that the author did not write.
+- Upstream issue: none.
+- Milestone: M4.
+- Status: implemented in M4.10. No fixture shows it, so the allow-list has no records for it.
 
 <a id="dispatch-input-hint"></a>
 ### Hint for inputs of `workflow_dispatch`

@@ -103,3 +103,19 @@ anchor = "dispatch-options-quoting"
 fixture = "examples/workflow_dispatch_input_types"
 upstream = 'test.yaml:16:18: default value "Chobi" of "name" input is not included in its options "\"Tama\", \"Mike\"" [events]'
 workflint = 'test.yaml:16:18: default value "Chobi" of "name" input is not included in its options "Tama", "Mike" [events]'
+
+[[difference]]
+anchor = "bool-assignability"
+fixture = "projects/workflow_call_input_type_check"
+workflint = 'workflows/test.yaml:10:19: input "bool_input" is typed as bool by reusable workflow "./workflows/reusable.yaml". string value cannot be assigned [expression]'
+
+[[difference]]
+anchor = "quoted-scalar-types"
+fixture = "projects/workflow_call_input_type_check"
+workflint = 'workflows/test.yaml:21:17: input "str_input" is typed as string by reusable workflow "./workflows/reusable.yaml". null value cannot be assigned [expression]'
+
+[[difference]]
+anchor = "quoted-scalar-types"
+fixture = "projects/workflow_call_input_type_check"
+upstream = 'workflows/test.yaml:22:17: input "num_input" is typed as number by reusable workflow "./workflows/reusable.yaml". string value cannot be assigned [expression]'
+workflint = 'workflows/test.yaml:22:17: input "num_input" is typed as number by reusable workflow "./workflows/reusable.yaml". null value cannot be assigned [expression]'
