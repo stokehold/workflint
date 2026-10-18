@@ -624,11 +624,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Errors in shared local actions and reusable workflows
 
 - Upstream: an error in a local `action.yml` or a local reusable workflow is reported once per run, at whichever use loaded it first. Files are linted in parallel goroutines and jobs in random order, so the file, the position and even the kind (`action`, `workflow-call` or `expression`) vary between runs. The cache is not single-flight, so two concurrent first uses can both report the error. `testdata/projects/broken_reusable_workflow/README.md` documents the race.
-- workflint: each action or workflow is loaded once. Its errors are reported once, at the first use in order of file path and then source position, by the `action` or `workflow-call` rule.
+- workflint: each action or workflow is loaded once. Its errors are reported once, at the first use in order of file path and then source position, by the `action` or `workflow-call` rule. The `expression` rule never reports them. The `action` rule skips a local action whose `uses:` contains `${{ }}`, so broken metadata behind such a value is not reported, where upstream's `expression` rule reports it.
 - Why: the same input must give the same output.
 - Upstream issue: none.
 - Milestone: M5.
-- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The `workflow-call` rule reports the errors of reusable workflows since M4.25. The other rules that report them arrive in M4.9, M4.10, and M4.18, and the order by file path with M5.3.
+- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The `workflow-call` rule reports the errors of reusable workflows since M4.25. The `expression` rule types step outputs without reporting them since M4.9. The other rules that report them arrive in M4.10 and M4.18, and the order by file path with M5.3.
 - Fixtures: `projects/broken_local_action`, `projects/broken_reusable_workflow`, `projects/workflow_call_not_found`.
 
 <a id="dispatch-input-hint"></a>
