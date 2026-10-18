@@ -61,6 +61,8 @@
 //! [`Str::source_span`] turns them into a span in the file, exact in every
 //! scalar style. [`parse`] reports the parse errors of the placeholders that
 //! the workflow holds.
+//! [`placeholders`] visits them in the places that the reference's
+//! `expression` rule checks.
 //!
 //! # Local metadata
 //!

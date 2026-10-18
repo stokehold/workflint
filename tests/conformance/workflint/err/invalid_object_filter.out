@@ -1,0 +1,3 @@
+test.yaml:7:30: receiver of object filtering `.*` must be type of array or object but got "string" [expression]
+test.yaml:9:30: elements of object at receiver of object filtering `.*` must be type of object but got "string". the type of receiver was "{string => string}" [expression]
+test.yaml:11:30: object type "{a: number}" cannot be filtered by object filtering `.*` since it has no object element [expression]

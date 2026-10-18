@@ -1,0 +1,13 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # The receiver is a string
+      - run: echo ${{ toJSON(github.ref.*) }}
+      # The elements of env are strings, not objects
+      - run: echo ${{ toJSON(env.*.name) }}
+      # The object has no property whose type is an object
+      - run: echo ${{ toJSON(fromJSON('{"a":1}').*) }}
+      # OK: the elements of the array are objects
+      - run: echo ${{ toJSON(github.event.commits.*.id) }}

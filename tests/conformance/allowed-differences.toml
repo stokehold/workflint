@@ -68,3 +68,14 @@ upstream = '/test\.yaml:58:15: label "" is unknown\. available labels are .+\. i
 anchor = "invalid-value-reported-once"
 fixture = "err/issue280_runs_on"
 upstream = '/test\.yaml:64:21: label "" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+
+[[difference]]
+anchor = "all-expressions-in-string"
+fixture = "err/context_availability"
+workflint = '/test\.yaml:106:35: context "env" is not allowed here\. .+ \[expression\]/'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "err/github_script_untrusted_input"
+upstream = 'test.yaml:11:162: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+workflint = 'test.yaml:16:32: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'

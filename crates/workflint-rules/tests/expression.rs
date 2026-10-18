@@ -50,169 +50,169 @@ fn position(text: &str, offset: usize) -> String {
 /// special function that the key does not allow instead. The locations with the empty workflow
 /// key read `github`, which every other key allows.
 const EVERY_LOCATION: &str = r"
-name: ${{ github.name }}
-run-name: ${{ env.run_name }}
+name: ${{ github }}
+run-name: ${{ env }}
 on:
   push:
-    types: ${{ github.types }}
-    branches: ['${{ github.branches }}']
-    branches-ignore: ${{ github.branches_ignore }}
-    tags: ${{ github.tags }}
-    tags-ignore: ${{ github.tags_ignore }}
-    paths: ${{ github.paths }}
-    paths-ignore: ${{ github.paths_ignore }}
-    workflows: ${{ github.workflows }}
+    types: ${{ github }}
+    branches: ['${{ github }}']
+    branches-ignore: ${{ github }}
+    tags: ${{ github }}
+    tags-ignore: ${{ github }}
+    paths: ${{ github }}
+    paths-ignore: ${{ github }}
+    workflows: ${{ github }}
   schedule:
-    - cron: ${{ github.cron }}
-      timezone: ${{ github.timezone }}
+    - cron: ${{ github }}
+      timezone: ${{ github }}
   workflow_dispatch:
     inputs:
       i:
-        description: ${{ github.dispatch_description }}
-        default: ${{ github.dispatch_default }}
-        required: ${{ github.dispatch_required }}
+        description: ${{ github }}
+        default: ${{ github }}
+        required: ${{ github }}
         type: choice
-        options: ['${{ github.dispatch_option }}']
+        options: ['${{ github }}']
   repository_dispatch:
-    types: ['${{ github.repository_dispatch_types }}']
+    types: ['${{ github }}']
   workflow_call:
     inputs:
       i:
-        description: ${{ github.call_input_description }}
-        default: ${{ env.call_input_default }}
+        description: ${{ github }}
+        default: ${{ env }}
         type: string
     secrets:
       s:
-        description: ${{ github.call_secret_description }}
+        description: ${{ github }}
     outputs:
       o:
-        description: ${{ github.call_output_description }}
-        value: ${{ env.call_output_value }}
+        description: ${{ github }}
+        value: ${{ env }}
   image_version:
-    names: ['${{ github.image_names }}']
-    versions: ['${{ github.image_versions }}']
+    names: ['${{ github }}']
+    versions: ['${{ github }}']
 env:
-  ${{ env.env_name }}: ${{ env.env_value }}
+  ${{ env }}: ${{ env }}
 defaults:
   run:
-    shell: ${{ github.defaults_shell }}
-    working-directory: ${{ github.defaults_working_directory }}
+    shell: ${{ github }}
+    working-directory: ${{ github }}
 concurrency:
-  group: ${{ env.concurrency_group }}
-  cancel-in-progress: ${{ env.concurrency_cancel }}
+  group: ${{ env }}
+  cancel-in-progress: ${{ env }}
 jobs:
   a:
-    name: ${{ env.job_name }}
-    needs: ['${{ github.needs }}']
+    name: ${{ env }}
+    needs: ['${{ github }}']
     runs-on:
-      labels: ['${{ env.label }}']
-      group: ${{ env.runner_group }}
-    concurrency: ${{ env.job_concurrency_group }}
-    env: ${{ env.job_env }}
+      labels: ['${{ env }}']
+      group: ${{ env }}
+    concurrency: ${{ env }}
+    env: ${{ env }}
     defaults:
       run:
-        shell: ${{ secrets.job_defaults_shell }}
-        working-directory: ${{ secrets.job_defaults_working_directory }}
-    if: ${{ env.job_if }}
+        shell: ${{ secrets }}
+        working-directory: ${{ secrets }}
+    if: ${{ env }}
     strategy:
-      fail-fast: ${{ env.fail_fast }}
-      max-parallel: ${{ env.max_parallel }}
-    continue-on-error: ${{ env.job_continue_on_error }}
-    timeout-minutes: ${{ env.job_timeout_minutes }}
+      fail-fast: ${{ env }}
+      max-parallel: ${{ env }}
+    continue-on-error: ${{ env }}
+    timeout-minutes: ${{ env }}
     container:
-      image: ${{ env.container_image }}
-      credentials: ${{ job.container_credentials }}
+      image: ${{ env }}
+      credentials: ${{ job }}
       env:
-        ${{ steps.container_env_name }}: ${{ steps.container_env_value }}
-      ports: ['${{ env.container_port }}']
-      volumes: ['${{ env.container_volume }}']
-      options: ${{ env.container_options }}
+        ${{ steps }}: ${{ steps }}
+      ports: ['${{ env }}']
+      volumes: ['${{ env }}']
+      options: ${{ env }}
     services:
       redis:
-        image: ${{ env.service_image }}
+        image: ${{ env }}
         credentials:
-          username: ${{ job.service_username }}
-          password: ${{ job.service_password }}
-        command: ${{ env.service_command }}
-        entrypoint: ${{ env.service_entrypoint }}
+          username: ${{ job }}
+          password: ${{ job }}
+        command: ${{ env }}
+        entrypoint: ${{ env }}
     environment:
-      name: ${{ env.environment_name }}
-      url: ${{ secrets.environment_url }}
-      deployment: ${{ env.environment_deployment }}
+      name: ${{ env }}
+      url: ${{ secrets }}
+      deployment: ${{ env }}
     outputs:
       o: ${{ hashFiles('job_output') }}
     snapshot:
       image-name: image
-      if: ${{ env.snapshot_if }}
+      if: ${{ env }}
     steps:
-      - id: ${{ github.step_id }}
-        name: ${{ success('step_name') }}
-        if: ${{ secrets.step_if }}
-        run: echo ${{ success('run') }}
-        shell: ${{ matrix.shell }}
-        working-directory: ${{ success('step_working_directory') }}
-        env: ${{ success('step_env') }}
-        continue-on-error: ${{ success('step_continue_on_error') }}
-        timeout-minutes: ${{ success('step_timeout_minutes') }}
-      - uses: ${{ github.step_uses }}
+      - id: ${{ github }}
+        name: ${{ success() }}
+        if: ${{ secrets }}
+        run: echo ${{ success() }}
+        shell: ${{ matrix }}
+        working-directory: ${{ success() }}
+        env: ${{ success() }}
+        continue-on-error: ${{ success() }}
+        timeout-minutes: ${{ success() }}
+      - uses: ${{ github }}
         with:
-          i: ${{ success('step_with') }}
+          i: ${{ success() }}
         env:
-          ${{ success('step_env_name') }}: ${{ success('step_env_value') }}
+          ${{ success() }}: ${{ success() }}
       - uses: docker://alpine
         with:
-          entrypoint: ${{ success('docker_entrypoint') }}
-          args: ${{ success('docker_args') }}
+          entrypoint: ${{ success() }}
+          args: ${{ success() }}
   b:
-    runs-on: ${{ env.runs_on }}
-    if: env.implicit_job_if
+    runs-on: ${{ env }}
+    if: env
     concurrency:
-      group: ${{ env.job_concurrency_group_in_mapping }}
-      cancel-in-progress: ${{ env.job_concurrency_cancel }}
+      group: ${{ env }}
+      cancel-in-progress: ${{ env }}
     env:
-      ${{ env.job_env_name }}: ${{ env.job_env_value }}
-    container: ${{ env.container }}
-    services: ${{ env.services }}
-    environment: ${{ env.environment }}
+      ${{ env }}: ${{ env }}
+    container: ${{ env }}
+    services: ${{ env }}
+    environment: ${{ env }}
     steps:
       - run: echo
-        if: secrets.implicit_step_if
+        if: secrets
   c:
-    runs-on: [linux, '${{ env.label_in_sequence }}']
+    runs-on: [linux, '${{ env }}']
     container:
       image: image
       credentials:
-        username: ${{ job.container_username }}
-        password: ${{ job.container_password }}
+        username: ${{ job }}
+        password: ${{ job }}
     services:
       redis:
         image: redis
-        credentials: ${{ job.service_credentials }}
+        credentials: ${{ job }}
         env:
-          ${{ steps.service_env_name }}: ${{ steps.service_env_value }}
-        ports: ['${{ env.service_port }}']
-        volumes: ['${{ env.service_volume }}']
-        options: ${{ env.service_options }}
+          ${{ steps }}: ${{ steps }}
+        ports: ['${{ env }}']
+        volumes: ['${{ env }}']
+        options: ${{ env }}
       postgres:
         image: postgres
-        env: ${{ steps.service_env }}
+        env: ${{ steps }}
     snapshot: image
     steps:
       - run: echo
   d:
-    uses: ${{ github.call_uses }}
+    uses: ${{ github }}
     with:
-      i: ${{ env.call_with }}
+      i: ${{ env }}
     secrets:
-      s: ${{ env.call_secret }}
+      s: ${{ env }}
 ";
 
 /// The forms of the workflow-level locations of [`EVERY_LOCATION`] that take a value in two
 /// forms.
 const WORKFLOW_SECOND_FORMS: &str = r"
 on: push
-env: ${{ secrets.env }}
-concurrency: ${{ env.concurrency }}
+env: ${{ job }}
+concurrency: ${{ env }}
 jobs:
   a:
     runs-on: linux
@@ -331,16 +331,16 @@ jobs:
 
 #[test]
 fn every_placeholder_that_the_parser_reports_errors_in_is_checked_by_the_rule() {
-    // Each expression reads a variable that does not exist, so the rule reports each one it
-    // checks, whatever the workflow key.
+    // Each expression reads a variable or calls a function that does not exist, so the rule
+    // reports each one it checks, whatever the workflow key.
     let text = EVERY_LOCATION.replace("${{ ", "${{ undefined_");
     let text = text
-        .replace("if: env.", "if: undefined_env.")
-        .replace("if: secrets.", "if: undefined_secrets.");
+        .replace("if: env\n", "if: undefined_env\n")
+        .replace("if: secrets\n", "if: undefined_secrets\n");
     let (file, diagnostics) = diagnostics(&text);
     let checked: BTreeSet<_> = diagnostics
         .iter()
-        .filter(|d| d.rule.id == "undefined-variable")
+        .filter(|d| matches!(d.rule.id, "undefined-variable" | "undefined-function"))
         .map(|d| file.line_col(d.span.start))
         .map(|LineCol { line, column }| format!("{line}:{column}"))
         .collect();
@@ -401,7 +401,7 @@ jobs:
         env: x
 ";
     let (_, diagnostics) = diagnostics(text);
-    assert!(!diagnostics.is_empty());
+    assert_ne!(diagnostics.len(), 0);
     for diagnostic in &diagnostics {
         assert_eq!(diagnostic.rule.kind, "syntax-check", "{diagnostic:?}");
     }
@@ -433,7 +433,7 @@ jobs:
         at,
         [
             "6:23 [undefined-variable]",
-            "6:33 [untrusted-input]",
+            "6:34 [untrusted-input]",
             "6:66 [undefined-variable]",
         ]
     );
@@ -487,7 +487,7 @@ jobs:
         .iter()
         .map(|line| line.split(": ").next().unwrap())
         .collect();
-    assert_eq!(at, ["test.yaml:6:24", "test.yaml:9:37"], "{lines:#?}");
+    assert_eq!(at, ["test.yaml:6:24", "test.yaml:9:36"], "{lines:#?}");
 }
 
 #[test]
