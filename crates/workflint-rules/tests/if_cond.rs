@@ -5,8 +5,9 @@
 
 use workflint_diagnostics::{Color, FileId, SourceFile, render_oneline};
 
-/// Parses `text` as a workflow, runs the rules over it, and returns their diagnostics in the
-/// one-line format.
+/// Parses `text` as a workflow, runs the rules over it, and returns the diagnostics of the
+/// `if-cond` rule in the one-line format. The other rules, such as `expression`, also report on
+/// some of these conditions.
 fn lint(text: &str) -> Vec<String> {
     let file = SourceFile::new(FileId::new(0), "test.yaml", text).unwrap();
     let document = workflint_yaml::parse(&file).document.unwrap();
@@ -17,6 +18,7 @@ fn lint(text: &str) -> Vec<String> {
     String::from_utf8(out)
         .unwrap()
         .lines()
+        .filter(|line| line.ends_with("[if-always-true]") || line.ends_with("[constant-condition]"))
         .map(str::to_owned)
         .collect()
 }

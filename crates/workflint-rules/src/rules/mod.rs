@@ -1,10 +1,12 @@
 //! The rules, one module per reference rule, and the order the linter creates them in.
 
-mod events;
+use workflint_diagnostics::RuleMeta;
 
 use crate::Rule;
 use crate::kind::{self, Kind};
 
+mod events;
+mod expression;
 mod if_cond;
 
 /// The kinds of the reference's rules in the order its linter creates them for each file
@@ -36,7 +38,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&workflint_diagnostics::RuleMeta; 16] = [
+pub(crate) static ALL: [&RuleMeta; 19] = [
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
     &events::CONFLICTING_FILTERS,
@@ -48,11 +50,14 @@ pub(crate) static ALL: [&workflint_diagnostics::RuleMeta; 16] = [
     &events::INVALID_ACTIVITY_TYPE,
     &events::INVALID_INPUT_DEFAULT,
     &events::MISSING_WORKFLOW_RUN_WORKFLOWS,
+    &expression::OBJECT_IN_TEMPLATE,
     &events::OPTIONS_ON_NON_CHOICE_INPUT,
     &events::REQUIRED_INPUT_WITH_DEFAULT,
+    &expression::SINGLE_EXPRESSION_REQUIRED,
     &events::TOO_MANY_DISPATCH_INPUTS,
     &events::UNKNOWN_EVENT,
     &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
+    &expression::WRONG_EXPRESSION_TYPE,
 ];
 
 /// Creates a fresh instance of each rule for one file, in [`CREATION_ORDER`].
@@ -68,6 +73,7 @@ pub fn create_rules<'a>() -> Vec<Box<dyn Rule<'a> + 'a>> {
 fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
     match kind.name {
         "events" => Some(Box::new(events::Events)),
+        "expression" => Some(Box::new(expression::Expression::new())),
         "if-cond" => Some(Box::new(if_cond::IfCond)),
         _ => None,
     }

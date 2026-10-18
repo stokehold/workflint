@@ -20,6 +20,7 @@ A page has these parts, in this order:
 3. The rule's description from its `RuleMeta`, with a final period, on one line. More paragraphs may follow to say what the rule reports.
 4. A `## Why` section that says why the rule reports it, such as what GitHub does with the workflow.
 5. `## Failing example`, or `## Failing examples` when there are several. Each example is a `yaml` block with a workflow, followed by a `text` block with the diagnostics that workflint gives for it in the one-line format (`-oneline`). The file is named `test.yaml`. Each example gives at least one diagnostic of the page's rule. It may give diagnostics of other rules only if the page links their pages, as in `[unexpected-node-kind](unexpected-node-kind.md)`. Prose may come between the examples.
+   A rule that never reports, such as one that the parser makes impossible to reach, has a `## Unreachable` section in place of the failing examples. It says why the rule never reports. The test then rejects a failing example.
 6. `## Passing example`, or `## Passing examples`, with one or more `yaml` blocks. Each workflow gives no diagnostic at all.
 7. `## Differences from actionlint`, only when the rule behaves differently from actionlint. It lists links to the entries in [differences.md](../differences.md), and the test checks that each anchor exists.
 
@@ -68,11 +69,13 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`missing-required-key`](missing-required-key.md) | `syntax-check` | correctness | error | A required section or key is missing |
 | [`missing-workflow-run-workflows`](missing-workflow-run-workflows.md) | `events` | correctness | error | A `workflow_run` event has no `workflows` |
 | [`non-positive-number`](non-positive-number.md) | `syntax-check` | correctness | error | A literal `timeout-minutes` or `max-parallel` is zero or less |
+| [`object-in-template`](object-in-template.md) | `expression` | correctness | error | A `${{ }}` in a string evaluates to an object, an array, or null |
 | [`options-on-non-choice-input`](options-on-non-choice-input.md) | `events` | correctness | error | A `workflow_dispatch` input that is not a `choice` has `options` |
 | [`recursive-alias`](recursive-alias.md) | `syntax-check` | correctness | error | An alias refers to a node that encloses it |
 | [`required-input-with-default`](required-input-with-default.md) | `events` | correctness | error | A required `workflow_call` input has a default, which is never used |
 | [`reusable-call-key-without-uses`](reusable-call-key-without-uses.md) | `syntax-check` | correctness | error | A job without `uses` has `with` or `secrets` |
 | [`schedule-without-config`](schedule-without-config.md) | `syntax-check` | correctness | error | `schedule` is named in a string or a sequence item of `on`, so it has no `cron` entries |
+| [`single-expression-required`](single-expression-required.md) | `expression` | correctness | error | A value that must be one `${{ }}` holds another number of them |
 | [`step-without-run-or-uses`](step-without-run-or-uses.md) | `syntax-check` | correctness | error | A step has neither `run` nor `uses` |
 | [`too-many-dispatch-inputs`](too-many-dispatch-inputs.md) | `events` | correctness | error | `workflow_dispatch` has more inputs than GitHub allows |
 | [`too-many-yaml-nodes`](too-many-yaml-nodes.md) | `syntax-check` | correctness | error | The workflow has more YAML nodes, with its aliases expanded, than GitHub reads |
@@ -91,5 +94,6 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`workflows-filter-not-supported`](workflows-filter-not-supported.md) | `events` | correctness | error | `workflows` is set on an event other than `workflow_run` |
 | `wrong-argument-count` | `expression` | correctness | error | A call of a built-in function has the wrong number of arguments |
 | `wrong-argument-type` | `expression` | correctness | error | An argument of a built-in function has a type that its parameter does not accept |
+| [`wrong-expression-type`](wrong-expression-type.md) | `expression` | correctness | error | A value written as one `${{ }}` has a type that its key does not accept |
 | [`yaml-syntax-error`](yaml-syntax-error.md) | `syntax-check` | correctness | error | The input is not valid YAML |
 <!-- rules-index:end -->
