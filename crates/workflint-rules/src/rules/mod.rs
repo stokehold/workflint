@@ -12,6 +12,7 @@ mod events;
 mod expression;
 mod if_cond;
 mod runner_label;
+mod workflow_call;
 
 /// The kinds of the reference's rules in the order its linter creates them for each file
 /// (`linter.go:558`): matrix, credentials, shell-name, runner-label, events, job-needs, action,
@@ -42,8 +43,9 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 31] = [
+pub(crate) static ALL: [&RuleMeta; 38] = [
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
+    &workflow_call::BROKEN_REUSABLE_WORKFLOW,
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
     &events::CONFLICTING_FILTERS,
     &if_cond::CONSTANT_CONDITION,
@@ -58,17 +60,23 @@ pub(crate) static ALL: [&RuleMeta; 31] = [
     &action::INVALID_DOCKER_ACTION,
     &env_var::INVALID_ENV_VAR_NAME,
     &events::INVALID_INPUT_DEFAULT,
+    &workflow_call::INVALID_REUSABLE_WORKFLOW_REF,
     &runner_label::INVALID_RUNNER_LABEL_PATTERN,
     &action::MISSING_REQUIRED_ACTION_INPUT,
+    &workflow_call::MISSING_REQUIRED_WORKFLOW_INPUT,
+    &workflow_call::MISSING_REQUIRED_WORKFLOW_SECRET,
     &events::MISSING_WORKFLOW_RUN_WORKFLOWS,
     &expression::OBJECT_IN_TEMPLATE,
     &events::OPTIONS_ON_NON_CHOICE_INPUT,
     &action::OUTDATED_ACTION,
     &events::REQUIRED_INPUT_WITH_DEFAULT,
+    &workflow_call::REUSABLE_WORKFLOW_NOT_FOUND,
     &runner_label::RUNNER_LABEL_CONFLICT,
     &expression::SINGLE_EXPRESSION_REQUIRED,
     &events::TOO_MANY_DISPATCH_INPUTS,
     &action::UNDEFINED_ACTION_INPUT,
+    &workflow_call::UNDEFINED_WORKFLOW_INPUT,
+    &workflow_call::UNDEFINED_WORKFLOW_SECRET,
     &events::UNKNOWN_EVENT,
     &runner_label::UNKNOWN_RUNNER_LABEL,
     &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
@@ -96,6 +104,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
         "if-cond" => Some(Box::new(if_cond::IfCond)),
         // M5.2 passes the labels of the config's `self-hosted-runner.labels`.
         "runner-label" => Some(Box::new(runner_label::RunnerLabel::new(Vec::new()))),
+        "workflow-call" => Some(Box::new(workflow_call::WorkflowCall)),
         _ => None,
     }
 }

@@ -11,14 +11,10 @@ use std::collections::BTreeMap;
 
 use workflint_diagnostics::quote::quote_rune;
 
-use crate::types::Ty;
+use crate::types::{MAX_TYPE_DEPTH, Ty};
 
 /// The deepest nesting Go's scanner accepts.
 const GO_MAX_DEPTH: usize = 10_000;
-
-/// The deepest nesting that gets a type. A value nested deeper has type `any`, so that the
-/// type stays small enough for recursive walks (`docs/differences.md#fromjson-nesting`).
-const MAX_TYPE_DEPTH: usize = 128;
 
 /// A syntax error in JSON, as Go's `json.SyntaxError` reports it.
 #[derive(Debug, Clone, PartialEq, Eq)]
