@@ -1,0 +1,68 @@
+# unknown-runner-label
+
+| Kind | Category | Default severity |
+|---|---|---|
+| `runner-label` | correctness | error |
+
+A `runs-on` label is not a known runner label.
+
+A known label is a GitHub-hosted label such as `ubuntu-latest`, one of the labels every self-hosted runner gets (`self-hosted`, `x64`, `arm`, `arm64`, `linux`, `macos`, `windows`), or a label that matches a pattern of the config's `self-hosted-runner.labels`. Built-in labels compare without case. Config patterns use Go's `path.Match` syntax and compare with case. A label of the exact form `${{ matrix.<prop> }}` is checked through each string value of the matrix row `<prop>` and of `<prop>` in each `include` item, and reported at the value. Other labels with `${{ }}` are not checked.
+
+## Why
+
+GitHub queues a job whose labels no runner has until it times out. An unknown label is often a typo, or a GitHub-hosted image that GitHub has retired, such as `macos-10.15`. A custom self-hosted label belongs in the config so the check knows it.
+
+## Failing examples
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: macos-10.15
+    steps:
+      - run: echo
+```
+
+```text
+test.yaml:4:14: label "macos-10.15" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [unknown-runner-label]
+```
+
+A matrix value is reported where the matrix sets it:
+
+```yaml
+on: push
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, linux-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo
+```
+
+```text
+test.yaml:6:29: label "linux-latest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [unknown-runner-label]
+```
+
+## Passing example
+
+```yaml
+on: push
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo
+  build:
+    runs-on: [self-hosted, linux, arm64]
+    steps:
+      - run: echo
+```
+
+## Differences from actionlint
+
+- [An invalid value is reported once](../differences.md#invalid-value-reported-once)
