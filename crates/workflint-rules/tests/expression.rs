@@ -8,17 +8,27 @@ use std::collections::BTreeSet;
 use workflint_diagnostics::{
     Color, Diagnostic, FileId, LineCol, SourceFile, render_oneline, sort_and_dedup,
 };
+use workflint_rules::local::{LocalMetadata, MemoryProject, NoProject};
 
 /// Lints `workflow` as the binary does, without the file system, and returns the sorted
 /// diagnostics with the file.
 fn diagnostics(workflow: &str) -> (SourceFile, Vec<Diagnostic>) {
+    diagnostics_in(&NoProject, workflow)
+}
+
+/// Does what [`diagnostics`] does, in a project with the local actions of `project`.
+fn diagnostics_in(project: &dyn LocalMetadata, workflow: &str) -> (SourceFile, Vec<Diagnostic>) {
     let file = SourceFile::new(FileId::new(0), "test.yaml", workflow).unwrap();
     let parsed = workflint_yaml::parse(&file);
     let mut diagnostics = parsed.diagnostics;
     let document = parsed.document.unwrap();
     let syntax = workflint_syntax::parse(&file, &document);
     diagnostics.extend(syntax.diagnostics);
-    diagnostics.extend(workflint_rules::run(&file, &syntax.workflow));
+    diagnostics.extend(workflint_rules::run_in_project(
+        &file,
+        &syntax.workflow,
+        project,
+    ));
     sort_and_dedup(&file, &mut diagnostics);
     (file, diagnostics)
 }
@@ -37,7 +47,12 @@ fn lint_expressions(workflow: &str) -> Vec<String> {
 
 /// Lints `workflow` and returns the diagnostics in the one-line format.
 fn lint(workflow: &str) -> Vec<String> {
-    let (file, diagnostics) = diagnostics(workflow);
+    lint_in(&NoProject, workflow)
+}
+
+/// Does what [`lint`] does, in a project with the local actions of `project`.
+fn lint_in(project: &dyn LocalMetadata, workflow: &str) -> Vec<String> {
+    let (file, diagnostics) = diagnostics_in(project, workflow);
     let mut out = Vec::new();
     render_oneline(&mut out, &file, &diagnostics, Color::Off).unwrap();
     String::from_utf8(out)
@@ -349,6 +364,8 @@ jobs:
     outputs:
       o: ${{ steps.s.outputs.o }}
     steps:
+      - id: x
+        run: echo
       - id: s
         run: echo ${{ env.E }} ${{ hashFiles('*.lock') }}
         if: steps.x.outcome == 'success' && failure()
@@ -643,8 +660,8 @@ jobs:
 
 #[test]
 fn contexts_typed_by_later_tasks_accept_any_property() {
-    // M4.9 and M4.10 type these contexts. Until then they accept any property, so that no valid
-    // workflow gets an error.
+    // M4.10 types `needs`. Until then it accepts any property, so that no valid workflow gets
+    // an error.
     let text = "\
 on:
   workflow_dispatch:
@@ -655,7 +672,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo ${{ steps.any.outputs.x }} ${{ needs.any.result }}
+      - run: echo ${{ needs.any.result }}
 ";
     assert_eq!(lint(text), Vec::<String>::new());
 }
@@ -1053,4 +1070,173 @@ fn a_matrix_value_nested_10000_levels_deep_is_typed_on_a_small_stack() {
         lines[0]
     );
     assert_eq!(lines[1], not_an_object(&ty));
+}
+
+/// Lints the steps `steps` of one job, in a project with the local action
+/// `./.github/actions/greet`, whose outputs are `greeting` and `fullName`, and the local action
+/// `./.github/actions/broken`, whose metadata does not decode. Returns the messages of the
+/// `expression` kind, without positions.
+fn steps_messages(steps: &str) -> Vec<String> {
+    let project = MemoryProject::new()
+        .with_file(
+            ".github/actions/greet/action.yml",
+            "name: Greet\ndescription: d\noutputs:\n  greeting:\n    description: d\n  fullName:\n    description: d\nruns:\n  using: node24\n  main: index.js\n",
+        )
+        .with_file(".github/actions/greet/index.js", "")
+        .with_file(".github/actions/broken/action.yml", "outputs: x\n")
+        .linting(".github/workflows/test.yaml");
+    let text = format!("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n{steps}");
+    lint_in(&project, &text)
+        .into_iter()
+        .filter(|line| {
+            let id = line.rsplit_once(" [").unwrap().1.trim_end_matches(']');
+            workflint_rules::registry::find(id).unwrap().kind == "expression"
+        })
+        .map(|line| line.splitn(4, ':').nth(3).unwrap().trim().to_owned())
+        .collect()
+}
+
+#[test]
+fn a_step_sees_only_the_steps_before_it() {
+    let messages = steps_messages(
+        "      - run: echo ${{ steps.a.outcome }}
+      - id: a
+        run: echo ${{ steps.a.outcome }}
+      - run: echo ${{ steps.a.outcome }} ${{ steps.a.conclusion }} ${{ steps.b.outcome }}
+      - id: b
+        run: echo
+",
+    );
+    assert_eq!(
+        messages,
+        [
+            r#"property "a" is not defined in object type {} [undefined-property]"#,
+            r#"property "a" is not defined in object type {} [undefined-property]"#,
+            r#"property "b" is not defined in object type {a: {conclusion: string; outcome: string; outputs: {string => string}}} [undefined-property]"#,
+        ]
+    );
+}
+
+#[test]
+fn each_job_starts_with_no_steps_and_its_outputs_see_every_step() {
+    let text = "\
+on: push
+jobs:
+  first:
+    runs-on: ubuntu-latest
+    environment:
+      name: e
+      url: ${{ steps.a.outputs.x }}
+    outputs:
+      x: ${{ steps.a.outputs.x }}
+    steps:
+      - id: a
+        run: echo
+  second:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ steps.a.outputs.x }}
+";
+    assert_eq!(
+        lint_expressions(text),
+        [r#"test.yaml:16:23: property "a" is not defined in object type {} [undefined-property]"#]
+    );
+}
+
+#[test]
+fn an_id_with_an_expression_makes_steps_accept_any_step() {
+    let messages = steps_messages(
+        "      - run: echo ${{ steps.a.outcome }}
+      - id: a-${{ 'b' }}
+        run: echo
+      - run: echo ${{ steps.a.outcome }} ${{ steps.anything.outputs.x }}
+",
+    );
+    assert_eq!(
+        messages,
+        [r#"property "a" is not defined in object type {} [undefined-property]"#]
+    );
+}
+
+#[test]
+fn step_ids_and_output_names_are_case_insensitive() {
+    let messages = steps_messages(
+        "      - id: MyGreet
+        uses: ./.github/actions/greet
+      - id: Project
+        uses: actions/add-to-project@v1.0.1
+        with:
+          project-url: u
+          github-token: t
+      - run: echo ${{ steps.mygreet.outputs.fullName }} ${{ steps.MYGREET.outputs.FULLNAME }} ${{ steps['MyGreet'].outputs['fullname'] }}
+      - run: echo ${{ steps.project.outputs.itemId }} ${{ steps.PROJECT.outputs.ITEMID }}
+      - run: echo ${{ steps.mygreet.outputs.full_name }}
+",
+    );
+    assert_eq!(
+        messages,
+        [
+            r#"property "full_name" is not defined in object type {fullname: string; greeting: string} [undefined-property]"#
+        ]
+    );
+}
+
+#[test]
+fn outputs_come_from_the_action_that_the_step_runs() {
+    let messages = steps_messages(
+        "      - id: run
+        run: echo
+      - id: local
+        uses: ./.github/actions/greet
+      - id: missing
+        uses: ./.github/actions/missing
+      - id: popular
+        uses: actions/upload-artifact@v4
+        with:
+          path: p
+      - id: script
+        uses: actions/github-script@v7
+        with:
+          script: s
+      - id: skip
+        uses: google-github-actions/get-secretmanager-secrets@v2
+        with:
+          secrets: s
+      - id: unknown
+        uses: example/unknown@v1
+      - run: echo ${{ steps.run.outputs.x }} ${{ steps.missing.outputs.x }} ${{ steps.unknown.outputs.x }}
+      - run: echo ${{ steps.script.outputs.x }} ${{ steps.skip.outputs.x }}
+      - run: echo ${{ steps.local.outputs.greeting }} ${{ steps.popular.outputs.artifact-id }}
+      - run: echo ${{ steps.local.outputs.x }}
+      - run: echo ${{ steps.popular.outputs.x }}
+      - run: echo ${{ steps.run.outputs.x.y }}
+      - run: echo ${{ steps.script.outputs }}
+",
+    );
+    assert_eq!(
+        messages,
+        [
+            r#"property "x" is not defined in object type {fullname: string; greeting: string} [undefined-property]"#,
+            r#"property "x" is not defined in object type {artifact-digest: string; artifact-id: string; artifact-url: string} [undefined-property]"#,
+            r#"receiver of object dereference "y" must be type of object but got "string" [invalid-property-access]"#,
+            "object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type object [object-in-template]",
+        ]
+    );
+}
+
+#[test]
+fn a_local_action_with_broken_metadata_has_outputs_of_any_name() {
+    // The `action` rule reports the broken metadata (M4.18). This rule reports nothing.
+    let messages = steps_messages(
+        "      - id: broken
+        uses: ./.github/actions/broken
+      - run: echo ${{ steps.broken.outputs.x }} ${{ steps.broken.outputs.x.y }}
+",
+    );
+    assert_eq!(
+        messages,
+        [
+            r#"receiver of object dereference "y" must be type of object but got "string" [invalid-property-access]"#
+        ]
+    );
 }
