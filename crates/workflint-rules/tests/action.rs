@@ -126,3 +126,15 @@ fn an_outdated_action_is_not_checked_for_inputs() {
         ]
     );
 }
+
+#[test]
+fn required_inputs_are_missing_when_with_is_not_a_mapping() {
+    assert_eq!(
+        lint_step("uses: actions/cache@v4\n        with: foo"),
+        [
+            "test.yaml:6:15: missing input \"key\" which is required by action \"actions/cache@v4\". all required inputs are \"key\", \"path\" [missing-required-action-input]",
+            "test.yaml:6:15: missing input \"path\" which is required by action \"actions/cache@v4\". all required inputs are \"key\", \"path\" [missing-required-action-input]",
+            "test.yaml:7:15: \"with\" section is scalar node but mapping node is expected [unexpected-node-kind]",
+        ]
+    );
+}
