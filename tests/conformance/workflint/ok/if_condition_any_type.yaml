@@ -1,0 +1,24 @@
+# GitHub converts an `if:` condition to a boolean, so a value of any type is accepted.
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        type: number
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # An object
+    if: github.event
+    steps:
+      # A number
+      - run: echo
+        if: ${{ strategy.job-index }}
+      # A string
+      - run: echo
+        if: ${{ github.ref_name }}
+      # An array
+      - run: echo
+        if: github.event.commits.*.message
+      # `!` of a string
+      - run: echo
+        if: '!github.head_ref'

@@ -61,6 +61,8 @@
 //! [`Str::source_span`] turns them into a span in the file, exact in every
 //! scalar style. [`parse`] reports the parse errors of the placeholders that
 //! the workflow holds.
+//! [`placeholders`] visits them in the places that the reference's
+//! `expression` rule checks.
 //!
 //! # Local metadata
 //!
@@ -128,7 +130,7 @@ pub use job::{
 pub use keyed::{Keyed, KeyedEntry};
 pub use leaf::{Expr, Str, Template};
 pub use matrix::{Matrix, MatrixCombination, MatrixRow, RawValue};
-pub use parser::{Parsed, parse};
+pub use parser::{Parsed, parse, placeholders};
 pub use reusable_workflow::{
     ReusableWorkflowInput, ReusableWorkflowMetadata, ReusableWorkflowOutput, ReusableWorkflowSecret,
 };

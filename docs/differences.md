@@ -58,8 +58,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a position on the wrong line sends users to the wrong place.
 - Upstream issue: #330.
 - Milestone: M2, M3, M4. Expression syntax errors use the exact positions from M2.
-- Status: implemented for expression syntax errors. Other errors inside strings follow with the M4 rules that report them.
-- Fixtures: `.out` lines for errors inside multi-line or escaped strings.
+- Status: implemented for expression syntax errors from M2, and for the other errors of the `expression` rule from M4.6. Other errors inside strings follow with the M4 rules that report them.
+- Fixtures: `.out` lines for errors inside multi-line or escaped strings, such as line 11 of `err/github_script_untrusted_input`, which workflint reports on line 16.
 
 <a id="script-finding-positions"></a>
 ### shellcheck and pyflakes findings point into the script
@@ -184,8 +184,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the field assignment is a copy-paste mistake.
 - Upstream issue: #747.
 - Milestone: M2.
-- Status: implemented in the parser. The expressions in both lists are checked from M4.6.
-- Fixtures: `ok/container_syntax.yaml` (lines 16-24), `err/empty_sequence_or_string` (lines 25-30), and `err/invalid_container_syntax` (lines 51-54) have both keys. Their output does not change, because neither list holds an expression.
+- Status: implemented. The parser keeps both lists, and the `expression` rule checks the expressions in both from M4.6.
+- Fixtures: `ok/container_syntax.yaml` (lines 16-24), `err/empty_sequence_or_string` (lines 25-30), and `err/invalid_container_syntax` (lines 51-54) have both keys. Their output does not change, because neither list holds an expression. The test `every_location_reports_a_context_or_function_that_its_workflow_key_does_not_allow` in `crates/workflint-rules/tests/expression.rs` has an expression in each list.
 
 <a id="capitalized-booleans"></a>
 ### `True` and `TRUE` are true
@@ -365,7 +365,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: GitHub rejects a non-boolean value for a `boolean` input of a reusable workflow at run time.
 - Upstream issue: none.
 - Milestone: M3, M4.
-- Status: implemented in `workflint-expr`. Its type errors reach the output from M4.6, and the `with:` check follows in M4.10.
+- Status: implemented in `workflint-expr`, and in the output from M4.6: `if:` and `!` accept every type (`workflint/ok/if_condition_any_type.yaml`). The `with:` check follows in M4.10.
 
 <a id="literal-index-case"></a>
 ### Case-insensitive literal index keys
@@ -425,7 +425,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the upstream code reads the wrong variable.
 - Upstream issue: none.
 - Milestone: M2, M4.
-- Status: implemented for syntax errors. The type check and the merge follow in M4.8.
+- Status: implemented for syntax errors. From M4.6 the `expression` rule checks the other matrix expressions, but not an element of `include` written as one `${{ }}`, as upstream. The check of that element and the merge follow in M4.8.
 
 <a id="all-expressions-in-string"></a>
 ### Every `${{ }}` in a string is checked
@@ -435,7 +435,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: users fix one error, rerun, and find the next one.
 - Upstream issue: none.
 - Milestone: M2, M4.
-- Status: implemented for syntax errors. Type and context errors follow in M4.6.
+- Status: implemented. Syntax errors from M2, and type, context, and untrusted-input errors from M4.6.
+- Fixtures: `err/context_availability` (line 106, where upstream reports only the first of two errors).
 
 <a id="invalid-if-condition"></a>
 ### An empty or non-string `if`
@@ -445,7 +446,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the second error is about the empty string that upstream puts in place of the value, not about the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: planned for M4.6, which skips the value that the parser marks invalid. No fixture covers it.
+- Status: implemented in M4.6: the `expression` rule skips a value that the parser marks invalid. No fixture covers it. The test `an_invalid_value_gets_no_diagnostic_from_the_rule` in `crates/workflint-rules/tests/expression.rs` does.
 
 <a id="jobs-context-result"></a>
 ### `jobs.<job_id>.result` in reusable workflow outputs

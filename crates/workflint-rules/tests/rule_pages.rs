@@ -284,8 +284,12 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
     if !page.headings.iter().any(|heading| heading == "Why") {
         problem("no `## Why` section".to_owned());
     }
-    if page.failing.is_empty() {
+    let unreachable = page.headings.iter().any(|heading| heading == "Unreachable");
+    if page.failing.is_empty() && !unreachable {
         problem("no failing example".to_owned());
+    }
+    if !page.failing.is_empty() && unreachable {
+        problem("a failing example on the page of a rule that never reports".to_owned());
     }
     if page.passing.is_empty() {
         problem("no passing example".to_owned());
@@ -659,4 +663,66 @@ fn the_rules_index_links_only_the_rules_that_have_a_page() {
          | [`new-rule`](new-rule.md) | `syntax-check` | correctness | error | A rule without a page |\n"
     );
     assert!(render_index(&[&NEW_RULE], &BTreeMap::new()).contains("\n| `new-rule` |"));
+}
+
+/// A page of `single-expression-required`, a rule that never reports, with `section` in place
+/// of its failing examples.
+fn unreachable_page(section: &str) -> String {
+    format!(
+        "# single-expression-required
+
+| Kind | Category | Default severity |
+|---|---|---|
+| `expression` | correctness | error |
+
+A value that must be one `${{{{ }}}}` holds another number of them.
+
+## Why
+
+Parity.
+
+{section}
+
+## Passing example
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+```
+"
+    )
+}
+
+#[test]
+fn a_page_with_an_unreachable_section_needs_no_failing_example() {
+    let page = unreachable_page("## Unreachable\n\nThe parser rules it out.");
+    let rule = registry::find("single-expression-required");
+    assert_eq!(
+        check_page("single-expression-required", &page, rule),
+        Vec::<String>::new()
+    );
+    let page = unreachable_page("");
+    assert_eq!(
+        check_page("single-expression-required", &page, rule),
+        ["single-expression-required: no failing example"]
+    );
+}
+
+#[test]
+fn a_page_with_an_unreachable_section_must_have_no_failing_example() {
+    let section = "## Unreachable\n\nNever.\n\n## Failing example\n\n```yaml\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n```\n\n```text\n```";
+    let page = unreachable_page(section);
+    let problems = check_page(
+        "single-expression-required",
+        &page,
+        registry::find("single-expression-required"),
+    );
+    assert!(
+        problems.contains(&"single-expression-required: a failing example on the page of a rule that never reports".to_owned()),
+        "{problems:#?}"
+    );
 }
