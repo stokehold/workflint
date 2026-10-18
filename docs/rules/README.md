@@ -58,6 +58,8 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`expected-single-expression`](expected-single-expression.md) | `syntax-check` | correctness | error | A value that must be a literal or a single `${{ }}` expression is other text |
 | [`filter-not-supported`](filter-not-supported.md) | `events` | correctness | error | A branch, tag, or path filter is set on an event that does not support it |
 | `function-not-allowed` | `expression` | correctness | error | An expression calls a special function that its workflow key does not allow |
+| [`glob-path-dot`](glob-path-dot.md) | `glob` | correctness | error | A path pattern is `.` or `..`, or starts with `./` or `../` |
+| [`glob-path-whitespace`](glob-path-whitespace.md) | `glob` | correctness | error | A path pattern has white space at either end |
 | [`hardcoded-password`](hardcoded-password.md) | `credentials` | correctness | error | `credentials.password` of a container or service is not a single `${{ }}` expression |
 | [`if-always-true`](if-always-true.md) | `if-cond` | correctness | error | An `if:` condition has text around its `${{ }}`, so it is always true |
 | [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
@@ -69,6 +71,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-docker-action`](invalid-docker-action.md) | `action` | correctness | error | A `docker://` action has an invalid URI or an empty tag |
 | [`invalid-env-var-name`](invalid-env-var-name.md) | `env-var` | correctness | error | A name in `env` contains `&`, `=`, a space, or a tab |
 | `invalid-expression-syntax` | `expression` | correctness | error | An expression in `${{ }}` cannot be lexed or parsed |
+| [`invalid-glob`](invalid-glob.md) | `glob` | correctness | error | A filter pattern is not valid glob syntax, or contains a newline |
 | `invalid-index-access` | `expression` | correctness | error | An index has the wrong type, or its operand is neither an object nor an array |
 | [`invalid-input-default`](invalid-input-default.md) | `events` | correctness | error | The default of a `number` or `boolean` input of `workflow_call` or `workflow_dispatch` does not match its type |
 | `invalid-json-literal` | `expression` | correctness | error | The string literal passed to `fromJSON()` is not valid JSON |
@@ -76,6 +79,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | `invalid-number-literal` | `expression` | correctness | error | A number literal in an expression has no value as a double |
 | `invalid-object-filter` | `expression` | correctness | error | An object filter `.*` applies to a value without object elements |
 | `invalid-property-access` | `expression` | correctness | error | An expression reads a property with a dot from a value that is not an object |
+| [`invalid-ref-name`](invalid-ref-name.md) | `glob` | correctness | error | A branch or tag pattern has a character that a Git ref name cannot have |
 | [`invalid-reusable-call-key`](invalid-reusable-call-key.md) | `syntax-check` | correctness | error | A job that calls a reusable workflow has a key that only a job with steps may have |
 | [`invalid-reusable-workflow-ref`](invalid-reusable-workflow-ref.md) | `workflow-call` | correctness | error | A job's `uses:` is not `./path/to/workflow.yml` or `owner/repo/path/to/workflow.yml@ref` |
 | [`invalid-runner-label-pattern`](invalid-runner-label-pattern.md) | `runner-label` | correctness | error | A runner label pattern in the config is not a valid glob |

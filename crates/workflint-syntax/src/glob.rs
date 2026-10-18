@@ -26,6 +26,8 @@ use workflint_diagnostics::quote::{quote, quote_rune};
 /// A problem in a glob pattern.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GlobProblem {
+    /// What kind of problem it is.
+    pub kind: GlobProblemKind,
     /// The message, byte for byte the reference's.
     pub message: String,
     /// The byte range in the pattern of the character that the problem
@@ -33,6 +35,22 @@ pub struct GlobProblem {
     /// empty pattern, for a newline and every problem after it, and for the
     /// two checks of a whole path pattern.
     pub range: Option<Range<usize>>,
+}
+
+/// The kinds of [`GlobProblem`]. The `glob` rule reports each kind under its
+/// own rule ID.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GlobProblemKind {
+    /// The pattern is not valid glob syntax, or it contains a newline or a
+    /// NUL character.
+    Syntax,
+    /// A branch or tag pattern has a character that a Git ref name cannot
+    /// have at that place.
+    RefName,
+    /// A path pattern has white space at either end.
+    PathWhitespace,
+    /// A path pattern is `.` or `..`, or starts with `./` or `../`.
+    PathDot,
 }
 
 /// Validates a branch or tag filter pattern and returns its problems in
@@ -57,6 +75,7 @@ pub fn validate_path_glob(pattern: &str) -> Vec<GlobProblem> {
     let mut problems = Vec::new();
     if trimmed != pattern {
         problems.push(GlobProblem {
+            kind: GlobProblemKind::PathWhitespace,
             message: "leading and trailing spaces are not allowed in glob path".to_owned(),
             range: None,
         });
@@ -64,6 +83,7 @@ pub fn validate_path_glob(pattern: &str) -> Vec<GlobProblem> {
     let path = trimmed.strip_prefix('!').unwrap_or(trimmed);
     if matches!(path, "." | "..") || path.starts_with("./") || path.starts_with("../") {
         problems.push(GlobProblem {
+            kind: GlobProblemKind::PathDot,
             message: "'.' and '..' are not allowed in glob path".to_owned(),
             range: None,
         });
@@ -124,7 +144,10 @@ impl<'a> Validator<'a> {
 
     fn validate(mut self) -> Vec<GlobProblem> {
         if self.pattern.is_empty() {
-            self.error("glob pattern cannot be empty".to_owned());
+            self.error(
+                GlobProblemKind::Syntax,
+                "glob pattern cannot be empty".to_owned(),
+            );
             return self.problems;
         }
 
@@ -336,20 +359,24 @@ impl<'a> Validator<'a> {
                 "error while scanning glob pattern {}: invalid character NUL",
                 quote(self.pattern)
             );
-            self.error(message);
+            self.error(GlobProblemKind::Syntax, message);
         }
         Lookahead::Char(c, start..self.offset)
     }
 
     /// Records a problem at the last character that [`Validator::next`]
     /// returned.
-    fn error(&mut self, message: String) {
+    fn error(&mut self, kind: GlobProblemKind, message: String) {
         let range = if self.after_newline {
             None
         } else {
             self.last.clone()
         };
-        self.problems.push(GlobProblem { message, range });
+        self.problems.push(GlobProblem {
+            kind,
+            message,
+            range,
+        });
     }
 
     /// Records a syntax error about `c`, or about the end of the pattern if
@@ -364,9 +391,10 @@ impl<'a> Validator<'a> {
         } else {
             format!(" while checking {what}")
         };
-        self.error(format!(
-            "invalid glob pattern. {unexpected}{while_checking}. {why}"
-        ));
+        self.error(
+            GlobProblemKind::Syntax,
+            format!("invalid glob pattern. {unexpected}{while_checking}. {why}"),
+        );
     }
 
     /// Records a character that a Git ref name cannot contain.
@@ -379,9 +407,10 @@ impl<'a> Validator<'a> {
         } else {
             quote_rune(c)
         };
-        self.error(format!(
-            "character {shown} is invalid for branch and tag names. {why}. see `man git-check-ref-format` for more details. note that regular expression is unavailable"
-        ));
+        self.error(
+            GlobProblemKind::RefName,
+            format!("character {shown} is invalid for branch and tag names. {why}. see `man git-check-ref-format` for more details. note that regular expression is unavailable"),
+        );
     }
 }
 
