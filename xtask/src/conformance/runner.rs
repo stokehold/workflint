@@ -377,11 +377,12 @@ pub fn check_checks_md() -> Result<(), String> {
             continue;
         };
         // The example of a section is the input of the row's fixtures, so
-        // their allow-list records that replace a line apply to it.
+        // their allow-list records that replace a line apply to it. The
+        // reference's setup has no allow-list.
         let replacements: Vec<(&str, &str)> = item
             .fixtures
             .iter()
-            .flat_map(|fixture| ALLOW_LIST.entries_for(fixture))
+            .flat_map(|fixture| SETUP.allow_list.entries_for(fixture))
             .filter_map(|entry| Some((entry.upstream.as_deref()?, entry.workflint.as_deref()?)))
             .collect();
         let result = match sections.get(anchor) {
