@@ -83,9 +83,9 @@ mod tests {
             .collect()
     }
 
-    /// Returns a workflow whose job container and service `db` both have the password
-    /// `password`.
-    fn workflow(password: &str) -> String {
+    /// Returns a workflow whose job container and service `db` both have `value` as the YAML
+    /// scalar of `credentials.password`.
+    fn workflow(value: &str) -> String {
         format!(
             "on: push
 jobs:
@@ -95,13 +95,13 @@ jobs:
       image: node
       credentials:
         username: user
-        password: {password}
+        password: {value}
     services:
       db:
         image: postgres
         credentials:
           username: user
-          password: {password}
+          password: {value}
     steps:
       - run: echo
 "
