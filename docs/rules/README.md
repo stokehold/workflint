@@ -40,6 +40,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`constant-condition`](constant-condition.md) | `if-cond` | correctness | error | An `if:` condition has the same value in every run |
 | `context-not-allowed` | `expression` | correctness | error | An expression reads a context that its workflow key does not allow |
 | [`default-not-in-options`](default-not-in-options.md) | `events` | correctness | error | The default of a `choice` input of `workflow_dispatch` is not one of its options |
+| [`deprecated-action-input`](deprecated-action-input.md) | `action` | correctness | error | `with:` sets an input that the action has deprecated |
 | [`duplicate-input-option`](duplicate-input-option.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` lists an option more than once |
 | [`duplicate-key`](duplicate-key.md) | `syntax-check` | correctness | error | A mapping repeats a key |
 | [`empty-section`](empty-section.md) | `syntax-check` | correctness | error | A mapping or sequence that must have entries is empty or null |
@@ -50,10 +51,12 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | `function-not-allowed` | `expression` | correctness | error | An expression calls a special function that its workflow key does not allow |
 | [`if-always-true`](if-always-true.md) | `if-cond` | correctness | error | An `if:` condition has text around its `${{ }}`, so it is always true |
 | [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
+| [`invalid-action-format`](invalid-action-format.md) | `action` | correctness | error | A step's `uses:` is not a local action, a Docker image, or `{owner}/{repo}@{ref}` |
 | [`invalid-activity-type`](invalid-activity-type.md) | `events` | correctness | error | `types` lists an activity type that the event does not have |
 | `invalid-comparison` | `expression` | correctness | error | A comparison has operands that GitHub cannot compare |
 | `invalid-config-variable-name` | `expression` | correctness | error | The name in `vars.NAME` breaks GitHub's naming rules for configuration variables |
 | [`invalid-dispatch-input-type`](invalid-dispatch-input-type.md) | `syntax-check` | correctness | error | A `workflow_dispatch` input has an unknown `type` |
+| [`invalid-docker-action`](invalid-docker-action.md) | `action` | correctness | error | A `docker://` action has an invalid URI or an empty tag |
 | `invalid-expression-syntax` | `expression` | correctness | error | An expression in `${{ }}` cannot be lexed or parsed |
 | `invalid-index-access` | `expression` | correctness | error | An index has the wrong type, or its operand is neither an object nor an array |
 | [`invalid-input-default`](invalid-input-default.md) | `events` | correctness | error | The default of a `number` or `boolean` input of `workflow_call` or `workflow_dispatch` does not match its type |
@@ -66,11 +69,13 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-workflow-call-input-type`](invalid-workflow-call-input-type.md) | `syntax-check` | correctness | error | A `workflow_call` input has an unknown `type` |
 | [`merge-key-unsupported`](merge-key-unsupported.md) | `syntax-check` | correctness | error | A mapping has a `<<` merge key, which GitHub Actions does not apply |
 | `missing-format-argument` | `expression` | correctness | error | The format string of `format()` has a placeholder beyond its arguments |
+| [`missing-required-action-input`](missing-required-action-input.md) | `action` | correctness | error | A step does not set an input that its action requires |
 | [`missing-required-key`](missing-required-key.md) | `syntax-check` | correctness | error | A required section or key is missing |
 | [`missing-workflow-run-workflows`](missing-workflow-run-workflows.md) | `events` | correctness | error | A `workflow_run` event has no `workflows` |
 | [`non-positive-number`](non-positive-number.md) | `syntax-check` | correctness | error | A literal `timeout-minutes` or `max-parallel` is zero or less |
 | [`object-in-template`](object-in-template.md) | `expression` | correctness | error | A `${{ }}` in a string evaluates to an object, an array, or null |
 | [`options-on-non-choice-input`](options-on-non-choice-input.md) | `events` | correctness | error | A `workflow_dispatch` input that is not a `choice` has `options` |
+| [`outdated-action`](outdated-action.md) | `action` | correctness | error | A popular action's version runs on a runtime that GitHub no longer has |
 | [`recursive-alias`](recursive-alias.md) | `syntax-check` | correctness | error | An alias refers to a node that encloses it |
 | [`required-input-with-default`](required-input-with-default.md) | `events` | correctness | error | A required `workflow_call` input has a default, which is never used |
 | [`reusable-call-key-without-uses`](reusable-call-key-without-uses.md) | `syntax-check` | correctness | error | A job without `uses` has `with` or `secrets` |
@@ -79,6 +84,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`step-without-run-or-uses`](step-without-run-or-uses.md) | `syntax-check` | correctness | error | A step has neither `run` nor `uses` |
 | [`too-many-dispatch-inputs`](too-many-dispatch-inputs.md) | `events` | correctness | error | `workflow_dispatch` has more inputs than GitHub allows |
 | [`too-many-yaml-nodes`](too-many-yaml-nodes.md) | `syntax-check` | correctness | error | The workflow has more YAML nodes, with its aliases expanded, than GitHub reads |
+| [`undefined-action-input`](undefined-action-input.md) | `action` | correctness | error | `with:` sets an input that the action does not declare |
 | `undefined-config-variable` | `expression` | correctness | error | `vars.NAME` reads a configuration variable that the configuration does not list |
 | `undefined-function` | `expression` | correctness | error | An expression calls a function that is not built in |
 | `undefined-property` | `expression` | correctness | error | An expression reads a property that its strict object type does not have |

@@ -29,3 +29,6 @@ jobs:
     steps:
       - run: echo hello
         shell: [x]
+      # Action specs that are empty or not strings
+      - uses: ''
+      - uses: [x]

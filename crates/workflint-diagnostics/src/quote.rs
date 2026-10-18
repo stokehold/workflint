@@ -13,6 +13,25 @@ pub fn quote(s: &str) -> String {
     out
 }
 
+/// Quotes the bytes `s` with double quotes, as Go's `strconv.Quote` does with a string that may
+/// not be valid UTF-8: each byte outside a valid sequence becomes `\xNN`.
+#[must_use]
+pub fn quote_bytes(s: &[u8]) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for chunk in s.utf8_chunks() {
+        for c in chunk.valid().chars() {
+            push_escaped(&mut out, c, '"');
+        }
+        for byte in chunk.invalid() {
+            // Writing to a `String` cannot fail.
+            let _ = write!(out, "\\x{byte:02x}");
+        }
+    }
+    out.push('"');
+    out
+}
+
 /// Quotes `c` with single quotes, as Go's `strconv.QuoteRune` and `%q` on a rune do.
 #[must_use]
 pub fn quote_rune(c: char) -> String {
@@ -225,6 +244,16 @@ mod tests {
     fn quotes_keeps_the_given_order() {
         assert_eq!(quotes(["b", "a"]), r#""b", "a""#);
         assert_eq!(quotes(Vec::<String>::new()), "");
+    }
+
+    #[test]
+    fn quote_bytes_escapes_each_byte_outside_a_valid_sequence_like_go() {
+        // strconv.Quote("a\xe2\x82\"é\xff") in Go 1.26.
+        assert_eq!(
+            quote_bytes(b"a\xe2\x82\"\xc3\xa9\xff"),
+            r#""a\xe2\x82\"é\xff""#
+        );
+        assert_eq!(quote_bytes("x\ny".as_bytes()), quote("x\ny"));
     }
 
     #[test]
