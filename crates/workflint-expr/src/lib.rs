@@ -65,6 +65,7 @@ mod json;
 mod lexer;
 mod parser;
 pub mod rules;
+mod suggest;
 mod token;
 mod types;
 mod untrusted;

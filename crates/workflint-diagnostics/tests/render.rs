@@ -334,3 +334,20 @@ fn oneline_prints_the_colored_header_bytes_with_color() {
         "\x1b[33mtest.yaml\x1b[0m\x1b[90m:\x1b[0m2\x1b[90m:\x1b[0m7\x1b[90m: \x1b[0m\x1b[1mmsg\x1b[0m\x1b[90m [test-rule]\n\x1b[0m"
     );
 }
+
+#[test]
+fn renderers_do_not_print_the_help_text() {
+    let file = file("on: push\njobs: {}\n");
+    let plain = at_token(&file, "{}", "msg");
+    let helped = plain
+        .clone()
+        .with_help(Some("did you mean \"x\"?".to_owned()));
+    assert_eq!(
+        default_plain(&file, std::slice::from_ref(&helped)),
+        default_plain(&file, std::slice::from_ref(&plain))
+    );
+    assert_eq!(
+        oneline(&file, &[helped], Color::Off),
+        oneline(&file, &[plain], Color::Off)
+    );
+}

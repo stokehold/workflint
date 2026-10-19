@@ -138,6 +138,7 @@ impl<'src> Parser<'src> {
             start: self.cur.start,
             end: self.cur.end,
             rule: &INVALID_EXPRESSION_SYNTAX,
+            help: None,
         })
     }
 
@@ -161,6 +162,7 @@ impl<'src> Parser<'src> {
                 start: self.cur.start,
                 end: self.cur.end,
                 rule,
+                help: None,
             });
         }
     }

@@ -92,6 +92,19 @@ impl<'f> Context<'f> {
         self.diagnostics.push(Diagnostic::new(rule, span, message));
     }
 
+    /// Reports a diagnostic of `rule` at `span` with the rule's default severity and the help
+    /// text `help`.
+    pub fn report_with_help(
+        &mut self,
+        rule: &'static RuleMeta,
+        span: Span,
+        message: impl Into<String>,
+        help: Option<String>,
+    ) {
+        self.diagnostics
+            .push(Diagnostic::new(rule, span, message).with_help(help));
+    }
+
     /// Returns the reported diagnostics in the order they were reported.
     #[must_use]
     pub fn into_diagnostics(self) -> Vec<Diagnostic> {

@@ -15,10 +15,15 @@ pub struct Diagnostic {
     pub labels: Vec<Label>,
     /// Edits that fix the problem, if the rule knows them.
     pub fix: Option<Fix>,
+    /// A hint on how to fix the problem, such as the closest known name to an undefined one.
+    /// The actionlint-compatible formats do not print it, so their output stays the same as
+    /// actionlint's (ADR 0032). A boxed `str` keeps `Diagnostic` small, as an error variant of
+    /// `Result` should be.
+    pub help: Option<Box<str>>,
 }
 
 impl Diagnostic {
-    /// Creates a diagnostic with the rule's default severity, no labels, and no fix.
+    /// Creates a diagnostic with the rule's default severity, no labels, no fix, and no help.
     #[must_use]
     pub fn new(rule: &'static RuleMeta, span: Span, message: impl Into<String>) -> Self {
         Self {
@@ -28,6 +33,16 @@ impl Diagnostic {
             span,
             labels: Vec::new(),
             fix: None,
+            help: None,
+        }
+    }
+
+    /// Returns the diagnostic with the help text `help`.
+    #[must_use]
+    pub fn with_help(self, help: Option<String>) -> Self {
+        Self {
+            help: help.map(String::into_boxed_str),
+            ..self
         }
     }
 }
@@ -168,6 +183,7 @@ mod tests {
         assert_eq!(d.severity, Severity::Info);
         assert_eq!(d.labels, []);
         assert_eq!(d.fix, None);
+        assert_eq!(d.help, None);
     }
 
     // Ported from `TestErrorSortErrorsByPosition` in the reference's `error_test.go`. The

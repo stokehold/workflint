@@ -11,6 +11,8 @@ use crate::types::Ty;
 /// A built-in function.
 #[derive(Debug)]
 pub(crate) struct Function {
+    /// The name as GitHub's documentation writes it, such as `startsWith`.
+    pub(crate) name: &'static str,
     /// The name in lower case, which calls are looked up by.
     pub(crate) key: String,
     /// The overloads, in the order the checker tries them.
@@ -43,6 +45,7 @@ static FUNCTIONS: LazyLock<Vec<Function>> = LazyLock::new(|| {
     BUILTIN_FUNCTIONS
         .iter()
         .map(|function| Function {
+            name: function.name,
             key: function.name.to_ascii_lowercase(),
             overloads: function
                 .overloads
@@ -69,6 +72,18 @@ pub(crate) fn builtin(name: &str) -> Option<&'static Function> {
 /// Returns the keys of the built-in functions, for the message about an undefined function.
 pub(crate) fn keys() -> impl Iterator<Item = &'static str> {
     FUNCTIONS.iter().map(|function| function.key.as_str())
+}
+
+/// Returns the built-in functions, in the order of their keys.
+pub(crate) fn all() -> impl Iterator<Item = &'static Function> {
+    FUNCTIONS.iter()
+}
+
+impl Function {
+    /// Returns whether a call can have no arguments, as `always()` can.
+    pub(crate) fn takes_no_arguments(&self) -> bool {
+        self.overloads.iter().any(|sig| sig.param_count() == 0)
+    }
 }
 
 impl Signature {

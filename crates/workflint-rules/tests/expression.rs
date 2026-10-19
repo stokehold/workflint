@@ -1531,3 +1531,29 @@ jobs:
 ";
     assert_eq!(call_lines(CALLEE_WITH_INPUTS, text), Vec::<String>::new());
 }
+
+#[test]
+fn an_undefined_name_carries_the_closest_name_as_help() {
+    let (_, diagnostics) = diagnostics(
+        "\
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '${{ gihub.sha }}'
+        if: always
+",
+    );
+    let helps: Vec<_> = diagnostics
+        .iter()
+        .map(|d| (d.rule.id, d.help.as_deref()))
+        .collect();
+    assert_eq!(
+        helps,
+        [
+            ("undefined-variable", Some("did you mean \"github\"?")),
+            ("undefined-variable", Some("did you mean \"always()\"?")),
+        ]
+    );
+}

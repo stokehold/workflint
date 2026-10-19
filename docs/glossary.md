@@ -41,7 +41,8 @@ Use these words with these meanings in code, docs, and pull requests.
 | kind | The actionlint error kind a rule maps to, such as `expression` or `syntax-check`: the name of a reference rule, or `syntax-check` for the reference parser's errors. Used for conformance and accepted in config. `workflint_rules::kind` has the reference's description of each. |
 | category | The rule set a rule belongs to: `correctness` (on by default), `pedantic`, `style`, `security-strict`, or `policy` (off by default). |
 | severity | `error`, `warning`, or `info`. |
-| diagnostic | One finding: rule, severity, message, span, optional labels and fix. |
+| diagnostic | One finding: rule, severity, message, span, optional labels, fix, and help text. |
+| help text | A hint attached to a diagnostic, such as `did you mean "github"?`, which the actionlint-compatible formats do not print (`Diagnostic::help`, ADR 0032). |
 | label | A secondary location of a diagnostic with a short note, such as "anchor defined here" (`Label`). |
 | fix | The edits that fix the problem a diagnostic reports, with their applicability (`Fix`). A diagnostic has at most one. |
 | text edit | One edit of a fix: a byte range of the file and the text that replaces it (`TextEdit`). |

@@ -8,6 +8,8 @@ An expression calls a function that is not built in.
 
 The message lists the built-in functions. Function names are case insensitive, so `toJson` is `toJSON`.
 
+The diagnostic also has a help text with the closest built-in function, such as `did you mean "startsWith"?` for `startWith`. The default and one-line formats do not print it (ADR 0032).
+
 ## Why
 
 GitHub rejects a workflow whose expression calls a function that does not exist. The cause is usually a typo, such as `startWith` for `startsWith`.
