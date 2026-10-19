@@ -1,6 +1,6 @@
 # workflint
 
-workflint is a Rust rewrite of actionlint, the GitHub Actions workflow linter. It is compatible with actionlint by default, fixes its bugs, and is faster. AI agents write most of the code. A human maintainer reviews every pull request.
+workflint is a Rust rewrite of actionlint, the GitHub Actions workflow linter. It is compatible with actionlint by default, fixes its bugs, and is faster. AI agents write most of the code. Pull requests merge automatically when CI is green, and a human maintainer reviews them.
 
 ## Before you write
 
@@ -19,10 +19,10 @@ Tasks are GitHub issues in `stokehold/workflint` (ADR 0020). `docs/roadmap.md` i
 4. Implement until it passes, and meet every acceptance criterion in the issue. When the issue leaves a choice open, pick an option, note it under "Decisions to review" in the pull request, and keep going. Stop and ask only when you cannot continue without an answer.
 5. Run the checks under "Done", tick the matching rows in `docs/parity-checklist.md`, push, and fill in the pull request description from the template.
 6. If "Decisions to review" lists any decisions, ask the maintainer about them after pushing, with your question tool (`AskUserQuestion` in Claude Code). Ask one question per decision, put your recommended option first, and add "(Recommended)" to its label. Apply the answers, push again, and delete the section from the description. "What changed" then describes the options that were chosen.
-7. Mark the pull request ready for review.
+7. Mark the pull request ready for review and enable auto-merge: `gh pr merge --auto --squash` (ADR 0031).
 8. Watch CI on the pull request until every check has finished (`gh pr checks --watch`). If a check fails, fix the cause, push, and watch again. The task ends when all checks are green.
 
-The maintainer reviews and merges. Leave merging and auto-merge to the maintainer.
+GitHub merges the pull request once every required check passes. Never merge directly. The maintainer holds a pull request by turning off its auto-merge or leaving a review comment. Never turn auto-merge back on or resolve the maintainer's review threads yourself.
 
 ## Done
 

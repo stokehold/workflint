@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-10-15
 - Supersedes: the "Work items" section and the roadmap-ticking item of "Definition of done" in ADR 0016
+- Amended by: ADR 0031, which has agents enable auto-merge when they mark a pull request ready
 
 ## Context
 
