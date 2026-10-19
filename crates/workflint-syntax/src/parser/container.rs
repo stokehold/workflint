@@ -11,7 +11,7 @@ use workflint_yaml::{Node, NodeKind};
 
 use super::mapping::Key;
 use super::shared::mapping_field;
-use super::{KeySpec, Label, MapEntry, Parser, Section};
+use super::{Inserts, KeySpec, Label, MapEntry, Parser, Section};
 use crate::rules::{INCOMPLETE_CREDENTIALS, MISSING_REQUIRED_KEY};
 use crate::{Container, Credentials, Field, KeyedEntry, Services, Value};
 
@@ -123,7 +123,8 @@ impl<'a> Parser<'a, '_> {
     ///
     /// A `!!str` scalar that is a single `${{ }}` expression is the
     /// services as an expression. Anything else is a case-insensitive
-    /// mapping of service IDs to containers, which must have entries. A
+    /// mapping of service IDs to containers, which must have entries or an
+    /// `${{ insert }}` key, whose value must be one expression. A
     /// service whose ID is not a scalar is parsed, so its errors are
     /// reported, and then left out, because a [`Keyed`](crate::Keyed)
     /// collection needs a string key.
@@ -133,9 +134,15 @@ impl<'a> Parser<'a, '_> {
         if let Some(expr) = self.may_parse_expression(node) {
             return Value::Expression { key, expr };
         }
-        let entries = self.parse_mapping(Label::Section("services"), node, false, false);
-        let mut services = Vec::with_capacity(entries.len());
-        for service in entries {
+        let mapping = self.parse_mapping_with(
+            Label::Section("services"),
+            node,
+            false,
+            false,
+            Inserts::Expression,
+        );
+        let mut services = Vec::with_capacity(mapping.entries.len());
+        for service in mapping.entries {
             let container = self.within(service.path, |p| {
                 p.parse_container(true, service.key, service.value)
             });
@@ -147,7 +154,7 @@ impl<'a> Parser<'a, '_> {
             NodeKind::Mapping(_) => Value::Literal {
                 key,
                 span: node.span,
-                value: Services::new(services),
+                value: Services::with_inserts(services, mapping.inserts),
             },
             NodeKind::Scalar(_) | NodeKind::Sequence(_) | NodeKind::Alias(_) => Value::Invalid {
                 key,

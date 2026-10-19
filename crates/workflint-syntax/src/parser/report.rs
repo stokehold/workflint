@@ -213,6 +213,9 @@ fn job_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, job: &'w Job<'a>) {
         container_placeholders(f, container);
     }
     expression(f, &job.services);
+    if let Some(services) = job.services.literal() {
+        inserts(f, services);
+    }
     for service in job.services.literal().into_iter().flatten() {
         container_placeholders(f, &service.value);
     }
@@ -294,6 +297,7 @@ fn matrix<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, matrix: &'w Value<'a, Matrix<'a>>) 
     let Some(matrix) = matrix.literal() else {
         return;
     };
+    inserts(f, &matrix.rows);
     for row in &matrix.rows {
         match &row.value {
             MatrixRow::Values(values) => raw_values(f, values.iter()),
@@ -307,6 +311,7 @@ fn matrix<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, matrix: &'w Value<'a, Matrix<'a>>) 
             match combination {
                 MatrixCombination::Assigns { assigns, .. } => {
                     raw_values(f, assigns.iter().map(|assign| &assign.value));
+                    inserts(f, assigns);
                 }
                 MatrixCombination::Expression(expr) => expr_placeholders(f, expr),
                 MatrixCombination::Invalid(_) => {}
@@ -342,6 +347,9 @@ fn env<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, env: &'w Value<'a, Env<'a>>) {
             template(f, value);
         }
     }
+    if let Some(env) = env.literal() {
+        inserts(f, env);
+    }
 }
 
 fn defaults<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, defaults: &'w Field<'a, Defaults<'a>>) {
@@ -363,6 +371,16 @@ fn keyed<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, keyed: Option<&'w Keyed<'a, Option<T
         if let Some(value) = &entry.value {
             template(f, value);
         }
+    }
+    if let Some(keyed) = keyed {
+        inserts(f, keyed);
+    }
+}
+
+/// Visits the expressions under the `${{ insert }}` keys of `keyed`.
+fn inserts<'w, 'a, T>(f: &mut Visit<'_, 'w, 'a>, keyed: &'w Keyed<'a, T>) {
+    for expr in keyed.inserts() {
+        expr_placeholders(f, expr);
     }
 }
 
@@ -460,6 +478,7 @@ on:
     versions: ['${{ x.image_versions }}']
 env:
   ${{ x.env_name }}: ${{ x.env_value }}
+  ${{ insert }}: ${{ x.env_insert }}
 defaults:
   run:
     shell: ${{ x.defaults_shell }}
@@ -485,9 +504,11 @@ jobs:
       matrix:
         row: ${{ x.matrix_row }}
         values: ['${{ x.matrix_value }}', {k: ['${{ x.matrix_nested_value }}']}]
+        ${{ insert }}: ${{ x.matrix_insert }}
         include:
           - ${{ x.include_element }}
           - k: ${{ x.include_value }}
+            ${{ insert }}: ${{ x.include_insert }}
         exclude: ${{ x.exclude }}
       fail-fast: ${{ x.fail_fast }}
       max-parallel: ${{ x.max_parallel }}
@@ -498,6 +519,7 @@ jobs:
       credentials: ${{ x.container_credentials }}
       env:
         ${{ x.container_env_name }}: ${{ x.container_env_value }}
+        ${{ insert }}: ${{ x.container_env_insert }}
       ports: ['${{ x.container_port }}']
       volumes: ['${{ x.container_volume }}']
       options: ${{ x.container_options }}
@@ -531,8 +553,10 @@ jobs:
       - uses: ${{ x.step_uses }}
         with:
           i: ${{ x.step_with }}
+          ${{ insert }}: ${{ x.step_with_insert }}
         env:
           E: ${{ x.step_env_value }}
+          ${{ insert }}: ${{ x.step_env_insert }}
       - uses: docker://alpine
         with:
           entrypoint: ${{ x.docker_entrypoint }}
@@ -544,6 +568,7 @@ jobs:
       cancel-in-progress: ${{ x.job_concurrency_cancel }}
     env:
       ${{ x.job_env_name }}: ${{ x.job_env_value }}
+      ${{ insert }}: ${{ x.job_env_insert }}
     strategy:
       matrix: ${{ x.matrix }}
     container: ${{ x.container }}
@@ -560,17 +585,20 @@ jobs:
         exclude:
           - ${{ x.exclude_element }}
           - k: ${{ x.exclude_value }}
+            ${{ insert }}: ${{ x.exclude_insert }}
     container:
       image: image
       credentials:
         username: ${{ x.container_username }}
         password: ${{ x.container_password }}
     services:
+      ${{ insert }}: ${{ x.services_insert }}
       redis:
         image: redis
         credentials: ${{ x.service_credentials }}
         env:
           ${{ x.service_env_name }}: ${{ x.service_env_value }}
+          ${{ insert }}: ${{ x.service_env_insert }}
         ports: ['${{ x.service_port }}']
         volumes: ['${{ x.service_volume }}']
         options: ${{ x.service_options }}

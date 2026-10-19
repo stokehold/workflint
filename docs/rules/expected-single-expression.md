@@ -6,7 +6,7 @@
 
 A value that must be a literal or a single `${{ }}` expression is other text.
 
-Boolean, integer, and float values, such as `continue-on-error`, `max-parallel`, and `timeout-minutes`, accept a literal of their type or one expression that computes it, and `env` accepts a mapping or one expression. Text around the expression, or text without one, gets this error.
+Boolean, integer, and float values, such as `continue-on-error`, `max-parallel`, and `timeout-minutes`, accept a literal of their type or one expression that computes it, and `env` accepts a mapping or one expression. Text around the expression, or text without one, gets this error. The value of an `${{ insert }}` key must be one expression too, or in `matrix` a mapping ([differences](../differences.md#insert-mapping-key)).
 
 ## Why
 
@@ -43,3 +43,4 @@ jobs:
 ## Differences from actionlint
 
 - [Plain scalars follow the YAML 1.2 core schema](../differences.md#yaml-core-schema)
+- [`${{ insert }}` as a mapping key](../differences.md#insert-mapping-key)

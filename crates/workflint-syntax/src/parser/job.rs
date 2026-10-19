@@ -403,7 +403,7 @@ impl<'a> Parser<'a, '_> {
                 "\"outputs\" section should not be empty".to_owned(),
             );
         }
-        let outputs = self.keyed_templates(entries, true);
+        let outputs = self.keyed_templates(entries, Vec::new(), true);
         mapping_field(entry.key, node, outputs)
     }
 
@@ -439,7 +439,7 @@ impl<'a> Parser<'a, '_> {
     ) -> Field<'a, Keyed<'a, Option<Template<'a>>>> {
         let node = entry.value;
         let entries = self.parse_mapping(Label::Section("with"), node, false, false);
-        let inputs = self.keyed_templates(entries, true);
+        let inputs = self.keyed_templates(entries, Vec::new(), true);
         mapping_field(entry.key, node, inputs)
     }
 
@@ -453,7 +453,7 @@ impl<'a> Parser<'a, '_> {
         let node = entry.value;
         let Some(scalar) = self.string(node) else {
             let entries = self.parse_mapping(Label::Section("secrets"), node, false, false);
-            let secrets = self.keyed_templates(entries, true);
+            let secrets = self.keyed_templates(entries, Vec::new(), true);
             return mapping_field(entry.key, node, WorkflowCallSecrets::Map(secrets));
         };
         let key = entry.key.string;

@@ -102,12 +102,13 @@ fn check_duplicates(name: &str, values: &[RawValue<'_>], cx: &mut Context<'_>) {
 ///
 /// The reference adds the values of `include` to the rows first, and skips the check when
 /// `include` has an expression. GitHub applies `include` after `exclude`, so the rows alone are
-/// what `exclude` can remove.
+/// what `exclude` can remove. A matrix with an `${{ insert }}` expression is not checked.
 fn check_exclude(matrix: &workflint_syntax::Matrix<'_>, position: Span, cx: &mut Context<'_>) {
     let Some(exclude) = matrix.exclude.literal() else {
         return;
     };
-    if exclude.is_empty() {
+    // The mapping that an `${{ insert }}` key evaluates to may add any row.
+    if exclude.is_empty() || !matrix.rows.inserts().is_empty() {
         return;
     }
     if matrix.rows.is_empty() {

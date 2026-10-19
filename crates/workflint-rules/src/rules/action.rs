@@ -198,6 +198,7 @@ impl From<&'static workflint_data::ActionInput> for DeclaredInput<'static> {
 
 /// The reference's `checkAction`: checks the `with:` of `exec` against the inputs that the
 /// action declares, sorted by ID. `describe` names the action in the messages, already quoted.
+/// A `with:` with an `${{ insert }}` expression is not checked for missing inputs.
 pub(crate) fn check_inputs(
     exec: &ExecAction<'_>,
     uses: Span,
@@ -239,6 +240,10 @@ pub(crate) fn check_inputs(
             }
             Some(_) => {}
         }
+    }
+    // The mapping that an `${{ insert }}` key evaluates to may set any input.
+    if with.is_some_and(|with| !with.inserts().is_empty()) {
+        return;
     }
     let required = || declared.iter().filter(|input| input.required);
     for input in required() {

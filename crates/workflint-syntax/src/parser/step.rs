@@ -11,8 +11,9 @@ use std::sync::Arc;
 
 use workflint_yaml::Node;
 
+use super::mapping::Mapping;
 use super::shared::mapping_field;
-use super::{KeySpec, Label, MapEntry, Parser, Section};
+use super::{Inserts, KeySpec, Label, MapEntry, Parser, Section};
 use crate::rules::STEP_WITHOUT_RUN_OR_USES;
 use crate::{Exec, ExecAction, ExecRun, Field, Step, Str, Template, Value, contains_expression};
 
@@ -197,14 +198,24 @@ impl<'a> Parser<'a, '_> {
 
     /// Parses `with` of a step that runs an action: a case-insensitive
     /// mapping of input names to strings that may be empty, and must have
-    /// entries.
+    /// entries or an `${{ insert }}` key, whose value must be one
+    /// expression.
     ///
     /// For a Docker image, `entrypoint` and `args` go to their own fields,
     /// as in the reference. `entrypoint` must not be empty, and `args` may
     /// be.
     fn parse_step_inputs(&mut self, body: &mut ActionBody<'a>, entry: &MapEntry<'a>) {
         let node = entry.value;
-        let mut entries = self.parse_mapping(Label::Section("with"), node, false, false);
+        let Mapping {
+            mut entries,
+            inserts,
+        } = self.parse_mapping_with(
+            Label::Section("with"),
+            node,
+            false,
+            false,
+            Inserts::Expression,
+        );
         if body.docker {
             entries.retain(|input| match &*input.id {
                 "entrypoint" => {
@@ -222,7 +233,7 @@ impl<'a> Parser<'a, '_> {
                 _ => true,
             });
         }
-        let inputs = self.keyed_templates(entries, true);
+        let inputs = self.keyed_templates(entries, inserts, true);
         body.action.inputs = mapping_field(entry.key, node, inputs);
     }
 
