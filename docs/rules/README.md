@@ -147,6 +147,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`unknown-needed-job`](unknown-needed-job.md) | `job-needs` | correctness | error | A job lists a job in `needs` that the workflow does not have |
 | [`unknown-permission-scope`](unknown-permission-scope.md) | `permissions` | correctness | error | A key in `permissions` is not a permission scope |
 | [`unknown-runner-label`](unknown-runner-label.md) | `runner-label` | correctness | error | A `runs-on` label is not a known runner label |
+| [`unmatched-closing-braces`](unmatched-closing-braces.md) | `expression` | correctness | warning | A `}}` in a string that GitHub evaluates has no opening `${{` |
 | [`unmatched-exclude-value`](unmatched-exclude-value.md) | `matrix` | correctness | error | An `exclude` value matches no value of its matrix row |
 | [`untrusted-input`](untrusted-input.md) | `expression` | correctness | error | A script reads a value that someone outside the repository can set |
 | [`untrusted-object-filter`](untrusted-object-filter.md) | `expression` | correctness | error | A script reads an object filter that extracts values that someone outside the repository can set |

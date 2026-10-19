@@ -150,8 +150,20 @@ pub static STEP_WITHOUT_RUN_OR_USES: RuleMeta = syntax_check(
     "https://github.com/stokehold/workflint/blob/main/docs/rules/step-without-run-or-uses.md",
 );
 
+/// A `}}` in a string where GitHub evaluates expressions has no opening
+/// `${{` and closes no `{`. GitHub keeps it as text, so this is a warning:
+/// it is most likely the end of an expression whose `${{` is missing.
+pub static UNMATCHED_CLOSING_BRACES: RuleMeta = RuleMeta {
+    id: "unmatched-closing-braces",
+    description: "A `}}` in a string that GitHub evaluates has no opening `${{`",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Warning,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/unmatched-closing-braces.md",
+};
+
 /// Every rule in this module, in the order of their IDs.
-pub static ALL: [&RuleMeta; 19] = [
+pub static ALL: [&RuleMeta; 20] = [
     &DUPLICATE_KEY,
     &EMPTY_SECTION,
     &EMPTY_STRING,
@@ -171,9 +183,10 @@ pub static ALL: [&RuleMeta; 19] = [
     &TOO_MANY_YAML_NODES,
     &UNEXPECTED_KEY,
     &UNEXPECTED_NODE_KIND,
+    &UNMATCHED_CLOSING_BRACES,
 ];
 
-/// A parse-stage rule of kind `syntax-check`. `docs_url` is its page in
+/// A parse-stage rule of kind `syntax-check` that is an error. `docs_url` is its page in
 /// `docs/rules/` (ADR 0024).
 const fn syntax_check(
     id: &'static str,
@@ -204,7 +217,18 @@ mod tests {
                     rule.id
                 )
             );
-            assert_eq!(rule.kind, "syntax-check");
+        }
+    }
+
+    #[test]
+    fn each_rule_but_the_expression_check_is_a_syntax_check() {
+        for rule in ALL {
+            let want = if rule.id == UNMATCHED_CLOSING_BRACES.id {
+                "expression"
+            } else {
+                "syntax-check"
+            };
+            assert_eq!(rule.kind, want, "{}", rule.id);
         }
     }
 
