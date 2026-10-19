@@ -1,0 +1,22 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # The `${{` before `secrets` is missing (rhysd/actionlint#169)
+      - run: echo secrets.TOKEN }}
+      # A second `}}` after an expression that is already closed
+      - run: echo ${{ github.ref }} }}
+      # The first line closes the expression, so the second line is text
+      # (rhysd/actionlint#373)
+      - run: echo deploy
+        if: |
+          ${{ github.event_name == 'push' }}
+          || github.ref_name == 'main' }}
+      # OK: `}}` inside a string literal of an expression
+      - run: echo ${{ github.ref == '}}' }}
+      # OK: braces that the script opens
+      - run: |
+          docker inspect --format '{{.State.Status}}' app
+          echo '{"a": {"b": "${{ github.sha }}"}}'

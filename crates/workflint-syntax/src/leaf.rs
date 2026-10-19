@@ -6,7 +6,7 @@ use std::sync::Arc;
 use workflint_diagnostics::{SourceFile, Span};
 use workflint_yaml::{Node, NodeKind, Scalar, ScalarStyle, SourceMap, Tag};
 
-use crate::expression::{implicit, scan};
+use crate::expression::{implicit, implicit_stray_closing, scan, stray_closings};
 use crate::{Placeholder, contains_expression, is_expression_assigned};
 
 /// A YAML scalar as a string: its decoded value and the node it comes from.
@@ -123,6 +123,9 @@ pub struct Template<'a> {
     pub source: Str<'a>,
     /// The placeholders in source order, or `None` if there are none.
     placeholders: Option<Arc<[Placeholder]>>,
+    /// The offsets of the `}}` with no opening `${{`, or `None` if there
+    /// are none.
+    stray_closings: Option<Arc<[u32]>>,
 }
 
 impl<'a> Template<'a> {
@@ -147,7 +150,8 @@ impl<'a> Template<'a> {
     /// ```
     #[must_use]
     pub fn new(source: Str<'a>) -> Self {
-        Self::with(source, scan(source.value()))
+        let value = source.value();
+        Self::with(source, scan(value), stray_closings(value))
     }
 
     /// Parses `source` as an `if` condition, as the reference's
@@ -159,7 +163,9 @@ impl<'a> Template<'a> {
         if contains_expression(source.value()) {
             Self::new(source)
         } else {
-            Self::with(source, vec![implicit(source.value())])
+            let value = source.value();
+            let strays = implicit_stray_closing(value).into_iter().collect();
+            Self::with(source, vec![implicit(value)], strays)
         }
     }
 
@@ -168,13 +174,15 @@ impl<'a> Template<'a> {
         Self {
             source,
             placeholders: None,
+            stray_closings: None,
         }
     }
 
-    fn with(source: Str<'a>, placeholders: Vec<Placeholder>) -> Self {
+    fn with(source: Str<'a>, placeholders: Vec<Placeholder>, stray_closings: Vec<u32>) -> Self {
         Self {
             source,
             placeholders: (!placeholders.is_empty()).then(|| placeholders.into()),
+            stray_closings: (!stray_closings.is_empty()).then(|| stray_closings.into()),
         }
     }
 
@@ -194,6 +202,27 @@ impl<'a> Template<'a> {
     #[must_use]
     pub fn placeholders(&self) -> &[Placeholder] {
         self.placeholders.as_deref().unwrap_or_default()
+    }
+
+    /// Returns the byte offset in the value of each `}}` that has no
+    /// opening `${{` and closes no `{` in the text, in source order. For an
+    /// `if` condition without `${{ }}`, it is the `}}` that ends the
+    /// condition before the end of the value, if there is one.
+    ///
+    /// ```
+    /// use workflint_diagnostics::{FileId, SourceFile};
+    /// use workflint_syntax::{Str, Template};
+    /// use workflint_yaml::parse;
+    ///
+    /// let file = SourceFile::new(FileId::new(0), "ci.yml", "echo ${{ a }} b }}\n").unwrap();
+    /// let document = parse(&file).document.unwrap();
+    /// let source = Str::new(document.node(document.root().unwrap()).unwrap()).unwrap();
+    ///
+    /// assert_eq!(Template::new(source).stray_closings(), [16]);
+    /// ```
+    #[must_use]
+    pub fn stray_closings(&self) -> &[u32] {
+        self.stray_closings.as_deref().unwrap_or_default()
     }
 }
 

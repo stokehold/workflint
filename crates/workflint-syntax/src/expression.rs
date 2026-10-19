@@ -113,6 +113,82 @@ fn resume_after_error(text: &str) -> usize {
     }
 }
 
+/// Returns the byte offset in `value` of each `}}` that has no opening
+/// `${{`.
+///
+/// It finds where each `${{ }}` ends as GitHub's template reader does: at
+/// the first `}}` after `${{` that is not inside a single-quoted string. A
+/// `${{` with no `}}` after it ends the search, because GitHub rejects the
+/// string.
+///
+/// GitHub keeps the text between the placeholders as it is, so a `}}`
+/// there may be meant, as in `docker inspect --format '{{.Id}}'` or in
+/// JSON. A `}}` is stray only if neither of its braces closes a `{` in the
+/// text before it. The text of all the gaps between placeholders counts,
+/// so `{"a": ${{ x }}}` has no stray.
+pub(crate) fn stray_closings(value: &str) -> Vec<u32> {
+    let bytes = value.as_bytes();
+    let mut strays = Vec::new();
+    let mut depth = 0_usize;
+    let mut pos = 0;
+    loop {
+        let open = value.get(pos..).and_then(|rest| rest.find("${{"));
+        let text_end = open.map_or(value.len(), |found| pos + found);
+        let mut i = pos;
+        while i < text_end {
+            match bytes.get(i) {
+                Some(b'{') => depth += 1,
+                Some(b'}') if depth > 0 => depth -= 1,
+                Some(b'}') if i + 1 < text_end && bytes.get(i + 1) == Some(&b'}') => {
+                    strays.push(to_u32(i));
+                    i += 1;
+                }
+                _ => {}
+            }
+            i += 1;
+        }
+        let Some(end) = closing_end(value, text_end + "${{".len()) else {
+            return strays;
+        };
+        pos = end;
+    }
+}
+
+/// Returns the offset just past the `}}` that ends the `${{ }}` whose
+/// expression starts at `from`, as GitHub's template reader finds it.
+///
+/// Every `'` starts or ends a string, so the `''` escape needs no special
+/// case.
+fn closing_end(value: &str, from: usize) -> Option<usize> {
+    let bytes = value.as_bytes();
+    let mut in_string = false;
+    for i in from..bytes.len() {
+        match bytes.get(i) {
+            Some(b'\'') => in_string = !in_string,
+            Some(b'}') if !in_string && i > 0 && bytes.get(i - 1) == Some(&b'}') => {
+                return Some(i + 1);
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Returns the byte offset of the `}}` that ends the `if` condition
+/// `value`, which has no `${{ }}`, if one ends it before the end of
+/// `value`. The rest of the condition is not part of the expression.
+pub(crate) fn implicit_stray_closing(value: &str) -> Option<u32> {
+    let text = format!("{value}}}}}");
+    let mut lexer = Lexer::new(&text);
+    loop {
+        let token = lexer.next_token();
+        if token.kind == TokenKind::End {
+            let early = lexer.error().is_none() && to_usize(token.start) < value.len();
+            return early.then_some(token.start);
+        }
+    }
+}
+
 fn to_usize(offset: u32) -> usize {
     usize::try_from(offset).unwrap_or(usize::MAX)
 }
@@ -342,5 +418,81 @@ mod tests {
         // U+00A0 and U+3000 are white space for Go's `unicode.IsSpace`.
         assert!(is_expression_assigned("\u{a0}${{ x }}\u{3000}\n"));
         assert!(is_expression_assigned("${{ a }} b }}"));
+    }
+
+    fn strays(value: &str) -> Vec<&str> {
+        let offsets = stray_closings(value);
+        offsets
+            .iter()
+            .map(|&offset| &value[to_usize(offset)..])
+            .collect()
+    }
+
+    #[test]
+    fn a_closing_pair_with_no_opening_is_stray() {
+        assert_eq!(strays("echo }} done"), ["}} done"]);
+        assert_eq!(strays("}}"), ["}}"]);
+        assert_eq!(strays("a }}}} b"), ["}}}} b", "}} b"]);
+    }
+
+    #[test]
+    fn a_closing_pair_after_a_closed_placeholder_is_stray() {
+        assert_eq!(strays("${{ a }} }}"), ["}}"]);
+        assert_eq!(strays("${{ a }}}"), Vec::<&str>::new());
+        assert_eq!(strays("${{ a }} b }} ${{ c }}"), ["}} ${{ c }}"]);
+        assert_eq!(strays("}} ${{ a }}"), ["}} ${{ a }}"]);
+    }
+
+    #[test]
+    fn a_closing_pair_in_a_string_literal_is_not_stray() {
+        assert_eq!(strays("${{ x == '}}' }}"), Vec::<&str>::new());
+        assert_eq!(strays("${{ x == 'it''s }}' }} }}"), ["}}"]);
+        assert_eq!(strays("${{ '{\"a\": {}}' }}"), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn a_placeholder_with_an_error_ends_at_its_closing_pair() {
+        // The lexer stops at `"`, but the placeholder still ends at `}}`.
+        assert_eq!(strays(r#"${{ "a" }} b"#), Vec::<&str>::new());
+        assert_eq!(strays("${{ a b }} }}"), ["}}"]);
+    }
+
+    #[test]
+    fn an_unterminated_placeholder_ends_the_search() {
+        assert_eq!(strays("}} ${{ a"), ["}} ${{ a"]);
+        assert_eq!(strays("${{ 'a }} }}"), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn a_closing_pair_that_closes_braces_in_the_text_is_not_stray() {
+        assert_eq!(
+            strays("docker inspect --format '{{.State.Status}}' app"),
+            Vec::<&str>::new()
+        );
+        assert_eq!(strays(r#"echo '{"a": {"b": 1}}'"#), Vec::<&str>::new());
+        assert_eq!(strays(r#"echo '{"a": {"b": ${{ x }}}}' }}"#), ["}}"]);
+        assert_eq!(strays("{ a }} b }}"), ["}}"]);
+        assert_eq!(strays("${A}} }} {"), ["}} {"]);
+    }
+
+    #[test]
+    fn a_string_without_closing_pairs_has_no_strays() {
+        assert_eq!(strays(""), Vec::<&str>::new());
+        assert_eq!(strays("echo { } {{ ${{ a }}"), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn an_implicit_condition_with_a_closing_pair_before_its_end_has_a_stray() {
+        assert_eq!(implicit_stray_closing("a }} b"), Some(2));
+        assert_eq!(implicit_stray_closing("a }}"), Some(2));
+        assert_eq!(implicit_stray_closing("}} ${{ a"), Some(0));
+    }
+
+    #[test]
+    fn an_implicit_condition_without_a_closing_pair_has_no_stray() {
+        assert_eq!(implicit_stray_closing("github.ref == 'main'"), None);
+        assert_eq!(implicit_stray_closing("x == '}}'"), None);
+        assert_eq!(implicit_stray_closing("a } b"), None);
+        assert_eq!(implicit_stray_closing(""), None);
     }
 }

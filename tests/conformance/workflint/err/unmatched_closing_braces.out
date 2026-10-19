@@ -1,0 +1,4 @@
+test.yaml:8:33: "}}" has no opening "${{". if it ends an expression, add the missing "${{" [expression]
+test.yaml:10:37: "}}" has no opening "${{". if it ends an expression, add the missing "${{" [expression]
+test.yaml:14:13: if: condition "${{ github.event_name == 'push' }}\n|| github.ref_name == 'main' }}\n" is always evaluated to true because extra characters are around ${{ }} [if-cond]
+test.yaml:16:40: "}}" has no opening "${{". if it ends an expression, add the missing "${{" [expression]

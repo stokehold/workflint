@@ -13,35 +13,59 @@ use std::collections::HashSet;
 use std::slice;
 
 use super::Parser;
+use crate::rules::UNMATCHED_CLOSING_BRACES;
 use crate::{
     Concurrency, Container, Credentials, Defaults, Env, Environment, Event, Exec, Expr, Field, Job,
     Keyed, Matrix, MatrixCombination, MatrixRow, Placeholder, RawValue, Runner, Snapshot, Step,
     Str, Template, Value, Workflow, WorkflowCall, WorkflowCallSecrets,
 };
 
-/// What the walk calls for each string with placeholders: the string and
-/// its placeholders.
-type Visit<'v, 'w, 'a> = dyn FnMut(Str<'a>, &'w [Placeholder]) + 'v;
+/// What the walk calls for each string with placeholders or with a `}}`
+/// that has no opening `${{`: the string, its placeholders, and the
+/// offsets of those `}}`.
+type Visit<'v, 'w, 'a> = dyn FnMut(Str<'a>, &'w [Placeholder], &'w [u32]) + 'v;
 
 impl<'a> Parser<'a, '_> {
     /// Reports the parse error of each placeholder in `workflow` that the
-    /// reference's `expression` rule checks.
+    /// reference's `expression` rule checks, and each `}}` in those strings
+    /// that has no opening `${{`.
     ///
     /// A string reached through several aliases is reported once.
     pub(super) fn report_expressions(&mut self, workflow: &Workflow<'a>) {
         let mut found = Vec::new();
-        placeholders(workflow, &mut |source, placeholders| {
-            found.push((source, placeholders));
+        walk(workflow, &mut |source, placeholders, strays| {
+            found.push((source, placeholders, strays));
         });
         let mut seen = HashSet::new();
-        for (source, placeholders) in found {
-            if !seen.insert(placeholders.as_ptr().addr()) {
+        for (source, placeholders, strays) in found {
+            // The cache shares these slices between the aliases of a
+            // scalar. An empty slice has no address of its own, so the pair
+            // is unique only because one of them is not empty.
+            if !seen.insert((placeholders.as_ptr().addr(), strays.as_ptr().addr())) {
                 continue;
             }
             for placeholder in placeholders {
                 self.report_placeholder(source, placeholder);
             }
+            for &offset in strays {
+                self.report_stray_closing(source, offset);
+            }
         }
+    }
+
+    /// Reports the `}}` at byte `offset` of `source`, which has no opening
+    /// `${{`.
+    fn report_stray_closing(&mut self, source: Str<'a>, offset: u32) {
+        let start = usize::try_from(offset).unwrap_or(usize::MAX);
+        let span = source
+            .source_span(self.file, start..start.saturating_add("}}".len()))
+            .unwrap_or_else(|| source.span());
+        self.error(
+            &UNMATCHED_CLOSING_BRACES,
+            span,
+            r#""}}" has no opening "${{". if it ends an expression, add the missing "${{""#
+                .to_owned(),
+        );
     }
 
     /// Reports the parse error of `placeholder`, if it has one, at the
@@ -73,6 +97,16 @@ pub fn placeholders<'w, 'a>(
     workflow: &'w Workflow<'a>,
     f: &mut dyn FnMut(Str<'a>, &'w [Placeholder]),
 ) {
+    walk(workflow, &mut |source, placeholders, _| {
+        if !placeholders.is_empty() {
+            f(source, placeholders);
+        }
+    });
+}
+
+/// Calls `f` for each string that [`placeholders`] visits, and for each
+/// string in those places with a `}}` that has no opening `${{`.
+fn walk<'w, 'a>(workflow: &'w Workflow<'a>, f: &mut Visit<'_, 'w, 'a>) {
     string(f, &workflow.name);
     string(f, &workflow.run_name);
     let has_jobs = workflow.jobs.value().is_some_and(|jobs| !jobs.is_empty());
@@ -353,13 +387,14 @@ fn expression<'w, 'a, T>(f: &mut Visit<'_, 'w, 'a>, value: &'w Value<'a, T>) {
 }
 
 fn expr_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, expr: &'w Expr<'a>) {
-    f(expr.source, slice::from_ref(expr.placeholder()));
+    f(expr.source, slice::from_ref(expr.placeholder()), &[]);
 }
 
 fn template<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, template: &'w Template<'a>) {
     let placeholders = template.placeholders();
-    if !placeholders.is_empty() {
-        f(template.source, placeholders);
+    let strays = template.stray_closings();
+    if !placeholders.is_empty() || !strays.is_empty() {
+        f(template.source, placeholders, strays);
     }
 }
 
@@ -766,5 +801,110 @@ jobs:
             .filter(|d| d.rule.id == "invalid-expression-syntax")
             .count();
         assert_eq!(syntax, 1);
+    }
+
+    /// Returns the `L:C` position of each `}}` with no opening `${{` in
+    /// `text`.
+    fn stray_closings(text: &str) -> Vec<String> {
+        walk(text)
+            .1
+            .iter()
+            .filter(|d| d.ends_with(" [unmatched-closing-braces]"))
+            .map(|d| d.split_once(": ").unwrap().0.to_owned())
+            .collect()
+    }
+
+    #[test]
+    fn a_closing_pair_with_no_opening_in_run_is_reported() {
+        let text = "\
+on: push
+jobs:
+  test:
+    runs-on: linux
+    steps:
+      - run: echo secrets.TOKEN }}
+      - run: |
+          echo ${{ github.ref }} }}
+          echo '}}'
+          docker inspect --format '{{.Id}}' app
+";
+        assert_eq!(stray_closings(text), ["6:33", "8:34", "9:17"]);
+    }
+
+    #[test]
+    fn a_closing_pair_after_a_multi_line_condition_is_reported() {
+        // rhysd/actionlint#373.
+        let text = "\
+on: push
+jobs:
+  test:
+    runs-on: linux
+    if: |
+      ${{ github.event_name == 'push' }}
+      || github.ref == 'main' }}
+    steps:
+      - run: echo
+";
+        assert_eq!(stray_closings(text), ["7:31"]);
+    }
+
+    #[test]
+    fn a_closing_pair_in_a_condition_without_placeholders_is_reported() {
+        let text = "\
+on: push
+jobs:
+  test:
+    runs-on: linux
+    if: github.ref == 'main' }}
+    steps:
+      - run: echo
+      - run: echo
+        if: github.ref == '}}'
+";
+        assert_eq!(stray_closings(text), ["5:30"]);
+    }
+
+    #[test]
+    fn a_closing_pair_in_a_string_literal_is_not_reported() {
+        let text = "\
+on: push
+jobs:
+  test:
+    runs-on: linux
+    steps:
+      - run: echo ${{ format('{0}}}', 'a') }} ${{ '}}' }}
+        if: ${{ github.ref == '}}' }}
+";
+        assert_eq!(stray_closings(text), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_closing_pair_in_a_step_id_is_not_reported() {
+        let text = "\
+on: push
+jobs:
+  test:
+    runs-on: linux
+    steps:
+      - id: a}}
+        run: echo
+";
+        assert_eq!(stray_closings(text), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_closing_pair_reached_through_aliases_is_reported_once() {
+        let text = "\
+on: push
+jobs:
+  a:
+    runs-on: linux
+    steps: &steps
+      - run: echo }}
+  b:
+    runs-on: linux
+    steps: *steps
+";
+        assert_eq!(stray_closings(text), ["6:19"]);
     }
 }

@@ -462,6 +462,17 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Status: implemented. Syntax errors from M2, and type, context, and untrusted-input errors from M4.6.
 - Fixtures: `err/context_availability` (line 106, where upstream reports only the first of two errors).
 
+<a id="unmatched-closing-braces"></a>
+### A `}}` with no opening `${{`
+
+- Upstream: a `}}` outside every `${{ }}` gives no error. `run: echo secrets.TOKEN }}` and `run: echo ${{ github.ref }} }}` pass. An `if` condition without `${{ }}`, such as `github.ref == 'main' }}`, passes too, because the lexer stops at the first `}}` and the rest of the condition is never read.
+- workflint: the rule `unmatched-closing-braces` warns at each such `}}`, unless one of its braces closes a `{` earlier in the string, as in `--format '{{.Id}}'` or in JSON. It finds the end of each `${{ }}` as GitHub's template reader does, so a `}}` inside a single-quoted string of an expression is not reported.
+- Why: GitHub keeps the `}}` as text, so the expression it was meant to end is never evaluated, and an `if` with text around its `${{ }}` is always true. GitHub rejects a `}}` in an `if` condition without `${{ }}`. The rule is a warning because the braces may be text that the author meant to write.
+- Upstream issue: #169, #373.
+- Milestone: M4.27.
+- Status: implemented.
+- Fixtures: `workflint/err/unmatched_closing_braces`.
+
 <a id="invalid-if-condition"></a>
 ### An empty or non-string `if`
 
