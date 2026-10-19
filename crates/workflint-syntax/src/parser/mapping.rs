@@ -7,7 +7,7 @@ use std::fmt;
 
 use workflint_diagnostics::Span;
 use workflint_diagnostics::quote::{quote, sorted_quotes};
-use workflint_yaml::{Node, NodeKind, Tag, simple_lowercase};
+use workflint_yaml::{Entry, Node, NodeId, NodeKind, Tag, simple_lowercase};
 
 use super::{Parser, kind_name};
 use crate::rules::{
@@ -102,6 +102,11 @@ pub(crate) struct Mapping<'a> {
     /// expression, in source order.
     pub(crate) inserts: Vec<Expr<'a>>,
 }
+
+/// The entries of a mapping, each with the entry as written, which
+/// [`Document::written_entries`](workflint_yaml::Document::written_entries)
+/// gives.
+type Entries<'a> = std::iter::Zip<std::slice::Iter<'a, Entry>, std::slice::Iter<'a, Entry>>;
 
 /// A section whose keys a table of [`KeySpec`] values describes.
 pub(crate) trait Section: Sized + 'static {
@@ -230,25 +235,8 @@ impl<'a> Parser<'a, '_> {
             }
             if inserts != Inserts::No && is_insert(key.value()) {
                 has_insert = true;
-                let Some(value) = self.node(entry.value) else {
-                    continue;
-                };
                 let path = self.within(level, |p| p.path_to(written.value));
-                if let (NodeKind::Mapping(inserted), Inserts::MappingOrExpression) =
-                    (&value.kind, inserts)
-                {
-                    let entries = document
-                        .entries(inserted)
-                        .iter()
-                        .zip(document.written_entries(inserted));
-                    pending.push((entries, path));
-                } else if let Some(expr) = self.within(path, |p| {
-                    p.string(value).and_then(|value| p.expression(value))
-                }) {
-                    walked.inserts.push(expr);
-                } else {
-                    self.invalid_insert(label, value, inserts);
-                }
+                pending.extend(self.insert(label, entry.value, path, inserts, &mut walked));
                 continue;
             }
             let id = if case_sensitive {
@@ -286,6 +274,37 @@ impl<'a> Parser<'a, '_> {
             self.empty_mapping(label, node);
         }
         walked
+    }
+
+    /// Takes `id`, the value of an `${{ insert }}` key, reached through the
+    /// aliases `path`. Returns the entries of a mapping value that `inserts`
+    /// accepts, to walk next, keeps a value written as one `${{ }}`
+    /// expression in `walked`, and reports any other value.
+    fn insert(
+        &mut self,
+        label: Label<'_>,
+        id: NodeId,
+        path: Option<AliasPath>,
+        inserts: Inserts,
+        walked: &mut Mapping<'a>,
+    ) -> Option<(Entries<'a>, Option<AliasPath>)> {
+        let document = self.document;
+        let value = self.node(id)?;
+        if let (NodeKind::Mapping(inserted), Inserts::MappingOrExpression) = (&value.kind, inserts)
+        {
+            let entries = document
+                .entries(inserted)
+                .iter()
+                .zip(document.written_entries(inserted));
+            return Some((entries, path));
+        }
+        match self.within(path, |p| {
+            p.string(value).and_then(|value| p.expression(value))
+        }) {
+            Some(expr) => walked.inserts.push(expr),
+            None => self.invalid_insert(label, value, inserts),
+        }
+        None
     }
 
     /// Reports `value`, the value of an `${{ insert }}` key, which is
