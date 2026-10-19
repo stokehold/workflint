@@ -646,8 +646,8 @@ fn tag_ty(tag: &Tag) -> Ty {
 /// step has outputs of any name, which are strings.
 ///
 /// Broken metadata of a local action gets outputs of any name, and this rule reports nothing.
-/// The `action` rule runs before this one on each step, and from M4.18 (#155) it looks the
-/// action up first and reports the error.
+/// The `action` rule runs before this one on each step, so it looks the action up first and
+/// reports the error.
 fn action_outputs(uses: Option<&StepUses<'_>>, cx: &Context<'_>) -> Arc<ObjectTy> {
     let any_string = || Arc::new(ObjectTy::new([] as [(&str, Ty); 0], Rest::Map(Ty::String)));
     let Some(spec) = uses.map(StepUses::value) else {

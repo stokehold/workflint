@@ -1,8 +1,8 @@
 //! The `action` rule: the format of each step's `uses:`, Docker actions, outdated popular
-//! actions, and the `with:` inputs of popular actions.
+//! actions, local actions and their metadata, and the `with:` inputs of popular and local
+//! actions.
 //!
-//! Ported from rhysd/actionlint at commit `011a6d1`: `rule_action.go`. M4.18 (#155) adds the
-//! checks of local actions.
+//! Ported from rhysd/actionlint at commit `011a6d1`: `rule_action.go`.
 
 use workflint_data::{is_outdated_popular_action, popular_action};
 use workflint_diagnostics::quote::{quote, sorted_quotes};
@@ -11,7 +11,15 @@ use workflint_syntax::{Exec, ExecAction, Step, StepUses, StepUsesKind, UsesPart}
 
 use crate::{Context, Rule};
 
+mod local;
 mod url;
+
+pub(crate) use local::{
+    ACTION_FILE_NOT_FOUND, BROKEN_ACTION_METADATA, EMPTY_DEPRECATION_MESSAGE,
+    INVALID_BRANDING_COLOR, INVALID_BRANDING_ICON, INVALID_DOCKERFILE_NAME, INVALID_RUNS_USING,
+    MISSING_ACTION_DESCRIPTION, MISSING_ACTION_NAME, MISSING_PRE_POST_SCRIPT, MISSING_RUNS_KEY,
+    MISSING_RUNS_USING, RUNS_KEY_NOT_ALLOWED,
+};
 
 /// A step's `uses:` is not `./path`, `docker://image`, or `owner/repo[/path]@ref`.
 pub(crate) static INVALID_ACTION_FORMAT: RuleMeta = RuleMeta {
@@ -88,7 +96,8 @@ impl<'a> Rule<'a> for Action {
             return;
         };
         match uses.kind {
-            StepUsesKind::Expression | StepUsesKind::Local { .. } => {}
+            StepUsesKind::Expression => {}
+            StepUsesKind::Local { .. } => local::check(exec, uses, cx),
             StepUsesKind::Docker { image, tag } => check_docker(uses, image, tag, cx),
             StepUsesKind::Invalid(invalid) => report_format(uses, invalid.reason(), cx),
             StepUsesKind::Repository { .. } => check_repository(exec, uses, cx),
@@ -185,8 +194,6 @@ impl From<&'static workflint_data::ActionInput> for DeclaredInput<'static> {
 
 /// The reference's `checkAction`: checks the `with:` of `exec` against the inputs that the
 /// action declares, sorted by ID. `describe` names the action in the messages, already quoted.
-///
-/// The checks of local actions in M4.18 (#155) call this too.
 pub(crate) fn check_inputs(
     exec: &ExecAction<'_>,
     uses: Span,

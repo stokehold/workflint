@@ -6,7 +6,7 @@
 
 `with:` sets an input that the action has deprecated.
 
-An input is deprecated when the action's metadata gives it a `deprecationMessage`. The error ends with that message, joined onto one line. An input that is both deprecated and required is not reported, because a step cannot leave it out.
+An input is deprecated when the action's metadata gives it a `deprecationMessage`. This covers popular actions and local actions. The error ends with that message, joined onto one line. An input that is both deprecated and required is not reported, because a step cannot leave it out.
 
 ## Why
 

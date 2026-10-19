@@ -24,6 +24,7 @@ use anyhow::{Context, Result, bail};
 use xtask::conformance::allow_list::AllowList;
 use xtask::conformance::binary;
 use xtask::conformance::fixture::{self, Fixture, Origin, Tools};
+use xtask::conformance::runner::REFERENCE_FAILURES;
 use xtask::process::{self, Finished};
 
 use crate::bench;
@@ -94,7 +95,7 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
         },
         &paths,
     )?;
-    let (fixtures, skipped) = without_varying(selection.fixtures);
+    let (fixtures, skipped, reference_failures) = without_skipped(selection.fixtures);
 
     reference::report_checkout(layout)?;
     reference::report_binary(layout)?;
@@ -134,6 +135,7 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
         self_check: options.self_check,
         kinds,
         skipped,
+        reference_failures,
         runs,
     };
     let directory = bench::target_directory(layout)?.join("oracle");
@@ -156,16 +158,28 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
     Ok(())
 }
 
-/// The fixtures that are not in [`VARYING`], and the IDs of those that are.
-/// Every run skips the varying fixtures, with or without `--self-check`.
-fn without_varying(fixtures: Vec<Fixture>) -> (Vec<Fixture>, Vec<String>) {
-    let (varying, kept): (Vec<_>, Vec<_>) = fixtures
-        .into_iter()
-        .partition(|fixture| VARYING.contains(&fixture.id.as_str()));
-    (
-        kept,
-        varying.into_iter().map(|fixture| fixture.id).collect(),
-    )
+/// The fixtures that are neither in [`VARYING`] nor in
+/// [`REFERENCE_FAILURES`], then the IDs of those in each list. Every run
+/// skips them, with or without `--self-check`.
+///
+/// The reference fails the `.out` file of a fixture in `REFERENCE_FAILURES`,
+/// so the allow-list records that replace its lines cannot apply to the
+/// reference's output. The conformance suite still checks workflint on it.
+fn without_skipped(fixtures: Vec<Fixture>) -> (Vec<Fixture>, Vec<String>, Vec<String>) {
+    let mut kept = Vec::new();
+    let mut varying = Vec::new();
+    let mut failing = Vec::new();
+    for fixture in fixtures {
+        let id = fixture.id.as_str();
+        if VARYING.contains(&id) {
+            varying.push(fixture.id);
+        } else if REFERENCE_FAILURES.iter().any(|(failure, _)| *failure == id) {
+            failing.push(fixture.id);
+        } else {
+            kept.push(fixture);
+        }
+    }
+    (kept, varying, failing)
 }
 
 fn read_allow_list(layout: &Layout) -> Result<AllowList> {
@@ -459,12 +473,19 @@ mod tests {
     }
 
     #[test]
-    fn the_varying_fixtures_are_skipped_and_named() {
+    fn the_varying_fixtures_and_the_reference_failures_are_skipped_and_named() {
         let all = fixture::discover(Origin::Actionlint).unwrap();
-        let (kept, skipped) = without_varying(all.clone());
-        assert_eq!(skipped, VARYING);
-        assert_eq!(kept.len(), all.len() - VARYING.len());
-        assert!(!kept.iter().any(|f| VARYING.contains(&f.id.as_str())));
+        let (kept, varying, failing) = without_skipped(all.clone());
+        assert_eq!(varying, VARYING);
+        let reference_failures: Vec<&str> = REFERENCE_FAILURES.iter().map(|(id, _)| *id).collect();
+        assert_eq!(failing, reference_failures);
+        assert_eq!(
+            kept.len(),
+            all.len() - VARYING.len() - REFERENCE_FAILURES.len()
+        );
+        assert!(!kept.iter().any(
+            |f| VARYING.contains(&f.id.as_str()) || reference_failures.contains(&f.id.as_str())
+        ));
     }
 
     #[test]

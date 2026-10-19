@@ -1,0 +1,1 @@
+/workflows/a\.yaml:7:15: could not parse action metadata in ".+(\\\\|/)action": line 2: yaml: outputs must be mapping node but scalar node was found at line:2, col:10 \[action\]/

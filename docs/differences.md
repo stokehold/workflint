@@ -154,6 +154,17 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M1.
 - Status: implemented.
 
+<a id="local-action-paths"></a>
+### Paths of local actions in messages
+
+- Upstream: messages about a local action's metadata name its directory or its `action.yml` as the project root joined with the `uses:` path. The CLI finds the project root itself, so the path is absolute. The Go test of `projects/local_action_invalid` passes the relative root `testdata/projects/local_action_invalid`, and its `.out` file expects paths that start with it. The reference binary fails that fixture too.
+- workflint: prints the absolute path, as the reference binary does. A path from the `runs` section, as in `file "dist/index.js" does not exist`, is printed as `action.yml` writes it, with `/`, where the reference on Windows prints `dist\index.js`. Whether a local Docker `image` is named `Dockerfile` is decided by the name after the last `/`, where the reference on Windows also splits at `\`.
+- Why: the absolute path is no difference from the reference binary, and the entry exists so that the allow-list can replace the fixture lines that only the Go test prints. A path from `action.yml` must print the same on every host (ADR 0013). GitHub builds Docker actions on Linux runners, where `\` is part of a file name.
+- Upstream issue: none.
+- Milestone: M4.18.
+- Status: implemented.
+- Fixtures: `projects/local_action_invalid`.
+
 ## Workflow parser
 
 <a id="nan-panic"></a>
@@ -261,7 +272,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: an alias should behave like the node it refers to.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the decoder. The `action` rule reads the decoded inputs from M4.18.
+- Status: implemented in the decoder, and the `action` rule reads the decoded inputs since M4.18.
 
 <a id="non-scalar-keys"></a>
 ### Keys that are not strings in `permissions` and `env`
@@ -576,8 +587,18 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the upstream message names the wrong key.
 - Upstream issue: none.
 - Milestone: M4.
-- Status: planned.
+- Status: implemented in M4.18.
 - Fixtures: `examples/action_metadata_syntax_validation`, `projects/local_action_invalid`.
+
+<a id="action-file-not-found-warning"></a>
+### A missing file of a local action is a warning
+
+- Upstream: a file that the `runs` section of a local action names and that does not exist is an error, like every other finding: `file "dist/index.js" does not exist in "...". it is specified at "main" key in "runs" section in "..." action`.
+- workflint: the message is the same, and the rule `action-file-not-found` has the default severity warning. This covers `main`, `pre`, and `post` of JavaScript actions and `image`, `pre-entrypoint`, `entrypoint`, and `post-entrypoint` of Docker actions. Until M5.6 applies `--fail-on`, a warning still makes the exit code 1, so the output and the exit code do not change yet. After M5.6, a run whose only findings are missing files exits with 0 by default.
+- Why: a JavaScript action's entrypoint is often built by an earlier step of the job, such as `npm run build`, and is not in the repository when workflint runs.
+- Upstream issue: #518.
+- Milestone: M4.18 (severity), M5.6 (exit code).
+- Status: the severity is implemented. The exit code follows with M5.6.
 
 <a id="dispatch-options-quoting"></a>
 ### `workflow_dispatch` options quoted once
@@ -628,7 +649,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the same input must give the same output.
 - Upstream issue: none.
 - Milestone: M5.
-- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The `workflow-call` rule reports the errors of reusable workflows since M4.25. The `expression` rule types step outputs without reporting them since M4.9, and reports the errors of reusable workflows that typing `needs` finds since M4.10. The `action` rule reports them from M4.18, and the order by file path with M5.3.
+- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in the order given, so the first use is the first in that order. The `workflow-call` rule reports the errors of reusable workflows since M4.25. The `expression` rule types step outputs without reporting them since M4.9, and reports the errors of reusable workflows that typing `needs` finds since M4.10. The `action` rule reports the errors of local actions since M4.18. The order by file path follows with M5.3.
 - Fixtures: `projects/broken_local_action`, `projects/broken_reusable_workflow`, `projects/workflow_call_not_found`.
 
 <a id="with-expression-errors"></a>

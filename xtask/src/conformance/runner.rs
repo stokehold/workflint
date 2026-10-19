@@ -389,7 +389,16 @@ pub fn check_checks_md() -> Result<(), String> {
             Some(checks_md::Section {
                 input: Some(input),
                 output: Some(output),
+                ..
             }) => SETUP.check_example(input, output, &replacements),
+            // Upstream writes this block by hand, so no binary prints it.
+            // The row's fixtures, which `check_parity_checklist` requires to
+            // pass, check the section instead.
+            Some(checks_md::Section {
+                output: None,
+                hand_written_output: true,
+                ..
+            }) => Ok(()),
             Some(_) => Err("the section has no Example input or no Output block".to_owned()),
             None => Err("docs/checks.md has no such section".to_owned()),
         };

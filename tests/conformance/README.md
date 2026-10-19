@@ -81,7 +81,7 @@ The runner compares the output with the expected lines as `checkErrors` in the r
 5. The number of errors must equal the number of expected lines.
 6. The n-th expected line must equal the n-th error, written as `path:line:col: message [kind]`. A line that starts and ends with `/` is a regular expression instead, which must match anywhere in the error. The `regex` crate reads these patterns, except that a `{` or `}` that does not form a repetition such as `{2,5}` is escaped first, because Go reads such braces as literals.
 
-`projects/local_action_invalid.out` has patterns that expect the relative path `testdata/projects/local_action_invalid/...`. The reference's Go test passes a relative project root, but a CLI that finds the project root prints an absolute path, so the reference binary fails those lines too. The reference run lists the fixture as a known failure (see below). The task that implements `missing-action-name` (M4) adds `allowed-differences.toml` entries that replace those lines with the lines workflint prints.
+`projects/local_action_invalid.out` has patterns that expect the relative path `testdata/projects/local_action_invalid/...`. The reference's Go test passes a relative project root, but a CLI that finds the project root prints an absolute path, so the reference binary fails those lines too. The reference run lists the fixture as a known failure (see below). `allowed-differences.toml` replaces those lines with patterns for the absolute paths that both binaries print (`docs/differences.md#local-action-paths`). The reference prints no line that their `upstream` patterns match, so `cargo xtask oracle` skips the fixture, as it skips every fixture in `REFERENCE_FAILURES`.
 
 ## Running the reference
 
@@ -114,7 +114,7 @@ The binary has linted for real since M2.0, so the file lists only fixtures that 
 - A listed fixture whose binary crashes, hangs, or prints to standard error fails its test.
 - The test `expected_failures::expected-failures.toml` fails if a line names a fixture that does not exist, names another milestone than the rule above gives, or names a milestone in `milestones.toml`. It also fails if a note in the checklist says a row waits on a fixture that passes, or gives another milestone than this file.
 - The test `parity_checklist::parity-checklist.md` fails if a ticked row cites a fixture that does not exist or is listed here, if an open row with a milestone in `milestones.toml` cites a listed fixture, or if a row has more or fewer cells than its table's header.
-- The test `checks_md::checks.md` lints the `Example input` of each ticked row of the "docs/checks.md sections" table in the default output format, and compares the output with the section's `Output` block. It changes each rule ID to its kind and leaves out the `^~~~` lines, which differ by `docs/differences.md#column-units`. An allow-list record of a fixture in the row's "Upstream fixtures" cell that has both an `upstream` and a `workflint` line replaces that line of the `Output` block, if the block has it, and keeps the snippet under it.
+- The test `checks_md::checks.md` lints the `Example input` of each ticked row of the "docs/checks.md sections" table in the default output format, and compares the output with the section's `Output` block. It changes each rule ID to its kind and leaves out the `^~~~` lines, which differ by `docs/differences.md#column-units`. An allow-list record of a fixture in the row's "Upstream fixtures" cell that has both an `upstream` and a `workflint` line replaces that line of the `Output` block, if the block has it, and keeps the snippet under it. A section whose only `Output` block upstream marks `<!-- Skip update output -->` is written by hand and printed by no binary, so the test compares nothing for it, and the row's fixtures check the section.
 
 To see the full reason a listed fixture fails, remove its line and run its test.
 
@@ -137,7 +137,7 @@ workflint = "test.yaml:3:5: could not parse as YAML: ... [syntax-check]"
 | `upstream` | An expected line of the fixture's `.out` file, copied exactly, that workflint does not report. |
 | `workflint` | The line workflint reports instead or in addition, in the same form as `.out` lines: with the actionlint kind in brackets, or a `/pattern/`. |
 
-An entry with both `upstream` and `workflint` replaces a line. With only `upstream` it removes one, and with only `workflint` it adds one. The runner inserts each `workflint` line before the first expected line that sorts after it by path, line, column and message. It sorts a pattern line by the position at its start, if it has one, and places the new line after pattern lines at the same position.
+An entry with both `upstream` and `workflint` replaces a line. With only `upstream` it removes one, and with only `workflint` it adds one. The runner inserts each `workflint` line before the first expected line that sorts after it by path, line, column and message. It sorts a pattern line by the position at its start, if it has one, and places the new line after pattern lines at the same position. A pattern line that replaces a line at its own position takes that line's place instead, because its order among the lines at that position is unknown.
 
 The runner fails:
 
