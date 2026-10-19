@@ -32,3 +32,9 @@ jobs:
       # Action specs that are empty or not strings
       - uses: ''
       - uses: [x]
+# Permission scopes whose value or key is not a non-empty string
+permissions:
+  contents:
+  issues: [read]
+  ? [pages]
+  : read

@@ -86,6 +86,8 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-literal-value`](invalid-literal-value.md) | `syntax-check` | correctness | error | A boolean, integer, or float value has the wrong tag or does not parse |
 | [`invalid-number-literal`](invalid-number-literal.md) | `expression` | correctness | error | A number literal in an expression has no value as a double |
 | [`invalid-object-filter`](invalid-object-filter.md) | `expression` | correctness | error | An object filter `.*` applies to a value without object elements |
+| [`invalid-permission-level`](invalid-permission-level.md) | `permissions` | correctness | error | A permission scope is set to a level that the scope does not accept |
+| [`invalid-permissions-value`](invalid-permissions-value.md) | `permissions` | correctness | error | The string form of `permissions` is not `read-all` or `write-all` |
 | [`invalid-property-access`](invalid-property-access.md) | `expression` | correctness | error | An expression reads a property with a dot from a value that is not an object |
 | [`invalid-ref-name`](invalid-ref-name.md) | `glob` | correctness | error | A branch or tag pattern has a character that a Git ref name cannot have |
 | [`invalid-reusable-call-key`](invalid-reusable-call-key.md) | `syntax-check` | correctness | error | A job that calls a reusable workflow has a key that only a job with steps may have |
@@ -132,6 +134,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`unexpected-node-kind`](unexpected-node-kind.md) | `syntax-check` | correctness | error | A node has the wrong kind, such as a sequence where a mapping is expected |
 | [`unknown-anchor`](unknown-anchor.md) | `syntax-check` | correctness | error | An alias refers to an anchor that no earlier node defines |
 | [`unknown-event`](unknown-event.md) | `events` | correctness | error | `on` names an event that is not a GitHub webhook event |
+| [`unknown-permission-scope`](unknown-permission-scope.md) | `permissions` | correctness | error | A key in `permissions` is not a permission scope |
 | [`unknown-runner-label`](unknown-runner-label.md) | `runner-label` | correctness | error | A `runs-on` label is not a known runner label |
 | [`untrusted-input`](untrusted-input.md) | `expression` | correctness | error | A script reads a value that someone outside the repository can set |
 | [`untrusted-object-filter`](untrusted-object-filter.md) | `expression` | correctness | error | A script reads an object filter that extracts values that someone outside the repository can set |

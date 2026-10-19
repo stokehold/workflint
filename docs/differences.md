@@ -282,7 +282,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the second error repeats the first and names a scope that is not in the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the parser. The `permissions` rule follows in M4.22. No fixture covers it.
+- Status: implemented in the parser and the `permissions` rule (M4.22).
+- Fixtures: `workflint/err/invalid_value_reported_once`.
 
 <a id="invalid-value-reported-once"></a>
 ### An invalid value is reported once
@@ -294,11 +295,12 @@ The last section lists behaviour that was investigated and deliberately kept.
   - A `shell` of `defaults.run` or of a step that is empty or not a scalar also gets `shell name "" is invalid` (`shell-name`).
   - A `runs-on` label that is empty or not a scalar also gets `label "" is unknown` (`runner-label`).
   - A step's `uses` that is empty or not a scalar also gets `specifying action "" in invalid format because ref is missing` (`action`).
-- workflint: the parser reports the value once, and the rules skip it. The value keeps its place in its list, so a check that only needs the value to be written still runs. `options: [[x]]` on a `string` input of `workflow_dispatch` still gets `"options" can not be set to "text" input because its input type is not "choice"`, and `options: ['']` on a `choice` input counts as set, as upstream. A `choice` input with an invalid option does not compare its default with the options, because the invalid option has no value to compare. Upstream compares the default with `""` in its place. A required `workflow_call` input with an invalid default is not reported either, although that check only needs the default to be written, because its message would quote `""`. The keys of `permissions` and `env` are in [Keys that are not strings in `permissions` and `env`](#non-scalar-keys).
+  - A `permissions` scope whose value is empty or not a scalar, as in `contents:` or `contents: [read]`, also gets `"" is invalid as permission of scope "contents"` (`permissions`).
+- workflint: the parser reports the value once, and the rules skip it. The value keeps its place in its list, so a check that only needs the value to be written still runs. `options: [[x]]` on a `string` input of `workflow_dispatch` still gets `"options" can not be set to "text" input because its input type is not "choice"`, and `options: ['']` on a `choice` input counts as set, as upstream. A `choice` input with an invalid option does not compare its default with the options, because the invalid option has no value to compare. Upstream compares the default with `""` in its place. A required `workflow_call` input with an invalid default is not reported either, although that check only needs the default to be written, because its message would quote `""`. The keys of `permissions` and `env` are in [Keys that are not strings in `permissions` and `env`](#non-scalar-keys). The string form of `permissions` keeps the upstream output: `permissions:` with no value gets `"" is invalid for permission for all the scopes` after `string should not be empty`, because `err/issue170_empty_permissions` expects both.
 - Why: the second error repeats the first and names a value that is not in the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the parser, the `events` rule (M4.13), the `runner-label` rule (M4.16), and the `action` rule (M4.17). The `shell-name` rule follows in M4.
+- Status: implemented in the parser, the `events` rule (M4.13), the `runner-label` rule (M4.16), the `action` rule (M4.17), and the `permissions` rule (M4.22). The `shell-name` rule follows in M4.
 - Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
 
 <a id="typed-decoding-edge-cases"></a>
