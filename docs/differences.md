@@ -755,6 +755,21 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Fixtures: `workflint/err/runs_on_expressions` and `workflint/ok/runs_on_expressions.yaml`. The output of no vendored fixture changes.
 - Corpus: `apache_airflow_.github_workflows_build-images.yml` (two jobs) and `apache_airflow_.github_workflows_ci.yml` report `ubuntu-20.04`. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
 
+<a id="runner-provider-labels"></a>
+### Labels of runner providers, and the system that custom labels name
+
+- Upstream: the `runner-label` rule knows only GitHub-hosted labels, the self-hosted presets, and configured labels. `blacksmith-4vcpu-ubuntu-2404` or a RunsOn label such as `image=ubuntu22-full-x64` is unknown. The `shell-name` rule finds the platform only in literal labels that are `windows`, `macos`, or `linux`, or that start with `windows-`, `macos-`, or `ubuntu-`, so a job on `[self-hosted, self-32vcpu-windows-2022]` or `depot-windows-2022` accepts `shell: sh`.
+- workflint: `workflint-data` lists the label formats of Blacksmith, Depot, Namespace, RunsOn, Ubicloud, and WarpBuild, each with the documentation page it comes from and the date it was read. Their labels are known, and they have no runner images, so they conflict with no label. A RunsOn label is one or more `key=value` parts, separated by `/` or `,`, whose keys RunsOn documents, such as `runs-on`, `runner`, `image`, and `cpu`.
+- The platform of `shell-name` comes from what `runs-on` resolves to. The upstream prefixes decide first. A provider label names the system of its format, such as Windows for `depot-windows-2022`. Any other label names the system of its words: `linux`, `ubuntu`, `macos`, or `windows`, alone or followed by a version, so `self-32vcpu-windows-2022` and `image=windows25-full-x64` name Windows. The words of a `${{ }}` do not count. Labels that name two systems, Linux and macOS included, give no platform, where upstream treats Linux and macOS as one.
+- A custom label that names a system is still unknown to `runner-label` until the config lists it.
+- BuildJet is not listed, because it stopped running jobs on 2026-03-31.
+- Why: these providers run jobs for many repositories, and their documented labels were reported as unknown. A self-hosted Windows runner with a custom label got no check of its shells.
+- Upstream issue: #499.
+- Milestone: M4.33. M5.2 adds configured labels, and M7.3 generates runner label data.
+- Status: implemented.
+- Fixtures: `workflint/err/runner_provider_os` and `workflint/ok/runner_provider_labels.yaml`. The output of no vendored fixture changes.
+- Corpus: no output changes. None of the 827 `unknown-runner-label` hits is a provider label.
+
 ## Configuration and project discovery
 
 <a id="paths-relative-to-root"></a>

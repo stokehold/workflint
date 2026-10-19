@@ -24,6 +24,21 @@ pub(crate) fn eq_go_lower(input: &str, name: &str) -> bool {
     chars.next().is_none()
 }
 
+/// Returns whether Go's `strings.HasPrefix(strings.ToLower(input), prefix)`, for a `prefix`
+/// that is lower-case ASCII.
+pub(crate) fn starts_with_go_lower(input: &str, prefix: &str) -> bool {
+    let mut chars = input.chars();
+    prefix.chars().all(|expected| {
+        let lowered = match chars.next() {
+            Some('\u{130}') => 'i',
+            Some('\u{212a}') => 'k',
+            Some(c) => c.to_ascii_lowercase(),
+            None => return false,
+        };
+        lowered == expected
+    })
+}
+
 /// Returns whether Go's `strings.EqualFold(input, name)`, for a `name` that is ASCII.
 pub(crate) fn eq_go_fold(input: &str, name: &str) -> bool {
     let mut chars = input.chars();
@@ -57,6 +72,13 @@ mod tests {
         assert!(eq_go_lower("\u{130}", "i"));
         assert!(eq_go_lower("\u{212a}", "k"));
         assert!(!eq_go_lower("\u{17f}", "s"));
+    }
+
+    #[test]
+    fn prefix_lowers_as_go_does() {
+        assert!(starts_with_go_lower("W\u{130}NDOWS-latest", "windows-"));
+        assert!(starts_with_go_lower("windows-", "windows-"));
+        assert!(!starts_with_go_lower("windows", "windows-"));
     }
 
     #[test]

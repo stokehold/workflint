@@ -30,6 +30,8 @@ Use these words with these meanings in code, docs, and pull requests.
 | special function | A built-in function that only some workflow keys allow: `always`, `cancelled`, `failure`, `hashFiles`, and `success` (`SPECIAL_FUNCTIONS`). |
 | availability | Which contexts and special functions a given workflow key allows (`Availability`). A key that the table does not list allows none, and so does a type environment without a workflow key. |
 | platform data | Facts about GitHub that change over time: runner labels, permissions, events, contexts, popular actions (ADR 0011). |
+| runner provider | A company other than GitHub that hosts runners, such as Depot, which a job selects with the provider's labels (`RUNNER_PROVIDERS`). |
+| resolved runner | What a job's `runs-on` selects: a hosted, self-hosted, or unknown runner, and its system when the labels name one (`ResolvedRunner`). |
 | rule | One check with a stable ID and rule metadata, listed in the registry in `workflint-rules`. |
 | reference rule | One of the reference's rules, such as `events`, ported as one module and one `Rule` implementation in `workflint-rules`. It reports the rule IDs of one kind (ADR 0029). |
 | hook | One of the five methods of the `Rule` trait that the visitor calls: workflow pre, job pre, step, job post, and workflow post. The reference calls them `VisitWorkflowPre` and so on. |

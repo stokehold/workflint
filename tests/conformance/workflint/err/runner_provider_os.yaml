@@ -1,0 +1,26 @@
+on: push
+jobs:
+  provider:
+    # Depot's Windows runners have no `sh`.
+    runs-on: depot-windows-2025
+    steps:
+      - run: echo
+        shell: sh
+  custom:
+    # The custom label names Windows. It is still unknown without a config.
+    runs-on: [self-hosted, self-32vcpu-windows-2022]
+    steps:
+      - run: echo
+        shell: sh
+  runs-on:
+    # The RunsOn runner preset names Linux.
+    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64
+    steps:
+      - run: echo
+        shell: cmd
+  no-os:
+    # A label that names no system accepts the shells of every platform.
+    runs-on: [self-hosted, gpu]
+    steps:
+      - run: echo
+        shell: cmd

@@ -150,6 +150,56 @@ fn the_platform_comes_from_the_literal_labels() {
 }
 
 #[test]
+fn the_platform_comes_from_provider_labels_and_the_words_of_custom_labels() {
+    for (runs_on, platform, names) in [
+        ("depot-windows-2022", " on Windows", WINDOWS),
+        (
+            "blacksmith-4vcpu-ubuntu-2404",
+            " on macOS or Linux",
+            MAC_OR_LINUX,
+        ),
+        ("ubicloud-standard-2", " on macOS or Linux", MAC_OR_LINUX),
+        ("warp-macos-15-arm64-6x", " on macOS or Linux", MAC_OR_LINUX),
+        (
+            "[self-hosted, self-32vcpu-windows-2022]",
+            " on Windows",
+            WINDOWS,
+        ),
+        (
+            "[self-hosted, gpu-ubuntu22.04]",
+            " on macOS or Linux",
+            MAC_OR_LINUX,
+        ),
+        (
+            "'runs-on=${{ github.run_id }}/runner=2cpu-linux-x64'",
+            " on macOS or Linux",
+            MAC_OR_LINUX,
+        ),
+        (
+            "['runs-on=${{ github.run_id }}', image=windows25-full-x64]",
+            " on Windows",
+            WINDOWS,
+        ),
+    ] {
+        let shell = if names == WINDOWS { "sh" } else { "cmd" };
+        assert_eq!(
+            lint(&step_shell(runs_on, shell)),
+            [format!(
+                r#"test.yaml:7:16: shell name "{shell}" is invalid{platform}. available names are {names} [invalid-shell-name]"#
+            )],
+            "{runs_on}"
+        );
+    }
+}
+
+#[test]
+fn words_inside_an_expression_name_no_platform() {
+    let runs_on = "\"${{ matrix.os == 'windows' && 'a' || 'b' }}\"";
+    assert_eq!(lint(&step_shell(runs_on, "cmd")), Vec::<String>::new());
+    assert_eq!(lint(&step_shell(runs_on, "sh")), Vec::<String>::new());
+}
+
+#[test]
 fn labels_of_two_platforms_or_none_check_against_any_platform() {
     for runs_on in [
         "[ubuntu-latest, windows-latest]",

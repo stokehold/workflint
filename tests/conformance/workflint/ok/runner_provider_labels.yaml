@@ -1,0 +1,44 @@
+on: push
+jobs:
+  blacksmith:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - run: echo
+        shell: sh
+  depot:
+    runs-on: depot-windows-2022-8
+    steps:
+      - run: echo
+        shell: cmd
+  namespace:
+    runs-on: [nscloud-ubuntu-24.04-amd64-4x8-with-features, 'namespace-features:container.privileged=true']
+    steps:
+      - run: echo
+  namespace-profile:
+    runs-on: namespace-profile-default
+    steps:
+      - run: echo
+  runs-on:
+    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64
+    steps:
+      - run: echo
+        shell: sh
+  runs-on-array:
+    runs-on:
+      - runs-on=${{ github.run_id }}
+      - cpu=4
+      - family=m8a+m8i-flex
+      - image=windows25-full-x64
+    steps:
+      - run: echo
+        shell: powershell
+  ubicloud:
+    runs-on: ubicloud-standard-4-arm-ubuntu-2204
+    steps:
+      - run: echo
+        shell: sh
+  warpbuild:
+    runs-on: warp-macos-latest-arm64-6x
+    steps:
+      - run: echo
+        shell: sh
