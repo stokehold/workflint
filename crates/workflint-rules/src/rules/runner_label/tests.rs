@@ -784,3 +784,54 @@ fn a_label_with_more_values_than_the_limit_is_not_evaluated() {
     assert_eq!(short(&job("", &label(8))).len(), 256);
     assert_eq!(short(&job("", &label(9))), Vec::<String>::new());
 }
+
+#[test]
+fn labels_of_runner_providers_are_known() {
+    for label in [
+        "blacksmith-4vcpu-ubuntu-2404",
+        "depot-windows-2022-8",
+        "nscloud-macos-tahoe-arm64-6x14",
+        "namespace-profile-default",
+        "runs-on=1234/runner=2cpu-linux-x64",
+        "ubicloud-standard-8-arm",
+        "warp-ubuntu-latest-x64-4x",
+    ] {
+        assert_eq!(
+            lint(&workflow(&[label], None), &[]),
+            Vec::<String>::new(),
+            "{label}"
+        );
+    }
+    // The array form of RunsOn puts each `key=value` in a label of its own.
+    let labels = [
+        "runs-on=${{ github.run_id }}",
+        "cpu=4",
+        "image=ubuntu22-full-x64",
+    ];
+    assert_eq!(lint(&workflow(&labels, None), &[]), Vec::<String>::new());
+}
+
+#[test]
+fn a_provider_label_conflicts_with_no_label() {
+    let labels = ["depot-ubuntu-24.04", "windows-latest"];
+    assert_eq!(lint(&workflow(&labels, None), &[]), Vec::<String>::new());
+}
+
+#[test]
+fn a_custom_label_that_names_a_system_is_still_unknown() {
+    assert_eq!(
+        short(&workflow(
+            &["self-hosted", "self-32vcpu-windows-2022"],
+            None
+        )),
+        ["4:30: label \"self-32vcpu-windows-2022\" is unknown"]
+    );
+}
+
+#[test]
+fn a_provider_label_that_breaks_its_pattern_is_unknown() {
+    assert_eq!(
+        short(&workflow(&["depot-ubuntu-2404"], None)),
+        ["4:15: label \"depot-ubuntu-2404\" is unknown"]
+    );
+}

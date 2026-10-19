@@ -14,8 +14,8 @@
 //!
 //! The tables that the rules read: [`WEBHOOK_EVENTS`] and [`filter_events`] for the events of
 //! `on:`, with [`MAX_WORKFLOW_DISPATCH_INPUTS`], [`MIN_SCHEDULE_INTERVAL_SECONDS`], and
-//! [`TIME_ZONES`]. [`GITHUB_HOSTED_RUNNER_LABELS`] and [`runner_label_os_compat`] for
-//! `runs-on`, [`PERMISSION_SCOPES`] for `permissions:`, [`shell_names`] for `shell:`, and
+//! [`TIME_ZONES`]. [`GITHUB_HOSTED_RUNNER_LABELS`], [`runner_label_os_compat`],
+//! [`RUNNER_PROVIDERS`], and [`resolve_runner`] for `runs-on`, [`PERMISSION_SCOPES`] for `permissions:`, [`shell_names`] for `shell:`, and
 //! [`DEPRECATED_COMMANDS`] for `run:`. [`RUNS_USING_VALUES`], [`BRANDING_COLORS`],
 //! [`BRANDING_ICONS`], and [`DOCKER_REGISTRY_PREFIXES`] for action metadata.
 //! [`POPULAR_ACTIONS`] and [`popular_action`] for the inputs and outputs of popular actions,
@@ -42,6 +42,7 @@ mod go_case;
 mod permissions;
 mod popular_actions;
 mod runner_labels;
+mod runner_providers;
 mod runs_using;
 mod shells;
 mod time_zones;
@@ -72,6 +73,10 @@ pub use runner_labels::{
     GITHUB_HOSTED_RUNNER_LABELS, RUNNER_LABEL_OS_COMPATS, RunnerLabelOsCompat, RunnerOsCompat,
     SELF_HOSTED_RUNNER_OS_LABELS, SELF_HOSTED_RUNNER_OTHER_LABELS, is_self_hosted_other_label,
     runner_label_os_compat,
+};
+pub use runner_providers::{
+    ProviderLabel, RUNNER_PROVIDERS, ResolvedRunner, RunnerKind, RunnerOs, RunnerProvider,
+    resolve_runner, runner_label_os, runner_provider,
 };
 pub use runs_using::{RUNS_USING_VALUES, is_runs_using_value};
 pub use shells::{ShellPlatform, shell_names};

@@ -8,7 +8,7 @@ A `shell` value is not a shell of the job's platform or a command with `{0}`.
 
 The rule checks `shell` of each `run` step and `defaults.run.shell` of the job against the job's platform, and `defaults.run.shell` of the workflow against every platform. Case does not matter, so `PowerShell` is `powershell`. A value that contains `{0}` or a `${{ }}` expression is not checked.
 
-The platform comes from the literal labels of `runs-on`. `windows` and labels that start with `windows-` mean Windows. `macos`, `linux`, and labels that start with `macos-` or `ubuntu-` mean macOS or Linux. Labels of both, or of neither, accept the shells of every platform:
+The platform comes from the labels of `runs-on`. `windows` and labels that start with `windows-` mean Windows. `macos`, `linux`, and labels that start with `macos-` or `ubuntu-` mean macOS or Linux. A label of a runner provider means the system of the provider's runner, so `depot-windows-2022` means Windows. Any other label means the system that one of its words names: `linux`, `ubuntu`, `macos`, or `windows`, alone or followed by a version. So `self-32vcpu-windows-2022` means Windows, and `gpu` means none. Words inside `${{ }}` do not count. Labels of two systems, such as `ubuntu-latest` and `macos-latest`, or of none, accept the shells of every platform:
 
 | Platform | Shells |
 |---|---|
@@ -58,6 +58,22 @@ jobs:
 test.yaml:7:16: shell name "sh" is invalid on Windows. available names are "bash", "cmd", "powershell", "pwsh", "python" [invalid-shell-name]
 ```
 
+Depot's `depot-windows-2022` runs Windows:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: depot-windows-2022
+    steps:
+      - run: echo hello
+        shell: sh
+```
+
+```text
+test.yaml:7:16: shell name "sh" is invalid on Windows. available names are "bash", "cmd", "powershell", "pwsh", "python" [invalid-shell-name]
+```
+
 ## Passing example
 
 ```yaml
@@ -81,3 +97,4 @@ jobs:
 
 - [A `shell` that is no shell name says how to run another program](../differences.md#custom-shell-hint)
 - [An invalid value is reported once](../differences.md#invalid-value-reported-once)
+- [Labels of runner providers, and the system that custom labels name](../differences.md#runner-provider-labels)

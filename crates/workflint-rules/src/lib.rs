@@ -17,6 +17,7 @@ mod path_match;
 pub mod registry;
 mod rule;
 mod rules;
+mod runner;
 mod visitor;
 
 pub use rule::{Context, Rule};

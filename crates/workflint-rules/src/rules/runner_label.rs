@@ -3,13 +3,15 @@
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `rule_runner_label.go`, lines 119-333. A
 //! label with `${{ }}` that is not exactly `${{ matrix.<prop> }}` is evaluated to the strings it
-//! can be (`docs/differences.md#runs-on-expressions`), where the reference skips it.
+//! can be (`docs/differences.md#runs-on-expressions`), where the reference skips it. Labels of
+//! third-party runner providers are known (`docs/differences.md#runner-provider-labels`).
 
 use std::borrow::Cow;
 
 use workflint_data::{
     GITHUB_HOSTED_RUNNER_LABELS, RunnerOsCompat, SELF_HOSTED_RUNNER_OS_LABELS,
     SELF_HOSTED_RUNNER_OTHER_LABELS, is_self_hosted_other_label, runner_label_os_compat,
+    runner_provider,
 };
 use workflint_diagnostics::quote::{quote, quotes_all};
 use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
@@ -107,6 +109,11 @@ impl RunnerLabel {
                     return None;
                 }
             }
+        }
+        // The reference knows no provider labels (`docs/differences.md#runner-provider-labels`).
+        // They have no images, so they conflict with no label.
+        if runner_provider(&label.value).is_some() {
+            return None;
         }
         let known: Vec<&str> = self.known.iter().map(String::as_str).collect();
         cx.report(

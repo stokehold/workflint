@@ -3,7 +3,7 @@
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `rule_shell_name.go`, lines 34-178.
 
-use workflint_data::{ShellPlatform, shell_names};
+use workflint_data::{RunnerOs, ShellPlatform, shell_names};
 use workflint_diagnostics::quote::{quote, sorted_quotes};
 use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_syntax::{
@@ -11,6 +11,7 @@ use workflint_syntax::{
 };
 use workflint_yaml::simple_lowercase;
 
+use crate::runner::resolve;
 use crate::{Context, Rule};
 
 /// A `shell` value is not a shell name that the job's platform has, and is not a command with
@@ -122,34 +123,14 @@ fn check(shell: &Field<'_, Template<'_>>, platform: ShellPlatform, cx: &mut Cont
     );
 }
 
-/// The reference's `getPlatformFromRunner`: the platform that the literal labels of `runner`
-/// name, or [`ShellPlatform::Any`] when they name none or two. Labels from an expression name
-/// none.
+/// The platform of the system that the labels of `runner` name, or [`ShellPlatform::Any`] when
+/// they name none or two. The reference reads only the prefixes `windows-`, `macos-`, and
+/// `ubuntu-` of literal labels. This also reads provider labels and the words of custom labels
+/// (`docs/differences.md#runner-provider-labels`).
 fn platform_of(runner: &Runner<'_>) -> ShellPlatform {
-    let mut found = ShellPlatform::Any;
-    for label in runner
-        .labels
-        .literal()
-        .into_iter()
-        .flat_map(|labels| labels.iter().flatten())
-    {
-        let label = simple_lowercase(label.value());
-        let platform = if label == "windows" || label.starts_with("windows-") {
-            ShellPlatform::Windows
-        } else if label == "macos"
-            || label == "linux"
-            || label.starts_with("macos-")
-            || label.starts_with("ubuntu-")
-        {
-            ShellPlatform::MacOrLinux
-        } else {
-            continue;
-        };
-        if found != ShellPlatform::Any && found != platform {
-            // The `runner-label` rule reports the conflict.
-            return ShellPlatform::Any;
-        }
-        found = platform;
+    match resolve(runner).os {
+        Some(RunnerOs::Windows) => ShellPlatform::Windows,
+        Some(RunnerOs::Linux | RunnerOs::MacOs) => ShellPlatform::MacOrLinux,
+        None => ShellPlatform::Any,
     }
-    found
 }
