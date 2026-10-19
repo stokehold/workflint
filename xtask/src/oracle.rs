@@ -232,8 +232,18 @@ fn input_files(args: &[OsString]) -> Vec<String> {
 /// Runs `program` with `args` in `cwd`, and kills it after `limit`. The
 /// project directory in its output becomes `<project>`, since each run has
 /// another temporary directory.
+///
+/// `TZ` is `UTC`, because the reference computes the interval of a cron
+/// schedule in the local time zone and workflint computes it in UTC
+/// (`docs/differences.md#cron-interval-in-utc`).
 fn execute(program: &Path, cwd: &Path, args: &[OsString], limit: Duration) -> Result<Output> {
-    let output = process::output(Command::new(program).args(args).current_dir(cwd), limit)?;
+    let output = process::output(
+        Command::new(program)
+            .args(args)
+            .current_dir(cwd)
+            .env("TZ", "UTC"),
+        limit,
+    )?;
     let mut projects = vec![cwd.to_string_lossy().into_owned()];
     if let Ok(canonical) = fs::canonicalize(cwd) {
         projects.insert(0, canonical.to_string_lossy().into_owned());

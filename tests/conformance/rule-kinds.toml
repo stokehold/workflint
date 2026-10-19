@@ -6,7 +6,6 @@
 # of this file. The conformance test `rule_kinds::rule-kinds.toml` fails when a
 # checklist rule ID is in both the registry and this file, or in neither.
 
-cron-too-frequent = "events"
 cyclic-needs = "job-needs"
 deprecated-workflow-command = "deprecated-commands"
 duplicate-job-id = "job-needs"
@@ -14,13 +13,11 @@ duplicate-matrix-value = "matrix"
 duplicate-needs = "job-needs"
 duplicate-step-id = "id"
 exclude-without-matrix = "matrix"
-invalid-cron = "events"
 invalid-job-id = "id"
 invalid-permission-level = "permissions"
 invalid-permissions-value = "permissions"
 invalid-shell-name = "shell-name"
 invalid-step-id = "id"
-invalid-timezone = "events"
 pyflakes-issue = "pyflakes"
 shellcheck-issue = "shellcheck"
 unknown-exclude-key = "matrix"

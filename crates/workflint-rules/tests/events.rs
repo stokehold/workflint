@@ -393,7 +393,251 @@ fn workflow_dispatch_takes_at_most_25_inputs() {
 }
 
 #[test]
-fn schedule_repository_dispatch_and_image_version_are_not_checked_here() {
-    let on = "  schedule:\n    - cron: '0 0 * * *'\n  repository_dispatch:\n    types: [x]\n  image_version:\n    names: [a]\n";
+fn repository_dispatch_and_image_version_are_not_checked_here() {
+    let on = "  repository_dispatch:\n    types: [x]\n  image_version:\n    names: [a]\n";
     assert_eq!(events(&workflow(on)), NONE);
+}
+
+/// Returns the diagnostics for a `schedule` with one `cron`, written as a double-quoted YAML
+/// string so that every diagnostic is at 3:13.
+fn cron(spec: &str) -> Vec<String> {
+    let quoted = spec
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\t', "\\t");
+    events(&workflow(&format!(
+        "  schedule:\n    - cron: \"{quoted}\"\n"
+    )))
+}
+
+/// The `invalid-cron` line for `spec` with robfig/cron's error `err`.
+fn invalid_cron(spec: &str, err: &str) -> String {
+    format!(
+        "3:13: invalid CRON format {} in schedule event: {err} [invalid-cron]",
+        workflint_diagnostics::quote::quote(spec)
+    )
+}
+
+/// The `cron-too-frequent` line for an interval of `seconds`.
+fn too_frequent(seconds: &str) -> String {
+    format!(
+        "3:13: scheduled job runs too frequently. it runs once per {seconds} seconds. the shortest interval is once every 5 minutes [cron-too-frequent]"
+    )
+}
+
+/// Each error of robfig/cron v3.0.1's parser that a 5-field spec without descriptors can reach,
+/// with the text that the reference binary prints. `empty spec string` cannot be reached, since
+/// the parser reports an empty `cron` and drops its item.
+#[test]
+fn each_cron_parser_error_has_the_reference_text() {
+    let cases = [
+        (
+            "0 */3 * *",
+            "expected exactly 5 fields, found 4: [0 */3 * *]",
+        ),
+        (
+            "* * * * * *",
+            "expected exactly 5 fields, found 6: [* * * * * *]",
+        ),
+        (" ", "expected exactly 5 fields, found 0: []"),
+        ("@daily", "parser does not accept descriptors: @daily"),
+        ("@every 5m", "parser does not accept descriptors: @every 5m"),
+        (
+            "TZ=UTC @daily",
+            "parser does not accept descriptors: @daily",
+        ),
+        (
+            "TZ=Not/AZone */5 * * * *",
+            "provided bad location Not/AZone: unknown time zone Not/AZone",
+        ),
+        (
+            "TZ=america/new_york 0 0 * * *",
+            "provided bad location america/new_york: unknown time zone america/new_york",
+        ),
+        (
+            "TZ=utc 0 0 * * *",
+            "provided bad location utc: unknown time zone utc",
+        ),
+        (
+            "TZ=../etc */5 * * * *",
+            "provided bad location ../etc: time: invalid location name",
+        ),
+        (
+            "TZ=/etc */5 * * * *",
+            "provided bad location /etc: time: invalid location name",
+        ),
+        ("1-2-3 * * * *", "too many hyphens: 1-2-3"),
+        ("1-x-3 * * * *", "too many hyphens: 1-x-3"),
+        ("*/2/3 * * * *", "too many slashes: */2/3"),
+        ("1/2/x * * * *", "too many slashes: 1/2/x"),
+        (
+            "x * * * *",
+            r#"failed to parse int from x: strconv.Atoi: parsing "x": invalid syntax"#,
+        ),
+        (
+            "x-1-2 * * * *",
+            r#"failed to parse int from x: strconv.Atoi: parsing "x": invalid syntax"#,
+        ),
+        (
+            "-1 * * * *",
+            r#"failed to parse int from : strconv.Atoi: parsing "": invalid syntax"#,
+        ),
+        (
+            "*/ * * * *",
+            r#"failed to parse int from : strconv.Atoi: parsing "": invalid syntax"#,
+        ),
+        (
+            "*/x * * * *",
+            r#"failed to parse int from x: strconv.Atoi: parsing "x": invalid syntax"#,
+        ),
+        (
+            "99999999999999999999 * * * *",
+            r#"failed to parse int from 99999999999999999999: strconv.Atoi: parsing "99999999999999999999": value out of range"#,
+        ),
+        ("*/-1 * * * *", "negative number (-1) not allowed: -1"),
+        ("60 * * * *", "end of range (60) above maximum (59): 60"),
+        ("* 24 * * *", "end of range (24) above maximum (23): 24"),
+        ("* * 32 * *", "end of range (32) above maximum (31): 32"),
+        ("* * * 13 *", "end of range (13) above maximum (12): 13"),
+        ("* * * * 7", "end of range (7) above maximum (6): 7"),
+        ("* * 0 * *", "beginning of range (0) below minimum (1): 0"),
+        ("* * * 0 *", "beginning of range (0) below minimum (1): 0"),
+        (
+            "5-3 * * * *",
+            "beginning of range (5) beyond end of range (3): 5-3",
+        ),
+        (
+            "*/0 * * * *",
+            "step of range should be a positive number: */0",
+        ),
+    ];
+    for (spec, err) in cases {
+        assert_eq!(cron(spec), [invalid_cron(spec, err)], "{spec:?}");
+    }
+}
+
+#[test]
+fn valid_cron_specs_are_not_reported() {
+    for spec in [
+        "*/5 * * * *",
+        "0 0 * * 0-6",
+        "+5 * * * *",
+        "0\t*\t*\t*\t*",
+        "0 0 29 2 *",
+        "0 0 31 * *",
+        "0 0 1 1 0",
+        "TZ=Asia/Tokyo 0 0 * * *",
+        "CRON_TZ=UTC 0 0 * * *",
+        "TZ=Local 0 0 * * *",
+        "TZ= 0 0 * * *",
+        "TZ=UTC  0 0 * * *",
+    ] {
+        assert_eq!(cron(spec), NONE, "{spec:?}");
+    }
+}
+
+#[test]
+fn a_schedule_that_runs_more_often_than_every_5_minutes_is_reported() {
+    let cases = [
+        ("*/4 * * * *", "240"),
+        ("* */3 * * *", "60"),
+        ("*/1 * * * *", "60"),
+        ("0-59/2 * * * *", "120"),
+        ("5/2 * * * *", "120"),
+        ("1,,2 * * * *", "60"),
+        ("* * * JAN-mar MON", "60"),
+        ("? ? ? ? ?", "60"),
+        ("*-5 * * * *", "60"),
+        ("TZ=Asia/Tokyo * * * * *", "60"),
+    ];
+    for (spec, seconds) in cases {
+        assert_eq!(cron(spec), [too_frequent(seconds)], "{spec:?}");
+    }
+}
+
+/// A schedule that never runs within five years of the epoch gives two zero times, so the
+/// reference reports an interval of 0 seconds.
+#[test]
+fn a_schedule_that_never_runs_has_an_interval_of_0_seconds() {
+    for spec in [", * * * *", "0 0 30 2 *"] {
+        assert_eq!(cron(spec), [too_frequent("0")], "{spec:?}");
+    }
+}
+
+/// Only the first two runs after the Unix epoch count, computed in UTC. `0,1 0 * * *` runs at
+/// 00:01 and then at 00:00 the next day in UTC, so its interval is 86340 seconds.
+#[test]
+fn the_interval_is_between_the_first_two_runs_after_the_epoch_in_utc() {
+    assert_eq!(cron("0,1 0 * * *"), NONE);
+    assert_eq!(cron("TZ=Asia/Tokyo 0,1 0 * * *"), NONE);
+    assert_eq!(cron("0 0,23 * * *"), NONE);
+}
+
+/// The reference panics on `TZ=` without a space after it. workflint reports that the prefix
+/// needs a space and the fields (`docs/differences.md#cron-time-zone-without-fields`).
+#[test]
+fn a_time_zone_prefix_without_fields_is_reported() {
+    assert_eq!(
+        cron("TZ=UTC"),
+        [invalid_cron(
+            "TZ=UTC",
+            "TZ= prefix must be followed by a space and 5 fields"
+        )]
+    );
+    assert_eq!(
+        cron("CRON_TZ=Nope"),
+        [invalid_cron(
+            "CRON_TZ=Nope",
+            "CRON_TZ= prefix must be followed by a space and 5 fields"
+        )]
+    );
+}
+
+/// Returns the diagnostics for a `schedule` whose `cron` is valid and whose `timezone` is
+/// `zone`, at 4:17.
+fn timezone(zone: &str) -> Vec<String> {
+    events(&workflow(&format!(
+        "  schedule:\n    - cron: '0 0 * * *'\n      timezone: '{zone}'\n"
+    )))
+}
+
+#[test]
+fn an_unknown_time_zone_is_reported() {
+    for zone in [
+        "Not/A/Timezone",
+        "Asia/Somewhere",
+        "UTC",
+        "utc",
+        "local",
+        "Local",
+        "america/new_york",
+        "localtime",
+    ] {
+        assert_eq!(
+            timezone(zone),
+            [format!(
+                r#"4:17: invalid timezone "{zone}" in schedule event. it must be a valid IANA timezone name [invalid-timezone]"#
+            )],
+            "{zone:?}"
+        );
+    }
+}
+
+#[test]
+fn iana_time_zones_are_accepted() {
+    for zone in ["America/New_York", "Europe/London", "Etc/UTC", "Zulu"] {
+        assert_eq!(timezone(zone), NONE, "{zone:?}");
+    }
+}
+
+#[test]
+fn an_invalid_cron_and_time_zone_are_both_reported() {
+    let on = "  schedule:\n    - cron: '0 */3 * *'\n      timezone: Nowhere\n";
+    assert_eq!(
+        events(&workflow(on)),
+        [
+            invalid_cron("0 */3 * *", "expected exactly 5 fields, found 4: [0 */3 * *]"),
+            r#"4:17: invalid timezone "Nowhere" in schedule event. it must be a valid IANA timezone name [invalid-timezone]"#.to_owned(),
+        ]
+    );
 }

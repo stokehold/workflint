@@ -4,9 +4,9 @@
 //! The reference embeds the error of these functions in its messages, as in
 //! `invalid integer value: "1.5": strconv.Atoi: parsing "1.5": invalid
 //! syntax`, and prints numbers with `%v`, as in `must be greater than zero:
-//! -1e+06`. So the parser needs the same results and the same texts.
-//! [`parse_float`] is public because the `events` rule of `workflint-rules`
-//! puts its error in messages too. The tests compare the functions with a
+//! -1e+06`. So the parser needs the same results and the same texts. The
+//! functions are public because the `events` rule of `workflint-rules` puts
+//! their results in messages too. The tests compare the functions with a
 //! table that Go 1.26 printed, in `tests/data/strconv.tsv`.
 
 use workflint_diagnostics::quote::quote;
@@ -17,7 +17,22 @@ use workflint_diagnostics::quote::quote;
 ///
 /// The error is Go's error text, such as `strconv.Atoi: parsing "1.5":
 /// invalid syntax`.
-pub(crate) fn atoi(s: &str) -> Result<i64, String> {
+///
+/// # Errors
+///
+/// Returns Go's error text if `s` is not an integer in Go's syntax or is
+/// out of range.
+///
+/// ```
+/// use workflint_syntax::strconv::atoi;
+///
+/// assert_eq!(atoi("+5"), Ok(5));
+/// assert_eq!(
+///     atoi("x").unwrap_err(),
+///     r#"strconv.Atoi: parsing "x": invalid syntax"#
+/// );
+/// ```
+pub fn atoi(s: &str) -> Result<i64, String> {
     use std::num::IntErrorKind;
 
     // Rust's grammar for `i64` is Go's for base 10, and both stop at the
@@ -37,8 +52,17 @@ pub(crate) fn atoi(s: &str) -> Result<i64, String> {
 /// The digits are the fewest that read back as `value`. The exponent form,
 /// such as `-1.5e+06` or `1e-05`, is used when the decimal exponent is less
 /// than -4 or at least 6. Otherwise the number has no exponent, such as
-/// `-3.5` or `123456.7`. Infinities are `+Inf` and `-Inf`.
-pub(crate) fn format_float(value: f64) -> String {
+/// `-3.5` or `123456.7`. Infinities are `+Inf` and `-Inf`. `%g` prints the
+/// same text.
+///
+/// ```
+/// use workflint_syntax::strconv::format_float;
+///
+/// assert_eq!(format_float(240.0), "240");
+/// assert_eq!(format_float(-62135596800.0), "-6.21355968e+10");
+/// ```
+#[must_use]
+pub fn format_float(value: f64) -> String {
     if value.is_nan() {
         return "NaN".to_owned();
     }

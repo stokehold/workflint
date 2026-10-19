@@ -44,7 +44,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 56] = [
+pub(crate) static ALL: [&RuleMeta; 59] = [
     &action::ACTION_FILE_NOT_FOUND,
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &action::BROKEN_ACTION_METADATA,
@@ -52,6 +52,7 @@ pub(crate) static ALL: [&RuleMeta; 56] = [
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
     &events::CONFLICTING_FILTERS,
     &if_cond::CONSTANT_CONDITION,
+    &events::CRON_TOO_FREQUENT,
     &events::DEFAULT_NOT_IN_OPTIONS,
     &action::DEPRECATED_ACTION_INPUT,
     &events::DUPLICATE_INPUT_OPTION,
@@ -65,6 +66,7 @@ pub(crate) static ALL: [&RuleMeta; 56] = [
     &events::INVALID_ACTIVITY_TYPE,
     &action::INVALID_BRANDING_COLOR,
     &action::INVALID_BRANDING_ICON,
+    &events::INVALID_CRON,
     &action::INVALID_DOCKER_ACTION,
     &action::INVALID_DOCKERFILE_NAME,
     &env_var::INVALID_ENV_VAR_NAME,
@@ -74,6 +76,7 @@ pub(crate) static ALL: [&RuleMeta; 56] = [
     &workflow_call::INVALID_REUSABLE_WORKFLOW_REF,
     &runner_label::INVALID_RUNNER_LABEL_PATTERN,
     &action::INVALID_RUNS_USING,
+    &events::INVALID_TIMEZONE,
     &action::MISSING_ACTION_DESCRIPTION,
     &action::MISSING_ACTION_NAME,
     &action::MISSING_PRE_POST_SCRIPT,

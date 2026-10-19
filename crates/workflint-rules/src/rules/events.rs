@@ -1,28 +1,55 @@
-//! The `events` rule, the reference's `RuleEvents` (`rule_events.go`): the webhook events of
-//! `on`, their activity types and filters, and the inputs of `workflow_call` and
-//! `workflow_dispatch`.
+//! The `events` rule, the reference's `RuleEvents` (`rule_events.go`): the cron expressions and
+//! time zones of `schedule`, the webhook events of `on`, their activity types and filters, and
+//! the inputs of `workflow_call` and `workflow_dispatch`.
 //!
 //! The parser has reported every value that is not a valid string, and the rule skips such a
 //! value instead of checking the reference's `""` in its place
 //! (`docs/differences.md#invalid-value-reported-once`). The value still counts where a check
 //! only needs it to be written, such as `types` on an event without activity types.
 
+mod cron;
+
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use workflint_data::{
-    ActivityTypes, EventFilter, MAX_WORKFLOW_DISPATCH_INPUTS, filter_events, webhook_event,
+    ActivityTypes, EventFilter, MAX_WORKFLOW_DISPATCH_INPUTS, MIN_SCHEDULE_INTERVAL_SECONDS,
+    filter_events, is_time_zone, webhook_event,
 };
 use workflint_diagnostics::quote::{quote, quotes, sorted_quotes};
 use workflint_diagnostics::{Category, RuleMeta, Severity};
-use workflint_syntax::strconv::parse_float;
+use workflint_syntax::strconv::{format_float, parse_float};
 use workflint_syntax::{
-    Event, Field, KeyedEntry, Template, WebhookEvent, Workflow, WorkflowCallEvent,
+    Event, Field, KeyedEntry, ScheduleEvent, Template, WebhookEvent, Workflow, WorkflowCallEvent,
     WorkflowCallInputType, WorkflowDispatchEvent, WorkflowDispatchInput, WorkflowDispatchInputType,
     contains_expression,
 };
 
 use crate::{Context, Rule};
+
+/// A `schedule` cron expression that robfig/cron cannot parse: `invalid CRON format %q in
+/// schedule event: %s`.
+pub(crate) static INVALID_CRON: RuleMeta = events(
+    "invalid-cron",
+    "A `schedule` cron expression does not parse",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-cron.md",
+);
+
+/// A schedule that runs more often than every 5 minutes: `scheduled job runs too frequently. it
+/// runs once per %g seconds`.
+pub(crate) static CRON_TOO_FREQUENT: RuleMeta = events(
+    "cron-too-frequent",
+    "A `schedule` cron expression runs more often than every 5 minutes",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/cron-too-frequent.md",
+);
+
+/// A `schedule` time zone that is not an IANA time zone name: `invalid timezone %q in schedule
+/// event`.
+pub(crate) static INVALID_TIMEZONE: RuleMeta = events(
+    "invalid-timezone",
+    "A `schedule` time zone is not an IANA time zone name",
+    "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-timezone.md",
+);
 
 /// `on` names an event that is not a webhook event: `unknown Webhook event %q`.
 pub(crate) static UNKNOWN_EVENT: RuleMeta = events(
@@ -157,10 +184,74 @@ impl<'a> Rule<'a> for Events {
                 Event::Webhook(event) => check_webhook(event, cx),
                 Event::WorkflowDispatch(event) => check_workflow_dispatch(event, cx),
                 Event::WorkflowCall(event) => check_workflow_call(event, cx),
-                // TODO(#151): check the cron expressions and time zones of `schedule`.
-                Event::Schedule(_) | Event::RepositoryDispatch(_) | Event::ImageVersion(_) => {}
+                Event::Schedule(event) => check_schedule(event, cx),
+                Event::RepositoryDispatch(_) | Event::ImageVersion(_) => {}
             }
         }
+    }
+}
+
+/// The `schedule` case of the reference's `checkEvent`: each item's cron expression, then its
+/// time zone.
+fn check_schedule(event: &ScheduleEvent<'_>, cx: &mut Context<'_>) {
+    for entry in event.schedules.iter() {
+        if let Some(spec) = entry.cron.value() {
+            check_cron(spec, cx);
+        }
+        if let Some(zone) = entry.timezone.value() {
+            check_timezone(zone, cx);
+        }
+    }
+}
+
+/// The reference's `checkCron`.
+fn check_cron(spec: &Template<'_>, cx: &mut Context<'_>) {
+    let schedule = match cron::parse(spec.value()) {
+        Ok(schedule) => schedule,
+        Err(err) => {
+            cx.report(
+                &INVALID_CRON,
+                spec.span(),
+                format!(
+                    "invalid CRON format {} in schedule event: {err}",
+                    quote(spec.value())
+                ),
+            );
+            return;
+        }
+    };
+    let interval = schedule.interval();
+    if interval < i64::try_from(MIN_SCHEDULE_INTERVAL_SECONDS).unwrap_or(i64::MAX) {
+        // The interval is a whole number of seconds far below 2^53, so the `f64` is exact.
+        #[allow(clippy::cast_precision_loss)]
+        let seconds = format_float(interval as f64);
+        cx.report(
+            &CRON_TOO_FREQUENT,
+            spec.span(),
+            format!(
+                "scheduled job runs too frequently. it runs once per {seconds} seconds. the shortest interval is once every 5 minutes"
+            ),
+        );
+    }
+}
+
+/// The reference's `checkTimezone`. It rejects `UTC` and `Local` in any case before it looks
+/// the name up, since Go's `time.LoadLocation` accepts them but they are not IANA names.
+fn check_timezone(zone: &Template<'_>, cx: &mut Context<'_>) {
+    let name = zone.value();
+    let valid = !name.is_empty()
+        && !name.eq_ignore_ascii_case("utc")
+        && !name.eq_ignore_ascii_case("local")
+        && is_time_zone(name);
+    if !valid {
+        cx.report(
+            &INVALID_TIMEZONE,
+            zone.span(),
+            format!(
+                "invalid timezone {} in schedule event. it must be a valid IANA timezone name",
+                quote(name)
+            ),
+        );
     }
 }
 
