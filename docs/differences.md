@@ -625,7 +625,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### A cron time zone prefix without fields
 
 - Upstream: a cron expression that starts with `TZ=` or `CRON_TZ=` and has no space, such as `TZ=UTC`, crashes actionlint. robfig/cron v3.0.1 slices the name up to the index of the first space, which is -1 (`parser.go:99`).
-- workflint: the name is the rest of the expression and no fields follow. `TZ=UTC` gives `invalid CRON format "TZ=UTC" in schedule event: expected exactly 5 fields, found 0: []`, and `TZ=Nope` gives `provided bad location Nope: unknown time zone Nope`.
+- workflint: reports the expression as invalid. `TZ=UTC` gives `invalid CRON format "TZ=UTC" in schedule event: TZ= prefix must be followed by a space and 5 fields`, and `CRON_TZ=UTC` names `CRON_TZ=` instead.
 - Why: a crash loses every other result.
 - Upstream issue: none.
 - Milestone: M4.

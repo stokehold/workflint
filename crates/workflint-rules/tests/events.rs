@@ -573,23 +573,22 @@ fn the_interval_is_between_the_first_two_runs_after_the_epoch_in_utc() {
     assert_eq!(cron("0 0,23 * * *"), NONE);
 }
 
-/// The reference panics on `TZ=` without a space after it. workflint takes the rest of the spec
-/// as the time zone name and reports the spec's missing fields
-/// (`docs/differences.md#cron-time-zone-without-fields`).
+/// The reference panics on `TZ=` without a space after it. workflint reports that the prefix
+/// needs a space and the fields (`docs/differences.md#cron-time-zone-without-fields`).
 #[test]
 fn a_time_zone_prefix_without_fields_is_reported() {
     assert_eq!(
         cron("TZ=UTC"),
         [invalid_cron(
             "TZ=UTC",
-            "expected exactly 5 fields, found 0: []"
+            "TZ= prefix must be followed by a space and 5 fields"
         )]
     );
     assert_eq!(
         cron("CRON_TZ=Nope"),
         [invalid_cron(
             "CRON_TZ=Nope",
-            "provided bad location Nope: unknown time zone Nope"
+            "CRON_TZ= prefix must be followed by a space and 5 fields"
         )]
     );
 }

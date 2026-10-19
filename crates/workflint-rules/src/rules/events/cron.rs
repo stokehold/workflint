@@ -98,14 +98,17 @@ pub(crate) fn parse(spec: &str) -> Result<Schedule, String> {
     }
 
     let mut spec = spec;
-    if let Some(prefixed) = spec
-        .strip_prefix("TZ=")
-        .or_else(|| spec.strip_prefix("CRON_TZ="))
+    if let Some((prefix, prefixed)) = ["TZ=", "CRON_TZ="]
+        .into_iter()
+        .find_map(|prefix| Some((prefix, spec.strip_prefix(prefix)?)))
     {
-        // robfig slices the name up to the first space, and panics when the spec has none.
-        // Without a space, the name is the rest of the spec and no fields follow
+        // robfig slices the name up to the first space, and panics when the spec has none
         // (`docs/differences.md#cron-time-zone-without-fields`).
-        let (name, rest) = prefixed.split_once(' ').unwrap_or((prefixed, ""));
+        let Some((name, rest)) = prefixed.split_once(' ') else {
+            return Err(format!(
+                "{prefix} prefix must be followed by a space and 5 fields"
+            ));
+        };
         if let Err(err) = load_location(name) {
             return Err(format!("provided bad location {name}: {err}"));
         }
