@@ -557,6 +557,86 @@ jobs:
     assert_eq!(lint(text), Vec::<String>::new());
 }
 
+/// The paths below `github.event.workflow_run` that the reference misses
+/// (`docs/differences.md#workflow-run-untrusted-input`).
+const WORKFLOW_RUN_UNTRUSTED_INPUTS: [&str; 9] = [
+    "github.event.workflow_run.head_branch",
+    "github.event.workflow_run.display_title",
+    "github.event.workflow_run.head_commit.message",
+    "github.event.workflow_run.head_commit.author.email",
+    "github.event.workflow_run.head_commit.author.name",
+    "github.event.workflow_run.head_commit.committer.email",
+    "github.event.workflow_run.head_commit.committer.name",
+    "github.event.workflow_run.head_repository.description",
+    "github.event.workflow_run.head_repository.owner.login",
+];
+
+/// Lints a `workflow_run` workflow with one step made by `step`, which gets the path, and returns
+/// the `untrusted-input` diagnostics.
+fn workflow_run_untrusted_inputs(path: &str, step: impl Fn(&str) -> String) -> Vec<String> {
+    let text = format!(
+        "\
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+{}",
+        step(path)
+    );
+    lint(&text)
+        .into_iter()
+        .filter(|line| line.ends_with("[untrusted-input]"))
+        .collect()
+}
+
+#[test]
+fn the_head_branch_and_head_commit_of_workflow_run_are_untrusted_in_run() {
+    for path in WORKFLOW_RUN_UNTRUSTED_INPUTS {
+        let lines = workflow_run_untrusted_inputs(path, |path| {
+            format!("      - run: echo '${{{{ {path} }}}}'\n")
+        });
+        assert_eq!(lines.len(), 1, "{path}: {lines:#?}");
+        assert!(
+            lines[0].starts_with(&format!(
+                "test.yaml:9:24: \"{path}\" is potentially untrusted."
+            )),
+            "{path}: {lines:#?}"
+        );
+    }
+}
+
+#[test]
+fn the_head_branch_and_head_commit_of_workflow_run_are_untrusted_in_github_script() {
+    for path in WORKFLOW_RUN_UNTRUSTED_INPUTS {
+        let lines = workflow_run_untrusted_inputs(path, |path| {
+            format!(
+                "      - uses: actions/github-script@v7\n        with:\n          script: console.log('${{{{ {path} }}}}')\n"
+            )
+        });
+        assert_eq!(lines.len(), 1, "{path}: {lines:#?}");
+        assert!(
+            lines[0].starts_with(&format!(
+                "test.yaml:11:36: \"{path}\" is potentially untrusted."
+            )),
+            "{path}: {lines:#?}"
+        );
+    }
+}
+
+#[test]
+fn the_head_branch_and_head_commit_of_workflow_run_are_not_untrusted_in_a_condition() {
+    for path in WORKFLOW_RUN_UNTRUSTED_INPUTS {
+        let lines = workflow_run_untrusted_inputs(path, |path| {
+            format!("      - run: echo\n        if: ${{{{ {path} == 'main' }}}}\n")
+        });
+        assert_eq!(lines, Vec::<String>::new(), "{path}");
+    }
+}
+
 #[test]
 fn an_object_array_or_null_in_a_template_is_reported_at_its_opening_braces() {
     let text = "\

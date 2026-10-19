@@ -6,7 +6,7 @@
 
 A script reads a value that someone outside the repository can set.
 
-The rule checks `run:` scripts and the `script` input of `actions/github-script`. The untrusted values include the titles and bodies of issues, pull requests, and comments, commit messages and authors, and the head branch of a pull request. A value that a function only tests, such as the result of `contains()`, cannot inject code and is not reported.
+The rule checks `run:` scripts and the `script` input of `actions/github-script`. The untrusted values include the titles and bodies of issues, pull requests, and comments, commit messages and authors, and the head branch of a pull request. For a `workflow_run` event they include the head branch, the display title, and the message, author, and committer of the head commit of the run that triggered it, because a pull request from a fork can start that run. A value that a function only tests, such as the result of `contains()`, cannot inject code and is not reported.
 
 ## Why
 
@@ -45,3 +45,4 @@ jobs:
 
 - [Case-insensitive literal index keys](../differences.md#literal-index-case)
 - [Every `${{ }}` in a string is checked](../differences.md#all-expressions-in-string)
+- [Untrusted input from `workflow_run`](../differences.md#workflow-run-untrusted-input)

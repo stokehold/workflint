@@ -729,6 +729,18 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M4.
 - Status: implemented.
 
+<a id="workflow-run-untrusted-input"></a>
+### Untrusted input from `workflow_run`
+
+- Upstream: the untrusted-input check of scripts knows no path below `github.event.workflow_run`, so `run: echo ${{ github.event.workflow_run.head_branch }}` is not reported.
+- workflint: these paths are untrusted in `run:` and in the `script` input of `actions/github-script`, as the other untrusted inputs are: `head_branch`, `display_title`, `head_commit.message`, `head_commit.author.email`, `head_commit.author.name`, `head_commit.committer.email`, `head_commit.committer.name`, `head_repository.description`, and `head_repository.owner.login`. Object filters such as `github.event.*.*` list them too. IDs, SHAs, URLs, and `head_repository.full_name` stay trusted.
+- Why: a pull request from a fork can trigger a `workflow_run` workflow, which runs with the base repository's secrets and write token. The fork's owner sets the branch name, the pull request title that `display_title` holds, the commit's message, author, and committer, and the fork's description and owner name.
+- Upstream issue: #734, and the open pull request #737, which adds `head_branch` and `head_repository.owner.login`.
+- Fixtures: `workflint/err/workflow_run_untrusted_input`. No reference fixture uses these paths. `tests/expr-parity/allowed-differences.toml` has a record for each expression in `tests/expr-parity/cases/untrusted.txt` whose outcome changes.
+- Corpus: one new diagnostic, `yewstack_yew_.github_workflows_publish-website.yml:50:31` (`head_branch`). The allow-list has no record for it, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+- Milestone: M4.31. M7.10 lets users add paths in the config file.
+- Status: implemented.
+
 ## Configuration and project discovery
 
 <a id="paths-relative-to-root"></a>
