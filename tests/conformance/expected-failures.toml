@@ -11,14 +11,11 @@
 # a fixture pass removes its line. See tests/conformance/README.md.
 
 "err/deprecated_workflow_commands" = "M4"
-"err/matrix_exclude_mismatch" = "M4"
-"err/matrix_exclude_no_match" = "M4"
 "err/pyflakes_job_default_shell" = "M5"
 "err/pyflakes_step_shell" = "M5"
 "err/pyflakes_workflow_default_shell" = "M5"
 "err/shellcheck_default_shell_detection" = "M5"
 "examples/deprecated_workflow_commands" = "M4"
-"examples/matrix_checks" = "M4"
 "examples/pyflakes_integration" = "M5"
 "examples/shell_name_validation" = "M4"
 "examples/shellcheck_integration" = "M5"

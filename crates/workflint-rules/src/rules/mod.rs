@@ -14,6 +14,7 @@ mod glob;
 mod id;
 mod if_cond;
 mod job_needs;
+mod matrix;
 mod permissions;
 mod runner_label;
 mod workflow_call;
@@ -47,7 +48,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 69] = [
+pub(crate) static ALL: [&RuleMeta; 73] = [
     &action::ACTION_FILE_NOT_FOUND,
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &action::BROKEN_ACTION_METADATA,
@@ -61,9 +62,11 @@ pub(crate) static ALL: [&RuleMeta; 69] = [
     &action::DEPRECATED_ACTION_INPUT,
     &events::DUPLICATE_INPUT_OPTION,
     &job_needs::DUPLICATE_JOB_ID,
+    &matrix::DUPLICATE_MATRIX_VALUE,
     &job_needs::DUPLICATE_NEEDS,
     &id::DUPLICATE_STEP_ID,
     &action::EMPTY_DEPRECATION_MESSAGE,
+    &matrix::EXCLUDE_WITHOUT_MATRIX,
     &events::FILTER_NOT_SUPPORTED,
     &glob::GLOB_PATH_DOT,
     &glob::GLOB_PATH_WHITESPACE,
@@ -110,9 +113,11 @@ pub(crate) static ALL: [&RuleMeta; 69] = [
     &workflow_call::UNDEFINED_WORKFLOW_INPUT,
     &workflow_call::UNDEFINED_WORKFLOW_SECRET,
     &events::UNKNOWN_EVENT,
+    &matrix::UNKNOWN_EXCLUDE_KEY,
     &job_needs::UNKNOWN_NEEDED_JOB,
     &permissions::UNKNOWN_PERMISSION_SCOPE,
     &runner_label::UNKNOWN_RUNNER_LABEL,
+    &matrix::UNMATCHED_EXCLUDE_VALUE,
     &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
     &expression::WRONG_EXPRESSION_TYPE,
     &expression::WRONG_INPUT_DEFAULT_TYPE,
@@ -140,6 +145,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
         "id" => Some(Box::new(id::Id::default())),
         "if-cond" => Some(Box::new(if_cond::IfCond)),
         "job-needs" => Some(Box::new(job_needs::JobNeeds::default())),
+        "matrix" => Some(Box::new(matrix::Matrix)),
         "permissions" => Some(Box::new(permissions::Permissions)),
         // M5.2 passes the labels of the config's `self-hosted-runner.labels`.
         "runner-label" => Some(Box::new(runner_label::RunnerLabel::new(Vec::new()))),
