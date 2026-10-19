@@ -1,0 +1,36 @@
+on: push
+jobs:
+  matrix-condition:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows]
+    # In the `windows` combination the label is `windows-latest`.
+    runs-on: ${{ matrix.os == 'windows' && 'windows-latest' || matrix.os }}
+    steps:
+      - run: echo
+  include:
+    strategy:
+      matrix:
+        include:
+          - {os: ubuntu, version: '24.04'}
+          - {os: macos, version: '15'}
+    # Each `os` goes only with the `version` of its own combination.
+    runs-on: ${{ matrix.os }}-${{ matrix.version }}
+    steps:
+      - run: echo
+  exclude:
+    strategy:
+      matrix:
+        os: [ubuntu, macos]
+        version: ['24.04', '15']
+        exclude:
+          - {os: ubuntu, version: '15'}
+          - {os: macos, version: '24.04'}
+    runs-on: ${{ matrix.os }}-${{ matrix.version }}
+    steps:
+      - run: echo
+  unknown:
+    # The input's value is not known, so the label is skipped.
+    runs-on: ${{ github.event.inputs.platform || 'ubuntu' }}-latest
+    steps:
+      - run: echo

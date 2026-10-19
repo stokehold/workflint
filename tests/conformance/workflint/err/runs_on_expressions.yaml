@@ -1,0 +1,28 @@
+on: push
+jobs:
+  condition:
+    # The condition is unknown, so the label is either value.
+    runs-on: ${{ github.repository == 'owner/repo' && 'self-hosted' || 'ubuntu-20.04' }}
+    steps:
+      - run: echo
+  template:
+    strategy:
+      matrix:
+        os: [ubuntu, linux]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - run: echo
+  format:
+    strategy:
+      matrix:
+        version: [14, 13]
+    runs-on: ${{ format('macos-{0}', matrix.version) }}
+    steps:
+      - run: echo
+  conflict:
+    strategy:
+      matrix:
+        os: [ubuntu, windows]
+    runs-on: [macos-latest, '${{ matrix.os }}-latest']
+    steps:
+      - run: echo
