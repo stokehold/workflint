@@ -300,7 +300,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the second error repeats the first and names a value that is not in the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the parser, the `events` rule (M4.13), the `runner-label` rule (M4.16), the `action` rule (M4.17), and the `permissions` rule (M4.22). The `shell-name` rule follows in M4.
+- Status: implemented in the parser, the `events` rule (M4.13), the `runner-label` rule (M4.16), the `action` rule (M4.17), the `permissions` rule (M4.22), and the `shell-name` rule (M4.23).
 - Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
 
 <a id="typed-decoding-edge-cases"></a>
@@ -547,6 +547,17 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Status: implemented for matrix values in M4.8 and for `with:` values in M4.10. `projects/workflow_call_input_type_check` passes empty values to a `string` and a `number` input. Upstream reports a string for the `number` input only. workflint reports null for both.
 
 ## Rules
+
+<a id="custom-shell-hint"></a>
+### A `shell` that is no shell name says how to run another program
+
+- Upstream: `shell: dash` gets `shell name "dash" is invalid. available names are "bash", "pwsh", "python", "sh"`. The message reads as if only those names work, and users take it for a bug when the program is on the runner's `PATH` (#530).
+- workflint: when no platform has the shell, the message adds `. use a command with {0} for a custom shell, as in "dash {0}"`. A shell that another platform has, such as `powershell` on Linux, keeps the upstream message, because a command template does not help there.
+- Why: GitHub runs a program that is not a built-in shell only through a command template, where `{0}` stands for the path of the script. The workflow syntax reference says so under `jobs.<job_id>.steps[*].shell` ("Custom shell"). The rule already accepts any value with `{0}`, so the hint names the fix.
+- Upstream issue: #530.
+- Milestone: M4.23.
+- Status: implemented.
+- Fixtures: `examples/shell_name_validation` has two changed lines in the allow-list.
 
 <a id="matrix-exclude-before-include"></a>
 ### `exclude` is matched against the matrix rows only

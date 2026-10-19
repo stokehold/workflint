@@ -101,6 +101,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-reusable-workflow-ref`](invalid-reusable-workflow-ref.md) | `workflow-call` | correctness | error | A job's `uses:` is not `./path/to/workflow.yml` or `owner/repo/path/to/workflow.yml@ref` |
 | [`invalid-runner-label-pattern`](invalid-runner-label-pattern.md) | `runner-label` | correctness | error | A runner label pattern in the config is not a valid glob |
 | [`invalid-runs-using`](invalid-runs-using.md) | `action` | correctness | error | A local action's `runs.using` is not `composite`, `docker`, or a Node.js runtime that GitHub has |
+| [`invalid-shell-name`](invalid-shell-name.md) | `shell-name` | correctness | error | A `shell` value is not a shell of the job's platform or a command with `{0}` |
 | [`invalid-step-id`](invalid-step-id.md) | `id` | correctness | error | A step ID does not start with an ASCII letter or `_`, or has a character other than an ASCII letter, a digit, `-`, or `_` |
 | [`invalid-timezone`](invalid-timezone.md) | `events` | correctness | error | A `schedule` time zone is not an IANA time zone name |
 | [`invalid-workflow-call-input-type`](invalid-workflow-call-input-type.md) | `syntax-check` | correctness | error | A `workflow_call` input has an unknown `type` |
