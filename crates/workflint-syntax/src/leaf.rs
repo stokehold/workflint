@@ -121,11 +121,18 @@ impl<'a> Str<'a> {
 pub struct Template<'a> {
     /// The scalar.
     pub source: Str<'a>,
-    /// The placeholders in source order, or `None` if there are none.
-    placeholders: Option<Arc<[Placeholder]>>,
-    /// The offsets of the `}}` with no opening `${{`, or `None` if there
-    /// are none.
-    stray_closings: Option<Arc<[u32]>>,
+    /// The placeholders and stray `}}`, or `None` if there are none. One
+    /// thin pointer keeps the many copies of a template small.
+    parts: Option<Arc<Parts>>,
+}
+
+/// The parsed parts of a [`Template`].
+#[derive(Debug, PartialEq)]
+struct Parts {
+    /// The placeholders in source order.
+    placeholders: Vec<Placeholder>,
+    /// The offsets of the `}}` with no opening `${{`, in source order.
+    stray_closings: Vec<u32>,
 }
 
 impl<'a> Template<'a> {
@@ -151,7 +158,9 @@ impl<'a> Template<'a> {
     #[must_use]
     pub fn new(source: Str<'a>) -> Self {
         let value = source.value();
-        Self::with(source, scan(value), stray_closings(value))
+        let placeholders = scan(value);
+        let strays = stray_closings(value, &placeholders);
+        Self::with(source, placeholders, strays)
     }
 
     /// Parses `source` as an `if` condition, as the reference's
@@ -173,17 +182,18 @@ impl<'a> Template<'a> {
     pub(crate) fn plain(source: Str<'a>) -> Self {
         Self {
             source,
-            placeholders: None,
-            stray_closings: None,
+            parts: None,
         }
     }
 
     fn with(source: Str<'a>, placeholders: Vec<Placeholder>, stray_closings: Vec<u32>) -> Self {
-        Self {
-            source,
-            placeholders: (!placeholders.is_empty()).then(|| placeholders.into()),
-            stray_closings: (!stray_closings.is_empty()).then(|| stray_closings.into()),
-        }
+        let parts = (!placeholders.is_empty() || !stray_closings.is_empty()).then(|| {
+            Arc::new(Parts {
+                placeholders,
+                stray_closings,
+            })
+        });
+        Self { source, parts }
     }
 
     /// Returns the decoded value of the scalar.
@@ -201,7 +211,9 @@ impl<'a> Template<'a> {
     /// Returns the placeholders in source order.
     #[must_use]
     pub fn placeholders(&self) -> &[Placeholder] {
-        self.placeholders.as_deref().unwrap_or_default()
+        self.parts
+            .as_deref()
+            .map_or(&[], |parts| &parts.placeholders[..])
     }
 
     /// Returns the byte offset in the value of each `}}` that has no
@@ -222,7 +234,9 @@ impl<'a> Template<'a> {
     /// ```
     #[must_use]
     pub fn stray_closings(&self) -> &[u32] {
-        self.stray_closings.as_deref().unwrap_or_default()
+        self.parts
+            .as_deref()
+            .map_or(&[], |parts| &parts.stray_closings[..])
     }
 }
 
