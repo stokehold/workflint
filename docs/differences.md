@@ -548,6 +548,17 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 ## Rules
 
+<a id="matrix-exclude-before-include"></a>
+### `exclude` is matched against the matrix rows only
+
+- Upstream: the `matrix` rule adds the keys and values of `include` to the rows before it checks `exclude` (`rule_matrix.go:158`). An `exclude` entry that names a value or key that only `include` adds passes. When any `include` element is a `${{ }}` expression, the rule skips the `exclude` check. When a matrix has no rows but `include` has entries, `exclude` is not reported.
+- workflint: `exclude` is matched against the rows only. A value that only `include` adds is reported as `value ... does not match in matrix ... combinations`, a key that only `include` adds is reported as `... does not exist in matrix`, and the list of available keys and possible values names the rows only. An expression in `include` does not stop the check. A matrix with `exclude` and no rows reports `"exclude" section exists but no matrix variation exists`, with or without `include`.
+- Why: GitHub removes the `exclude` combinations from the rows and then adds `include`. The workflow syntax reference says so under `jobs.<job_id>.strategy.matrix.exclude`: "All `include` combinations are processed after `exclude`." An `exclude` entry that only matches `include` values removes nothing.
+- Upstream issue: #634.
+- Milestone: M4.21.
+- Status: implemented.
+- Fixtures: `err/matrix_exclude_mismatch` has five changed lines in the allow-list. `workflint/err/matrix_exclude_before_include` and `workflint/err/matrix_exclude_without_matrix` show the change.
+
 <a id="if-cond-closing-braces"></a>
 ### `}}` inside a string literal in `if:`
 
@@ -867,7 +878,6 @@ These upstream behaviours were reported as bugs or looked suspicious, and workfl
 
 - A multi-line `if: |` whose only content is `${{ ... }}` is reported as always true, because the block scalar adds a trailing newline (#517). Upstream documents this in `docs/checks.md#if-cond-constant` as the runner's behaviour, and `examples/if_cond_always_true` and `err/if_cond_edge_cases_trailing_leading_chars` pin it. The runner confirms it: `TemplateReader.ParseScalar` in `actions/runner` at `9abfe11` does not trim the value, so the line break becomes text after the expression, and the condition becomes a `format()` call that returns a non-empty string.
 - The schedule timezone `UTC` is rejected, although `UTC` is an IANA name. Whether GitHub accepts it is not confirmed.
-- Values in `matrix.exclude` are checked against values added by `include` too (#634). How GitHub orders `include` and `exclude` for this check is not confirmed.
 - In a branch, tag, or path filter, `[!a]` is a character match of `!` and `a`, not a negated match. GitHub's filter pattern cheat sheet documents `!` only at the start of a pattern, and workflint reads `[!...]` as the reference does, so no difference exists.
 - The reference's glob validator reports Go's `invalid UTF-8 encoding` scanner error, and workflint's validator, which takes a Rust string, does not. No workflow can reach that error: go-yaml rejects a file with invalid UTF-8, and its escapes always produce valid UTF-8.
 - Messages that embed Go library errors, such as `strconv.ParseFloat: parsing "x": invalid syntax` and robfig/cron errors, keep that text.

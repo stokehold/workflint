@@ -7,10 +7,6 @@
 # checklist rule ID is in both the registry and this file, or in neither.
 
 deprecated-workflow-command = "deprecated-commands"
-duplicate-matrix-value = "matrix"
-exclude-without-matrix = "matrix"
 invalid-shell-name = "shell-name"
 pyflakes-issue = "pyflakes"
 shellcheck-issue = "shellcheck"
-unknown-exclude-key = "matrix"
-unmatched-exclude-value = "matrix"

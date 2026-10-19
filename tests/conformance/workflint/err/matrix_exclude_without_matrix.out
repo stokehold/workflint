@@ -1,0 +1,2 @@
+test.yaml:6:7: "exclude" section exists but no matrix variation exists [matrix]
+test.yaml:15:7: "exclude" section exists but no matrix variation exists [matrix]

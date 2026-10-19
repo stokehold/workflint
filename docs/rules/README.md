@@ -57,12 +57,14 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`duplicate-input-option`](duplicate-input-option.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` lists an option more than once |
 | [`duplicate-job-id`](duplicate-job-id.md) | `job-needs` | correctness | error | Two jobs have the same ID, ignoring case |
 | [`duplicate-key`](duplicate-key.md) | `syntax-check` | correctness | error | A mapping repeats a key |
+| [`duplicate-matrix-value`](duplicate-matrix-value.md) | `matrix` | correctness | error | A matrix row has the same value twice |
 | [`duplicate-needs`](duplicate-needs.md) | `job-needs` | correctness | error | A job lists the same job twice in `needs`, ignoring case |
 | [`duplicate-step-id`](duplicate-step-id.md) | `id` | correctness | error | Two steps of one job have the same ID, ignoring case |
 | [`empty-deprecation-message`](empty-deprecation-message.md) | `action` | correctness | error | An input of a local action has an empty `deprecationMessage` |
 | [`empty-section`](empty-section.md) | `syntax-check` | correctness | error | A mapping or sequence that must have entries is empty or null |
 | [`empty-string`](empty-string.md) | `syntax-check` | correctness | error | A string that must not be empty is empty |
 | [`empty-workflow`](empty-workflow.md) | `syntax-check` | correctness | error | The file has no YAML document, or only comments |
+| [`exclude-without-matrix`](exclude-without-matrix.md) | `matrix` | correctness | error | `exclude` is written in a matrix that has no rows |
 | [`expected-single-expression`](expected-single-expression.md) | `syntax-check` | correctness | error | A value that must be a literal or a single `${{ }}` expression is other text |
 | [`filter-not-supported`](filter-not-supported.md) | `events` | correctness | error | A branch, tag, or path filter is set on an event that does not support it |
 | [`function-not-allowed`](function-not-allowed.md) | `expression` | correctness | error | An expression calls a special function that its workflow key does not allow |
@@ -140,9 +142,11 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`unexpected-node-kind`](unexpected-node-kind.md) | `syntax-check` | correctness | error | A node has the wrong kind, such as a sequence where a mapping is expected |
 | [`unknown-anchor`](unknown-anchor.md) | `syntax-check` | correctness | error | An alias refers to an anchor that no earlier node defines |
 | [`unknown-event`](unknown-event.md) | `events` | correctness | error | `on` names an event that is not a GitHub webhook event |
+| [`unknown-exclude-key`](unknown-exclude-key.md) | `matrix` | correctness | error | An `exclude` entry names a key that is not a matrix row |
 | [`unknown-needed-job`](unknown-needed-job.md) | `job-needs` | correctness | error | A job lists a job in `needs` that the workflow does not have |
 | [`unknown-permission-scope`](unknown-permission-scope.md) | `permissions` | correctness | error | A key in `permissions` is not a permission scope |
 | [`unknown-runner-label`](unknown-runner-label.md) | `runner-label` | correctness | error | A `runs-on` label is not a known runner label |
+| [`unmatched-exclude-value`](unmatched-exclude-value.md) | `matrix` | correctness | error | An `exclude` value matches no value of its matrix row |
 | [`untrusted-input`](untrusted-input.md) | `expression` | correctness | error | A script reads a value that someone outside the repository can set |
 | [`untrusted-object-filter`](untrusted-object-filter.md) | `expression` | correctness | error | A script reads an object filter that extracts values that someone outside the repository can set |
 | [`unused-anchor`](unused-anchor.md) | `syntax-check` | correctness | error | No alias refers to an anchor |

@@ -1,0 +1,2 @@
+test.yaml:16:17: value "windows-latest" in "exclude" does not match in matrix "os" combinations. possible values are "ubuntu-latest", "macos-latest" [matrix]
+test.yaml:19:13: "experimental" in "exclude" section does not exist in matrix. available matrix configurations are "node", "os" [matrix]

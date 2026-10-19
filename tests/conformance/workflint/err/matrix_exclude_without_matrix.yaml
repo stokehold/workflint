@@ -1,0 +1,32 @@
+on: push
+jobs:
+  only-exclude:
+    strategy:
+      # ERROR: No row to exclude from
+      matrix:
+        exclude:
+          - os: ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  only-include:
+    strategy:
+      # ERROR: `include` adds jobs after `exclude` runs, so `exclude` has no row
+      matrix:
+        include:
+          - os: ubuntu-latest
+        exclude:
+          - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo
+  expression-row:
+    strategy:
+      # OK: The row's values come from an expression
+      matrix:
+        os: ${{ fromJSON(vars.OSES) }}
+        exclude:
+          - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo
