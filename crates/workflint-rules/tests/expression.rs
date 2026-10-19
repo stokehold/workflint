@@ -1637,3 +1637,156 @@ jobs:
         ]
     );
 }
+
+/// A diagnostic as its position, its rule ID, and the position and note of each label.
+type Labelled = (String, &'static str, Vec<(String, String)>);
+
+/// Lints `workflow` and returns each diagnostic of the `expression` kind as a [`Labelled`].
+fn labelled(workflow: &str) -> Vec<Labelled> {
+    let (file, diagnostics) = diagnostics(workflow);
+    let at = |offset: u32| {
+        let pos = file.line_col(offset);
+        format!("{}:{}", pos.line, pos.column)
+    };
+    diagnostics
+        .iter()
+        .filter(|d| d.rule.kind == "expression")
+        .map(|d| {
+            let labels = d
+                .labels
+                .iter()
+                .map(|label| (at(label.span.start), label.note.clone()))
+                .collect();
+            (at(d.span.start), d.rule.id, labels)
+        })
+        .collect()
+}
+
+/// Owns the labels of [`labelled`] written as string slices.
+fn labels(labels: &[(&str, &str)]) -> Vec<(String, String)> {
+    labels
+        .iter()
+        .map(|&(at, note)| (at.to_owned(), note.to_owned()))
+        .collect()
+}
+
+#[test]
+fn an_error_reached_through_an_alias_is_labelled_at_the_alias() {
+    // `steps` is available in a step's `env`, but not in a job's.
+    let text = "\
+on: push
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+        env:
+          A: &v ${{ toJSON(steps) }}
+  b:
+    runs-on: ubuntu-latest
+    env:
+      B: *v
+    steps:
+      - run: echo
+";
+    assert_eq!(
+        labelled(text),
+        [(
+            "8:28".to_owned(),
+            "context-not-allowed",
+            labels(&[("12:10", "reached through alias *v")]),
+        )]
+    );
+}
+
+#[test]
+fn an_error_reached_through_two_aliases_is_labelled_at_both() {
+    let text = "\
+on: push
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+        env:
+          A: &v ${{ toJSON(steps) }}
+      - run: echo
+        env: &env
+          B: *v
+  b:
+    runs-on: ubuntu-latest
+    env: *env
+    steps:
+      - run: echo
+";
+    assert_eq!(
+        labelled(text),
+        [(
+            "8:28".to_owned(),
+            "context-not-allowed",
+            labels(&[
+                ("14:10", "reached through alias *env"),
+                ("11:14", "reached through alias *v"),
+            ]),
+        )]
+    );
+}
+
+#[test]
+fn an_error_repeated_through_aliases_is_reported_once_with_a_label_per_alias() {
+    let text = "\
+on: push
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+        env:
+          A: &v ${{ toJSON(steps) }}
+      - run: echo
+        env: &env
+          B: *v
+  b:
+    runs-on: ubuntu-latest
+    env: *env
+    steps:
+      - run: echo
+  c:
+    runs-on: ubuntu-latest
+    env: *env
+    steps:
+      - run: echo
+";
+    assert_eq!(
+        labelled(text),
+        [(
+            "8:28".to_owned(),
+            "context-not-allowed",
+            labels(&[
+                ("14:10", "reached through alias *env"),
+                ("11:14", "reached through alias *v"),
+                ("19:10", "reached through alias *env"),
+            ]),
+        )]
+    );
+}
+
+#[test]
+fn an_error_in_an_anchored_node_used_directly_has_no_label() {
+    let text = "\
+on: push
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    env:
+      B: &v ${{ toJSON(steps) }}
+    steps:
+      - run: echo
+        env:
+          A: *v
+";
+    assert_eq!(
+        labelled(text),
+        [("6:24".to_owned(), "context-not-allowed", Vec::new())]
+    );
+}

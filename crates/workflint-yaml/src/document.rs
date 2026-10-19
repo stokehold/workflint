@@ -38,6 +38,10 @@ pub struct Document {
     pub(crate) nodes: Vec<Node>,
     pub(crate) items: Vec<NodeId>,
     pub(crate) entries: Vec<Entry>,
+    /// The items as written, parallel to `items`.
+    pub(crate) written_items: Vec<NodeId>,
+    /// The entries as written, parallel to `entries`.
+    pub(crate) written_entries: Vec<Entry>,
     pub(crate) comments: Vec<Comment>,
     /// Indexes into `comments`, grouped by node. [`Node::comments`] is a
     /// range of this list.
@@ -93,77 +97,30 @@ impl Document {
         slice(&self.entries, &mapping.entries)
     }
 
-    /// Returns the items of the sequence `sequence` as written, with each
-    /// resolved alias kept as its alias node.
+    /// Returns the items of a sequence as written, with each resolved alias
+    /// kept as its alias node. The list is parallel to
+    /// [`items`](Self::items).
     ///
     /// Comments on an alias are attached to the alias node, which
     /// [`items`](Self::items) replaces, so a walker reaches them through
-    /// this list. It is empty if `sequence` is not a sequence. The walk
-    /// takes time in proportion to the number of nodes written inside the
-    /// sequence.
+    /// this list. A walker also learns from it which items it reaches
+    /// through an alias.
     #[must_use]
-    pub fn written_items(&self, sequence: NodeId) -> Vec<NodeId> {
-        match self.node(sequence).map(|node| &node.kind) {
-            Some(NodeKind::Sequence(_)) => self.written_children(sequence),
-            _ => Vec::new(),
-        }
+    pub fn written_items(&self, sequence: &Sequence) -> &[NodeId] {
+        slice(&self.written_items, &sequence.items)
     }
 
-    /// Returns the entries of the mapping `mapping` as written, with each
-    /// resolved alias kept as its alias node.
+    /// Returns the entries of a mapping as written, with each resolved alias
+    /// kept as its alias node. The list is parallel to
+    /// [`entries`](Self::entries).
     ///
     /// Comments on an alias are attached to the alias node, which
     /// [`entries`](Self::entries) replaces, so a walker reaches them
-    /// through this list. It is empty if `mapping` is not a mapping. The
-    /// walk takes time in proportion to the number of nodes written inside
-    /// the mapping.
+    /// through this list. A walker also learns from it which keys and
+    /// values it reaches through an alias.
     #[must_use]
-    pub fn written_entries(&self, mapping: NodeId) -> Vec<Entry> {
-        match self.node(mapping).map(|node| &node.kind) {
-            Some(NodeKind::Mapping(_)) => {
-                let children = self.written_children(mapping);
-                let (pairs, _) = children.as_chunks::<2>();
-                pairs
-                    .iter()
-                    .map(|&[key, value]| Entry { key, value })
-                    .collect()
-            }
-            _ => Vec::new(),
-        }
-    }
-
-    /// Returns the children of the collection `id` as written, keys and
-    /// values in turn for a mapping.
-    ///
-    /// IDs follow the pre-order of the tree as written, where an alias has
-    /// no children. So the first child comes right after the collection,
-    /// and each later child comes right after the nodes written inside the
-    /// child before it.
-    fn written_children(&self, id: NodeId) -> Vec<NodeId> {
-        let Some(node) = self.node(id) else {
-            return Vec::new();
-        };
-        let count = written_len(node);
-        let mut children = Vec::with_capacity(count);
-        // The last node visited.
-        let mut last = id.0;
-        // The nodes still to visit in the current child's subtree.
-        let mut pending = 0usize;
-        while children.len() < count {
-            let Some((next, node)) = last
-                .checked_add(1)
-                .and_then(|next| Some((next, self.node(NodeId(next))?)))
-            else {
-                break;
-            };
-            if pending == 0 {
-                children.push(NodeId(next));
-                pending = 1;
-            }
-            last = next;
-            pending = pending - 1 + written_len(node);
-        }
-        children
+    pub fn written_entries(&self, mapping: &Mapping) -> &[Entry] {
+        slice(&self.written_entries, &mapping.entries)
     }
 
     /// Returns every comment in the document in source order.
@@ -227,17 +184,6 @@ impl Document {
             }
         }
         duplicates
-    }
-}
-
-/// Returns the number of children that `node` has as written: none for an
-/// alias or a scalar, and a key and a value for each mapping entry.
-fn written_len(node: &Node) -> usize {
-    let len = |range: &Range<u32>| usize::try_from(range.end.saturating_sub(range.start));
-    match &node.kind {
-        NodeKind::Sequence(sequence) => len(&sequence.items).unwrap_or(0),
-        NodeKind::Mapping(mapping) => len(&mapping.entries).map_or(0, |n| n.saturating_mul(2)),
-        NodeKind::Scalar(_) | NodeKind::Alias(_) => 0,
     }
 }
 

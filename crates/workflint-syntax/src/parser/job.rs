@@ -236,7 +236,7 @@ impl<'a> Parser<'a, '_> {
         let entries = self.parse_mapping(Label::Section("jobs"), node, false, false);
         let mut jobs = Vec::with_capacity(entries.len());
         for entry in entries {
-            let job = self.parse_job(entry.key, entry.value);
+            let job = self.within(entry.path, |p| p.parse_job(entry.key, entry.value));
             if let Some(id) = entry.key.string {
                 jobs.push(KeyedEntry::new(id, entry.value.span, job));
             }
@@ -451,7 +451,7 @@ impl<'a> Parser<'a, '_> {
     /// `expected mapping node for secrets or "inherit" string node`.
     fn parse_call_secrets(&mut self, entry: &MapEntry<'a>) -> Field<'a, WorkflowCallSecrets<'a>> {
         let node = entry.value;
-        let Some(scalar) = Str::new(node) else {
+        let Some(scalar) = self.string(node) else {
             let entries = self.parse_mapping(Label::Section("secrets"), node, false, false);
             let secrets = self.keyed_templates(entries, true);
             return mapping_field(entry.key, node, WorkflowCallSecrets::Map(secrets));

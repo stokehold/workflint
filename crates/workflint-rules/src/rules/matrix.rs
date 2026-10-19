@@ -125,7 +125,8 @@ fn check_exclude(matrix: &workflint_syntax::Matrix<'_>, position: Span, cx: &mut
         for assign in assigns {
             let name = assign.folded();
             let Some(row) = matrix.rows.get(name) else {
-                cx.report(
+                cx.report_in(
+                    assign.key,
                     &UNKNOWN_EXCLUDE_KEY,
                     assign.key.span(),
                     format!(

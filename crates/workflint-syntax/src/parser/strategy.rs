@@ -13,7 +13,7 @@ use workflint_diagnostics::quote::quote;
 use workflint_yaml::{Node, NodeKind};
 
 use super::shared::mapping_field;
-use super::{KeySpec, Label, MapEntry, Parser, Section};
+use super::{Item, KeySpec, Label, MapEntry, Parser, Section};
 use crate::rules::UNEXPECTED_NODE_KIND;
 use crate::{
     Field, Keyed, KeyedEntry, Matrix, MatrixCombination, MatrixRow, RawValue, Str, Strategy, Value,
@@ -41,8 +41,9 @@ static STRATEGY_KEYS: [KeySpec<Strategy<'static>>; 3] = [
 /// A step of the walk in [`Parser::parse_raw_values`].
 enum RawStep<'a> {
     /// Parses the node, and pushes its value, or `None` if it is reported,
-    /// on the stack of values.
-    Enter(&'a Node),
+    /// on the stack of values. The walk reaches the node through the
+    /// item's alias path.
+    Enter(Item<'a>),
     /// Pops the values of the `len` items of a sequence and pushes the
     /// sequence.
     Sequence { span: Span, len: usize },
@@ -95,10 +96,16 @@ impl<'a> Parser<'a, '_> {
         let mut rows = Vec::new();
         for entry in self.parse_mapping(Label::Section("matrix"), node, false, false) {
             match &*entry.id {
-                "include" => matrix.include = self.parse_combinations("include", &entry),
-                "exclude" => matrix.exclude = self.parse_combinations("exclude", &entry),
+                "include" => {
+                    matrix.include =
+                        self.within(entry.path, |p| p.parse_combinations("include", &entry));
+                }
+                "exclude" => {
+                    matrix.exclude =
+                        self.within(entry.path, |p| p.parse_combinations("exclude", &entry));
+                }
                 _ => {
-                    if let Some(row) = self.parse_matrix_row(entry.value)
+                    if let Some(row) = self.within(entry.path, |p| p.parse_matrix_row(entry.value))
                         && let Some(name) = entry.key.string
                     {
                         rows.push(KeyedEntry::new(name, entry.value.span, row));
@@ -136,8 +143,7 @@ impl<'a> Parser<'a, '_> {
             return Some(row);
         }
         let items = self.check_sequence("matrix values", node, false)?;
-        let nodes = items.iter().filter_map(|&id| self.node(id)).collect();
-        let values: Vec<_> = self.parse_raw_values(nodes).into_iter().flatten().collect();
+        let values: Vec<_> = self.parse_raw_values(items).into_iter().flatten().collect();
         Some(MatrixRow::Values(values.into()))
     }
 
@@ -168,28 +174,9 @@ impl<'a> Parser<'a, '_> {
         };
         let label = format!("element in {} section", quote(section));
         let mut combinations = Vec::with_capacity(items.len());
-        for &id in items {
-            let Some(item) = self.node(id) else {
-                continue;
-            };
-            if let NodeKind::Scalar(_) = item.kind {
-                combinations.extend(
-                    self.parse_expression(item, "mapping of matrix combination")
-                        .map(MatrixCombination::Expression),
-                );
-                continue;
-            }
-            let entries = self.parse_mapping(Label::At(&label), item, false, false);
-            let combination = match item.kind {
-                NodeKind::Mapping(_) => MatrixCombination::Assigns {
-                    span: item.span,
-                    assigns: self.parse_raw_entries(&entries),
-                },
-                NodeKind::Scalar(_) | NodeKind::Sequence(_) | NodeKind::Alias(_) => {
-                    MatrixCombination::Invalid(item.span)
-                }
-            };
-            combinations.push(combination);
+        for item in items {
+            let combination = self.within(item.path, |p| p.parse_combination(item.node, &label));
+            combinations.extend(combination);
         }
         Value::Literal {
             key,
@@ -198,12 +185,40 @@ impl<'a> Parser<'a, '_> {
         }
     }
 
+    /// Parses `item`, an item of `include` or `exclude`, or returns `None`
+    /// if it is a scalar that is not a single expression.
+    fn parse_combination(&mut self, item: &'a Node, label: &str) -> Option<MatrixCombination<'a>> {
+        if let NodeKind::Scalar(_) = item.kind {
+            return self
+                .parse_expression(item, "mapping of matrix combination")
+                .map(MatrixCombination::Expression);
+        }
+        let entries = self.parse_mapping(Label::At(label), item, false, false);
+        Some(match item.kind {
+            NodeKind::Mapping(_) => MatrixCombination::Assigns {
+                span: item.span,
+                assigns: self.parse_raw_entries(&entries),
+            },
+            NodeKind::Scalar(_) | NodeKind::Sequence(_) | NodeKind::Alias(_) => {
+                MatrixCombination::Invalid(item.span)
+            }
+        })
+    }
+
     /// Parses the values of `entries` as raw values, keyed by the entries'
     /// keys. An entry whose key is not a scalar, or whose value is
     /// reported, is left out.
     fn parse_raw_entries(&mut self, entries: &[MapEntry<'a>]) -> Keyed<'a, RawValue<'a>> {
         let keys = entries.iter().map(|entry| entry.key.string).collect();
-        let values = self.parse_raw_values(entries.iter().map(|entry| entry.value).collect());
+        let values = self.parse_raw_values(
+            entries
+                .iter()
+                .map(|entry| Item {
+                    node: entry.value,
+                    path: entry.path,
+                })
+                .collect(),
+        );
         keyed_raw_values(keys, values)
     }
 
@@ -218,50 +233,55 @@ impl<'a> Parser<'a, '_> {
     ///
     /// Matrix values may nest as deep as the YAML layer allows, so the walk
     /// keeps its own stack instead of recursing.
-    fn parse_raw_values(&mut self, nodes: Vec<&'a Node>) -> Vec<Option<RawValue<'a>>> {
-        let mut values: Vec<Option<RawValue<'a>>> = Vec::with_capacity(nodes.len());
-        let mut steps: Vec<RawStep<'a>> = nodes.into_iter().rev().map(RawStep::Enter).collect();
+    fn parse_raw_values(&mut self, items: Vec<Item<'a>>) -> Vec<Option<RawValue<'a>>> {
+        let mut values: Vec<Option<RawValue<'a>>> = Vec::with_capacity(items.len());
+        let mut steps: Vec<RawStep<'a>> = items.into_iter().rev().map(RawStep::Enter).collect();
+        let outer = self.path;
         while let Some(step) = steps.pop() {
             match step {
-                RawStep::Enter(node) => match &node.kind {
-                    NodeKind::Scalar(_) => values
-                        .push(Str::new(node).map(|scalar| RawValue::Scalar(self.template(scalar)))),
-                    NodeKind::Sequence(sequence) => {
-                        let items: Vec<&'a Node> = self
-                            .document
-                            .items(sequence)
-                            .iter()
-                            .filter_map(|&id| self.node(id))
-                            .collect();
-                        steps.push(RawStep::Sequence {
-                            span: node.span,
-                            len: items.len(),
-                        });
-                        steps.extend(items.into_iter().rev().map(RawStep::Enter));
+                RawStep::Enter(Item { node, path }) => {
+                    self.path = path;
+                    match &node.kind {
+                        NodeKind::Scalar(_) => values.push(
+                            self.string(node)
+                                .map(|scalar| RawValue::Scalar(self.template(scalar))),
+                        ),
+                        NodeKind::Sequence(sequence) => {
+                            let items = self.items(sequence);
+                            steps.push(RawStep::Sequence {
+                                span: node.span,
+                                len: items.len(),
+                            });
+                            steps.extend(items.into_iter().rev().map(RawStep::Enter));
+                        }
+                        NodeKind::Mapping(_) => {
+                            let entries = self.parse_mapping(
+                                Label::At("matrix row value"),
+                                node,
+                                true,
+                                false,
+                            );
+                            steps.push(RawStep::Mapping {
+                                span: node.span,
+                                keys: entries.iter().map(|entry| entry.key.string).collect(),
+                            });
+                            steps.extend(entries.into_iter().rev().map(|entry| {
+                                RawStep::Enter(Item {
+                                    node: entry.value,
+                                    path: entry.path,
+                                })
+                            }));
+                        }
+                        NodeKind::Alias(_) => {
+                            self.error(
+                                &UNEXPECTED_NODE_KIND,
+                                node.span,
+                                "unexpected alias node on parsing value in matrix row".to_owned(),
+                            );
+                            values.push(None);
+                        }
                     }
-                    NodeKind::Mapping(_) => {
-                        let entries =
-                            self.parse_mapping(Label::At("matrix row value"), node, true, false);
-                        steps.push(RawStep::Mapping {
-                            span: node.span,
-                            keys: entries.iter().map(|entry| entry.key.string).collect(),
-                        });
-                        steps.extend(
-                            entries
-                                .into_iter()
-                                .rev()
-                                .map(|entry| RawStep::Enter(entry.value)),
-                        );
-                    }
-                    NodeKind::Alias(_) => {
-                        self.error(
-                            &UNEXPECTED_NODE_KIND,
-                            node.span,
-                            "unexpected alias node on parsing value in matrix row".to_owned(),
-                        );
-                        values.push(None);
-                    }
-                },
+                }
                 RawStep::Sequence { span, len } => {
                     let items = values.split_off(values.len().saturating_sub(len));
                     let items: Vec<_> = items.into_iter().flatten().collect();
@@ -279,6 +299,7 @@ impl<'a> Parser<'a, '_> {
                 }
             }
         }
+        self.path = outer;
         values
     }
 }

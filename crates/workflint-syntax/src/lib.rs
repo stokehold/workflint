@@ -87,6 +87,12 @@
 //! expanded, and parses nothing if there are more than the 50,000 that
 //! GitHub reads, so the work stays linear in the size of the input.
 //!
+//! Each [`Str`] records its [alias path](Str::alias_path): the aliases
+//! through which the parser reached it, outermost first. The paths live in
+//! the [`AliasUses`] of the workflow, which turns a path into a label at
+//! each alias, so a diagnostic in an anchored subtree shows which use of the
+//! anchor caused it.
+//!
 //! # Positions
 //!
 //! A [`Str`] span starts where the reference's `posAt(n)` points. Where the
@@ -96,6 +102,7 @@
 //! of the [`KeyedEntry`].
 
 mod action_metadata;
+mod alias;
 mod event;
 mod expression;
 pub mod glob;
@@ -117,6 +124,7 @@ mod workflow;
 mod testing;
 
 pub use action_metadata::{ActionBranding, ActionInput, ActionMetadata, ActionOutput, ActionRuns};
+pub use alias::{AliasPath, AliasUses};
 pub use event::{
     Event, ImageVersionEvent, RepositoryDispatchEvent, ScheduleEntry, ScheduleEvent, WebhookEvent,
     WorkflowCallEvent, WorkflowCallEventInput, WorkflowCallEventOutput, WorkflowCallEventSecret,

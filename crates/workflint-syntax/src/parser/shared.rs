@@ -102,7 +102,7 @@ impl<'a> Parser<'a, '_> {
         key: Key<'a>,
         node: &'a Node,
     ) -> Field<'a, Permissions<'a>> {
-        if let Some(all) = Str::new(node) {
+        if let Some(all) = self.string(node) {
             self.check_string(node, false);
             return Field::Valid {
                 key: key.string,
@@ -255,9 +255,10 @@ impl<'a> Parser<'a, '_> {
     fn env_vars(&mut self, entries: Vec<MapEntry<'a>>) -> Env<'a> {
         let mut vars = Vec::with_capacity(entries.len());
         for entry in entries {
-            let value = self
-                .check_string(entry.value, true)
-                .map(|value| self.template(value));
+            let value = self.within(entry.path, |p| {
+                p.check_string(entry.value, true)
+                    .map(|value| p.template(value))
+            });
             if let Some(key) = entry.key.string {
                 let name = self.template(key);
                 vars.push(KeyedEntry::new(
@@ -286,7 +287,7 @@ impl<'a> Parser<'a, '_> {
     ) -> Keyed<'a, Option<Str<'a>>> {
         let mut keyed = Vec::with_capacity(entries.len());
         for entry in entries {
-            let value = self.check_string(entry.value, allow_empty);
+            let value = self.within(entry.path, |p| p.check_string(entry.value, allow_empty));
             if let Some(name) = entry.key.string {
                 keyed.push(KeyedEntry::new(name, entry.value.span, value));
             }

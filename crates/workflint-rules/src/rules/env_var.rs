@@ -56,7 +56,8 @@ fn check(env: &Value<'_, Env<'_>>, cx: &mut Context<'_>) {
             continue;
         }
         if name.value().contains(['&', '=', ' ', '\t']) {
-            cx.report(
+            cx.report_in(
+                name.source,
                 &INVALID_ENV_VAR_NAME,
                 name.span(),
                 format!(

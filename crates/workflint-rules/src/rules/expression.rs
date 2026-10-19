@@ -470,7 +470,12 @@ impl Expression<'_> {
                     "type of input {} must be {ty} but found type {found}",
                     quote(input.key.value())
                 );
-                cx.report(&WRONG_INPUT_DEFAULT_TYPE, default.span(), message);
+                cx.report_in(
+                    default.source,
+                    &WRONG_INPUT_DEFAULT_TYPE,
+                    default.span(),
+                    message,
+                );
             }
             inputs.insert(input.folded().to_owned(), ty);
         }
@@ -556,7 +561,12 @@ impl Expression<'_> {
                     quote(&input.name),
                     quote(uses.value()),
                 );
-                cx.report(&WRONG_WORKFLOW_CALL_INPUT_TYPE, value.span(), message);
+                cx.report_in(
+                    value.source,
+                    &WRONG_WORKFLOW_CALL_INPUT_TYPE,
+                    value.span(),
+                    message,
+                );
             }
         }
         if let Some(WorkflowCallSecrets::Map(secrets)) = call.secrets.value() {
@@ -814,7 +824,7 @@ impl Checker {
         }
         for error in errors {
             let span = source_span(cx, source, placeholder.to_value(error.range()));
-            cx.report_with_help(error.rule, span, error.message, error.help);
+            cx.report_in_with_help(source, error.rule, span, error.message, error.help);
         }
         None
     }
@@ -831,7 +841,8 @@ impl Checker {
             if !placeholder.is_implicit() && matches!(ty, Ty::Object(_) | Ty::Array(_) | Ty::Null) {
                 let start = usize::try_from(placeholder.start).unwrap_or(usize::MAX);
                 let span = source_span(cx, template.source, start..start + "${{".len());
-                cx.report(
+                cx.report_in(
+                    template.source,
                     &OBJECT_IN_TEMPLATE,
                     span,
                     format!(
@@ -896,7 +907,7 @@ impl Checker {
         };
         if !matches!(ty, Ty::Bool | Ty::Any) {
             let message = format!("type of expression must be bool but found type {ty}");
-            cx.report(&WRONG_EXPRESSION_TYPE, expr.span(), message);
+            cx.report_in(expr.source, &WRONG_EXPRESSION_TYPE, expr.span(), message);
         }
     }
 
@@ -1166,7 +1177,7 @@ impl Checker {
                 "type of expression at \"runs-on\" must be string or array but found type {}",
                 quote(&ty.to_string())
             );
-            cx.report(&WRONG_EXPRESSION_TYPE, expr.span(), message);
+            cx.report_in(expr.source, &WRONG_EXPRESSION_TYPE, expr.span(), message);
         }
     }
 }
@@ -1188,7 +1199,7 @@ fn one_expression(
         quote(what),
         placeholders.len()
     );
-    cx.report(&SINGLE_EXPRESSION_REQUIRED, source.span(), message);
+    cx.report_in(source, &SINGLE_EXPRESSION_REQUIRED, source.span(), message);
     None
 }
 
@@ -1225,7 +1236,7 @@ fn wrong_type(cx: &mut Context<'_>, expr: &Expr<'_>, what: &str, want: Want, ty:
         quote(what),
         want.name()
     );
-    cx.report(&WRONG_EXPRESSION_TYPE, expr.span(), message);
+    cx.report_in(expr.source, &WRONG_EXPRESSION_TYPE, expr.span(), message);
 }
 
 /// Returns the span of the bytes `range` of the value of `source`, or the span of `source` if

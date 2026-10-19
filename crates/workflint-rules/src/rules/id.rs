@@ -73,7 +73,8 @@ impl<'a> Rule<'a> for Id<'a> {
         check_convention(id.value(), id.span(), &INVALID_STEP_ID, "step", cx);
         let folded = simple_lowercase(id.value());
         if let Some(previous) = self.seen.get(&folded) {
-            cx.report(
+            cx.report_in(
+                id.source,
                 &DUPLICATE_STEP_ID,
                 id.span(),
                 format!(

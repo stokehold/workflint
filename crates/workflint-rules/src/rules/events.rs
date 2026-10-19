@@ -209,7 +209,8 @@ fn check_cron(spec: &Template<'_>, cx: &mut Context<'_>) {
     let schedule = match cron::parse(spec.value()) {
         Ok(schedule) => schedule,
         Err(err) => {
-            cx.report(
+            cx.report_in(
+                spec.source,
                 &INVALID_CRON,
                 spec.span(),
                 format!(
@@ -225,7 +226,8 @@ fn check_cron(spec: &Template<'_>, cx: &mut Context<'_>) {
         // The interval is a whole number of seconds far below 2^53, so the `f64` is exact.
         #[allow(clippy::cast_precision_loss)]
         let seconds = format_float(interval as f64);
-        cx.report(
+        cx.report_in(
+            spec.source,
             &CRON_TOO_FREQUENT,
             spec.span(),
             format!(
@@ -244,7 +246,8 @@ fn check_timezone(zone: &Template<'_>, cx: &mut Context<'_>) {
         && !name.eq_ignore_ascii_case("local")
         && is_time_zone(name);
     if !valid {
-        cx.report(
+        cx.report_in(
+            zone.source,
             &INVALID_TIMEZONE,
             zone.span(),
             format!(
@@ -265,7 +268,8 @@ fn items<'f, 'a>(field: &'f Field<'a, Arc<[Option<Template<'a>>]>>) -> &'f [Opti
 fn check_webhook(event: &WebhookEvent<'_>, cx: &mut Context<'_>) {
     let hook = event.name.value();
     let Some(known) = webhook_event(hook) else {
-        cx.report(
+        cx.report_in(
+            event.name,
             &UNKNOWN_EVENT,
             event.name.span(),
             format!(
@@ -281,14 +285,16 @@ fn check_webhook(event: &WebhookEvent<'_>, cx: &mut Context<'_>) {
     let has_workflows = !items(&event.workflows).is_empty();
     if hook == "workflow_run" {
         if !has_workflows {
-            cx.report(
+            cx.report_in(
+                event.name,
                 &MISSING_WORKFLOW_RUN_WORKFLOWS,
                 event.name.span(),
                 "no workflow is configured for \"workflow_run\" event",
             );
         }
     } else if has_workflows {
-        cx.report(
+        cx.report_in(
+            event.name,
             &WORKFLOWS_FILTER_NOT_SUPPORTED,
             event.name.span(),
             format!(
@@ -321,7 +327,8 @@ fn check_types(event: &WebhookEvent<'_>, expected: ActivityTypes, cx: &mut Conte
     let types = items(&event.types);
     if expected.is_empty() {
         if !types.is_empty() {
-            cx.report(
+            cx.report_in(
+                event.name,
                 &ACTIVITY_TYPES_NOT_SUPPORTED,
                 event.name.span(),
                 format!(
@@ -334,7 +341,8 @@ fn check_types(event: &WebhookEvent<'_>, expected: ActivityTypes, cx: &mut Conte
     }
     for ty in types.iter().flatten() {
         if !expected.contains(&ty.value()) {
-            cx.report(
+            cx.report_in(
+                ty.source,
                 &INVALID_ACTIVITY_TYPE,
                 ty.span(),
                 format!(
@@ -370,7 +378,8 @@ fn check_exclusive_filters(
             } else {
                 include
             };
-            cx.report(
+            cx.report_in(
+                *later,
                 &CONFLICTING_FILTERS,
                 later.span(),
                 format!(
@@ -389,7 +398,8 @@ fn check_exclusive_filters(
         "events"
     };
     for key in [include, ignore].into_iter().flatten() {
-        cx.report(
+        cx.report_in(
+            *key,
             &FILTER_NOT_SUPPORTED,
             key.span(),
             format!(
@@ -421,7 +431,8 @@ fn check_workflow_call(event: &WorkflowCallEvent<'_>, cx: &mut Context<'_>) {
             match input.value.input_type.value() {
                 Some(WorkflowCallInputType::Number) => {
                     if let Err(err) = parse_float(default.value()) {
-                        cx.report(
+                        cx.report_in(
+                            default.source,
                             &INVALID_INPUT_DEFAULT,
                             default.span(),
                             format!(
@@ -434,7 +445,8 @@ fn check_workflow_call(event: &WorkflowCallEvent<'_>, cx: &mut Context<'_>) {
                 }
                 Some(WorkflowCallInputType::Boolean) => {
                     if !is_bool(default.value()) {
-                        cx.report(
+                        cx.report_in(
+                            default.source,
                             &INVALID_INPUT_DEFAULT,
                             default.span(),
                             format!(
@@ -449,7 +461,8 @@ fn check_workflow_call(event: &WorkflowCallEvent<'_>, cx: &mut Context<'_>) {
             }
         }
         if input.value.is_required() {
-            cx.report(
+            cx.report_in(
+                default.source,
                 &REQUIRED_INPUT_WITH_DEFAULT,
                 default.span(),
                 format!(
@@ -478,7 +491,8 @@ fn check_workflow_dispatch(event: &WorkflowDispatchEvent<'_>, cx: &mut Context<'
         }
     }
     if inputs.len() > MAX_WORKFLOW_DISPATCH_INPUTS {
-        cx.report(
+        cx.report_in(
+            event.name,
             &TOO_MANY_DISPATCH_INPUTS,
             event.name.span(),
             format!(
@@ -494,7 +508,8 @@ fn check_choice_input(input: &KeyedEntry<'_, WorkflowDispatchInput<'_>>, cx: &mu
     let folded = input.folded();
     let options = items(&input.value.options);
     if options.is_empty() {
-        cx.report(
+        cx.report_in(
+            input.key,
             &CHOICE_INPUT_WITHOUT_OPTIONS,
             input.key.span(),
             format!(
@@ -507,7 +522,8 @@ fn check_choice_input(input: &KeyedEntry<'_, WorkflowDispatchInput<'_>>, cx: &mu
     let mut seen = BTreeSet::new();
     for option in options.iter().flatten() {
         if !seen.insert(option.value()) {
-            cx.report(
+            cx.report_in(
+                option.source,
                 &DUPLICATE_INPUT_OPTION,
                 option.span(),
                 format!(
@@ -525,7 +541,8 @@ fn check_choice_input(input: &KeyedEntry<'_, WorkflowDispatchInput<'_>>, cx: &mu
         && !seen.contains(default.value())
     {
         let options = quotes(options.iter().flatten().map(Template::value));
-        cx.report(
+        cx.report_in(
+            default.source,
             &DEFAULT_NOT_IN_OPTIONS,
             default.span(),
             format!(
@@ -541,7 +558,8 @@ fn check_choice_input(input: &KeyedEntry<'_, WorkflowDispatchInput<'_>>, cx: &mu
 fn check_non_choice_input(input: &KeyedEntry<'_, WorkflowDispatchInput<'_>>, cx: &mut Context<'_>) {
     let folded = input.folded();
     if !items(&input.value.options).is_empty() {
-        cx.report(
+        cx.report_in(
+            input.key,
             &OPTIONS_ON_NON_CHOICE_INPUT,
             input.key.span(),
             format!(
@@ -556,7 +574,8 @@ fn check_non_choice_input(input: &KeyedEntry<'_, WorkflowDispatchInput<'_>>, cx:
     match input.value.input_type.value() {
         Some(WorkflowDispatchInputType::Number) => {
             if let Err(err) = parse_float(default.value()) {
-                cx.report(
+                cx.report_in(
+                    default.source,
                     &INVALID_INPUT_DEFAULT,
                     default.span(),
                     format!(
@@ -569,7 +588,8 @@ fn check_non_choice_input(input: &KeyedEntry<'_, WorkflowDispatchInput<'_>>, cx:
         }
         Some(WorkflowDispatchInputType::Boolean) => {
             if !is_bool(default.value()) {
-                cx.report(
+                cx.report_in(
+                    default.source,
                     &INVALID_INPUT_DEFAULT,
                     default.span(),
                     format!(

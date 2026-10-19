@@ -1,7 +1,7 @@
 //! The rule trait and the context its hooks report through.
 
 use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
-use workflint_syntax::{Job, KeyedEntry, Step, Workflow};
+use workflint_syntax::{AliasUses, Job, KeyedEntry, Step, Str, Workflow};
 
 use crate::local::{LocalMetadata, NoProject};
 
@@ -43,8 +43,8 @@ pub trait Rule<'a> {
 }
 
 /// What the hooks of a rule get besides the node: the file being linted, the metadata of the
-/// project's local actions and local reusable workflows, and the list of diagnostics that the
-/// rules report.
+/// project's local actions and local reusable workflows, the YAML aliases through which the
+/// parser reached each string of the workflow, and the list of diagnostics that the rules report.
 ///
 /// The config (M5.2) becomes a field of this type, so the signature of the hooks stays the same
 /// when it arrives.
@@ -52,6 +52,8 @@ pub trait Rule<'a> {
 pub struct Context<'f> {
     file: &'f SourceFile,
     local: &'f dyn LocalMetadata,
+    /// The alias paths of the workflow being visited, which [`visit`](crate::visit) sets.
+    pub(crate) aliases: AliasUses,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -70,6 +72,7 @@ impl<'f> Context<'f> {
         Self {
             file,
             local,
+            aliases: AliasUses::default(),
             diagnostics: Vec::new(),
         }
     }
@@ -103,6 +106,33 @@ impl<'f> Context<'f> {
     ) {
         self.diagnostics
             .push(Diagnostic::new(rule, span, message).with_help(help));
+    }
+
+    /// Reports a diagnostic of `rule` at `span`, which lies in `source`, with the rule's default
+    /// severity. When the parser reached `source` through YAML aliases, the diagnostic has a label
+    /// at each alias, outermost first, so the reader sees which use of an anchor caused it.
+    pub fn report_in(
+        &mut self,
+        source: Str<'_>,
+        rule: &'static RuleMeta,
+        span: Span,
+        message: impl Into<String>,
+    ) {
+        self.report_in_with_help(source, rule, span, message, None);
+    }
+
+    /// Does what [`report_in`](Self::report_in) does, with the help text `help`.
+    pub fn report_in_with_help(
+        &mut self,
+        source: Str<'_>,
+        rule: &'static RuleMeta,
+        span: Span,
+        message: impl Into<String>,
+        help: Option<String>,
+    ) {
+        let mut diagnostic = Diagnostic::new(rule, span, message).with_help(help);
+        diagnostic.labels = self.aliases.labels(source.alias_path(), span);
+        self.diagnostics.push(diagnostic);
     }
 
     /// Returns the reported diagnostics in the order they were reported.

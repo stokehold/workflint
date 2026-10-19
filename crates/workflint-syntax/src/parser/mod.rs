@@ -8,8 +8,9 @@
 //!
 //! The walk follows resolved aliases, so a subtree used through several
 //! aliases is parsed once per use, as in the reference, and the same error
-//! is reported once per use at the anchored node. Deduplication then keeps
-//! one. Before the walk, [`parse`] counts the YAML nodes of the document
+//! is reported once per use at the anchored node. The walk keeps the alias
+//! path of the node it parses, and each error has a label at the aliases
+//! of that path. Deduplication then keeps one error with every label. Before the walk, [`parse`] counts the YAML nodes of the document
 //! with its aliases expanded, and walks nothing if there are more than
 //! GitHub accepts. So a "billion laughs" input cannot make the walk
 //! exponential.
@@ -31,9 +32,10 @@ mod workflow;
 use std::collections::HashMap;
 
 use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
-use workflint_yaml::{Document, Node, NodeId, NodeKind, Tag};
+use workflint_yaml::{Alias, Document, Node, NodeId, NodeKind, Sequence, Tag};
 
-use crate::{Expr, Template, Workflow};
+use crate::alias::AliasTable;
+use crate::{AliasPath, Expr, Str, Template, Workflow};
 
 pub(crate) use mapping::{Key, KeySpec, Label, MapEntry, Section};
 
@@ -71,12 +73,21 @@ pub struct Parsed<'a> {
 #[must_use]
 pub fn parse<'a>(file: &SourceFile, document: &'a Document) -> Parsed<'a> {
     let mut parser = Parser::new(file, document);
-    let workflow = parser.workflow();
+    let mut workflow = parser.workflow();
     parser.report_expressions(&workflow);
+    workflow.aliases = std::mem::take(&mut parser.aliases).finish();
     Parsed {
         workflow,
         diagnostics: parser.into_diagnostics(),
     }
+}
+
+/// An item of a sequence and the aliases through which the walk reaches
+/// it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Item<'a> {
+    pub(crate) node: &'a Node,
+    pub(crate) path: Option<AliasPath>,
 }
 
 /// The state of one parse: the file, its span tree, the diagnostics so far,
@@ -93,6 +104,10 @@ pub(crate) struct Parser<'a, 'f> {
     /// The single expressions parsed so far, keyed by the address of their
     /// node, for the same reason.
     expressions: HashMap<usize, Expr<'a>>,
+    /// The alias paths built so far.
+    aliases: AliasTable,
+    /// The aliases through which the walk reached the node it is parsing.
+    path: Option<AliasPath>,
 }
 
 impl<'a, 'f> Parser<'a, 'f> {
@@ -103,6 +118,8 @@ impl<'a, 'f> Parser<'a, 'f> {
             diagnostics: Vec::new(),
             templates: HashMap::new(),
             expressions: HashMap::new(),
+            aliases: AliasTable::default(),
+            path: None,
         }
     }
 
@@ -117,9 +134,66 @@ impl<'a, 'f> Parser<'a, 'f> {
         self.diagnostics
     }
 
-    /// Reports `message` at `span`.
+    /// Reports `message` at `span`, with a label at each alias through
+    /// which the walk reached `span`.
     pub(crate) fn error(&mut self, rule: &'static RuleMeta, span: Span, message: String) {
-        self.diagnostics.push(Diagnostic::new(rule, span, message));
+        let mut diagnostic = Diagnostic::new(rule, span, message);
+        diagnostic.labels = self.aliases.labels(self.path, span);
+        self.diagnostics.push(diagnostic);
+    }
+
+    /// Returns `node` as a string reached through the current alias path,
+    /// or `None` if it is not a scalar.
+    pub(crate) fn string(&self, node: &'a Node) -> Option<Str<'a>> {
+        Str::new(node).map(|string| string.with_alias_path(self.path))
+    }
+
+    /// Returns the alias path of a child of the node being parsed, written
+    /// as the node `written`. It is the current path, with `written` added
+    /// if it is a resolved alias.
+    pub(crate) fn path_to(&mut self, written: NodeId) -> Option<AliasPath> {
+        let alias = self.node(written).and_then(|node| match &node.kind {
+            NodeKind::Alias(Alias {
+                name,
+                target: Some(target),
+            }) => Some((node.span, name, *target)),
+            _ => None,
+        });
+        let Some((span, name, target)) = alias else {
+            return self.path;
+        };
+        let target = self.node(target).map_or(span, |node| node.span);
+        self.aliases.path(self.path, written.index(), || {
+            (span, name.as_str().into(), target)
+        })
+    }
+
+    /// Runs `f` with `path` as the current alias path.
+    pub(crate) fn within<T>(
+        &mut self,
+        path: Option<AliasPath>,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let outer = std::mem::replace(&mut self.path, path);
+        let result = f(self);
+        self.path = outer;
+        result
+    }
+
+    /// Returns the items of `sequence`, each with its alias path.
+    pub(crate) fn items(&mut self, sequence: &'a Sequence) -> Vec<Item<'a>> {
+        let document = self.document;
+        document
+            .items(sequence)
+            .iter()
+            .zip(document.written_items(sequence))
+            .filter_map(|(&id, &written)| {
+                Some(Item {
+                    node: self.node(id)?,
+                    path: self.path_to(written),
+                })
+            })
+            .collect()
     }
 
     /// Formats the start of `span` as the reference's `Pos.String()`, such

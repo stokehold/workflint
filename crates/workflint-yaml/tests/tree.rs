@@ -413,7 +413,7 @@ fn comments_on_an_alias_item_are_reachable_through_the_written_items() {
     let NodeKind::Sequence(sequence) = &document.node(root).unwrap().kind else {
         panic!("root is not a sequence");
     };
-    let [anchored, alias] = document.written_items(root)[..] else {
+    let [anchored, alias] = document.written_items(sequence)[..] else {
         panic!("the sequence does not have two items");
     };
     // `items` replaces the alias by the anchored node, which has no comment.
@@ -442,8 +442,11 @@ fn written_entries_keep_aliases_where_they_are_written() {
         };
         format!("{what} at {}:{}", pos.line, pos.column)
     };
+    let NodeKind::Mapping(mapping) = &document.node(root).unwrap().kind else {
+        panic!("root is not a mapping");
+    };
     let entries: Vec<_> = document
-        .written_entries(root)
+        .written_entries(mapping)
         .iter()
         .map(|entry| (describe(entry.key), describe(entry.value)))
         .collect();
@@ -456,17 +459,22 @@ fn written_entries_keep_aliases_where_they_are_written() {
         ]
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
     );
-    let last = document.written_entries(root)[2].value;
+    let last = document.written_entries(mapping)[2].value;
+    let NodeKind::Sequence(sequence) = &document.node(last).unwrap().kind else {
+        panic!("the last value is not a sequence");
+    };
     let items: Vec<_> = document
-        .written_items(last)
-        .into_iter()
-        .map(describe)
+        .written_items(sequence)
+        .iter()
+        .map(|&id| describe(id))
         .collect();
     assert_eq!(items, ["alias x at 3:7"]);
-    // A scalar has no written items, and a sequence has no written entries.
-    let key = document.written_entries(root)[0].key;
-    assert_eq!(document.written_items(key), []);
-    assert_eq!(document.written_entries(last), []);
+    // The lists are parallel to the resolved ones.
+    assert_eq!(
+        document.written_entries(mapping).len(),
+        document.entries(mapping).len()
+    );
+    assert_eq!(document.items(sequence).len(), 1);
 }
 
 #[test]

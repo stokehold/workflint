@@ -97,7 +97,8 @@ impl<'a> Rule<'a> for JobNeeds<'a> {
         {
             let id = simple_lowercase(need.value());
             if needs.contains(&id) {
-                cx.report(
+                cx.report_in(
+                    need.source,
                     &DUPLICATE_NEEDS,
                     need.span(),
                     format!(
@@ -126,7 +127,8 @@ impl<'a> Rule<'a> for JobNeeds<'a> {
         // reference.
         if let Some(&index) = self.index.get(id) {
             if let Some(previous) = self.nodes.get_mut(index) {
-                cx.report(
+                cx.report_in(
+                    job.key,
                     &DUPLICATE_JOB_ID,
                     job.key.span(),
                     format!(

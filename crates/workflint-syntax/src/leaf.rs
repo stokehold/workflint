@@ -7,7 +7,7 @@ use workflint_diagnostics::{SourceFile, Span};
 use workflint_yaml::{Node, NodeKind, Scalar, ScalarStyle, SourceMap, Tag};
 
 use crate::expression::{implicit, implicit_stray_closing, scan, stray_closings};
-use crate::{Placeholder, contains_expression, is_expression_assigned};
+use crate::{AliasPath, Placeholder, contains_expression, is_expression_assigned};
 
 /// A YAML scalar as a string: its decoded value and the node it comes from.
 ///
@@ -19,10 +19,15 @@ use crate::{Placeholder, contains_expression, is_expression_assigned};
 /// the `&` or `!` of the node's first property, at the opening quote of a
 /// quoted scalar, at the `|` or `>` of a block scalar, and right after the
 /// colon for an implicit null such as `key:`.
+///
+/// A string in a subtree that the parser reached through YAML aliases also
+/// has the [path](Self::alias_path) of those aliases, so a diagnostic about
+/// it can point at the alias that used it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Str<'a> {
     node: &'a Node,
     scalar: &'a Scalar,
+    path: Option<AliasPath>,
 }
 
 impl<'a> Str<'a> {
@@ -31,7 +36,11 @@ impl<'a> Str<'a> {
     #[must_use]
     pub fn new(node: &'a Node) -> Option<Self> {
         match &node.kind {
-            NodeKind::Scalar(scalar) => Some(Self { node, scalar }),
+            NodeKind::Scalar(scalar) => Some(Self {
+                node,
+                scalar,
+                path: None,
+            }),
             NodeKind::Sequence(_) | NodeKind::Mapping(_) | NodeKind::Alias(_) => None,
         }
     }
@@ -75,6 +84,20 @@ impl<'a> Str<'a> {
     #[must_use]
     pub fn node(&self) -> &'a Node {
         self.node
+    }
+
+    /// Returns the aliases through which the parser reached the string, or
+    /// `None` if it reached it without one.
+    /// [`AliasUses::labels`](crate::AliasUses::labels) turns the
+    /// path into labels.
+    #[must_use]
+    pub fn alias_path(&self) -> Option<AliasPath> {
+        self.path
+    }
+
+    /// Returns the string reached through the aliases `path`.
+    pub(crate) fn with_alias_path(self, path: Option<AliasPath>) -> Self {
+        Self { path, ..self }
     }
 
     /// Builds the source map that turns a byte offset in

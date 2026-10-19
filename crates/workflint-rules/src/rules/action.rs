@@ -114,7 +114,8 @@ fn check_docker(
 ) {
     let uri = format!("docker://{}", image.value);
     if let Some(error) = url::parse_error(&uri) {
-        cx.report(
+        cx.report_in(
+            uses.template.source,
             &INVALID_DOCKER_ACTION,
             uses.span(),
             format!(
@@ -125,7 +126,8 @@ fn check_docker(
         );
     }
     if tag.is_some_and(|tag| tag.value.is_empty()) {
-        cx.report(
+        cx.report_in(
+            uses.template.source,
             &INVALID_DOCKER_ACTION,
             uses.span(),
             format!("tag of Docker action should not be empty: {}", quote(&uri)),
@@ -135,7 +137,8 @@ fn check_docker(
 
 /// The reference's `invalidActionFormat`.
 fn report_format(uses: &StepUses<'_>, reason: &str, cx: &mut Context<'_>) {
-    cx.report(
+    cx.report_in(
+        uses.template.source,
         &INVALID_ACTION_FORMAT,
         uses.span(),
         format!(
@@ -150,7 +153,8 @@ fn check_repository(exec: &ExecAction<'_>, uses: &StepUses<'_>, cx: &mut Context
     let spec = uses.value();
     let Some(action) = popular_action(spec) else {
         if is_outdated_popular_action(spec) {
-            cx.report(
+            cx.report_in(
+                uses.template.source,
                 &OUTDATED_ACTION,
                 uses.span(),
                 format!(
@@ -218,7 +222,8 @@ pub(crate) fn check_inputs(
     for entry in entries {
         let name = entry.key.value();
         match find(entry.folded()) {
-            None => cx.report(
+            None => cx.report_in(
+                entry.key,
                 &UNDEFINED_ACTION_INPUT,
                 entry.key.span(),
                 format!(

@@ -4,9 +4,9 @@
 use std::sync::Arc;
 
 use workflint_diagnostics::quote::quote;
-use workflint_yaml::{Node, NodeId, NodeKind, Tag};
+use workflint_yaml::{Node, NodeKind, Tag};
 
-use super::{Parser, kind_name, tag_name};
+use super::{Item, Parser, kind_name, tag_name};
 use crate::rules::{
     EMPTY_SECTION, EMPTY_STRING, EXPECTED_SINGLE_EXPRESSION, INVALID_LITERAL_VALUE,
     UNEXPECTED_NODE_KIND,
@@ -24,7 +24,7 @@ impl<'a> Parser<'a, '_> {
     /// The tag is not checked, so `42`, `true`, and `~` are the strings
     /// `42`, `true`, and `~`.
     pub(crate) fn check_string(&mut self, node: &'a Node, allow_empty: bool) -> Option<Str<'a>> {
-        let Some(string) = Str::new(node) else {
+        let Some(string) = self.string(node) else {
             self.error(
                 &UNEXPECTED_NODE_KIND,
                 node.span,
@@ -69,7 +69,7 @@ impl<'a> Parser<'a, '_> {
         section: &str,
         node: &'a Node,
         allow_empty: bool,
-    ) -> Option<&'a [NodeId]> {
+    ) -> Option<Vec<Item<'a>>> {
         let NodeKind::Sequence(sequence) = &node.kind else {
             self.error(
                 &UNEXPECTED_NODE_KIND,
@@ -83,7 +83,7 @@ impl<'a> Parser<'a, '_> {
             );
             return None;
         };
-        let items = self.document.items(sequence);
+        let items = self.items(sequence);
         if !allow_empty && items.is_empty() {
             self.error(
                 &EMPTY_SECTION,
@@ -114,10 +114,8 @@ impl<'a> Parser<'a, '_> {
             return Field::Invalid { key, span };
         };
         let mut strings = Vec::with_capacity(items.len());
-        for &id in items {
-            if let Some(item) = self.node(id) {
-                strings.push(self.check_string(item, allow_item_empty));
-            }
+        for item in items {
+            strings.push(self.within(item.path, |p| p.check_string(item.node, allow_item_empty)));
         }
         Field::Valid {
             key,
@@ -174,7 +172,10 @@ impl<'a> Parser<'a, '_> {
     fn cached_template(&mut self, source: Str<'a>, condition: bool) -> Template<'a> {
         let key = (address(source.node()), condition);
         if let Some(template) = self.templates.get(&key) {
-            return template.clone();
+            // The cached template may come from another alias path.
+            let mut template = template.clone();
+            template.source = source;
+            return template;
         }
         let template = if condition {
             Template::condition(source)
@@ -190,7 +191,9 @@ impl<'a> Parser<'a, '_> {
     fn expression(&mut self, source: Str<'a>) -> Option<Expr<'a>> {
         let key = address(source.node());
         if let Some(expr) = self.expressions.get(&key) {
-            return Some(expr.clone());
+            let mut expr = expr.clone();
+            expr.source = source;
+            return Some(expr);
         }
         let expr = Expr::new(source)?;
         self.expressions.insert(key, expr.clone());
@@ -266,9 +269,10 @@ impl<'a> Parser<'a, '_> {
     ) -> Keyed<'a, Option<Template<'a>>> {
         let mut keyed = Vec::with_capacity(entries.len());
         for entry in entries {
-            let value = self
-                .check_string(entry.value, allow_empty)
-                .map(|value| self.template(value));
+            let value = self.within(entry.path, |p| {
+                p.check_string(entry.value, allow_empty)
+                    .map(|value| p.template(value))
+            });
             if let Some(name) = entry.key.string {
                 keyed.push(KeyedEntry::new(name, entry.value.span, value));
             }
@@ -280,7 +284,7 @@ impl<'a> Parser<'a, '_> {
     /// that it should be one or `expecting`. The reference's
     /// `parseExpression`, which does not check the tag.
     pub(crate) fn parse_expression(&mut self, node: &'a Node, expecting: &str) -> Option<Expr<'a>> {
-        match Str::new(node) {
+        match self.string(node) {
             Some(source) if is_expression_assigned(source.value()) => self.expression(source),
             _ => {
                 self.error(
@@ -299,7 +303,7 @@ impl<'a> Parser<'a, '_> {
     /// single `${{ }}` expression, and reports nothing otherwise. The
     /// reference's `mayParseExpression`.
     pub(crate) fn may_parse_expression(&mut self, node: &'a Node) -> Option<Expr<'a>> {
-        Str::new(node)
+        self.string(node)
             .filter(|source| *source.tag() == Tag::Str && is_expression_assigned(source.value()))
             .and_then(|source| self.expression(source))
     }
@@ -313,7 +317,7 @@ impl<'a> Parser<'a, '_> {
     /// value, such as `!!bool yes`, is false, as in the reference.
     pub(crate) fn parse_bool(&mut self, key: Option<Str<'a>>, node: &'a Node) -> Value<'a, bool> {
         let span = node.span;
-        match Str::new(node).map(|string| (string, string.tag())) {
+        match self.string(node).map(|string| (string, string.tag())) {
             Some((string, Tag::Bool)) => Value::Literal {
                 key,
                 span,
@@ -334,7 +338,7 @@ impl<'a> Parser<'a, '_> {
     /// expression. The reference's `parseInt`.
     pub(crate) fn parse_int(&mut self, key: Option<Str<'a>>, node: &'a Node) -> Value<'a, i64> {
         let span = node.span;
-        match Str::new(node).map(|string| (string, string.tag())) {
+        match self.string(node).map(|string| (string, string.tag())) {
             Some((string, Tag::Int)) => match strconv::atoi(string.value()) {
                 Ok(value) => Value::Literal { key, span, value },
                 Err(err) => {
@@ -358,7 +362,7 @@ impl<'a> Parser<'a, '_> {
     /// invalid (`docs/differences.md#nan-panic`).
     pub(crate) fn parse_float(&mut self, key: Option<Str<'a>>, node: &'a Node) -> Value<'a, f64> {
         let span = node.span;
-        match Str::new(node).map(|string| (string, string.tag())) {
+        match self.string(node).map(|string| (string, string.tag())) {
             Some((string, Tag::Float | Tag::Int)) => {
                 let value = string.value();
                 match strconv::parse_float(value) {

@@ -136,7 +136,9 @@ impl<'a> Parser<'a, '_> {
         let entries = self.parse_mapping(Label::Section("services"), node, false, false);
         let mut services = Vec::with_capacity(entries.len());
         for service in entries {
-            let container = self.parse_container(true, service.key, service.value);
+            let container = self.within(service.path, |p| {
+                p.parse_container(true, service.key, service.value)
+            });
             if let Some(id) = service.key.string {
                 services.push(KeyedEntry::new(id, service.value.span, container));
             }

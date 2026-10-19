@@ -30,7 +30,9 @@ impl<'a> Parser<'a, '_> {
     /// reference's `expression` rule checks, and each `}}` in those strings
     /// that has no opening `${{`.
     ///
-    /// A string reached through several aliases is reported once.
+    /// A string reached through several aliases is reported once for each
+    /// alias path, with labels at its aliases. Deduplication then keeps one
+    /// diagnostic with the labels of every path.
     pub(super) fn report_expressions(&mut self, workflow: &Workflow<'a>) {
         let mut found = Vec::new();
         walk(workflow, &mut |source, placeholders, strays| {
@@ -41,15 +43,18 @@ impl<'a> Parser<'a, '_> {
             // The cache shares these slices between the aliases of a
             // scalar. An empty slice has no address of its own, so the pair
             // is unique only because one of them is not empty.
-            if !seen.insert((placeholders.as_ptr().addr(), strays.as_ptr().addr())) {
+            let shared = (placeholders.as_ptr().addr(), strays.as_ptr().addr());
+            if !seen.insert((shared, source.alias_path())) {
                 continue;
             }
-            for placeholder in placeholders {
-                self.report_placeholder(source, placeholder);
-            }
-            for &offset in strays {
-                self.report_stray_closing(source, offset);
-            }
+            self.within(source.alias_path(), |p| {
+                for placeholder in placeholders {
+                    p.report_placeholder(source, placeholder);
+                }
+                for &offset in strays {
+                    p.report_stray_closing(source, offset);
+                }
+            });
         }
     }
 
@@ -780,7 +785,7 @@ on:
     }
 
     #[test]
-    fn a_string_reached_through_aliases_is_reported_once() {
+    fn a_string_reached_through_aliases_is_reported_once_with_a_label_per_alias() {
         let text = "\
 on: push
 jobs:
@@ -791,16 +796,34 @@ jobs:
   b:
     runs-on: linux
     steps: *steps
+  c:
+    runs-on: linux
+    steps: *steps
 ";
         let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
         let document = workflint_yaml::parse(&file).document.unwrap();
-        let parsed = crate::parse(&file, &document);
-        let syntax = parsed
-            .diagnostics
+        let mut diagnostics = crate::parse(&file, &document).diagnostics;
+        workflint_diagnostics::sort_and_dedup(&file, &mut diagnostics);
+        let syntax: Vec<_> = diagnostics
             .iter()
             .filter(|d| d.rule.id == "invalid-expression-syntax")
-            .count();
-        assert_eq!(syntax, 1);
+            .map(|d| {
+                d.labels
+                    .iter()
+                    .map(|label| {
+                        let pos = file.line_col(label.span.start);
+                        format!("{}:{} {}", pos.line, pos.column, label.note)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        assert_eq!(
+            syntax,
+            [[
+                "9:12 reached through alias *steps",
+                "12:12 reached through alias *steps"
+            ]]
+        );
     }
 
     /// Returns the `L:C` position of each `}}` with no opening `${{` in

@@ -140,8 +140,8 @@ pub(crate) fn check_tree(text: &str) {
                 for &item in document.items(sequence) {
                     check_id(item, &format!("an item of {what}"));
                 }
-                let written = document.written_items(id);
-                check_written(document, document.items(sequence), &written, &what);
+                let written = document.written_items(sequence);
+                check_written(document, document.items(sequence), written, &what);
             }
             NodeKind::Mapping(mapping) => {
                 for entry in document.entries(mapping) {
@@ -151,7 +151,7 @@ pub(crate) fn check_tree(text: &str) {
                 let flatten = |entries: &[workflint_yaml::Entry]| -> Vec<NodeId> {
                     entries.iter().flat_map(|e| [e.key, e.value]).collect()
                 };
-                let written = flatten(&document.written_entries(id));
+                let written = flatten(document.written_entries(mapping));
                 check_written(
                     document,
                     &flatten(document.entries(mapping)),
