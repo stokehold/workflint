@@ -1,0 +1,71 @@
+# A `${{ insert }}` key merges its mapping into the parent mapping when
+# GitHub runs the workflow.
+on: push
+env:
+  ${{ insert }}: ${{ fromJSON(vars.WORKFLOW_ENV) }}
+  NAME: workflow
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      ${{ insert }}: ${{ fromJSON(vars.JOB_ENV) }}
+    strategy:
+      matrix:
+        ${{ insert }}: ${{ fromJSON(vars.MATRIX) }}
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - ${{ insert }}: ${{ fromJSON(vars.INCLUDE) }}
+            os: windows-latest
+        # `version` may be a row of the inserted mapping.
+        exclude:
+          - os: macos-latest
+            version: 22
+    container:
+      image: node:24
+      env:
+        ${{ insert }}: ${{ fromJSON(vars.CONTAINER_ENV) }}
+    services:
+      ${{ insert }}: ${{ fromJSON(vars.SERVICES) }}
+      redis:
+        image: redis
+        env:
+          ${{ insert }}: ${{ fromJSON(vars.REDIS_ENV) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ${{ insert }}: ${{ fromJSON(vars.CHECKOUT) }}
+        env:
+          ${{ insert }}: ${{ fromJSON(vars.STEP_ENV) }}
+      # The matrix may have any row, since the inserted mapping is unknown.
+      - run: echo "$OS $VERSION"
+        env:
+          OS: ${{ matrix.os }}
+          VERSION: ${{ matrix.version }}
+  literal:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # A mapping value joins the matrix, and an `${{ insert }}` key may
+        # appear in it again.
+        ${{ insert }}:
+          node: [22, 24]
+          ${{ insert }}:
+            os: [ubuntu-latest]
+        include:
+          - ${{ insert }}:
+              experimental: true
+            node: 24
+    steps:
+      - run: echo "$NODE $OS $EXPERIMENTAL"
+        env:
+          NODE: ${{ matrix.node }}
+          OS: ${{ matrix.os }}
+          EXPERIMENTAL: ${{ matrix.experimental }}
+  required-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      # The inserted mapping may hold the required input `key`.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          ${{ insert }}: ${{ fromJSON(vars.CACHE) }}

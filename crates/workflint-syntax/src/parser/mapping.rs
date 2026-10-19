@@ -7,13 +7,14 @@ use std::fmt;
 
 use workflint_diagnostics::Span;
 use workflint_diagnostics::quote::{quote, sorted_quotes};
-use workflint_yaml::{Node, NodeKind, Tag, simple_lowercase};
+use workflint_yaml::{Entry, Node, NodeId, NodeKind, Tag, simple_lowercase};
 
 use super::{Parser, kind_name};
 use crate::rules::{
-    DUPLICATE_KEY, EMPTY_SECTION, MERGE_KEY_UNSUPPORTED, UNEXPECTED_KEY, UNEXPECTED_NODE_KIND,
+    DUPLICATE_KEY, EMPTY_SECTION, EXPECTED_SINGLE_EXPRESSION, MERGE_KEY_UNSUPPORTED,
+    UNEXPECTED_KEY, UNEXPECTED_NODE_KIND,
 };
-use crate::{AliasPath, Str};
+use crate::{AliasPath, Expr, Str};
 
 /// What messages call a mapping, the reference's `where` argument of
 /// `parseMapping`.
@@ -70,6 +71,43 @@ pub(crate) struct MapEntry<'a> {
     pub(crate) path: Option<AliasPath>,
 }
 
+/// Whether a mapping accepts `${{ insert }}` keys, and which values they
+/// may have.
+///
+/// GitHub's workflow parser reads a key written as one `${{ }}` expression
+/// in a mapping whose schema definition, or that of a mapping around it,
+/// lists the contexts its expressions may use. When it evaluates the
+/// workflow, it merges the mapping under an `${{ insert }}` key into the
+/// parent mapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Inserts {
+    /// An `${{ insert }}` key is an ordinary key.
+    No,
+    /// The value must be one `${{ }}` expression. GitHub reads the values
+    /// of the mapping as strings, so it rejects a mapping.
+    Expression,
+    /// The value may also be a mapping, whose entries join the parent
+    /// mapping.
+    MappingOrExpression,
+}
+
+/// The entries of a mapping and the expressions under its `${{ insert }}`
+/// keys.
+#[derive(Debug, Default)]
+pub(crate) struct Mapping<'a> {
+    /// The entries, with those of each mapping under an `${{ insert }}` key
+    /// in place of that key.
+    pub(crate) entries: Vec<MapEntry<'a>>,
+    /// The values of `${{ insert }}` keys written as one `${{ }}`
+    /// expression, in source order.
+    pub(crate) inserts: Vec<Expr<'a>>,
+}
+
+/// The entries of a mapping, each with the entry as written, which
+/// [`Document::written_entries`](workflint_yaml::Document::written_entries)
+/// gives.
+type Entries<'a> = std::iter::Zip<std::slice::Iter<'a, Entry>, std::slice::Iter<'a, Entry>>;
+
 /// A section whose keys a table of [`KeySpec`] values describes.
 pub(crate) trait Section: Sized + 'static {
     /// The AST node that the section's keys fill.
@@ -87,7 +125,22 @@ pub(crate) struct KeySpec<S: Section> {
 
 impl<'a> Parser<'a, '_> {
     /// Walks the mapping `node` and returns its entries, as the reference's
-    /// `parseMapping` yields them.
+    /// `parseMapping` yields them. An `${{ insert }}` key is an ordinary
+    /// key; [`parse_mapping_with`](Self::parse_mapping_with) describes the
+    /// checks.
+    pub(crate) fn parse_mapping(
+        &mut self,
+        label: Label<'_>,
+        node: &'a Node,
+        allow_empty: bool,
+        case_sensitive: bool,
+    ) -> Vec<MapEntry<'a>> {
+        self.parse_mapping_with(label, node, allow_empty, case_sensitive, Inserts::No)
+            .entries
+    }
+
+    /// Walks the mapping `node` and returns its entries, and the
+    /// expressions under its `${{ insert }}` keys if `inserts` accepts them.
     ///
     /// The checks come in the reference's order:
     ///
@@ -99,25 +152,32 @@ impl<'a> Parser<'a, '_> {
     ///    entry is kept with the key `""`.
     /// 4. A `<<` key, quoted or not, is reported as an unsupported merge key
     ///    and skipped.
-    /// 5. A key that repeats an earlier one is reported and skipped, so its
+    /// 5. An `${{ insert }}` key that `inserts` accepts is not an entry. A
+    ///    value written as one `${{ }}` expression is kept in
+    ///    [`Mapping::inserts`]. The entries of a mapping value, if
+    ///    `inserts` accepts one, are walked in its place, so they go
+    ///    through these checks as if the parent mapping had them. Any other
+    ///    value is reported.
+    /// 6. A key that repeats an earlier one is reported and skipped, so its
     ///    value is never parsed. Keys of a section that is not
     ///    `case_sensitive` are compared after [`simple_lowercase`].
-    /// 6. A mapping with no entry left is an empty section, reported unless
-    ///    `allow_empty`.
-    pub(crate) fn parse_mapping(
+    /// 7. A mapping with no entry left and no `${{ insert }}` key is an
+    ///    empty section, reported unless `allow_empty`.
+    pub(crate) fn parse_mapping_with(
         &mut self,
         label: Label<'_>,
         node: &'a Node,
         allow_empty: bool,
         case_sensitive: bool,
-    ) -> Vec<MapEntry<'a>> {
+        inserts: Inserts,
+    ) -> Mapping<'a> {
         let mapping = match &node.kind {
             NodeKind::Mapping(mapping) => mapping,
             NodeKind::Scalar(scalar) if scalar.tag == Tag::Null => {
                 if !allow_empty {
                     self.empty_mapping(label, node);
                 }
-                return Vec::new();
+                return Mapping::default();
             }
             NodeKind::Scalar(_) | NodeKind::Sequence(_) | NodeKind::Alias(_) => {
                 self.error(
@@ -128,22 +188,38 @@ impl<'a> Parser<'a, '_> {
                         kind_name(node)
                     ),
                 );
-                return Vec::new();
+                return Mapping::default();
             }
         };
         let document = self.document;
         // The span of the first key with each ID.
         let mut first: BTreeMap<Cow<'a, str>, Span> = BTreeMap::new();
-        let mut entries = Vec::new();
-        for (entry, written) in document
-            .entries(mapping)
-            .iter()
-            .zip(document.written_entries(mapping))
+        let mut walked = Mapping::default();
+        // Whether the mapping has an `${{ insert }}` key, valid or not.
+        let mut has_insert = false;
+        // The mappings being walked, each with its alias path: `node`, and
+        // the mapping values of the `${{ insert }}` keys in it, as deep as
+        // they nest. A recursive alias stays an alias node, so the walk
+        // ends.
+        let mut pending = vec![(
+            document
+                .entries(mapping)
+                .iter()
+                .zip(document.written_entries(mapping)),
+            self.path,
+        )];
+        while let Some((next, level)) = pending
+            .last_mut()
+            .map(|(entries, level)| (entries.next(), *level))
         {
+            let Some((entry, written)) = next else {
+                pending.pop();
+                continue;
+            };
             let Some(key_node) = self.node(entry.key) else {
                 continue;
             };
-            let key_path = self.path_to(written.key);
+            let key_path = self.within(level, |p| p.path_to(written.key));
             let key = Key {
                 string: Str::new(key_node).map(|key| key.with_alias_path(key_path)),
                 span: key_node.span,
@@ -155,6 +231,12 @@ impl<'a> Parser<'a, '_> {
                     key.span,
                     "GitHub Actions does not support YAML merge key \"<<\"".to_owned(),
                 );
+                continue;
+            }
+            if inserts != Inserts::No && is_insert(key.value()) {
+                has_insert = true;
+                let path = self.within(level, |p| p.path_to(written.value));
+                pending.extend(self.insert(label, entry.value, path, inserts, &mut walked));
                 continue;
             }
             let id = if case_sensitive {
@@ -180,18 +262,69 @@ impl<'a> Parser<'a, '_> {
                 continue;
             };
             first.insert(id.clone(), key.span);
-            let path = self.path_to(written.value);
-            entries.push(MapEntry {
+            let path = self.within(level, |p| p.path_to(written.value));
+            walked.entries.push(MapEntry {
                 id,
                 key,
                 value,
                 path,
             });
         }
-        if !allow_empty && entries.is_empty() {
+        if !allow_empty && walked.entries.is_empty() && !has_insert {
             self.empty_mapping(label, node);
         }
-        entries
+        walked
+    }
+
+    /// Takes `id`, the value of an `${{ insert }}` key, reached through the
+    /// aliases `path`. Returns the entries of a mapping value that `inserts`
+    /// accepts, to walk next, keeps a value written as one `${{ }}`
+    /// expression in `walked`, and reports any other value.
+    fn insert(
+        &mut self,
+        label: Label<'_>,
+        id: NodeId,
+        path: Option<AliasPath>,
+        inserts: Inserts,
+        walked: &mut Mapping<'a>,
+    ) -> Option<(Entries<'a>, Option<AliasPath>)> {
+        let document = self.document;
+        let value = self.node(id)?;
+        if let (NodeKind::Mapping(inserted), Inserts::MappingOrExpression) = (&value.kind, inserts)
+        {
+            let entries = document
+                .entries(inserted)
+                .iter()
+                .zip(document.written_entries(inserted));
+            return Some((entries, path));
+        }
+        match self.within(path, |p| {
+            p.string(value).and_then(|value| p.expression(value))
+        }) {
+            Some(expr) => walked.inserts.push(expr),
+            None => self.invalid_insert(label, value, inserts),
+        }
+        None
+    }
+
+    /// Reports `value`, the value of an `${{ insert }}` key, which is
+    /// neither one `${{ }}` expression nor a mapping that `inserts` accepts.
+    fn invalid_insert(&mut self, label: Label<'_>, value: &Node, inserts: Inserts) {
+        let or_mapping = match inserts {
+            Inserts::MappingOrExpression => " or mapping value",
+            Inserts::No | Inserts::Expression => "",
+        };
+        let found = match value.kind {
+            NodeKind::Scalar(_) => "plain text",
+            NodeKind::Sequence(_) | NodeKind::Mapping(_) | NodeKind::Alias(_) => kind_name(value),
+        };
+        self.error(
+            &EXPECTED_SINGLE_EXPRESSION,
+            value.span,
+            format!(
+                "expecting a single ${{{{...}}}} expression{or_mapping} for \"${{{{ insert }}}}\" key in {label}, but found {found} node"
+            ),
+        );
     }
 
     fn empty_mapping(&mut self, label: Label<'_>, node: &Node) {
@@ -248,6 +381,15 @@ impl<'a> Parser<'a, '_> {
         };
         self.error(&UNEXPECTED_KEY, key.span, message);
     }
+}
+
+/// Returns whether `key` is the `insert` directive of GitHub's template
+/// reader: one `${{ }}` with only `insert` in it, spaces aside. The
+/// directive is case-sensitive.
+fn is_insert(key: &str) -> bool {
+    key.strip_prefix("${{")
+        .and_then(|rest| rest.strip_suffix("}}"))
+        .is_some_and(|inner| inner.trim() == "insert")
 }
 
 #[cfg(test)]
@@ -426,6 +568,124 @@ mod tests {
             ]
         );
         assert_eq!(walk("{}\n", true, true), Vec::<String>::new());
+    }
+
+    /// Walks the root of `text` as the section `"test"` with `inserts`, and
+    /// returns the diagnostics, one `id=key` line per entry, and one
+    /// `insert=value` line per insert.
+    fn walk_inserts(text: &str, inserts: Inserts) -> Vec<String> {
+        parse_with(text, |parser, root| {
+            let mapping =
+                parser.parse_mapping_with(Label::Section("test"), root, false, false, inserts);
+            let entries = mapping
+                .entries
+                .iter()
+                .map(|entry| format!("{}={}", entry.id, entry.key.value()));
+            let inserts = mapping
+                .inserts
+                .iter()
+                .map(|expr| format!("insert={}", expr.source.value()));
+            entries.chain(inserts).collect()
+        })
+    }
+
+    #[test]
+    fn an_insert_expression_is_kept_apart_from_the_entries() {
+        for inserts in [Inserts::Expression, Inserts::MappingOrExpression] {
+            assert_eq!(
+                walk_inserts("a: 1\n${{ insert }}: ${{ fromJSON(x) }}\nb: 2\n", inserts),
+                ["a=a", "b=b", "insert=${{ fromJSON(x) }}"]
+            );
+        }
+    }
+
+    #[test]
+    fn the_insert_directive_allows_spaces_but_not_other_text_or_case() {
+        let text = "${{insert}}: ${{ a }}\n'${{  insert  }}': ${{ b }}\n${{ INSERT }}: c\n${{ insert x }}: d\n";
+        assert_eq!(
+            walk_inserts(text, Inserts::Expression),
+            [
+                "${{ insert }}=${{ INSERT }}",
+                "${{ insert x }}=${{ insert x }}",
+                "insert=${{ a }}",
+                "insert=${{ b }}",
+            ]
+        );
+    }
+
+    #[test]
+    fn the_entries_of_an_inserted_mapping_join_the_parent_at_any_depth() {
+        let text = "\
+a: 1
+${{ insert }}:
+  b: 2
+  ${{ insert }}:
+    c: 3
+  ${{ insert }}: ${{ x }}
+d: 4
+";
+        assert_eq!(
+            walk_inserts(text, Inserts::MappingOrExpression),
+            ["a=a", "b=b", "c=c", "d=d", "insert=${{ x }}"]
+        );
+    }
+
+    #[test]
+    fn an_inserted_key_that_repeats_a_key_of_the_parent_is_a_duplicate() {
+        assert_eq!(
+            walk_inserts(
+                "a: 1\n${{ insert }}:\n  A: 2\n",
+                Inserts::MappingOrExpression
+            ),
+            [
+                r#"3:3: key "A" is duplicated in "test" section. previously defined at line:1,col:1. note that this key is case insensitive [duplicate-key]"#,
+                "a=a",
+            ]
+        );
+    }
+
+    #[test]
+    fn an_insert_value_that_is_not_accepted_is_reported() {
+        assert_eq!(
+            walk_inserts("${{ insert }}:\n  a: 1\n", Inserts::Expression),
+            [
+                r#"2:3: expecting a single ${{...}} expression for "${{ insert }}" key in "test" section, but found mapping node [expected-single-expression]"#
+            ]
+        );
+        assert_eq!(
+            walk_inserts(
+                "${{ insert }}: [a]\nb: text\n",
+                Inserts::MappingOrExpression
+            ),
+            [
+                r#"1:16: expecting a single ${{...}} expression or mapping value for "${{ insert }}" key in "test" section, but found sequence node [expected-single-expression]"#,
+                "b=b",
+            ]
+        );
+        assert_eq!(
+            walk_inserts("${{ insert }}: text\n", Inserts::Expression),
+            [
+                r#"1:16: expecting a single ${{...}} expression for "${{ insert }}" key in "test" section, but found plain text node [expected-single-expression]"#
+            ]
+        );
+    }
+
+    #[test]
+    fn an_insert_of_its_own_mapping_ends_at_the_recursive_alias() {
+        let found = walk_inserts(
+            "&m\na: 1\n${{ insert }}: *m\n",
+            Inserts::MappingOrExpression,
+        );
+        assert_eq!(found.last().unwrap(), "a=a");
+        assert!(found[0].contains("but found alias node"), "{found:#?}");
+    }
+
+    #[test]
+    fn an_insert_key_is_an_ordinary_key_where_inserts_are_not_accepted() {
+        assert_eq!(
+            walk_inserts("${{ insert }}: ${{ x }}\n", Inserts::No),
+            ["${{ insert }}=${{ insert }}"]
+        );
     }
 
     fn unexpected(expected: &[&str], section: &str) -> Vec<String> {

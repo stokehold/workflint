@@ -61,9 +61,12 @@ pub(super) fn combinations<'m, 'a>(matrix: &'m Matrix<'a>) -> Option<Vec<Combina
 }
 
 /// Returns every combination of the row values, with the first row changing slowest, or `None`
-/// if a row is not a list of values or there are more than [`MAX_VALUES`] combinations. A matrix
-/// without rows has no combinations.
+/// if a row is not a list of values, the matrix has an `${{ insert }}` expression, or there are
+/// more than [`MAX_VALUES`] combinations. A matrix without rows has no combinations.
 fn rows<'m, 'a>(matrix: &'m Matrix<'a>) -> Option<Vec<Combination<'m, 'a>>> {
+    if !matrix.rows.inserts().is_empty() {
+        return None;
+    }
     if matrix.rows.is_empty() {
         return Some(Vec::new());
     }
@@ -90,7 +93,8 @@ fn rows<'m, 'a>(matrix: &'m Matrix<'a>) -> Option<Vec<Combination<'m, 'a>>> {
 }
 
 /// Returns the items of `include` or `exclude` as lists of folded keys and values, or `None` if
-/// the section or one of its items is an expression or invalid.
+/// the section or one of its items is an expression or invalid, or an item has an
+/// `${{ insert }}` expression.
 fn items<'m, 'a>(
     section: &'m Value<'a, std::sync::Arc<[MatrixCombination<'a>]>>,
 ) -> Option<Vec<Combination<'m, 'a>>> {
@@ -102,13 +106,15 @@ fn items<'m, 'a>(
     items
         .iter()
         .map(|item| match item {
-            MatrixCombination::Assigns { assigns, .. } => Some(
+            MatrixCombination::Assigns { assigns, .. } if assigns.inserts().is_empty() => Some(
                 assigns
                     .iter()
                     .map(|assign| (assign.folded(), &assign.value))
                     .collect(),
             ),
-            MatrixCombination::Expression(_) | MatrixCombination::Invalid(_) => None,
+            MatrixCombination::Assigns { .. }
+            | MatrixCombination::Expression(_)
+            | MatrixCombination::Invalid(_) => None,
         })
         .collect()
 }

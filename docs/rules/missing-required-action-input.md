@@ -42,3 +42,7 @@ jobs:
           path: ~/.npm
           key: npm-${{ hashFiles('package-lock.json') }}
 ```
+
+## Differences from actionlint
+
+- [`${{ insert }}` as a mapping key](../differences.md#insert-mapping-key)

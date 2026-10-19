@@ -6,7 +6,7 @@ use std::sync::Arc;
 use workflint_diagnostics::Span;
 use workflint_yaml::simple_lowercase;
 
-use crate::Str;
+use crate::{Expr, Str};
 
 /// A collection keyed by case-insensitive names, such as jobs, `env`,
 /// `with`, `outputs`, `secrets`, `services`, matrix rows, permission
@@ -17,6 +17,12 @@ use crate::Str;
 /// ([`simple_lowercase`]), which lookups compare. [`get`](Self::get) returns
 /// the first entry with a name, so a duplicate the parser has reported
 /// never shadows the entry before it.
+///
+/// In the mappings where GitHub accepts an `${{ insert }}` key, such as
+/// `env` and `with`, a value written as one `${{ }}` expression under that
+/// key is one of the collection's [inserts](Self::inserts). GitHub merges
+/// the mapping it evaluates to into the collection, so the entries are not
+/// all the names the collection has when the workflow runs.
 ///
 /// Cloning is cheap: clones share their entries. The parser can reuse the
 /// collection it built for an anchored mapping at every alias of it, which
@@ -31,19 +37,31 @@ struct Inner<'a, T> {
     entries: Vec<KeyedEntry<'a, T>>,
     /// Indexes into `entries`, sorted by folded key and then by index.
     sorted: Vec<u32>,
+    inserts: Vec<Expr<'a>>,
 }
 
 impl<'a, T> Keyed<'a, T> {
     /// Collects `entries`, keeping their order.
     #[must_use]
     pub fn new(entries: Vec<KeyedEntry<'a, T>>) -> Self {
+        Self::with_inserts(entries, Vec::new())
+    }
+
+    /// Collects `entries`, keeping their order, and the expressions under
+    /// `${{ insert }}` keys, in source order.
+    #[must_use]
+    pub fn with_inserts(entries: Vec<KeyedEntry<'a, T>>, inserts: Vec<Expr<'a>>) -> Self {
         let mut sorted: Vec<u32> = (0..entries.len())
             .map_while(|index| u32::try_from(index).ok())
             .collect();
         // Stable, so equal folded keys stay in source order.
         sorted.sort_by(|&a, &b| folded_at(&entries, a).cmp(folded_at(&entries, b)));
         Self {
-            inner: Arc::new(Inner { entries, sorted }),
+            inner: Arc::new(Inner {
+                entries,
+                sorted,
+                inserts,
+            }),
         }
     }
 
@@ -88,6 +106,16 @@ impl<'a, T> Keyed<'a, T> {
         self.inner.entries.is_empty()
     }
 
+    /// Returns the expressions written under `${{ insert }}` keys, in
+    /// source order. GitHub merges the mapping that each one evaluates to
+    /// into the collection. An `${{ insert }}` key whose value is a mapping
+    /// is not here: the parser adds the mapping's entries to the
+    /// collection's own.
+    #[must_use]
+    pub fn inserts(&self) -> &[Expr<'a>] {
+        &self.inner.inserts
+    }
+
     /// Returns whether `other` is a clone of the collection, which shares
     /// its entries.
     pub(crate) fn shares_entries(&self, other: &Self) -> bool {
@@ -124,7 +152,7 @@ impl<T> Default for Keyed<'_, T> {
 
 impl<T: PartialEq> PartialEq for Keyed<'_, T> {
     fn eq(&self, other: &Self) -> bool {
-        self.entries() == other.entries()
+        self.entries() == other.entries() && self.inserts() == other.inserts()
     }
 }
 

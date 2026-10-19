@@ -66,3 +66,4 @@ jobs:
 ## Differences from actionlint
 
 - [`exclude` is matched against the matrix rows only](../differences.md#matrix-exclude-before-include)
+- [`${{ insert }}` as a mapping key](../differences.md#insert-mapping-key)

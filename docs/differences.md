@@ -303,6 +303,23 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Status: implemented in the parser, the `events` rule (M4.13), the `runner-label` rule (M4.16), the `action` rule (M4.17), the `permissions` rule (M4.22), and the `shell-name` rule (M4.23).
 - Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
 
+<a id="insert-mapping-key"></a>
+### `${{ insert }}` as a mapping key
+
+- Upstream: a key written as `${{ insert }}` is an ordinary key. In `env` it is a variable name, so the `expression` rule reports `undefined variable "insert"`. In a step's `with` it is an input, so the `action` rule reports `input "${{ insert }}" is not defined`. In `matrix` it is a row, so a property of the inserted mapping, such as `matrix.version`, is not defined. A mapping value gets a node-kind error, such as `expected scalar node for string value but found mapping node`.
+- workflint: GitHub's workflow parser treats `${{ insert }}` as a directive: when it evaluates the workflow, it merges the mapping under the key into the parent mapping. workflint accepts the key in these mappings:
+  - `env` of the workflow, a job, a step, a job's container, and a service. The value must be one `${{ }}` expression that evaluates to an object.
+  - `with` of a step. The value must be one expression.
+  - `services` of a job. The value must be one expression.
+  - `strategy.matrix`, and each element of its `include` and `exclude`. The value may also be a mapping, which may hold another `${{ insert }}` key.
+
+  The entries of a mapping value are checked as if the parent mapping had them, so a duplicate of a parent key is reported. An expression is checked with the contexts of its mapping and must evaluate to an object. A matrix with an expression accepts any property in `matrix`, and its `exclude` is not checked against the rows. A step whose `with` has an expression is not checked for missing required inputs. Any other value of the key is reported, with `expecting a single ${{...}} expression for "${{ insert }}" key in "env" section, but found mapping node` and similar messages. In every other mapping, `${{ insert }}` stays an ordinary key, as upstream.
+- Why: the runner merges the mapping, so the upstream errors are false positives. In the runner's copy of GitHub's parser, `TemplateReader.HandleMappingWithWellKnownProperties` and `HandleMappingWithAllLooseProperties` accept an expression key where the mapping's schema definition, or one around it, lists allowed contexts, and `TemplateUnraveler.StartMappingInsertion` merges the mapping. The schema is `workflow-v1.0.json` in actions/runner and actions/languageservices. It reads the values of `env`, `with`, and `services` as strings or containers, so a literal mapping there is an error on GitHub too.
+- Upstream issue: #349.
+- Milestone: M4 (M4.28).
+- Status: implemented. GitHub also accepts the key in `strategy`, a job's `container` and its `credentials`, a service's mapping, a job's `defaults.run`, `concurrency`, `environment`, and the mapping form of `runs-on`. workflint still reports it there, as upstream, until [#215](https://github.com/stokehold/workflint/issues/215).
+- Fixtures: `workflint/ok/insert_mapping_key.yaml`, `workflint/err/insert_mapping_key`.
+
 <a id="typed-decoding-edge-cases"></a>
 ### Rare inputs to the typed decoding of local metadata
 

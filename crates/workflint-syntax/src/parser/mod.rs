@@ -37,7 +37,7 @@ use workflint_yaml::{Alias, Document, Node, NodeId, NodeKind, Sequence, Tag};
 use crate::alias::AliasTable;
 use crate::{AliasPath, Expr, Str, Template, Workflow};
 
-pub(crate) use mapping::{Key, KeySpec, Label, MapEntry, Section};
+pub(crate) use mapping::{Inserts, Key, KeySpec, Label, MapEntry, Section};
 
 /// The result of [`parse`].
 #[derive(Debug, Clone, PartialEq)]

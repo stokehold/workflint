@@ -11,7 +11,8 @@
 use workflint_yaml::{Node, NodeKind};
 
 use super::mapping::Key;
-use super::{KeySpec, Label, MapEntry, Parser, Section};
+use super::mapping::Mapping;
+use super::{Inserts, KeySpec, Label, MapEntry, Parser, Section};
 use crate::rules::MISSING_REQUIRED_KEY;
 use crate::{
     Concurrency, Defaults, DefaultsRun, Env, EnvVar, Environment, Field, Keyed, KeyedEntry,
@@ -122,7 +123,8 @@ impl<'a> Parser<'a, '_> {
     /// scalar too, so it gets that message rather than the empty-section
     /// one, as in the reference. Anything else is a case-insensitive
     /// mapping of names to strings that may be empty, and must have
-    /// entries.
+    /// entries or an `${{ insert }}` key, whose value must be one
+    /// expression.
     pub(crate) fn parse_env(&mut self, key: Key<'a>, node: &'a Node) -> Value<'a, Env<'a>> {
         let key = key.string;
         if let NodeKind::Scalar(_) = node.kind {
@@ -134,8 +136,14 @@ impl<'a> Parser<'a, '_> {
                 },
             };
         }
-        let entries = self.parse_mapping(Label::Section("env"), node, false, false);
-        let vars = self.env_vars(entries);
+        let mapping = self.parse_mapping_with(
+            Label::Section("env"),
+            node,
+            false,
+            false,
+            Inserts::Expression,
+        );
+        let vars = self.env_vars(mapping);
         match node.kind {
             NodeKind::Mapping(_) => Value::Literal {
                 key,
@@ -252,9 +260,9 @@ impl<'a> Parser<'a, '_> {
 
     /// Collects the variables of `env`, a case-insensitive mapping of names
     /// to strings that may be empty. See [`keyed_strings`](Self::keyed_strings).
-    fn env_vars(&mut self, entries: Vec<MapEntry<'a>>) -> Env<'a> {
-        let mut vars = Vec::with_capacity(entries.len());
-        for entry in entries {
+    fn env_vars(&mut self, mapping: Mapping<'a>) -> Env<'a> {
+        let mut vars = Vec::with_capacity(mapping.entries.len());
+        for entry in mapping.entries {
             let value = self.within(entry.path, |p| {
                 p.check_string(entry.value, true)
                     .map(|value| p.template(value))
@@ -268,7 +276,7 @@ impl<'a> Parser<'a, '_> {
                 ));
             }
         }
-        Keyed::new(vars)
+        Keyed::with_inserts(vars, mapping.inserts)
     }
 
     /// Collects the entries of a case-insensitive mapping of strings, such

@@ -120,6 +120,7 @@ on:
     versions: ['${{ github }}']
 env:
   ${{ env }}: ${{ env }}
+  ${{ insert }}: ${{ job }}
 defaults:
   run:
     shell: ${{ github }}
@@ -145,11 +146,14 @@ jobs:
       matrix:
         r: ['${{ env }}', {k: ['${{ env }}']}]
         e: ${{ env }}
+        ${{ insert }}: ${{ env }}
         include:
           - r: ${{ env }}
+            ${{ insert }}: ${{ env }}
           - ${{ env }}
         exclude:
           - r: [{k: '${{ env }}'}]
+            ${{ insert }}: ${{ env }}
           - ${{ env }}
       fail-fast: ${{ env }}
       max-parallel: ${{ env }}
@@ -160,6 +164,7 @@ jobs:
       credentials: ${{ job }}
       env:
         ${{ steps }}: ${{ steps }}
+        ${{ insert }}: ${{ steps }}
       ports: ['${{ env }}']
       volumes: ['${{ env }}']
       options: ${{ env }}
@@ -193,8 +198,10 @@ jobs:
       - uses: ${{ github }}
         with:
           i: ${{ success() }}
+          ${{ insert }}: ${{ success() }}
         env:
           ${{ success() }}: ${{ success() }}
+          ${{ insert }}: ${{ success() }}
       - uses: docker://alpine
         with:
           entrypoint: ${{ success() }}
@@ -207,6 +214,7 @@ jobs:
       cancel-in-progress: ${{ env }}
     env:
       ${{ env }}: ${{ env }}
+      ${{ insert }}: ${{ env }}
     container: ${{ env }}
     services: ${{ env }}
     environment: ${{ env }}
@@ -221,11 +229,13 @@ jobs:
         username: ${{ job }}
         password: ${{ job }}
     services:
+      ${{ insert }}: ${{ env }}
       redis:
         image: redis
         credentials: ${{ job }}
         env:
           ${{ steps }}: ${{ steps }}
+          ${{ insert }}: ${{ steps }}
         ports: ['${{ env }}']
         volumes: ['${{ env }}']
         options: ${{ env }}
@@ -266,10 +276,16 @@ jobs:
       - run: echo
 ";
 
+/// The key whose value GitHub merges into its mapping. It is not an expression of its own.
+const INSERT: &str = "${{ insert }}";
+
 /// Returns the position of the first token of each expression in `text`: just after `${{ `, or
-/// after `if: ` for a condition written without `${{ }}`.
+/// after `if: ` for a condition written without `${{ }}`. An `${{ insert }}` key is not one.
 fn expression_starts(text: &str) -> BTreeSet<String> {
-    let explicit = text.match_indices("${{ ").map(|(at, _)| at + 4);
+    let explicit = text
+        .match_indices("${{ ")
+        .filter(|(at, _)| !text[*at..].starts_with(INSERT))
+        .map(|(at, _)| at + 4);
     let implicit = text
         .match_indices("if: ")
         .map(|(at, _)| at + 4)
@@ -382,7 +398,9 @@ jobs:
 fn every_placeholder_that_the_parser_reports_errors_in_is_checked_by_the_rule() {
     // Each expression reads a variable or calls a function that does not exist, so the rule
     // reports each one it checks, whatever the workflow key.
-    let text = EVERY_LOCATION.replace("${{ ", "${{ undefined_");
+    let text = EVERY_LOCATION
+        .replace("${{ ", "${{ undefined_")
+        .replace("${{ undefined_insert }}", INSERT);
     let text = text
         .replace("if: env\n", "if: undefined_env\n")
         .replace("if: secrets\n", "if: undefined_secrets\n");

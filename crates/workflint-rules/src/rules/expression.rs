@@ -208,6 +208,9 @@ impl<'a> Rule<'a> for Expression<'a> {
         if let Value::Expression { expr, .. } = &job.services {
             services.object(cx, expr, "services");
         }
+        for expr in job.services.literal().into_iter().flat_map(Keyed::inserts) {
+            services.object(cx, expr, "services");
+        }
         for service in job.services.literal().into_iter().flatten() {
             self.container(
                 cx,
@@ -253,6 +256,9 @@ impl<'a> Rule<'a> for Expression<'a> {
                     } else {
                         with.template(cx, value);
                     }
+                }
+                for expr in action.inputs.value().into_iter().flat_map(Keyed::inserts) {
+                    with.object(cx, expr, "with");
                 }
                 with.string(cx, &action.entrypoint);
                 with.string(cx, &action.args);
@@ -494,6 +500,9 @@ impl Expression<'_> {
                     if let Some(value) = &var.value.value {
                         checker.template(cx, value);
                     }
+                }
+                for expr in value.inserts() {
+                    checker.object(cx, expr, "env");
                 }
             }
             Value::Absent | Value::Invalid { .. } => {}
@@ -933,7 +942,8 @@ impl Checker {
     /// `exclude`, an array for a row and for `include`, and an array of objects for `exclude`.
     ///
     /// Each row has the merged type of its values, and `include` adds the properties of its
-    /// elements or merges them into the rows. `exclude` is checked but adds nothing. The
+    /// elements or merges them into the rows. An `${{ insert }}` expression in the matrix or in
+    /// an element of `include` must be an object, and makes the matrix accept any property. `exclude` is checked but adds nothing. The
     /// reference does not check an element of `include` written as one `${{ }}`, or merge its
     /// type (`docs/differences.md#matrix-include-expressions`).
     fn matrix(&self, cx: &mut Context<'_>, matrix: &Value<'_, Matrix<'_>>) -> Option<ObjectTy> {
@@ -958,6 +968,9 @@ impl Checker {
                             for assign in assigns {
                                 self.raw_value(cx, &assign.value);
                             }
+                            for expr in assigns.inserts() {
+                                self.object(cx, expr, "exclude");
+                            }
                         }
                         MatrixCombination::Invalid(_) => {}
                     }
@@ -971,6 +984,12 @@ impl Checker {
             .iter()
             .map(|row| (row.folded().to_owned(), self.matrix_row(cx, &row.value)));
         let mut ty = Ty::strict(rows);
+        if !matrix.rows.inserts().is_empty() {
+            for expr in matrix.rows.inserts() {
+                self.object(cx, expr, "matrix");
+            }
+            ty = Ty::loose(object_props(&ty));
+        }
         match &matrix.include {
             Value::Expression { expr, .. } => {
                 // The merge of an object with anything but an object is `any`.
@@ -1008,7 +1027,14 @@ impl Checker {
                                 };
                                 props.insert(assign.folded().to_owned(), merged);
                             }
-                            ty = with_props(&ty, props);
+                            ty = if assigns.inserts().is_empty() {
+                                with_props(&ty, props)
+                            } else {
+                                for expr in assigns.inserts() {
+                                    self.object(cx, expr, "include");
+                                }
+                                Ty::loose(props)
+                            };
                         }
                         MatrixCombination::Invalid(_) => {}
                     }

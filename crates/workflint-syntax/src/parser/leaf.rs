@@ -188,7 +188,7 @@ impl<'a> Parser<'a, '_> {
 
     /// Parses `source` as a single expression, or returns it from the
     /// cache. Returns `None` if `source` is not a single expression.
-    fn expression(&mut self, source: Str<'a>) -> Option<Expr<'a>> {
+    pub(super) fn expression(&mut self, source: Str<'a>) -> Option<Expr<'a>> {
         let key = address(source.node());
         if let Some(expr) = self.expressions.get(&key) {
             let mut expr = expr.clone();
@@ -261,10 +261,12 @@ impl<'a> Parser<'a, '_> {
     /// Collects the entries of a case-insensitive mapping of strings with
     /// placeholders, such as `with` or `outputs`. A value that is not a
     /// string, or is empty unless `allow_empty`, is reported and kept as
-    /// `None`. See [`keyed_strings`](Self::keyed_strings).
+    /// `None`. See [`keyed_strings`](Self::keyed_strings). `inserts` are
+    /// the expressions under the mapping's `${{ insert }}` keys.
     pub(crate) fn keyed_templates(
         &mut self,
         entries: Vec<MapEntry<'a>>,
+        inserts: Vec<Expr<'a>>,
         allow_empty: bool,
     ) -> Keyed<'a, Option<Template<'a>>> {
         let mut keyed = Vec::with_capacity(entries.len());
@@ -277,7 +279,7 @@ impl<'a> Parser<'a, '_> {
                 keyed.push(KeyedEntry::new(name, entry.value.span, value));
             }
         }
-        Keyed::new(keyed)
+        Keyed::with_inserts(keyed, inserts)
     }
 
     /// Parses `node` as a single `${{ }}` expression, and otherwise reports

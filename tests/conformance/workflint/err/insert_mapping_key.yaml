@@ -1,0 +1,28 @@
+on: push
+# GitHub accepts no expression key in the workflow's `defaults.run` or in
+# `permissions`.
+defaults:
+  run:
+    ${{ insert }}: ${{ fromJSON(vars.DEFAULTS) }}
+permissions:
+  ${{ insert }}: ${{ fromJSON(vars.PERMISSIONS) }}
+env:
+  # GitHub reads an `env` value as a string, so the inserted mapping must
+  # come from an expression.
+  ${{ insert }}:
+    NAME: value
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ${{ insert }}: [ubuntu-latest]
+        os: [macos-latest]
+    steps:
+      - run: echo
+        env:
+          ${{ insert }}: not an expression
+      # The expression must evaluate to a mapping.
+      - run: echo
+        env:
+          ${{ insert }}: ${{ 'text' }}

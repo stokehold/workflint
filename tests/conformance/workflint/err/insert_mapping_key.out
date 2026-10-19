@@ -1,0 +1,6 @@
+test.yaml:6:5: unexpected key "${{ insert }}" for "run" section. expected one of "shell", "working-directory" [syntax-check]
+test.yaml:8:3: unknown permission scope "${{ insert }}". all available permission scopes are "actions", "artifact-metadata", "attestations", "checks", "contents", "deployments", "discussions", "id-token", "issues", "models", "packages", "pages", "pull-requests", "repository-projects", "security-events", "statuses" [permissions]
+test.yaml:13:5: expecting a single ${{...}} expression for "${{ insert }}" key in "env" section, but found mapping node [syntax-check]
+test.yaml:19:24: expecting a single ${{...}} expression or mapping value for "${{ insert }}" key in "matrix" section, but found sequence node [syntax-check]
+test.yaml:24:26: expecting a single ${{...}} expression for "${{ insert }}" key in "env" section, but found plain text node [syntax-check]
+test.yaml:28:26: type of expression at "env" must be object but found type string [expression]

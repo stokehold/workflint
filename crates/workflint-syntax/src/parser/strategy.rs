@@ -13,10 +13,11 @@ use workflint_diagnostics::quote::quote;
 use workflint_yaml::{Node, NodeKind};
 
 use super::shared::mapping_field;
-use super::{Item, KeySpec, Label, MapEntry, Parser, Section};
+use super::{Inserts, Item, KeySpec, Label, MapEntry, Parser, Section};
 use crate::rules::UNEXPECTED_NODE_KIND;
 use crate::{
-    Field, Keyed, KeyedEntry, Matrix, MatrixCombination, MatrixRow, RawValue, Str, Strategy, Value,
+    Expr, Field, Keyed, KeyedEntry, Matrix, MatrixCombination, MatrixRow, RawValue, Str, Strategy,
+    Value,
 };
 
 impl Section for Strategy<'static> {
@@ -94,7 +95,14 @@ impl<'a> Parser<'a, '_> {
         }
         let mut matrix = Matrix::default();
         let mut rows = Vec::new();
-        for entry in self.parse_mapping(Label::Section("matrix"), node, false, false) {
+        let mapping = self.parse_mapping_with(
+            Label::Section("matrix"),
+            node,
+            false,
+            false,
+            Inserts::MappingOrExpression,
+        );
+        for entry in mapping.entries {
             match &*entry.id {
                 "include" => {
                     matrix.include =
@@ -113,7 +121,7 @@ impl<'a> Parser<'a, '_> {
                 }
             }
         }
-        matrix.rows = Keyed::new(rows);
+        matrix.rows = Keyed::with_inserts(rows, mapping.inserts);
         let span = node.span;
         match node.kind {
             NodeKind::Mapping(_) => Value::Literal {
@@ -193,11 +201,17 @@ impl<'a> Parser<'a, '_> {
                 .parse_expression(item, "mapping of matrix combination")
                 .map(MatrixCombination::Expression);
         }
-        let entries = self.parse_mapping(Label::At(label), item, false, false);
+        let mapping = self.parse_mapping_with(
+            Label::At(label),
+            item,
+            false,
+            false,
+            Inserts::MappingOrExpression,
+        );
         Some(match item.kind {
             NodeKind::Mapping(_) => MatrixCombination::Assigns {
                 span: item.span,
-                assigns: self.parse_raw_entries(&entries),
+                assigns: self.parse_raw_entries(&mapping.entries, mapping.inserts),
             },
             NodeKind::Scalar(_) | NodeKind::Sequence(_) | NodeKind::Alias(_) => {
                 MatrixCombination::Invalid(item.span)
@@ -207,8 +221,13 @@ impl<'a> Parser<'a, '_> {
 
     /// Parses the values of `entries` as raw values, keyed by the entries'
     /// keys. An entry whose key is not a scalar, or whose value is
-    /// reported, is left out.
-    fn parse_raw_entries(&mut self, entries: &[MapEntry<'a>]) -> Keyed<'a, RawValue<'a>> {
+    /// reported, is left out. `inserts` are the expressions under the
+    /// mapping's `${{ insert }}` keys.
+    fn parse_raw_entries(
+        &mut self,
+        entries: &[MapEntry<'a>],
+        inserts: Vec<Expr<'a>>,
+    ) -> Keyed<'a, RawValue<'a>> {
         let keys = entries.iter().map(|entry| entry.key.string).collect();
         let values = self.parse_raw_values(
             entries
@@ -219,7 +238,7 @@ impl<'a> Parser<'a, '_> {
                 })
                 .collect(),
         );
-        keyed_raw_values(keys, values)
+        keyed_raw_values(keys, values, inserts)
     }
 
     /// Parses each of `nodes` as a raw value, the reference's
@@ -294,7 +313,7 @@ impl<'a> Parser<'a, '_> {
                     let entries = values.split_off(values.len().saturating_sub(keys.len()));
                     values.push(Some(RawValue::Mapping {
                         span,
-                        entries: keyed_raw_values(keys, entries),
+                        entries: keyed_raw_values(keys, entries, Vec::new()),
                     }));
                 }
             }
@@ -305,10 +324,12 @@ impl<'a> Parser<'a, '_> {
 }
 
 /// Pairs each of `keys` with the value at the same index, and leaves out the
-/// pairs whose key is not a scalar or whose value is `None`.
+/// pairs whose key is not a scalar or whose value is `None`, and keeps
+/// `inserts`.
 fn keyed_raw_values<'a>(
     keys: Vec<Option<Str<'a>>>,
     values: Vec<Option<RawValue<'a>>>,
+    inserts: Vec<Expr<'a>>,
 ) -> Keyed<'a, RawValue<'a>> {
     let entries = keys
         .into_iter()
@@ -318,7 +339,7 @@ fn keyed_raw_values<'a>(
             Some(KeyedEntry::new(key, value.span(), value))
         })
         .collect();
-    Keyed::new(entries)
+    Keyed::with_inserts(entries, inserts)
 }
 
 #[cfg(test)]
