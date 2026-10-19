@@ -317,7 +317,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the runner merges the mapping, so the upstream errors are false positives. In the runner's copy of GitHub's parser, `TemplateReader.HandleMappingWithWellKnownProperties` and `HandleMappingWithAllLooseProperties` accept an expression key where the mapping's schema definition, or one around it, lists allowed contexts, and `TemplateUnraveler.StartMappingInsertion` merges the mapping. The schema is `workflow-v1.0.json` in actions/runner and actions/languageservices. It reads the values of `env`, `with`, and `services` as strings or containers, so a literal mapping there is an error on GitHub too.
 - Upstream issue: #349.
 - Milestone: M4 (M4.28).
-- Status: implemented. GitHub also accepts the key in `strategy`, a job's `container` and its `credentials`, a service's mapping, a job's `defaults.run`, `concurrency`, `environment`, and the mapping form of `runs-on`. workflint still reports it there, as upstream.
+- Status: implemented. GitHub also accepts the key in `strategy`, a job's `container` and its `credentials`, a service's mapping, a job's `defaults.run`, `concurrency`, `environment`, and the mapping form of `runs-on`. workflint still reports it there, as upstream, until [#215](https://github.com/stokehold/workflint/issues/215).
 - Fixtures: `workflint/ok/insert_mapping_key.yaml`, `workflint/err/insert_mapping_key`.
 
 <a id="typed-decoding-edge-cases"></a>
