@@ -158,8 +158,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Paths of local actions in messages
 
 - Upstream: messages about a local action's metadata name its directory or its `action.yml` as the project root joined with the `uses:` path. The CLI finds the project root itself, so the path is absolute. The Go test of `projects/local_action_invalid` passes the relative root `testdata/projects/local_action_invalid`, and its `.out` file expects paths that start with it. The reference binary fails that fixture too.
-- workflint: prints the absolute path, as the reference binary does.
-- Why: no difference from the reference binary. The entry exists so that the allow-list can replace the fixture lines that only the Go test prints.
+- workflint: prints the absolute path, as the reference binary does. A path from the `runs` section, as in `file "dist/index.js" does not exist`, is printed as `action.yml` writes it, with `/`, where the reference on Windows prints `dist\index.js`. Whether a local Docker `image` is named `Dockerfile` is decided by the name after the last `/`, where the reference on Windows also splits at `\`.
+- Why: the absolute path is no difference from the reference binary, and the entry exists so that the allow-list can replace the fixture lines that only the Go test prints. A path from `action.yml` must print the same on every host (ADR 0013). GitHub builds Docker actions on Linux runners, where `\` is part of a file name.
 - Upstream issue: none.
 - Milestone: M4.18.
 - Status: implemented.

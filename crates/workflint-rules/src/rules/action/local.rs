@@ -4,8 +4,6 @@
 //! Ported from rhysd/actionlint at commit `011a6d1`: `checkLocalAction`,
 //! `checkLocalActionMetadata`, and the `runs` checks in `rule_action.go`.
 
-use std::path::is_separator;
-
 use workflint_data::{is_branding_color, is_branding_icon, is_on_docker_registry};
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
@@ -511,14 +509,14 @@ impl<'m> Metadata<'m> {
         if file.is_empty() || cx.local_metadata().action_file_exists(self.action, file) {
             return;
         }
-        // The reference prints the path with the separators of the platform.
-        let shown = file.replace('/', std::path::MAIN_SEPARATOR_STR);
+        // The reference prints the path with the separators of the host
+        // (docs/differences.md#local-action-paths).
         cx.report(
             &ACTION_FILE_NOT_FOUND,
             self.span,
             format!(
                 "file {} does not exist in {}. it is specified at \"{}\" key in \"runs\" section in {} action",
-                quote(&shown),
+                quote(file),
                 self.dir,
                 key.as_str(),
                 self.name,
@@ -527,17 +525,15 @@ impl<'m> Metadata<'m> {
     }
 }
 
-/// Go's `filepath.Base` of a path with `/` separators: the last name, after trailing
-/// separators are removed.
+/// Go's `filepath.Base` on Linux: the last name of a path with `/` separators, after trailing
+/// separators are removed. The reference also splits at `\` on Windows
+/// (docs/differences.md#local-action-paths).
 fn go_base(path: &str) -> &str {
-    let trimmed = path.trim_end_matches(is_separator);
+    let trimmed = path.trim_end_matches('/');
     if trimmed.is_empty() {
         return if path.is_empty() { "." } else { "/" };
     }
-    trimmed
-        .rsplit(is_separator)
-        .next()
-        .map_or(trimmed, |base| base)
+    trimmed.rsplit('/').next().map_or(trimmed, |base| base)
 }
 
 #[cfg(test)]
@@ -550,6 +546,7 @@ mod tests {
         assert_eq!(go_base("build/Dockerfile"), "Dockerfile");
         assert_eq!(go_base("./build/Dockerfile/"), "Dockerfile");
         assert_eq!(go_base("build/Dockerfile.dev"), "Dockerfile.dev");
+        assert_eq!(go_base("build\\Dockerfile"), "build\\Dockerfile");
         assert_eq!(go_base("//"), "/");
         assert_eq!(go_base(""), ".");
     }
