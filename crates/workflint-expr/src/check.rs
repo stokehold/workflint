@@ -195,14 +195,21 @@ impl Checker<'_> {
     /// Suggests the variable closest to `name`, or the call of a function that takes no
     /// arguments, such as `always()` for `always`.
     fn variable_suggestion(&self, name: &str) -> Option<String> {
-        let variables = self
-            .env
-            .variable_names()
-            .map(|variable| (variable, variable.to_owned()));
+        let variables = self.env.variable_names().map(|variable| (variable, false));
         let calls = functions::all()
             .filter(|function| function.takes_no_arguments())
-            .map(|function| (function.name, format!("{}()", function.name)));
-        closest(name, variables.chain(calls)).map(|candidate| did_you_mean(&candidate))
+            .map(|function| (function.name, true));
+        let (candidate, call) = closest(
+            name,
+            variables
+                .chain(calls)
+                .map(|(candidate, call)| (candidate, (candidate, call))),
+        )?;
+        Some(if call {
+            did_you_mean(&format!("{candidate}()"))
+        } else {
+            did_you_mean(candidate)
+        })
     }
 
     /// The reference's `checkAvailableContext`. The message names the context in lower case,

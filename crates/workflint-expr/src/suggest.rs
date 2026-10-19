@@ -21,12 +21,30 @@ pub(crate) fn closest<'a, T>(
     name: &str,
     candidates: impl IntoIterator<Item = (&'a str, T)>,
 ) -> Option<T> {
-    let name: Vec<char> = name.chars().map(|c| c.to_ascii_lowercase()).collect();
-    let limit = name.len().max(3) / 3;
+    // Most undefined properties are read from objects with no properties at all, such as
+    // `steps` before any step has an ID, so return before any other work.
+    let mut candidates = candidates.into_iter().peekable();
+    candidates.peek()?;
+    let name_len = name.chars().count();
+    let limit = name_len.max(3) / 3;
+    // Built when the first candidate passes the length check, so a name with no candidate of
+    // a close length allocates nothing.
+    let mut name_chars = Vec::new();
+    let mut key_chars = Vec::new();
+    let mut rows = Rows::default();
     let mut best: Option<(usize, &str, T)> = None;
     for (key, value) in candidates {
-        let lowered: Vec<char> = key.chars().map(|c| c.to_ascii_lowercase()).collect();
-        let distance = edit_distance(&name, &lowered);
+        // The distance is at least the difference in length, so most candidates are rejected
+        // without computing it.
+        if key.chars().count().abs_diff(name_len) > limit {
+            continue;
+        }
+        if name_chars.is_empty() {
+            name_chars.extend(name.chars().map(|c| c.to_ascii_lowercase()));
+        }
+        key_chars.clear();
+        key_chars.extend(key.chars().map(|c| c.to_ascii_lowercase()));
+        let distance = rows.edit_distance(&name_chars, &key_chars);
         if distance > limit {
             continue;
         }
@@ -41,27 +59,41 @@ pub(crate) fn closest<'a, T>(
     best.map(|(_, _, value)| value)
 }
 
-/// The optimal string alignment distance between `a` and `b`: the Levenshtein distance, where
-/// swapping two adjacent characters also counts as one edit.
-fn edit_distance(a: &[char], b: &[char]) -> usize {
-    // Three rows of the dynamic programming table: two rows back, the previous, and the current.
-    let mut before: Vec<usize> = vec![0; b.len() + 1];
-    let mut prev: Vec<usize> = (0..=b.len()).collect();
-    let mut cur: Vec<usize> = vec![0; b.len() + 1];
-    for (i, &ca) in a.iter().enumerate() {
-        cur[0] = i + 1;
-        for (j, &cb) in b.iter().enumerate() {
-            let cost = usize::from(ca != cb);
-            let mut d = (prev[j] + cost).min(prev[j + 1] + 1).min(cur[j] + 1);
-            if i > 0 && j > 0 && a.get(i - 1) == Some(&cb) && b.get(j - 1) == Some(&ca) {
-                d = d.min(before[j - 1] + 1);
+/// Three rows of the dynamic programming table of [`Rows::edit_distance`]: two rows back, the
+/// previous, and the current. [`closest`] reuses them for every candidate.
+#[derive(Default)]
+struct Rows {
+    before: Vec<usize>,
+    prev: Vec<usize>,
+    cur: Vec<usize>,
+}
+
+impl Rows {
+    /// The optimal string alignment distance between `a` and `b`: the Levenshtein distance,
+    /// where swapping two adjacent characters also counts as one edit.
+    fn edit_distance(&mut self, a: &[char], b: &[char]) -> usize {
+        let Self { before, prev, cur } = self;
+        before.clear();
+        before.resize(b.len() + 1, 0);
+        prev.clear();
+        prev.extend(0..=b.len());
+        cur.clear();
+        cur.resize(b.len() + 1, 0);
+        for (i, &ca) in a.iter().enumerate() {
+            cur[0] = i + 1;
+            for (j, &cb) in b.iter().enumerate() {
+                let cost = usize::from(ca != cb);
+                let mut d = (prev[j] + cost).min(prev[j + 1] + 1).min(cur[j] + 1);
+                if i > 0 && j > 0 && a.get(i - 1) == Some(&cb) && b.get(j - 1) == Some(&ca) {
+                    d = d.min(before[j - 1] + 1);
+                }
+                cur[j + 1] = d;
             }
-            cur[j + 1] = d;
+            std::mem::swap(before, prev);
+            std::mem::swap(prev, cur);
         }
-        std::mem::swap(&mut before, &mut prev);
-        std::mem::swap(&mut prev, &mut cur);
+        prev[b.len()]
     }
-    prev[b.len()]
 }
 
 #[cfg(test)]
@@ -71,7 +103,7 @@ mod tests {
     fn distance(a: &str, b: &str) -> usize {
         let a: Vec<char> = a.chars().collect();
         let b: Vec<char> = b.chars().collect();
-        edit_distance(&a, &b)
+        Rows::default().edit_distance(&a, &b)
     }
 
     #[test]
@@ -109,6 +141,19 @@ mod tests {
         assert_eq!(
             closest_name("strtswth", &["startsWith"]),
             Some("startsWith")
+        );
+    }
+
+    #[test]
+    fn closest_finds_nothing_without_candidates() {
+        assert_eq!(closest_name("github", &[]), None);
+    }
+
+    #[test]
+    fn closest_skips_candidates_whose_length_differs_too_much() {
+        assert_eq!(
+            closest_name("gihub", &["githubactions", "github"]),
+            Some("github")
         );
     }
 
