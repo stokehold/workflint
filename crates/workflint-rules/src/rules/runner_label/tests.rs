@@ -172,14 +172,18 @@ const REFERENCE_CASES: &[Case] = &[
         labels: &["foo-${{matrix.os}}"],
         matrix: Some(&["ubuntu-latest"]),
         known: &[],
-        errs: &[],
+        // The reference skips the label. workflint evaluates it
+        // (`docs/differences.md#runs-on-expressions`).
+        errs: &[r#"label "foo-ubuntu-latest" is unknown"#],
     },
     Case {
         what: "cannot check label: suffix",
         labels: &["${{matrix.os}}-bar"],
         matrix: Some(&["ubuntu-latest"]),
         known: &[],
-        errs: &[],
+        // The reference skips the label. workflint evaluates it
+        // (`docs/differences.md#runs-on-expressions`).
+        errs: &[r#"label "ubuntu-latest-bar" is unknown"#],
     },
     Case {
         what: "cannot check label: not a matrix",
@@ -514,4 +518,269 @@ fn invalid_labels_keep_their_slot_and_are_skipped() {
     assert!(have[0].contains(r#"label "windows-latest" conflicts with label "ubuntu-latest""#));
     let text = "on: push\njobs:\n  test:\n    runs-on: ['']\n    steps:\n      - run: echo\n";
     assert_eq!(lint(text, &[]), Vec::<String>::new());
+}
+
+/// Returns a workflow whose job has the matrix `matrix`, YAML indented under `matrix:`, if it is
+/// not empty, and runs on `runs_on`, written as the YAML value of `runs-on`.
+fn job(matrix: &str, runs_on: &str) -> String {
+    let strategy = if matrix.is_empty() {
+        String::new()
+    } else {
+        let rows: String = matrix
+            .lines()
+            .flat_map(|line| {
+                [
+                    "        ", line, "
+",
+                ]
+            })
+            .collect();
+        format!("    strategy:\n      matrix:\n{rows}")
+    };
+    format!(
+        "on: push\njobs:\n  test:\n{strategy}    runs-on: {runs_on}\n    steps:\n      - run: echo\n"
+    )
+}
+
+/// Lints `text` and shortens each diagnostic to its position and the text before `. available`
+/// or `defined at`.
+fn short(text: &str) -> Vec<String> {
+    lint(text, &[])
+        .iter()
+        .map(|line| {
+            let line = line.strip_prefix("test.yaml:").unwrap_or(line);
+            let end = line
+                .find(". available")
+                .or_else(|| line.find(" defined at"))
+                .unwrap_or(line.len());
+            line[..end].to_owned()
+        })
+        .collect()
+}
+
+#[test]
+fn a_string_literal_label_is_checked_at_the_label() {
+    assert_eq!(
+        short(&job("", "${{ 'linux-latest' }}")),
+        [r#"4:14: label "linux-latest" is unknown"#]
+    );
+}
+
+#[test]
+fn a_template_that_mixes_text_and_matrix_values_is_checked_for_each_value() {
+    assert_eq!(
+        short(&job("os: [ubuntu, linux]", "${{ matrix.os }}-latest")),
+        [r#"7:14: label "linux-latest" is unknown"#]
+    );
+}
+
+#[test]
+fn format_with_matrix_values_is_checked_for_each_value() {
+    assert_eq!(
+        short(&job(
+            "os: [ubuntu, linux]",
+            "${{ format('{0}-latest', matrix.os) }}"
+        )),
+        [r#"7:14: label "linux-latest" is unknown"#]
+    );
+    // `{{` and `}}` are braces, and an argument may be used twice.
+    assert_eq!(
+        short(&job("", "${{ format('{{{0}}}-{0}', 'x') }}")),
+        [r#"4:14: label "{x}-x" is unknown"#]
+    );
+}
+
+#[test]
+fn format_with_an_invalid_format_string_is_skipped() {
+    for format in ["'{0'", "'{1}'", "'}'", "'{x}'", "'{-1}'", "env.FORMAT"] {
+        let runs_on = format!("${{{{ format({format}, 'linux-latest') }}}}");
+        assert_eq!(short(&job("os: ['{0}']", &runs_on)), Vec::<String>::new());
+    }
+}
+
+#[test]
+fn and_or_give_the_value_of_each_branch() {
+    // The condition is unknown, so both values are checked.
+    assert_eq!(
+        short(&job(
+            "",
+            "${{ github.repository == 'a/b' && 'self-hosted' || 'ubuntu-20.04' }}"
+        )),
+        [r#"4:14: label "ubuntu-20.04" is unknown"#]
+    );
+    // GitHub's truthiness: `''` and `0` are false, so `||` gives the other operand.
+    assert_eq!(
+        short(&job("", "${{ '' || 0 || 'linux-latest' }}")),
+        [r#"4:14: label "linux-latest" is unknown"#]
+    );
+    assert_eq!(
+        short(&job("", "${{ 'x' && 'linux-latest' }}")),
+        [r#"4:14: label "linux-latest" is unknown"#]
+    );
+}
+
+#[test]
+fn a_condition_on_the_matrix_is_evaluated_for_each_combination() {
+    // In the `windows` combination the condition is true, so `windows` is never a label.
+    assert_eq!(
+        short(&job(
+            "os: [ubuntu-latest, windows]",
+            "${{ matrix.os == 'windows' && 'windows-latest' || matrix.os }}"
+        )),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        short(&job(
+            "os: [ubuntu-latest, windows]",
+            "${{ !(matrix.os != 'Windows') && 'windows-oldest' || matrix.os }}"
+        )),
+        [r#"7:14: label "windows-oldest" is unknown"#]
+    );
+}
+
+#[test]
+fn a_label_with_a_value_that_cannot_be_worked_out_is_skipped() {
+    for runs_on in [
+        "${{ github.event.inputs.platform || 'ubuntu' }}-latest",
+        "${{ fromJSON(needs.a.outputs.runner) }}",
+        "${{ inputs.os }}",
+        "${{ matrix.os }}-latest",
+        "${{ format('{0}-{1}', 'linux', env.ARCH) }}",
+        "${{ matrix.os < 'x' && 'linux-latest' }}",
+    ] {
+        assert_eq!(short(&job("", runs_on)), Vec::<String>::new(), "{runs_on}");
+    }
+    // A matrix value that is an expression, a mapping, or a sequence is not known.
+    for row in [
+        "os: ['${{ env.OS }}']",
+        "os: [{name: linux}]",
+        "os: [[linux]]",
+        "os: ${{ fromJSON(env.OS) }}",
+    ] {
+        assert_eq!(
+            short(&job(row, "${{ matrix.os }}-latest")),
+            Vec::<String>::new(),
+            "{row}"
+        );
+    }
+    // A whole matrix written as one expression.
+    let text = job("", "${{ matrix.os }}-latest").replace(
+        "    runs-on",
+        "    strategy:\n      matrix: ${{ fromJSON(env.M) }}\n    runs-on",
+    );
+    assert_eq!(short(&text), Vec::<String>::new());
+}
+
+#[test]
+fn include_values_are_not_combined_with_the_values_of_other_include_items() {
+    let matrix = "include:\n  - {os: ubuntu, ver: '24.04'}\n  - {os: macos, ver: '15'}";
+    assert_eq!(
+        short(&job(matrix, "${{ matrix.os }}-${{ matrix.ver }}")),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn include_extends_the_combinations_whose_row_values_it_matches() {
+    // `{os: ubuntu, arch: arm}` extends the `ubuntu` combination, and `{os: windows}` matches
+    // no row value, so it is a combination of its own without `arch`, which is null.
+    let matrix = "os: [ubuntu, macos]\ninclude:\n  - {os: ubuntu, arch: '-arm'}\n  - {os: windows}";
+    assert_eq!(
+        short(&job(matrix, "${{ matrix.os }}${{ matrix.arch }}-x")),
+        [
+            r#"10:14: label "ubuntu-arm-x" is unknown"#,
+            r#"10:14: label "macos-x" is unknown"#,
+            r#"10:14: label "windows-x" is unknown"#,
+        ]
+    );
+}
+
+#[test]
+fn excluded_combinations_are_not_checked() {
+    let matrix = "os: [ubuntu, macos]\nver: ['24.04', '15']\nexclude:\n  - {os: ubuntu, ver: '15'}\n  - {os: macos, ver: '24.04'}";
+    assert_eq!(
+        short(&job(matrix, "${{ matrix.os }}-${{ matrix.ver }}")),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn numbers_booleans_and_null_become_text_as_github_prints_them() {
+    // `3.10` is the number 3.1.
+    assert_eq!(
+        short(&job("v: [13, 3.10]", "macos-${{ matrix.v }}")),
+        [
+            r#"7:14: label "macos-13" is unknown"#,
+            r#"7:14: label "macos-3.1" is unknown"#,
+        ]
+    );
+    assert_eq!(
+        short(&job("", "x-${{ true }}-${{ null }}-${{ 0x10 }}")),
+        [r#"4:14: label "x-true--16" is unknown"#]
+    );
+}
+
+#[test]
+fn each_value_of_a_label_is_reported_once() {
+    assert_eq!(
+        short(&job(
+            "os: [linux, linux2]\nver: [1, 2]",
+            "${{ format('{0}-latest', matrix.ver) }}"
+        )),
+        [
+            r#"8:14: label "1-latest" is unknown"#,
+            r#"8:14: label "2-latest" is unknown"#,
+        ]
+    );
+}
+
+#[test]
+fn values_of_an_evaluated_label_conflict_with_earlier_labels_but_not_each_other() {
+    let text = job(
+        "os: [ubuntu, macos]",
+        "[windows-latest, '${{ matrix.os }}-latest']",
+    );
+    assert_eq!(
+        short(&text),
+        [
+            r#"7:31: label "ubuntu-latest" conflicts with label "windows-latest""#,
+            r#"7:31: label "macos-latest" conflicts with label "windows-latest""#,
+        ]
+    );
+    let text = job(
+        "",
+        "${{ github.ref == 'x' && 'windows-latest' || 'ubuntu-latest' }}",
+    );
+    assert_eq!(short(&text), Vec::<String>::new());
+}
+
+#[test]
+fn a_matrix_with_more_combinations_than_the_limit_is_not_evaluated() {
+    let values =
+        |n: usize| -> String { (0..n).map(|i| i.to_string()).collect::<Vec<_>>().join(", ") };
+    // 16 × 16 = 256 combinations, the limit.
+    let matrix = format!("a: [{}]\nb: [{}]", values(16), values(16));
+    assert_eq!(short(&job(&matrix, "x-${{ matrix.a }}")).len(), 16);
+    // 16 × 17 = 272.
+    let matrix = format!("a: [{}]\nb: [{}]", values(16), values(17));
+    assert_eq!(
+        short(&job(&matrix, "x-${{ matrix.a }}")),
+        Vec::<String>::new()
+    );
+    // A label that does not use the matrix is checked whatever its size.
+    assert_eq!(short(&job(&matrix, "${{ 'x' }}")).len(), 1);
+}
+
+#[test]
+fn a_label_with_more_values_than_the_limit_is_not_evaluated() {
+    // Each `||` with an unknown condition doubles the values: 2^8 = 256 is the limit.
+    let branch = |i: usize| format!("format('{{0}}', env.A{i} && '1' || '0')");
+    let label = |n: usize| {
+        let args: Vec<_> = (0..n).map(branch).collect();
+        let format: Vec<_> = (0..n).map(|i| format!("{{{i}}}")).collect();
+        let format = format.concat();
+        format!("x-${{{{ format('{format}', {}) }}}}", args.join(", "))
+    };
+    assert_eq!(short(&job("", &label(8))).len(), 256);
+    assert_eq!(short(&job("", &label(9))), Vec::<String>::new());
 }

@@ -741,6 +741,20 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M4.31. M7.10 lets users add paths in the config file.
 - Status: implemented.
 
+<a id="runs-on-expressions"></a>
+### Expressions in `runs-on` labels are evaluated
+
+- Upstream: the `runner-label` rule checks a label with `${{ }}` only when it is exactly `${{ matrix.<prop> }}`, through the values of the matrix row and of `include` (`rule_runner_label.go:235`). It skips every other label with `${{ }}`, such as `${{ matrix.os }}-latest` or `${{ github.repository == 'o/r' && 'self-hosted' || 'ubuntu-20.04' }}`.
+- workflint: `${{ matrix.<prop> }}` keeps the upstream behaviour. Any other label with `${{ }}` is evaluated to the strings it can be, and each string is checked and reported at the label. The evaluator knows string, number, boolean, and null literals, `matrix.<prop>`, `format()`, `&&`, `||`, `!`, `==`, and `!=`, with GitHub's truthiness and comparison rules, and text around `${{ }}`. Any other expression is unknown. An unknown condition still lets `cond && 'a' || 'b'` be `a` or `b`. A label with a value that cannot be worked out is skipped, as upstream skips it.
+- The values of `matrix.<prop>` come from the combinations of the matrix as GitHub expands them: every combination of the rows, without those that `exclude` matches, then `include`. So `${{ matrix.os }}-${{ matrix.version }}` pairs each `os` only with the `version` of the same combination. A matrix value that is a mapping, a sequence, or a scalar with `${{ }}` is unknown. The evaluator gives up on a matrix that is written as an expression, that has a row, `include`, or `exclude` written as an expression, or that has more than 256 combinations, and on a label that can have more than 256 strings. GitHub runs at most 256 jobs from one matrix.
+- Numbers become text as GitHub prints them, so the matrix value `3.10` gives `3.1`. A number that GitHub would print with an exponent or with more than 15 significant digits is unknown.
+- Why: GitHub queues a job whose labels no runner has until it times out. A retired image behind a condition, as in `... && 'self-hosted' || 'ubuntu-20.04'`, fails in forks and is never reported upstream.
+- Upstream issue: #656, #499.
+- Milestone: M4.32.
+- Status: implemented.
+- Fixtures: `workflint/err/runs_on_expressions` and `workflint/ok/runs_on_expressions.yaml`. The output of no vendored fixture changes.
+- Corpus: `apache_airflow_.github_workflows_build-images.yml` (two jobs) and `apache_airflow_.github_workflows_ci.yml` report `ubuntu-20.04`. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+
 ## Configuration and project discovery
 
 <a id="paths-relative-to-root"></a>

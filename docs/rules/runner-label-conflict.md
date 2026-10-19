@@ -6,7 +6,7 @@
 
 Two `runs-on` labels of a job cannot be on the same runner.
 
-Each GitHub-hosted label, and each of the self-hosted labels `linux`, `macos`, and `windows`, stands for a set of runner images. A label conflicts with an earlier label of the job when their sets share no image, as `ubuntu-latest` and `windows-latest` do, or `ubuntu-24.04` and `ubuntu-22.04`. The message names the earliest label it conflicts with. The values of a `${{ matrix.<prop> }}` label are checked against the labels before it, so they do not conflict with each other.
+Each GitHub-hosted label, and each of the self-hosted labels `linux`, `macos`, and `windows`, stands for a set of runner images. A label conflicts with an earlier label of the job when their sets share no image, as `ubuntu-latest` and `windows-latest` do, or `ubuntu-24.04` and `ubuntu-22.04`. The message names the earliest label it conflicts with. The values of a label with `${{ }}`, such as `${{ matrix.os }}` or `${{ matrix.os }}-latest`, are checked against the labels before it, so they do not conflict with each other. [`unknown-runner-label`](unknown-runner-label.md) describes how such a label gets its values.
 
 ## Why
 
@@ -49,3 +49,4 @@ jobs:
 ## Differences from actionlint
 
 - [Deterministic job order](../differences.md#deterministic-order)
+- [Expressions in `runs-on` labels are evaluated](../differences.md#runs-on-expressions)

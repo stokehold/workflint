@@ -1,7 +1,11 @@
 //! The `runner-label` rule: unknown `runs-on` labels, and labels that no one runner can have
 //! together.
 //!
-//! Ported from rhysd/actionlint at commit `011a6d1`: `rule_runner_label.go`, lines 119-333.
+//! Ported from rhysd/actionlint at commit `011a6d1`: `rule_runner_label.go`, lines 119-333. A
+//! label with `${{ }}` that is not exactly `${{ matrix.<prop> }}` is evaluated to the strings it
+//! can be (`docs/differences.md#runs-on-expressions`), where the reference skips it.
+
+use std::borrow::Cow;
 
 use workflint_data::{
     GITHUB_HOSTED_RUNNER_LABELS, RunnerOsCompat, SELF_HOSTED_RUNNER_OS_LABELS,
@@ -57,10 +61,10 @@ pub(crate) struct RunnerLabel {
 }
 
 /// A label to check: its text and where to report it. A label from a matrix is reported at the
-/// matrix value.
-#[derive(Clone, Copy)]
+/// matrix value, and a value of an evaluated label at the label.
+#[derive(Clone)]
 struct Label<'a> {
-    value: &'a str,
+    value: Cow<'a, str>,
     span: Span,
 }
 
@@ -80,15 +84,15 @@ impl RunnerLabel {
 
     /// Checks one label, as the reference's `verifyRunnerLabel` does, and returns its images, or
     /// `None` for a label without images, such as `self-hosted` or a custom label.
-    fn verify(&self, label: Label<'_>, cx: &mut Context<'_>) -> Option<RunnerOsCompat> {
-        if let Some(os) = runner_label_os_compat(label.value) {
+    fn verify(&self, label: &Label<'_>, cx: &mut Context<'_>) -> Option<RunnerOsCompat> {
+        if let Some(os) = runner_label_os_compat(&label.value) {
             return Some(os);
         }
-        if is_self_hosted_other_label(label.value) {
+        if is_self_hosted_other_label(&label.value) {
             return None;
         }
         for pattern in &self.known {
-            match path_match(pattern, label.value) {
+            match path_match(pattern, &label.value) {
                 Ok(true) => return None,
                 Ok(false) => {}
                 Err(err) => {
@@ -110,7 +114,7 @@ impl RunnerLabel {
             label.span,
             format!(
                 "label {} is unknown. available labels are {}. if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file",
-                quote(label.value),
+                quote(&label.value),
                 quotes_all([
                     GITHUB_HOSTED_RUNNER_LABELS,
                     SELF_HOSTED_RUNNER_OTHER_LABELS,
@@ -131,35 +135,34 @@ impl RunnerLabel {
         cx: &mut Context<'_>,
     ) {
         if contains_expression(label.value()) {
-            for label in labels_in_matrix(label, matrix) {
-                self.verify(label, cx);
+            let labels = expression_labels(&plain(label), label.placeholders(), matrix);
+            for label in labels {
+                self.verify(&label, cx);
             }
             return;
         }
-        self.verify(plain(label), cx);
+        self.verify(&plain(label), cx);
     }
 
     /// Checks a label and whether it conflicts with the labels before it, as the reference's
-    /// `checkLabelAndConflict` does. The values of `${{ matrix.<prop> }}` are checked against
+    /// `checkLabelAndConflict` does. The values of a label with `${{ }}` are checked against
     /// the labels before it, and then each is added to them, so the values do not conflict
     /// with each other.
     fn check_label_and_conflict<'a>(
         &self,
         label: Label<'a>,
-        placeholder: Option<&Placeholder>,
+        placeholders: &[Placeholder],
         matrix: Option<&'a Matrix<'a>>,
         seen: &mut Seen<'a>,
         cx: &mut Context<'_>,
     ) {
-        if contains_expression(label.value) {
-            let labels = placeholder
-                .map(|placeholder| matrix_values(label.value, placeholder, matrix))
-                .unwrap_or_default();
-            let compats: Vec<_> = labels.iter().map(|label| self.verify(*label, cx)).collect();
+        if contains_expression(&label.value) {
+            let labels = expression_labels(&label, placeholders, matrix);
+            let compats: Vec<_> = labels.iter().map(|label| self.verify(label, cx)).collect();
             let compats: Vec<_> = compats
                 .into_iter()
                 .zip(&labels)
-                .map(|(os, label)| os.filter(|os| seen.check_conflict(*os, *label, cx)))
+                .map(|(os, label)| os.filter(|os| seen.check_conflict(*os, label, cx)))
                 .collect();
             for (os, label) in compats.into_iter().zip(labels) {
                 if let Some(os) = os {
@@ -168,8 +171,8 @@ impl RunnerLabel {
             }
             return;
         }
-        if let Some(os) = self.verify(label, cx)
-            && seen.check_conflict(os, label, cx)
+        if let Some(os) = self.verify(&label, cx)
+            && seen.check_conflict(os, &label, cx)
         {
             seen.add(os, label);
         }
@@ -179,7 +182,7 @@ impl RunnerLabel {
 impl<'a> Seen<'a> {
     /// Reports `label` if its images share none with those of an earlier label, naming the
     /// earliest such label, and returns whether it conflicts with none.
-    fn check_conflict(&self, os: RunnerOsCompat, label: Label<'_>, cx: &mut Context<'_>) -> bool {
+    fn check_conflict(&self, os: RunnerOsCompat, label: &Label<'_>, cx: &mut Context<'_>) -> bool {
         let Some((_, partner)) = self.labels.iter().find(|(seen, _)| !seen.intersects(os)) else {
             return true;
         };
@@ -189,8 +192,8 @@ impl<'a> Seen<'a> {
             label.span,
             format!(
                 "label {} conflicts with label {} defined at {defined_at}. note: to run your job on each workers, use matrix",
-                quote(label.value),
-                quote(partner.value),
+                quote(&label.value),
+                quote(&partner.value),
             ),
         );
         false
@@ -220,10 +223,11 @@ impl<'a> Rule<'a> for RunnerLabel {
             // A whole `runs-on: ${{ }}` or `labels: ${{ }}`, the reference's `LabelsExpr`,
             // which it checks as one of several labels.
             let label = Label {
-                value: expr.source.value(),
+                value: Cow::Borrowed(expr.source.value()),
                 span: expr.span(),
             };
-            self.check_label_and_conflict(label, Some(expr.placeholder()), matrix, &mut seen, cx);
+            let placeholders = std::slice::from_ref(expr.placeholder());
+            self.check_label_and_conflict(label, placeholders, matrix, &mut seen, cx);
             return;
         }
         let Some(labels) = runner.labels.literal() else {
@@ -238,56 +242,62 @@ impl<'a> Rule<'a> for RunnerLabel {
             return;
         }
         for label in labels.iter().flatten() {
-            let placeholder = label.placeholders().first();
-            self.check_label_and_conflict(plain(label), placeholder, matrix, &mut seen, cx);
+            let placeholders = label.placeholders();
+            self.check_label_and_conflict(plain(label), placeholders, matrix, &mut seen, cx);
         }
     }
 }
 
 fn plain<'a>(label: &'a Template<'a>) -> Label<'a> {
     Label {
-        value: label.value(),
+        value: Cow::Borrowed(label.value()),
         span: label.span(),
     }
 }
 
-/// Returns the values that a label of the form `${{ matrix.<prop> }}` can have, as the
-/// reference's `tryToGetLabelsInMatrix` does.
-fn labels_in_matrix<'a>(label: &'a Template<'a>, matrix: Option<&'a Matrix<'a>>) -> Vec<Label<'a>> {
-    match label.placeholders().first() {
-        Some(placeholder) => matrix_values(label.value(), placeholder, matrix),
-        None => Vec::new(),
-    }
-}
-
-/// Returns the string values of the matrix row `<prop>` and of `<prop>` in each `include`
-/// item, in that order, when `value` is exactly `${{ matrix.<prop> }}` and its first
-/// placeholder parses. Values that are not scalars, or that contain an expression, are left
-/// out.
-fn matrix_values<'a>(
-    value: &str,
-    placeholder: &Placeholder,
+/// Returns the labels that a label with `${{ }}` can be. A label of the exact form
+/// `${{ matrix.<prop> }}` has the values of the matrix, as the reference's
+/// `tryToGetLabelsInMatrix` gives them. Any other label is evaluated, and its values are
+/// reported at the label. A label whose values cannot be worked out has none.
+fn expression_labels<'a>(
+    label: &Label<'_>,
+    placeholders: &[Placeholder],
     matrix: Option<&'a Matrix<'a>>,
 ) -> Vec<Label<'a>> {
-    let Some(matrix) = matrix else {
-        return Vec::new();
-    };
-    if !is_expression_assigned(value) {
-        return Vec::new();
+    if let Some(prop) = matrix_prop(&label.value, placeholders) {
+        return matrix
+            .map(|matrix| matrix_values(prop, matrix))
+            .unwrap_or_default();
     }
-    let Ok(expr) = &placeholder.expr else {
-        return Vec::new();
-    };
+    eval::label_values(&label.value, placeholders, matrix)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|value| Label {
+            value: Cow::Owned(value),
+            span: label.span,
+        })
+        .collect()
+}
+
+/// Returns `<prop>`, folded, when `value` is exactly `${{ matrix.<prop> }}` and its first
+/// placeholder parses.
+fn matrix_prop<'p>(value: &str, placeholders: &'p [Placeholder]) -> Option<&'p str> {
+    if !is_expression_assigned(value) {
+        return None;
+    }
+    let expr = placeholders.first()?.expr.as_ref().ok()?;
     let ExprKind::Property { receiver, name } = &expr.kind else {
-        return Vec::new();
+        return None;
     };
     let ExprKind::Variable(variable) = &receiver.kind else {
-        return Vec::new();
+        return None;
     };
-    if variable.as_str() != "matrix" {
-        return Vec::new();
-    }
-    let prop = name.as_str();
+    (variable.as_str() == "matrix").then_some(name.as_str())
+}
+
+/// Returns the string values of the matrix row `prop` and of `prop` in each `include` item, in
+/// that order. Values that are not scalars, or that contain an expression, are left out.
+fn matrix_values<'a>(prop: &str, matrix: &'a Matrix<'a>) -> Vec<Label<'a>> {
     let mut labels = Vec::new();
     if let Some(row) = matrix.rows.get(prop)
         && let MatrixRow::Values(values) = &row.value
@@ -314,5 +324,7 @@ fn scalar_label<'a>(value: &'a RawValue<'a>) -> Option<Label<'a>> {
     }
 }
 
+mod combinations;
+mod eval;
 #[cfg(test)]
 mod tests;
