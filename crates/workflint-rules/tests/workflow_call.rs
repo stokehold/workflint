@@ -247,7 +247,9 @@ fn project() -> MemoryProject {
 
 /// Lints a reusable workflow whose job `call` calls `uses` with `with` and `secrets`, each a
 /// list of names whose value is `x`. `inherit` sets `secrets: inherit` instead. Returns the
-/// messages and rule IDs, without the positions, sorted.
+/// messages and rule IDs of the `workflow-call` kind, without the positions, sorted. The
+/// `expression` rule reports an `x` passed to a `boolean` input, which the reference's tests
+/// of this rule do not run.
 fn call(uses: &str, inputs: &[&str], secrets: &[&str], inherit: bool) -> Vec<String> {
     let mut text = format!("on: workflow_call\njobs:\n  call:\n    uses: {uses}\n");
     if !inputs.is_empty() {
@@ -266,6 +268,10 @@ fn call(uses: &str, inputs: &[&str], secrets: &[&str], inherit: bool) -> Vec<Str
     }
     let mut messages: Vec<_> = lint_in(&project(), &text)
         .into_iter()
+        .filter(|line| {
+            let id = line.rsplit_once(" [").unwrap().1.trim_end_matches(']');
+            workflint_rules::registry::find(id).is_none_or(|meta| meta.kind == "workflow-call")
+        })
         .map(|line| {
             let mut parts = line.splitn(4, ':');
             parts.nth(3).unwrap().trim_start().to_owned()

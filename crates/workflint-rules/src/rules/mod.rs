@@ -44,7 +44,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 55] = [
+pub(crate) static ALL: [&RuleMeta; 56] = [
     &action::ACTION_FILE_NOT_FOUND,
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &action::BROKEN_ACTION_METADATA,
@@ -100,6 +100,7 @@ pub(crate) static ALL: [&RuleMeta; 55] = [
     &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
     &expression::WRONG_EXPRESSION_TYPE,
     &expression::WRONG_INPUT_DEFAULT_TYPE,
+    &expression::WRONG_WORKFLOW_CALL_INPUT_TYPE,
 ];
 
 /// Creates a fresh instance of each rule for one file, in [`CREATION_ORDER`].
