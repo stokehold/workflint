@@ -642,8 +642,9 @@ The last section lists behaviour that was investigated and deliberately kept.
 - workflint: digits are allowed after the first letter.
 - Why: upstream misses real uses. The command is deprecated whatever the name.
 - Upstream issue: none.
+- Corpus: `babel_babel_.github_workflows_update-parser-tests.yml` (`name=sha1`) and `facebook_folly_.github_workflows_TagIt.yml` (`name=tgz_256` and others). The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
 - Milestone: M4.
-- Status: planned.
+- Status: implemented.
 
 <a id="host-time-zones"></a>
 ### Schedule time zones do not depend on the host
