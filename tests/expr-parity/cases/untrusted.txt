@@ -64,3 +64,18 @@ github.event.review_comment.body
 env.foo
 github
 github.event
+# The workflow_run paths that workflint adds (docs/differences.md#workflow-run-untrusted-input).
+github.event.workflow_run.head_branch
+github.event.workflow_run.display_title
+github.event.workflow_run.head_commit.message
+github.event.workflow_run.head_commit.author.email
+github.event.workflow_run.head_commit.author.name
+github.event.workflow_run.head_commit.committer.email
+github.event.workflow_run.head_commit.committer.name
+github.event.workflow_run.head_repository.description
+github.event.workflow_run.head_repository.owner.login
+github.event.workflow_run.head_commit.*.name
+github.event.workflow_run.head_repository.*
+github.event.workflow_run.head_sha
+github.event.workflow_run.head_commit.id
+github.event.workflow_run.head_repository.full_name

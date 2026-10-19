@@ -2,7 +2,9 @@
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `BuiltinUntrustedInputs` in
 //! `expr_insecure.go`, lines 86-141. Until M7 replaces it with a generated file (ADR 0011), keep
-//! it equal to that table. The test `untrusted_inputs_match_the_reference_table` compares them.
+//! it equal to that table plus the paths below `github.event.workflow_run`, which workflint adds
+//! (`docs/differences.md#workflow-run-untrusted-input`). The test
+//! `untrusted_inputs_are_the_reference_table_and_the_added_paths` compares them.
 
 /// A node in a tree of property paths whose values someone outside the repository can set,
 /// such as `github.event.issue.title`.
@@ -60,6 +62,13 @@ const fn node(name: &'static str, children: &'static [UntrustedInput]) -> Untrus
 ///
 /// - <https://securitylab.github.com/research/github-actions-untrusted-input/>
 /// - <https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks>
+///
+/// The `workflow_run` paths come from the `workflow_run` object of the webhook payload
+/// (<https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_run>) and from
+/// rhysd/actionlint#737. When a pull request from a fork triggers the run, the fork's owner sets
+/// each of these values: the branch name, the pull request title in `display_title`, the commit
+/// message and the commit's author and committer, and the fork's description and owner. The
+/// IDs, SHAs, and URLs of the same objects come from GitHub and are left out.
 pub static UNTRUSTED_INPUTS: &[UntrustedInput] = &[node(
     "github",
     &[
@@ -104,6 +113,25 @@ pub static UNTRUSTED_INPUTS: &[UntrustedInput] = &[node(
                     ],
                 ),
                 node("discussion", &[leaf("title"), leaf("body")]),
+                node(
+                    "workflow_run",
+                    &[
+                        leaf("head_branch"),
+                        leaf("display_title"),
+                        node(
+                            "head_commit",
+                            &[
+                                leaf("message"),
+                                node("author", &[leaf("email"), leaf("name")]),
+                                node("committer", &[leaf("email"), leaf("name")]),
+                            ],
+                        ),
+                        node(
+                            "head_repository",
+                            &[leaf("description"), node("owner", &[leaf("login")])],
+                        ),
+                    ],
+                ),
             ],
         ),
         leaf("head_ref"),

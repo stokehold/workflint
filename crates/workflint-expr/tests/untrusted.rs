@@ -7,7 +7,9 @@
 //! `TestExprInsecure*` tests of the same names. The reference walks the tree with
 //! `VisitExprNode`, as [`find_untrusted_inputs`] does. Its tests check that each message
 //! contains a path. These tests compare whole messages, the rule, and the offset of the
-//! variable that each error is reported at.
+//! variable that each error is reported at. An object filter that reaches below
+//! `github.event.workflow_run` also lists the paths that workflint adds there
+//! (`docs/differences.md#workflow-run-untrusted-input`).
 
 #![allow(clippy::expect_used, clippy::panic)]
 
@@ -305,6 +307,8 @@ mod detect_untrusted_value {
                         "github.event.pull_request.title",
                         "github.event.review.body",
                         "github.event.review_comment.body",
+                        "github.event.workflow_run.display_title",
+                        "github.event.workflow_run.head_branch",
                     ])
                 ),
             ]
@@ -544,7 +548,10 @@ mod detect_untrusted_object_filtering {
         index_after_a_literal_index_after_two_filters: "github.event.*.*['email'][0]" => untrusted("github.event.head_commit.author.email"),
         author_email_of_event_objects: "github.event.*.author.email" => untrusted("github.event.head_commit.author.email"),
         literal_author_email_of_event_objects: "github.event.*['author']['email']" => untrusted("github.event.head_commit.author.email"),
-        messages_two_levels_down: "github.event.*.*.message" => untrusted("github.event.commits.*.message"),
+        messages_two_levels_down: "github.event.*.*.message" => filtered(&[
+            "github.event.commits.*.message",
+            "github.event.workflow_run.head_commit.message",
+        ]),
         everything_three_levels_down: "github.event.*.*.*" => filtered(&[
             "github.event.commits.*.message",
             "github.event.head_commit.author.email",
@@ -552,6 +559,8 @@ mod detect_untrusted_object_filtering {
             "github.event.pages.*.page_name",
             "github.event.pull_request.head.label",
             "github.event.pull_request.head.ref",
+            "github.event.workflow_run.head_commit.message",
+            "github.event.workflow_run.head_repository.description",
         ]),
         properties_of_github: "github.*" => untrusted("github.head_ref"),
         index_after_properties_of_github: "github.*[0]" => untrusted("github.head_ref"),

@@ -168,3 +168,139 @@ anchor = "expression-nesting-limit"
 expression = "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!true"
 upstream = "type: bool, constant: true"
 workflint = "parse error at 1:129: expression is nested more than 128 levels deep"
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_branch'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.head_branch" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.*.*'
+upstream = '''
+type: array<any>, constant: false
+1:1: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.discussion.title", "github.event.head_commit.message", "github.event.issue.body", "github.event.issue.title", "github.event.pull_request.body", "github.event.pull_request.title", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+workflint = '''
+type: array<any>, constant: false
+1:1: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.discussion.title", "github.event.head_commit.message", "github.event.issue.body", "github.event.issue.title", "github.event.pull_request.body", "github.event.pull_request.title", "github.event.review.body", "github.event.review_comment.body", "github.event.workflow_run.display_title", "github.event.workflow_run.head_branch". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.*.*.*'
+upstream = '''
+type: array<any>, constant: false
+1:1: object filter extracts potentially untrusted properties "github.event.commits.*.message", "github.event.head_commit.author.email", "github.event.head_commit.author.name", "github.event.pages.*.page_name", "github.event.pull_request.head.label", "github.event.pull_request.head.ref". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+workflint = '''
+type: array<any>, constant: false
+1:1: object filter extracts potentially untrusted properties "github.event.commits.*.message", "github.event.head_commit.author.email", "github.event.head_commit.author.name", "github.event.pages.*.page_name", "github.event.pull_request.head.label", "github.event.pull_request.head.ref", "github.event.workflow_run.head_commit.message", "github.event.workflow_run.head_repository.description". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.display_title'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.display_title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_commit.message'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.head_commit.message" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_commit.author.email'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.head_commit.author.email" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_commit.author.name'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_commit.committer.email'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.head_commit.committer.email" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_commit.committer.name'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.head_commit.committer.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_repository.description'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.head_repository.description" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_repository.owner.login'
+upstream = 'type: any, constant: false'
+workflint = '''
+type: any, constant: false
+1:1: "github.event.workflow_run.head_repository.owner.login" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_commit.*.name'
+upstream = 'type: array<any>, constant: false'
+workflint = '''
+type: array<any>, constant: false
+1:1: object filter extracts potentially untrusted properties "github.event.workflow_run.head_commit.author.name", "github.event.workflow_run.head_commit.committer.name". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+setups = ["step-run"]
+expression = 'github.event.workflow_run.head_repository.*'
+upstream = 'type: array<any>, constant: false'
+workflint = '''
+type: array<any>, constant: false
+1:1: "github.event.workflow_run.head_repository.description" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
+'''

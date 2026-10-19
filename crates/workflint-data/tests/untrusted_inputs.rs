@@ -1,6 +1,7 @@
 //! Checks the untrusted input paths against the reference's `BuiltinUntrustedInputs` in the
-//! vendored `expr_insecure.go`, the safe functions against its `isSafeFuncCall`, and ports
-//! `TestExprInsecureBuiltinUntrustedInputs` from `expr_insecure_test.go`.
+//! vendored `expr_insecure.go`, plus the paths that workflint adds, the safe functions against
+//! its `isSafeFuncCall`, and ports `TestExprInsecureBuiltinUntrustedInputs` from
+//! `expr_insecure_test.go`.
 
 #![allow(clippy::panic)]
 
@@ -35,6 +36,20 @@ const ALL_UNTRUSTED_INPUTS: [&str; 20] = [
     "github.head_ref",
 ];
 
+/// The paths that workflint adds to the reference's table, in table order
+/// (`docs/differences.md#workflow-run-untrusted-input`).
+const ADDED_UNTRUSTED_INPUTS: [&str; 9] = [
+    "github.event.workflow_run.head_branch",
+    "github.event.workflow_run.display_title",
+    "github.event.workflow_run.head_commit.message",
+    "github.event.workflow_run.head_commit.author.email",
+    "github.event.workflow_run.head_commit.author.name",
+    "github.event.workflow_run.head_commit.committer.email",
+    "github.event.workflow_run.head_commit.committer.name",
+    "github.event.workflow_run.head_repository.description",
+    "github.event.workflow_run.head_repository.owner.login",
+];
+
 /// Pushes the path of each leaf below `node` to `paths`, in table order.
 fn leaf_paths(node: &UntrustedInput, prefix: &str, paths: &mut Vec<String>) {
     let path = if prefix.is_empty() {
@@ -60,8 +75,12 @@ fn workflint_paths() -> Vec<String> {
 }
 
 #[test]
-fn untrusted_inputs_match_the_reference_table() {
-    assert_eq!(workflint_paths(), builtin_untrusted_inputs());
+fn untrusted_inputs_are_the_reference_table_and_the_added_paths() {
+    let (added, reference): (Vec<_>, Vec<_>) = workflint_paths()
+        .into_iter()
+        .partition(|path| ADDED_UNTRUSTED_INPUTS.contains(&path.as_str()));
+    assert_eq!(reference, builtin_untrusted_inputs());
+    assert_eq!(added, ADDED_UNTRUSTED_INPUTS);
 }
 
 #[test]
@@ -97,10 +116,11 @@ fn the_reference_table_has_the_twenty_paths_of_its_tests() {
     assert_eq!(reference, tested);
 }
 
-/// The first half of `TestExprInsecureBuiltinUntrustedInputs`: each path leads to a leaf.
+/// The first half of `TestExprInsecureBuiltinUntrustedInputs`: each path, including the added
+/// ones, leads to a leaf.
 #[test]
 fn every_untrusted_path_ends_at_a_leaf() {
-    for input in ALL_UNTRUSTED_INPUTS {
+    for input in ALL_UNTRUSTED_INPUTS.iter().chain(&ADDED_UNTRUSTED_INPUTS) {
         let mut names = input.split('.');
         let root = names.next().unwrap_or_default();
         let Some(mut node) = UNTRUSTED_INPUTS.iter().find(|node| node.name == root) else {
