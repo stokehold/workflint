@@ -12,9 +12,6 @@
 
 "err/deprecated_workflow_commands" = "M4"
 "err/invalid_id" = "M4"
-"err/invalid_permissions" = "M4"
-"err/issue170_empty_permissions" = "M4"
-"err/issue558_read_write_none_are_not_always_valid_permissions" = "M4"
 "err/matrix_exclude_mismatch" = "M4"
 "err/matrix_exclude_no_match" = "M4"
 "err/minimal_cycle_in_needs" = "M4"
@@ -29,7 +26,6 @@
 "examples/invalid_ids_in_needs" = "M4"
 "examples/job_step_ids_duplicate" = "M4"
 "examples/matrix_checks" = "M4"
-"examples/permissions" = "M4"
 "examples/pyflakes_integration" = "M5"
 "examples/shell_name_validation" = "M4"
 "examples/shellcheck_integration" = "M5"

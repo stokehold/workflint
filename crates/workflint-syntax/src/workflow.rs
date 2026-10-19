@@ -92,7 +92,8 @@ pub enum Permissions<'a> {
     /// The mapping form, keyed by scope name. A scope's value is `None`
     /// when it is not a non-empty string, which the parser reports. The
     /// reference keeps such a value as `""` and its `permissions` rule
-    /// reports it at the entry's span. The reference's
+    /// reports it again. The `permissions` rule here skips it
+    /// (`docs/differences.md#invalid-value-reported-once`). The reference's
     /// `PermissionScope.Name` is the entry's key.
     Scopes(Keyed<'a, Option<Str<'a>>>),
 }

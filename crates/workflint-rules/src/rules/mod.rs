@@ -12,6 +12,7 @@ mod events;
 mod expression;
 mod glob;
 mod if_cond;
+mod permissions;
 mod runner_label;
 mod workflow_call;
 
@@ -44,7 +45,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 59] = [
+pub(crate) static ALL: [&RuleMeta; 62] = [
     &action::ACTION_FILE_NOT_FOUND,
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &action::BROKEN_ACTION_METADATA,
@@ -72,6 +73,8 @@ pub(crate) static ALL: [&RuleMeta; 59] = [
     &env_var::INVALID_ENV_VAR_NAME,
     &glob::INVALID_GLOB,
     &events::INVALID_INPUT_DEFAULT,
+    &permissions::INVALID_PERMISSION_LEVEL,
+    &permissions::INVALID_PERMISSIONS_VALUE,
     &glob::INVALID_REF_NAME,
     &workflow_call::INVALID_REUSABLE_WORKFLOW_REF,
     &runner_label::INVALID_RUNNER_LABEL_PATTERN,
@@ -99,6 +102,7 @@ pub(crate) static ALL: [&RuleMeta; 59] = [
     &workflow_call::UNDEFINED_WORKFLOW_INPUT,
     &workflow_call::UNDEFINED_WORKFLOW_SECRET,
     &events::UNKNOWN_EVENT,
+    &permissions::UNKNOWN_PERMISSION_SCOPE,
     &runner_label::UNKNOWN_RUNNER_LABEL,
     &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
     &expression::WRONG_EXPRESSION_TYPE,
@@ -125,6 +129,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
         "expression" => Some(Box::new(expression::Expression::new())),
         "glob" => Some(Box::new(glob::Glob)),
         "if-cond" => Some(Box::new(if_cond::IfCond)),
+        "permissions" => Some(Box::new(permissions::Permissions)),
         // M5.2 passes the labels of the config's `self-hosted-runner.labels`.
         "runner-label" => Some(Box::new(runner_label::RunnerLabel::new(Vec::new()))),
         "workflow-call" => Some(Box::new(workflow_call::WorkflowCall)),
