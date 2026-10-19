@@ -354,6 +354,7 @@ env:
   E: ${{ secrets.TOKEN }}
 jobs:
   a:
+    needs: b
     runs-on: ${{ matrix.os }}
     if: ${{ needs.b.result == 'success' && always() }}
     strategy:
@@ -656,25 +657,6 @@ jobs:
     let lines = lint(text);
     assert_eq!(lines.len(), 1, "{lines:#?}");
     assert!(lines[0].ends_with("[undefined-variable]"), "{lines:#?}");
-}
-
-#[test]
-fn contexts_typed_by_later_tasks_accept_any_property() {
-    // M4.10 types `needs`. Until then it accepts any property, so that no valid workflow gets
-    // an error.
-    let text = "\
-on:
-  workflow_dispatch:
-    inputs:
-      i:
-        type: string
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ${{ needs.any.result }}
-";
-    assert_eq!(lint(text), Vec::<String>::new());
 }
 
 #[test]
@@ -1226,7 +1208,7 @@ fn outputs_come_from_the_action_that_the_step_runs() {
 
 #[test]
 fn a_local_action_with_broken_metadata_has_outputs_of_any_name() {
-    // The `action` rule reports the broken metadata (M4.18). This rule reports nothing.
+    // The `action` rule reports the broken metadata. This rule reports nothing.
     let messages = steps_messages(
         "      - id: broken
         uses: ./.github/actions/broken
@@ -1239,4 +1221,313 @@ fn a_local_action_with_broken_metadata_has_outputs_of_any_name() {
             r#"receiver of object dereference "y" must be type of object but got "string" [invalid-property-access]"#
         ]
     );
+}
+
+/// Lints `workflow` in a project with the local reusable workflows `callee`, at
+/// `./.github/workflows/callee.yaml`, and `./.github/workflows/broken.yaml`, which has no
+/// `workflow_call` event. Returns the diagnostics of the `expression` kind and of the errors of
+/// local reusable workflows, which this rule reports when its lookup comes first.
+fn call_lines(callee: &str, workflow: &str) -> Vec<String> {
+    let project = MemoryProject::new()
+        .with_file(".github/workflows/callee.yaml", callee)
+        .with_file(".github/workflows/broken.yaml", "on: push\njobs: {}\n")
+        .linting(".github/workflows/test.yaml");
+    lint_in(&project, workflow)
+        .into_iter()
+        .filter(|line| {
+            let id = line.rsplit_once(" [").unwrap().1.trim_end_matches(']');
+            workflint_rules::registry::find(id).unwrap().kind == "expression"
+                || id.ends_with("reusable-workflow")
+                || id == "reusable-workflow-not-found"
+        })
+        .collect()
+}
+
+#[test]
+fn needs_has_the_outputs_and_result_of_each_direct_dependency() {
+    let text = "\
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      Version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: echo
+  test:
+    needs: [Build]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ needs.build.outputs.version }} ${{ needs.BUILD.result }}
+      - run: echo ${{ needs.build.outputs.tag }}
+      - run: echo ${{ needs.deploy }}
+  other:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ needs.build }}
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:15:23: property "tag" is not defined in object type {version: string} [undefined-property]"#,
+            r#"test.yaml:16:23: property "deploy" is not defined in object type {build: {outputs: {version: string}; result: string}} [undefined-property]"#,
+            r#"test.yaml:20:23: property "build" is not defined in object type {} [undefined-property]"#,
+        ]
+    );
+}
+
+#[test]
+fn needs_does_not_have_the_dependencies_of_a_dependency() {
+    // rhysd/actionlint#151: GitHub gives a job only the jobs it lists in `needs`.
+    let text = "\
+on: push
+jobs:
+  first:
+    runs-on: ubuntu-latest
+    outputs:
+      first: x
+    steps:
+      - run: echo
+  second:
+    needs: first
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  third:
+    needs: [second]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ needs.second.result }} ${{ needs.first.outputs.first }}
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:18:50: property "first" is not defined in object type {second: {outputs: {}; result: string}} [undefined-property]"#
+        ]
+    );
+}
+
+#[test]
+fn needs_is_typed_before_the_matrix() {
+    let text = "\
+on: push
+jobs:
+  first:
+    runs-on: ubuntu-latest
+    outputs:
+      os: x
+    steps:
+      - run: echo
+  second:
+    needs: first
+    strategy:
+      matrix:
+        os: ${{ fromJSON(needs.first.outputs.os) }}
+        bad: ['${{ needs.first.outputs.arch }}']
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:14:20: property "arch" is not defined in object type {os: string} [undefined-property]"#
+        ]
+    );
+}
+
+/// A local reusable workflow with the outputs `Version` and `digest`.
+const CALLEE_WITH_OUTPUTS: &str = "\
+on:
+  workflow_call:
+    outputs:
+      Version:
+        value: ${{ jobs.build.outputs.version }}
+      digest:
+        value: ${{ jobs.build.outputs.digest }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+";
+
+#[test]
+fn a_reusable_workflow_job_has_the_outputs_of_its_callee() {
+    let text = "\
+on: push
+jobs:
+  build:
+    uses: ./.github/workflows/callee.yaml
+  remote:
+    uses: owner/repo/.github/workflows/build.yaml@v1
+  test:
+    needs: [build, remote]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ needs.build.outputs.version }} ${{ needs.build.outputs.DIGEST }}
+      - run: echo ${{ needs.build.outputs.tag }}
+      - run: echo ${{ needs.remote.outputs.anything }} ${{ needs.remote.outputs.x.y }}
+";
+    assert_eq!(
+        call_lines(CALLEE_WITH_OUTPUTS, text),
+        [
+            r#"test.yaml:12:23: property "tag" is not defined in object type {digest: string; version: string} [undefined-property]"#,
+            r#"test.yaml:13:60: receiver of object dereference "y" must be type of object but got "string" [invalid-property-access]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_broken_callee_of_a_needed_later_job_is_reported_once() {
+    // `first` names `later` in `needs` before the `workflow-call` rule visits `later`, so this
+    // rule looks the callee up first and reports its error. The outputs have any name.
+    let text = "\
+on: push
+jobs:
+  first:
+    needs: [later, missing]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ needs.later.outputs.x }} ${{ needs.missing.outputs.x }}
+  later:
+    uses: ./.github/workflows/broken.yaml
+  missing:
+    uses: ./.github/workflows/missing.yaml
+";
+    assert_eq!(
+        call_lines(CALLEE_WITH_OUTPUTS, text),
+        [
+            r#"test.yaml:9:11: error while parsing reusable workflow "./.github/workflows/broken.yaml": "workflow_call" event trigger is not found in "on:" at line:1, column:5 [broken-reusable-workflow]"#,
+            r#"test.yaml:11:11: could not read reusable workflow file for "./.github/workflows/missing.yaml": open .github/workflows/missing.yaml: no such file or directory [reusable-workflow-not-found]"#,
+        ]
+    );
+}
+
+/// A local reusable workflow with one input of each type, and one without a type.
+const CALLEE_WITH_INPUTS: &str = "\
+on:
+  workflow_call:
+    inputs:
+      Str:
+        type: string
+      num:
+        type: number
+      flag:
+        type: boolean
+      untyped:
+        description: no type
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+";
+
+/// Calls the local reusable workflow [`CALLEE_WITH_INPUTS`] with the `with:` lines `with`, and
+/// returns the lines that [`call_lines`] returns.
+fn with_lines(with: &str) -> Vec<String> {
+    let text = format!(
+        "on: push\njobs:\n  call:\n    uses: ./.github/workflows/callee.yaml\n    with:\n{with}"
+    );
+    call_lines(CALLEE_WITH_INPUTS, &text)
+}
+
+#[test]
+fn a_quoted_true_passed_to_a_string_input_is_a_string() {
+    // rhysd/actionlint#225 (`docs/differences.md#quoted-scalar-types`).
+    assert_eq!(
+        with_lines("      str: 'true'\n      num: \"42\"\n      flag: \"false\"\n"),
+        [
+            r#"test.yaml:7:12: input "num" is typed as number by reusable workflow "./.github/workflows/callee.yaml". string value cannot be assigned [wrong-workflow-call-input-type]"#,
+            r#"test.yaml:8:13: input "flag" is typed as bool by reusable workflow "./.github/workflows/callee.yaml". string value cannot be assigned [wrong-workflow-call-input-type]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_plain_literal_has_the_type_of_its_tag() {
+    assert_eq!(
+        with_lines("      STR: true\n      num: 1.5e3\n      flag: True\n      untyped: null\n"),
+        [
+            r#"test.yaml:6:12: input "Str" is typed as string by reusable workflow "./.github/workflows/callee.yaml". bool value cannot be assigned [wrong-workflow-call-input-type]"#,
+        ]
+    );
+    assert_eq!(
+        with_lines("      str: 42\n      num: 0x1F\n      flag: ~\n"),
+        [
+            r#"test.yaml:8:13: input "flag" is typed as bool by reusable workflow "./.github/workflows/callee.yaml". null value cannot be assigned [wrong-workflow-call-input-type]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_boolean_input_rejects_a_value_of_another_type() {
+    // `docs/differences.md#bool-assignability`: the reference accepts any value here.
+    assert_eq!(
+        with_lines("      flag: yes\n"),
+        [
+            r#"test.yaml:6:13: input "flag" is typed as bool by reusable workflow "./.github/workflows/callee.yaml". string value cannot be assigned [wrong-workflow-call-input-type]"#,
+        ]
+    );
+}
+
+#[test]
+fn an_empty_value_is_null() {
+    assert_eq!(
+        with_lines("      str:\n      untyped:\n"),
+        [
+            r#"test.yaml:6:11: input "Str" is typed as string by reusable workflow "./.github/workflows/callee.yaml". null value cannot be assigned [wrong-workflow-call-input-type]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_value_written_as_one_expression_has_the_type_of_the_expression() {
+    assert_eq!(
+        with_lines(
+            "      str: ${{ true }}\n      num: \" ${{ 'x' }} \"\n      flag: ${{ fromJSON('true') }}\n"
+        ),
+        [
+            r#"test.yaml:6:12: input "Str" is typed as string by reusable workflow "./.github/workflows/callee.yaml". bool value cannot be assigned [wrong-workflow-call-input-type]"#,
+            r#"test.yaml:7:12: input "num" is typed as number by reusable workflow "./.github/workflows/callee.yaml". string value cannot be assigned [wrong-workflow-call-input-type]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_value_with_text_around_an_expression_is_a_string() {
+    assert_eq!(
+        with_lines("      str: v${{ 1 }}\n      num: ${{ 1 }}${{ 2 }}\n"),
+        [
+            r#"test.yaml:7:12: input "num" is typed as number by reusable workflow "./.github/workflows/callee.yaml". string value cannot be assigned [wrong-workflow-call-input-type]"#,
+        ]
+    );
+}
+
+#[test]
+fn a_value_whose_expression_has_errors_is_not_type_checked() {
+    let lines = with_lines("      num: ${{ github.nope.x }}\n");
+    assert_eq!(lines.len(), 1, "{lines:#?}");
+    assert!(lines[0].ends_with("[undefined-property]"), "{lines:#?}");
+}
+
+#[test]
+fn an_input_that_the_callee_does_not_declare_is_not_type_checked() {
+    // The `workflow-call` rule reports the input.
+    assert_eq!(with_lines("      other: true\n"), Vec::<String>::new());
+}
+
+#[test]
+fn the_values_of_a_remote_call_are_not_type_checked() {
+    let text = "\
+on: push
+jobs:
+  call:
+    uses: owner/repo/.github/workflows/callee.yaml@v1
+    with:
+      num: x
+";
+    assert_eq!(call_lines(CALLEE_WITH_INPUTS, text), Vec::<String>::new());
 }

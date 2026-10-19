@@ -19,15 +19,16 @@ use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
 use workflint_expr::{MAX_TYPE_DEPTH, ObjectTy, Rest, Ty, TypeEnv};
 use workflint_syntax::{
-    Concurrency, Container, Credentials, Defaults, Env, Event, Exec, Expr, Field, Job, Keyed,
-    KeyedEntry, Matrix, MatrixCombination, MatrixRow, Placeholder, RawValue, Runner, Snapshot,
-    Step, StepUses, Str, Template, Value, Workflow, WorkflowCall, WorkflowCallEvent,
-    WorkflowCallInputType, WorkflowCallSecrets, WorkflowDispatchEvent, WorkflowDispatchInputType,
-    contains_expression,
+    Concurrency, Container, Credentials, Defaults, Env, Event, Exec, Expr, Field, Job, JobUses,
+    JobUsesKind, Keyed, KeyedEntry, Matrix, MatrixCombination, MatrixRow, Placeholder, RawValue,
+    ReusableWorkflowMetadata, Runner, Snapshot, Step, StepUses, Str, Template, Value, Workflow,
+    WorkflowCall, WorkflowCallEvent, WorkflowCallInputType, WorkflowCallSecrets,
+    WorkflowDispatchEvent, WorkflowDispatchInputType, contains_expression,
 };
 use workflint_yaml::{Tag, simple_lowercase};
 
 use crate::local::{Lookup, is_local_action};
+use crate::rules::workflow_call::report_lookup_error;
 use crate::{Context, Rule};
 
 /// A template evaluates to an object, an array, or null, which GitHub cannot put in a string.
@@ -73,9 +74,22 @@ pub(crate) static WRONG_INPUT_DEFAULT_TYPE: RuleMeta = RuleMeta {
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/wrong-input-default-type.md",
 };
 
+/// A value in `with:` of a call to a local reusable workflow has a type that the callee's
+/// input does not accept.
+pub(crate) static WRONG_WORKFLOW_CALL_INPUT_TYPE: RuleMeta = RuleMeta {
+    id: "wrong-workflow-call-input-type",
+    description: "A `with:` value has a type that the input of the local reusable workflow does not accept",
+    kind: "expression",
+    category: Category::Correctness,
+    default_severity: Severity::Error,
+    docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/wrong-workflow-call-input-type.md",
+};
+
 /// The `expression` rule.
 #[derive(Debug, Default)]
-pub(crate) struct Expression {
+pub(crate) struct Expression<'a> {
+    /// The jobs of the workflow, which `needs` reads its dependencies from.
+    jobs: Option<&'a Keyed<'a, Job<'a>>>,
     /// The contexts of the workflow, which every job starts from.
     workflow: TypeEnv,
     /// The contexts of the job being visited, from its job-pre hook to its job-post hook.
@@ -88,7 +102,7 @@ pub(crate) struct Expression {
     loose_steps: bool,
 }
 
-impl Expression {
+impl Expression<'_> {
     pub(crate) fn new() -> Self {
         Self::default()
     }
@@ -106,10 +120,11 @@ impl Expression {
     }
 }
 
-impl<'a> Rule<'a> for Expression {
+impl<'a> Rule<'a> for Expression<'a> {
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         // The events add their inputs to the contexts of the workflow, in the order of `on`.
         self.workflow = TypeEnv::new();
+        self.jobs = workflow.jobs.value();
         let none = self.at("");
         none.string(cx, &workflow.name);
         for event in workflow
@@ -134,8 +149,7 @@ impl<'a> Rule<'a> for Expression {
         // `needs` is typed before `matrix`, because the matrix may read `needs`. The type of
         // `matrix` is set before the other keys are checked, because they all see it.
         let mut env = self.workflow.clone();
-        // TODO(#147): type `needs` from the direct dependencies of the job and their outputs.
-        env.set_needs(loose());
+        env.set_needs(self.needs_ty(entry, cx));
         self.job = Some(env);
         // `steps` starts as the empty strict object of the global contexts, and each step with
         // an `id` adds itself once its own keys are checked.
@@ -296,7 +310,44 @@ impl<'a> Rule<'a> for Expression {
     }
 }
 
-impl Expression {
+impl Expression<'_> {
+    /// Returns the type of `needs` in the job `entry`, the reference's `calcNeedsType`: each job
+    /// that `entry` lists in `needs` with its `outputs` and its `result`. The jobs that those
+    /// jobs need are left out, as on GitHub (rhysd/actionlint#151). A job that calls a
+    /// reusable workflow has the outputs of the callee.
+    fn needs_ty(&self, entry: &KeyedEntry<'_, Job<'_>>, cx: &mut Context<'_>) -> ObjectTy {
+        let mut needs = BTreeMap::new();
+        let ids = entry
+            .value
+            .needs
+            .value()
+            .into_iter()
+            .flat_map(|ids| ids.iter().flatten());
+        for id in ids {
+            let id = simple_lowercase(id.value());
+            // A job that needs itself is a cycle, which the `job-needs` rule reports.
+            if id == entry.folded() || needs.contains_key(id.as_ref()) {
+                continue;
+            }
+            let Some(needed) = self.jobs.and_then(|jobs| jobs.get(&id)) else {
+                continue;
+            };
+            let job = &needed.value;
+            let outputs = if let Some(call) = &job.workflow_call {
+                workflow_call_outputs(call, cx)
+            } else {
+                let outputs = job.outputs.value().into_iter().flatten();
+                Arc::new(ObjectTy::new(
+                    outputs.map(|output| (output.folded().to_owned(), Ty::String)),
+                    Rest::Strict,
+                ))
+            };
+            let ty = Ty::strict([("outputs", Ty::Object(outputs)), ("result", Ty::String)]);
+            needs.insert(id.into_owned(), ty);
+        }
+        ObjectTy::new(needs, Rest::Strict)
+    }
+
     /// Adds `step` to `steps` if it has an `id`, so that the steps after it and the keys of the
     /// job-post hook see it. A step does not see itself. An `id` that contains an expression
     /// makes `steps` accept any step, because the value of the `id` is not known.
@@ -469,18 +520,45 @@ impl Expression {
         checker.string(cx, &container.entrypoint);
     }
 
-    /// Checks the call of a reusable workflow.
+    /// Checks the call of a reusable workflow, the reference's `checkWorkflowCall`. Each value
+    /// of `with:` in a call to a local reusable workflow must have a type that the callee's
+    /// input accepts.
     fn workflow_call(&self, cx: &mut Context<'_>, call: &WorkflowCall<'_>) {
-        if let Some(uses) = call.uses.value() {
+        let uses = call.uses.value();
+        if let Some(uses) = uses {
             self.at("").template(cx, &uses.template);
         }
-        // TODO(#147): check the type of each value against the input of a local reusable
-        // workflow.
-        keyed(
-            cx,
-            &self.at("jobs.<job_id>.with.<with_id>"),
-            call.inputs.value(),
-        );
+        let callee = uses.and_then(|uses| local_callee(uses, cx).map(|callee| (uses, callee)));
+        let with = self.at("jobs.<job_id>.with.<with_id>");
+        for entry in call.inputs.value().into_iter().flatten() {
+            let Some(value) = &entry.value else {
+                continue;
+            };
+            let types = with.template(cx, value);
+            let Some((uses, metadata)) = &callee else {
+                continue;
+            };
+            let Some(input) = metadata.inputs.get(entry.folded()) else {
+                continue;
+            };
+            let want = match input.input_type {
+                Some(WorkflowCallInputType::String) => Ty::String,
+                Some(WorkflowCallInputType::Boolean) => Ty::Bool,
+                Some(WorkflowCallInputType::Number) => Ty::Number,
+                None => continue,
+            };
+            let Some(found) = with_value_ty(value, &types) else {
+                continue;
+            };
+            if !want.accepts(&found) {
+                let message = format!(
+                    "input {} is typed as {want} by reusable workflow {}. {found} value cannot be assigned",
+                    quote(&input.name),
+                    quote(uses.value()),
+                );
+                cx.report(&WRONG_WORKFLOW_CALL_INPUT_TYPE, value.span(), message);
+            }
+        }
         if let Some(WorkflowCallSecrets::Map(secrets)) = call.secrets.value() {
             keyed(
                 cx,
@@ -488,6 +566,74 @@ impl Expression {
                 Some(secrets),
             );
         }
+    }
+}
+
+/// Looks up the local reusable workflow that `uses` calls, and reports the error of the lookup
+/// if it is the first. Returns `None` for a call to a workflow in another repository, or one
+/// with no metadata. Only a valid `./` path is looked up: the `workflow-call` rule reports an
+/// invalid one.
+fn local_callee(uses: &JobUses<'_>, cx: &mut Context<'_>) -> Option<Arc<ReusableWorkflowMetadata>> {
+    if !matches!(uses.kind, JobUsesKind::Local { .. }) {
+        return None;
+    }
+    match cx.local_metadata().reusable_workflow(uses.value()) {
+        Lookup::Found { metadata, .. } => Some(metadata),
+        Lookup::None => None,
+        Lookup::Error(err) => {
+            report_lookup_error(cx, uses, &err);
+            None
+        }
+    }
+}
+
+/// Returns the type of `needs.<job_id>.outputs` for a job that runs `call`, the reference's
+/// `getWorkflowCallOutputsType`: the outputs of a local callee, whose names are in lower case,
+/// or outputs of any name, which are strings.
+fn workflow_call_outputs(call: &WorkflowCall<'_>, cx: &mut Context<'_>) -> Arc<ObjectTy> {
+    let callee = call.uses.value().and_then(|uses| local_callee(uses, cx));
+    let outputs = match &callee {
+        Some(metadata) => ObjectTy::new(
+            metadata
+                .outputs
+                .keys()
+                .map(|name| (name.clone(), Ty::String)),
+            Rest::Strict,
+        ),
+        None => ObjectTy::new([] as [(&str, Ty); 0], Rest::Map(Ty::String)),
+    };
+    Arc::new(outputs)
+}
+
+/// Returns the type of the `with:` value `value`, whose placeholders without errors have the
+/// types `types`, or `None` if a placeholder has errors.
+///
+/// A value written as one `${{ }}` has the type of the expression, and a value with text
+/// around its placeholders is a string. A literal has the type of its YAML tag, so a quoted
+/// value is a string, where the reference types the text
+/// (`docs/differences.md#quoted-scalar-types`).
+fn with_value_ty(value: &Template<'_>, types: &[Ty]) -> Option<Ty> {
+    if types.len() != value.placeholders().len() {
+        return None;
+    }
+    if let [ty] = types
+        && is_one_expression(value.value())
+    {
+        return Some(ty.clone());
+    }
+    if !types.is_empty() {
+        return Some(Ty::String);
+    }
+    Some(tag_ty(value.source.tag()))
+}
+
+/// Returns the type of a literal scalar with the tag `tag`.
+fn tag_ty(tag: &Tag) -> Ty {
+    match tag {
+        Tag::Bool => Ty::Bool,
+        Tag::Null => Ty::Null,
+        Tag::Int | Tag::Float => Ty::Number,
+        Tag::Str | Tag::Map | Tag::Seq | Tag::Other(_) => Ty::String,
     }
 }
 
@@ -500,8 +646,8 @@ impl Expression {
 /// step has outputs of any name, which are strings.
 ///
 /// Broken metadata of a local action gets outputs of any name, and this rule reports nothing.
-/// The `action` rule runs before this one on each step, and from M4.18 (#155) it looks the
-/// action up first and reports the error.
+/// The `action` rule runs before this one on each step, so it looks the action up first and
+/// reports the error.
 fn action_outputs(uses: Option<&StepUses<'_>>, cx: &Context<'_>) -> Arc<ObjectTy> {
     let any_string = || Arc::new(ObjectTy::new([] as [(&str, Ty); 0], Rest::Map(Ty::String)));
     let Some(spec) = uses.map(StepUses::value) else {
@@ -993,12 +1139,7 @@ impl Checker {
                 _ => Ty::Any,
             };
         }
-        match scalar.source.tag() {
-            Tag::Bool => Ty::Bool,
-            Tag::Null => Ty::Null,
-            Tag::Int | Tag::Float => Ty::Number,
-            Tag::Str | Tag::Map | Tag::Seq | Tag::Other(_) => Ty::String,
-        }
+        tag_ty(scalar.source.tag())
     }
 
     /// Checks a value written as one `${{ }}` whose type must be `want`. Returns its type if

@@ -41,7 +41,9 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 <!-- rules-index:start -->
 | Rule | Kind | Category | Default severity | Description |
 |---|---|---|---|---|
+| [`action-file-not-found`](action-file-not-found.md) | `action` | correctness | warning | A file that the `runs` section of a local action names does not exist |
 | [`activity-types-not-supported`](activity-types-not-supported.md) | `events` | correctness | error | `types` is set on an event that has no activity types |
+| [`broken-action-metadata`](broken-action-metadata.md) | `action` | correctness | error | A local action's metadata file is not valid YAML or cannot be decoded |
 | [`broken-reusable-workflow`](broken-reusable-workflow.md) | `workflow-call` | correctness | error | A called local reusable workflow has no valid `on.workflow_call` section |
 | [`case-argument-count`](case-argument-count.md) | `expression` | correctness | error | `case()` has an even number of arguments, so it has no default value |
 | [`choice-input-without-options`](choice-input-without-options.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` has no `options` |
@@ -53,6 +55,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`deprecated-action-input`](deprecated-action-input.md) | `action` | correctness | error | `with:` sets an input that the action has deprecated |
 | [`duplicate-input-option`](duplicate-input-option.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` lists an option more than once |
 | [`duplicate-key`](duplicate-key.md) | `syntax-check` | correctness | error | A mapping repeats a key |
+| [`empty-deprecation-message`](empty-deprecation-message.md) | `action` | correctness | error | An input of a local action has an empty `deprecationMessage` |
 | [`empty-section`](empty-section.md) | `syntax-check` | correctness | error | A mapping or sequence that must have entries is empty or null |
 | [`empty-string`](empty-string.md) | `syntax-check` | correctness | error | A string that must not be empty is empty |
 | [`empty-workflow`](empty-workflow.md) | `syntax-check` | correctness | error | The file has no YAML document, or only comments |
@@ -66,11 +69,14 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
 | [`invalid-action-format`](invalid-action-format.md) | `action` | correctness | error | A step's `uses:` is not a local action, a Docker image, or `{owner}/{repo}@{ref}` |
 | [`invalid-activity-type`](invalid-activity-type.md) | `events` | correctness | error | `types` lists an activity type that the event does not have |
+| [`invalid-branding-color`](invalid-branding-color.md) | `action` | correctness | error | A local action's `branding.color` is not a color that GitHub supports |
+| [`invalid-branding-icon`](invalid-branding-icon.md) | `action` | correctness | error | A local action's `branding.icon` is not an icon that GitHub supports |
 | [`invalid-comparison`](invalid-comparison.md) | `expression` | correctness | error | A comparison has operands that GitHub cannot compare |
 | [`invalid-config-variable-name`](invalid-config-variable-name.md) | `expression` | correctness | error | The name in `vars.NAME` breaks GitHub's naming rules for configuration variables |
 | [`invalid-cron`](invalid-cron.md) | `events` | correctness | error | A `schedule` cron expression does not parse |
 | [`invalid-dispatch-input-type`](invalid-dispatch-input-type.md) | `syntax-check` | correctness | error | A `workflow_dispatch` input has an unknown `type` |
 | [`invalid-docker-action`](invalid-docker-action.md) | `action` | correctness | error | A `docker://` action has an invalid URI or an empty tag |
+| [`invalid-dockerfile-name`](invalid-dockerfile-name.md) | `action` | correctness | error | A local Docker action's `image` is a file that is not named `Dockerfile` |
 | [`invalid-env-var-name`](invalid-env-var-name.md) | `env-var` | correctness | error | A name in `env` contains `&`, `=`, a space, or a tab |
 | [`invalid-expression-syntax`](invalid-expression-syntax.md) | `expression` | correctness | error | An expression in `${{ }}` cannot be lexed or parsed |
 | [`invalid-glob`](invalid-glob.md) | `glob` | correctness | error | A filter pattern is not valid glob syntax, or contains a newline |
@@ -85,14 +91,20 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-reusable-call-key`](invalid-reusable-call-key.md) | `syntax-check` | correctness | error | A job that calls a reusable workflow has a key that only a job with steps may have |
 | [`invalid-reusable-workflow-ref`](invalid-reusable-workflow-ref.md) | `workflow-call` | correctness | error | A job's `uses:` is not `./path/to/workflow.yml` or `owner/repo/path/to/workflow.yml@ref` |
 | [`invalid-runner-label-pattern`](invalid-runner-label-pattern.md) | `runner-label` | correctness | error | A runner label pattern in the config is not a valid glob |
+| [`invalid-runs-using`](invalid-runs-using.md) | `action` | correctness | error | A local action's `runs.using` is not `composite`, `docker`, or a Node.js runtime that GitHub has |
 | [`invalid-timezone`](invalid-timezone.md) | `events` | correctness | error | A `schedule` time zone is not an IANA time zone name |
 | [`invalid-workflow-call-input-type`](invalid-workflow-call-input-type.md) | `syntax-check` | correctness | error | A `workflow_call` input has an unknown `type` |
 | [`merge-key-unsupported`](merge-key-unsupported.md) | `syntax-check` | correctness | error | A mapping has a `<<` merge key, which GitHub Actions does not apply |
+| [`missing-action-description`](missing-action-description.md) | `action` | correctness | error | A local action's metadata has no `description` |
+| [`missing-action-name`](missing-action-name.md) | `action` | correctness | error | A local action's metadata has no `name` |
 | [`missing-format-argument`](missing-format-argument.md) | `expression` | correctness | error | The format string of `format()` has a placeholder beyond its arguments |
+| [`missing-pre-post-script`](missing-pre-post-script.md) | `action` | correctness | error | A local JavaScript action has `pre-if` without `pre`, or `post-if` without `post` |
 | [`missing-required-action-input`](missing-required-action-input.md) | `action` | correctness | error | A step does not set an input that its action requires |
 | [`missing-required-key`](missing-required-key.md) | `syntax-check` | correctness | error | A required section or key is missing |
 | [`missing-required-workflow-input`](missing-required-workflow-input.md) | `workflow-call` | correctness | error | A call does not set an input that the local reusable workflow requires |
 | [`missing-required-workflow-secret`](missing-required-workflow-secret.md) | `workflow-call` | correctness | error | A call does not pass a secret that the local reusable workflow requires |
+| [`missing-runs-key`](missing-runs-key.md) | `action` | correctness | error | The `runs` section of a local action lacks the key that its kind of action needs |
+| [`missing-runs-using`](missing-runs-using.md) | `action` | correctness | error | A local action has no `runs.using` |
 | [`missing-workflow-run-workflows`](missing-workflow-run-workflows.md) | `events` | correctness | error | A `workflow_run` event has no `workflows` |
 | [`non-positive-number`](non-positive-number.md) | `syntax-check` | correctness | error | A literal `timeout-minutes` or `max-parallel` is zero or less |
 | [`object-in-template`](object-in-template.md) | `expression` | correctness | error | A `${{ }}` in a string evaluates to an object, an array, or null |
@@ -103,6 +115,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`reusable-call-key-without-uses`](reusable-call-key-without-uses.md) | `syntax-check` | correctness | error | A job without `uses` has `with` or `secrets` |
 | [`reusable-workflow-not-found`](reusable-workflow-not-found.md) | `workflow-call` | correctness | error | The file of a called local reusable workflow cannot be read |
 | [`runner-label-conflict`](runner-label-conflict.md) | `runner-label` | correctness | error | Two `runs-on` labels of a job cannot be on the same runner |
+| [`runs-key-not-allowed`](runs-key-not-allowed.md) | `action` | correctness | error | The `runs` section of a local action has a key that its kind of action does not use |
 | [`schedule-without-config`](schedule-without-config.md) | `syntax-check` | correctness | error | `schedule` is named in a string or a sequence item of `on`, so it has no `cron` entries |
 | [`single-expression-required`](single-expression-required.md) | `expression` | correctness | error | A value that must be one `${{ }}` holds another number of them |
 | [`step-without-run-or-uses`](step-without-run-or-uses.md) | `syntax-check` | correctness | error | A step has neither `run` nor `uses` |
@@ -129,5 +142,6 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`wrong-argument-type`](wrong-argument-type.md) | `expression` | correctness | error | An argument of a built-in function has a type that its parameter does not accept |
 | [`wrong-expression-type`](wrong-expression-type.md) | `expression` | correctness | error | A value written as one `${{ }}` has a type that its key does not accept |
 | [`wrong-input-default-type`](wrong-input-default-type.md) | `expression` | correctness | error | A `boolean` or `number` input of `workflow_call` has a default of another type |
+| [`wrong-workflow-call-input-type`](wrong-workflow-call-input-type.md) | `expression` | correctness | error | A `with:` value has a type that the input of the local reusable workflow does not accept |
 | [`yaml-syntax-error`](yaml-syntax-error.md) | `syntax-check` | correctness | error | The input is not valid YAML |
 <!-- rules-index:end -->

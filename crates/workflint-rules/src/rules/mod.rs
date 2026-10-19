@@ -44,8 +44,10 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 45] = [
+pub(crate) static ALL: [&RuleMeta; 59] = [
+    &action::ACTION_FILE_NOT_FOUND,
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
+    &action::BROKEN_ACTION_METADATA,
     &workflow_call::BROKEN_REUSABLE_WORKFLOW,
     &events::CHOICE_INPUT_WITHOUT_OPTIONS,
     &events::CONFLICTING_FILTERS,
@@ -54,6 +56,7 @@ pub(crate) static ALL: [&RuleMeta; 45] = [
     &events::DEFAULT_NOT_IN_OPTIONS,
     &action::DEPRECATED_ACTION_INPUT,
     &events::DUPLICATE_INPUT_OPTION,
+    &action::EMPTY_DEPRECATION_MESSAGE,
     &events::FILTER_NOT_SUPPORTED,
     &glob::GLOB_PATH_DOT,
     &glob::GLOB_PATH_WHITESPACE,
@@ -61,18 +64,27 @@ pub(crate) static ALL: [&RuleMeta; 45] = [
     &if_cond::IF_ALWAYS_TRUE,
     &action::INVALID_ACTION_FORMAT,
     &events::INVALID_ACTIVITY_TYPE,
+    &action::INVALID_BRANDING_COLOR,
+    &action::INVALID_BRANDING_ICON,
     &events::INVALID_CRON,
     &action::INVALID_DOCKER_ACTION,
+    &action::INVALID_DOCKERFILE_NAME,
     &env_var::INVALID_ENV_VAR_NAME,
     &glob::INVALID_GLOB,
     &events::INVALID_INPUT_DEFAULT,
     &glob::INVALID_REF_NAME,
     &workflow_call::INVALID_REUSABLE_WORKFLOW_REF,
     &runner_label::INVALID_RUNNER_LABEL_PATTERN,
+    &action::INVALID_RUNS_USING,
     &events::INVALID_TIMEZONE,
+    &action::MISSING_ACTION_DESCRIPTION,
+    &action::MISSING_ACTION_NAME,
+    &action::MISSING_PRE_POST_SCRIPT,
     &action::MISSING_REQUIRED_ACTION_INPUT,
     &workflow_call::MISSING_REQUIRED_WORKFLOW_INPUT,
     &workflow_call::MISSING_REQUIRED_WORKFLOW_SECRET,
+    &action::MISSING_RUNS_KEY,
+    &action::MISSING_RUNS_USING,
     &events::MISSING_WORKFLOW_RUN_WORKFLOWS,
     &expression::OBJECT_IN_TEMPLATE,
     &events::OPTIONS_ON_NON_CHOICE_INPUT,
@@ -80,6 +92,7 @@ pub(crate) static ALL: [&RuleMeta; 45] = [
     &events::REQUIRED_INPUT_WITH_DEFAULT,
     &workflow_call::REUSABLE_WORKFLOW_NOT_FOUND,
     &runner_label::RUNNER_LABEL_CONFLICT,
+    &action::RUNS_KEY_NOT_ALLOWED,
     &expression::SINGLE_EXPRESSION_REQUIRED,
     &events::TOO_MANY_DISPATCH_INPUTS,
     &action::UNDEFINED_ACTION_INPUT,
@@ -90,6 +103,7 @@ pub(crate) static ALL: [&RuleMeta; 45] = [
     &events::WORKFLOWS_FILTER_NOT_SUPPORTED,
     &expression::WRONG_EXPRESSION_TYPE,
     &expression::WRONG_INPUT_DEFAULT_TYPE,
+    &expression::WRONG_WORKFLOW_CALL_INPUT_TYPE,
 ];
 
 /// Creates a fresh instance of each rule for one file, in [`CREATION_ORDER`].

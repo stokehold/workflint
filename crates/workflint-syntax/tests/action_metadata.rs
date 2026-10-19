@@ -56,7 +56,7 @@ fn dump(metadata: &ActionMetadata) -> String {
         quote(&runs.pre_entrypoint),
         quote(&runs.entrypoint),
         quote(&runs.post_entrypoint),
-        runs.has_steps,
+        runs.steps.is_some(),
     );
     let _ = writeln!(
         out,
@@ -911,5 +911,27 @@ fn deeply_nested_merges_decode_on_a_small_stack() {
         format!(
             "name: \"\"\ndescription: \"\"\ninput \"a\": name=\"A\" required=true deprecated=false message=\"\"\n{NO_RUNS}"
         ),
+    );
+}
+
+#[test]
+fn steps_args_and_env_are_set_only_by_non_null_values() {
+    let runs = |text: &str| {
+        let file = SourceFile::new(FileId::new(0), "action.yml", text).unwrap();
+        let runs = ActionMetadata::decode(&file).unwrap().runs;
+        (runs.steps, runs.has_args, runs.has_env)
+    };
+    assert_eq!(runs("runs: {}\n"), (None, false, false));
+    assert_eq!(
+        runs("runs: {steps: , args: , env: }\n"),
+        (None, false, false)
+    );
+    assert_eq!(
+        runs("runs: {steps: [], args: [], env: {}}\n"),
+        (Some(0), true, true)
+    );
+    assert_eq!(
+        runs("x: &s [a]\nruns: {steps: *s}\n"),
+        (Some(1), false, false)
     );
 }

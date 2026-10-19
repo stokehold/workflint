@@ -6,7 +6,7 @@
 
 `with:` sets an input that the action does not declare.
 
-workflint knows the inputs of popular actions at their common versions, such as `actions/setup-node@v4`. Input names are case-insensitive. An action that reads inputs its metadata does not declare is not checked.
+workflint knows the inputs of popular actions at their common versions, such as `actions/setup-node@v4`, and reads the `action.yml` of local actions, such as `./.github/actions/build`. Input names are case-insensitive. An action that reads inputs its metadata does not declare is not checked.
 
 ## Why
 

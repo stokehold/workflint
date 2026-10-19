@@ -17,7 +17,14 @@ pub struct Section {
     /// The text of the `Output` block, which the reference printed for the
     /// input in its default format.
     pub output: Option<String>,
+    /// Whether an `Output` block is marked `<!-- Skip update output -->`.
+    /// Upstream writes such a block by hand and does not regenerate it.
+    pub hand_written_output: bool,
 }
+
+/// The comment after `Output:` that marks a block that upstream writes by
+/// hand.
+const HAND_WRITTEN: &str = "Output:\n<!-- Skip update output -->\n";
 
 /// The sections of `markdown`, by the anchor that starts each one, such as
 /// `check-unexpected-keys`.
@@ -31,6 +38,7 @@ pub fn sections(markdown: &str) -> BTreeMap<String, Section> {
             let section = Section {
                 input: block(body, "Example input:\n\n```yaml\n"),
                 output: block(body, "Output:\n\n```\n"),
+                hand_written_output: body.contains(HAND_WRITTEN),
             };
             Some((anchor.to_owned(), section))
         })
@@ -139,6 +147,22 @@ test.yaml:1:1: bad [syntax-check]
 ## B
 
 Only prose.
+
+<a id=\"check-c\"></a>
+## C
+
+Example input:
+
+```yaml
+on: push
+```
+
+Output:
+<!-- Skip update output -->
+
+```
+/home/me/test.yaml:1:1: bad [syntax-check]
+```
 ";
 
     #[test]
@@ -151,9 +175,18 @@ Only prose.
                 output: Some(
                     "test.yaml:1:1: bad [syntax-check]\n  |\n1 | on: push\n  | ^~~\n".to_owned()
                 ),
+                hand_written_output: false,
             }
         );
         assert_eq!(sections["check-b"], Section::default());
+        assert_eq!(
+            sections["check-c"],
+            Section {
+                input: Some("on: push\n".to_owned()),
+                output: None,
+                hand_written_output: true,
+            }
+        );
     }
 
     fn kind(code: &str) -> Result<String, String> {

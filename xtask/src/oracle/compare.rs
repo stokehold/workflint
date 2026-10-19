@@ -229,6 +229,7 @@ fn apply(
         if upstream.is_none() && workflint.is_none() {
             continue;
         }
+        let mut removed = None;
         if let Some(upstream) = upstream {
             if !out_lines.contains(&upstream) {
                 problems.insert(format!(
@@ -253,9 +254,10 @@ fn apply(
                 continue;
             };
             lines.remove(index);
+            removed = Some((index, upstream.as_str()));
         }
         if let Some(workflint) = workflint {
-            allow_list::insert(&mut lines, workflint);
+            allow_list::place(&mut lines, removed, workflint);
         }
         applied += 1;
     }

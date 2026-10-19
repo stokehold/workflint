@@ -20,6 +20,9 @@ pub(crate) struct Report {
     /// The IDs of the fixtures on which the reference's output varies
     /// between runs, which no run compares.
     pub(crate) skipped: Vec<String>,
+    /// The IDs of the fixtures whose `.out` file the reference fails, which
+    /// no run compares.
+    pub(crate) reference_failures: Vec<String>,
     pub(crate) runs: Vec<Run>,
 }
 
@@ -109,7 +112,10 @@ impl Report {
                 totals.stderr,
             ),
             ("Problems", totals.problems),
-            ("Skipped fixtures", self.skipped.len()),
+            (
+                "Skipped fixtures",
+                self.skipped.len() + self.reference_failures.len(),
+            ),
         ] {
             let _ = writeln!(out, "| {label} | {count} |");
         }
@@ -126,6 +132,16 @@ impl Report {
                  between runs (`docs/differences.md#cached-metadata-errors`):\n\n",
             );
             for id in &self.skipped {
+                let _ = writeln!(out, "- `{id}`");
+            }
+        }
+        if !self.reference_failures.is_empty() {
+            out.push_str(
+                "\nThese fixtures were skipped, because the reference fails their .out file \
+                 (`REFERENCE_FAILURES` in `xtask/src/conformance/runner.rs`), so the \
+                 allow-list records of their lines cannot apply to its output:\n\n",
+            );
+            for id in &self.reference_failures {
                 let _ = writeln!(out, "- `{id}`");
             }
         }
@@ -299,6 +315,7 @@ mod tests {
             self_check: false,
             kinds: Kinds::default(),
             skipped: Vec::new(),
+            reference_failures: Vec::new(),
             runs: vec![
                 run(
                     "err/one_error",
@@ -367,6 +384,7 @@ mod tests {
             self_check: false,
             kinds: Kinds::default(),
             skipped: Vec::new(),
+            reference_failures: Vec::new(),
             runs: vec![run(
                 "ok/fine.yaml",
                 vec![file(Some("test.yaml"), &[], &[])],
@@ -438,6 +456,7 @@ mod tests {
             self_check: false,
             kinds: Kinds::default(),
             skipped: Vec::new(),
+            reference_failures: Vec::new(),
             runs: vec![problem],
         };
         assert_eq!(report.totals().problems, 1);
@@ -521,6 +540,7 @@ workflint: oops
             self_check: false,
             kinds: Kinds::default(),
             skipped: Vec::new(),
+            reference_failures: Vec::new(),
             runs: vec![run(
                 "err/x",
                 vec![file(Some("t.yaml"), &refs(&expected), &refs(&actual))],
@@ -577,10 +597,15 @@ workflint: oops
     fn the_summary_lists_the_skipped_fixtures() {
         let report = Report {
             skipped: vec!["projects/broken_local_action".to_owned()],
+            reference_failures: vec!["projects/local_action_invalid".to_owned()],
             ..Report::default()
         };
         let summary = report.summary();
-        assert!(summary.contains("| Skipped fixtures | 1 |"), "{summary}");
+        assert!(summary.contains("| Skipped fixtures | 2 |"), "{summary}");
+        assert!(
+            summary.contains("cannot apply to its output:\n\n- `projects/local_action_invalid`\n"),
+            "{summary}"
+        );
         assert!(
             summary.contains("cached-metadata-errors`):\n\n- `projects/broken_local_action`\n"),
             "{summary}"
@@ -619,6 +644,7 @@ workflint: oops
             self_check: false,
             kinds: Kinds::default(),
             skipped: Vec::new(),
+            reference_failures: Vec::new(),
             runs: vec![problem],
         };
         let rendered = report.render();
