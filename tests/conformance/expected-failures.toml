@@ -17,7 +17,6 @@
 "err/shellcheck_default_shell_detection" = "M5"
 "examples/deprecated_workflow_commands" = "M4"
 "examples/pyflakes_integration" = "M5"
-"examples/shell_name_validation" = "M4"
 "examples/shellcheck_integration" = "M5"
 "projects/config_variables" = "M5"
 "projects/paths_config" = "M5"

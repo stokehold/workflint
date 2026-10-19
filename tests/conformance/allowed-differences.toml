@@ -209,3 +209,15 @@ anchor = "matrix-exclude-before-include"
 fixture = "err/matrix_exclude_mismatch"
 upstream = 'test.yaml:52:18: value ["gnome", "x11"] in "exclude" does not match in matrix "gui" combinations. possible values are ["gnome", "gtk"] [matrix]'
 workflint = 'test.yaml:52:13: "gui" in "exclude" section does not exist in matrix. available matrix configurations are "os" [matrix]'
+
+[[difference]]
+anchor = "custom-shell-hint"
+fixture = "examples/shell_name_validation"
+upstream = 'test.yaml:8:16: shell name "dash" is invalid. available names are "bash", "pwsh", "python", "sh" [shell-name]'
+workflint = 'test.yaml:8:16: shell name "dash" is invalid. available names are "bash", "pwsh", "python", "sh". use a command with {0} for a custom shell, as in "dash {0}" [shell-name]'
+
+[[difference]]
+anchor = "custom-shell-hint"
+fixture = "examples/shell_name_validation"
+upstream = 'test.yaml:17:16: shell name "fish" is invalid. available names are "bash", "pwsh", "python", "sh" [shell-name]'
+workflint = 'test.yaml:17:16: shell name "fish" is invalid. available names are "bash", "pwsh", "python", "sh". use a command with {0} for a custom shell, as in "fish {0}" [shell-name]'

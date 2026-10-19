@@ -17,6 +17,7 @@ mod job_needs;
 mod matrix;
 mod permissions;
 mod runner_label;
+mod shell_name;
 mod workflow_call;
 
 /// The kinds of the reference's rules in the order its linter creates them for each file
@@ -48,7 +49,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 73] = [
+pub(crate) static ALL: [&RuleMeta; 74] = [
     &action::ACTION_FILE_NOT_FOUND,
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &action::BROKEN_ACTION_METADATA,
@@ -89,6 +90,7 @@ pub(crate) static ALL: [&RuleMeta; 73] = [
     &workflow_call::INVALID_REUSABLE_WORKFLOW_REF,
     &runner_label::INVALID_RUNNER_LABEL_PATTERN,
     &action::INVALID_RUNS_USING,
+    &shell_name::INVALID_SHELL_NAME,
     &id::INVALID_STEP_ID,
     &events::INVALID_TIMEZONE,
     &action::MISSING_ACTION_DESCRIPTION,
@@ -149,6 +151,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
         "permissions" => Some(Box::new(permissions::Permissions)),
         // M5.2 passes the labels of the config's `self-hosted-runner.labels`.
         "runner-label" => Some(Box::new(runner_label::RunnerLabel::new(Vec::new()))),
+        "shell-name" => Some(Box::new(shell_name::ShellName::new())),
         "workflow-call" => Some(Box::new(workflow_call::WorkflowCall)),
         _ => None,
     }
