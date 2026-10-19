@@ -19,7 +19,8 @@ use crate::rules::{
     UNDEFINED_CONFIG_VARIABLE, UNDEFINED_FUNCTION, UNDEFINED_PROPERTY, UNDEFINED_VARIABLE,
     UNUSED_FORMAT_ARGUMENT, WRONG_ARGUMENT_COUNT, WRONG_ARGUMENT_TYPE,
 };
-use crate::types::Ty;
+use crate::suggest::{closest, did_you_mean};
+use crate::types::{ObjectTy, Ty};
 use crate::untrusted::UntrustedChecker;
 
 const CONTEXT_AVAILABILITY: &str = "see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details";
@@ -110,11 +111,23 @@ struct Checker<'env> {
 impl Checker<'_> {
     /// Reports an error about `node` at its token, as the reference's `errorAtExpr` does.
     fn error(&mut self, node: &Expr, rule: &'static RuleMeta, message: String) {
+        self.error_with_help(node, rule, message, None);
+    }
+
+    /// Reports an error about `node` at its token, with a help text.
+    fn error_with_help(
+        &mut self,
+        node: &Expr,
+        rule: &'static RuleMeta,
+        message: String,
+        help: Option<String>,
+    ) {
         self.errors.push(ExprError {
             message,
             start: node.token.start,
             end: node.end,
             rule,
+            help,
         });
     }
 
@@ -174,8 +187,22 @@ impl Checker<'_> {
             quote(name.original()),
             sorted_quotes(self.env.variable_names()),
         );
-        self.error(expr, &UNDEFINED_VARIABLE, message);
+        let help = self.variable_suggestion(name.as_str());
+        self.error_with_help(expr, &UNDEFINED_VARIABLE, message, help);
         Ty::Any
+    }
+
+    /// Suggests the variable closest to `name`, or the call of a function that takes no
+    /// arguments, such as `always()` for `always`.
+    fn variable_suggestion(&self, name: &str) -> Option<String> {
+        let variables = self
+            .env
+            .variable_names()
+            .map(|variable| (variable, variable.to_owned()));
+        let calls = functions::all()
+            .filter(|function| function.takes_no_arguments())
+            .map(|function| (function.name, format!("{}()", function.name)));
+        closest(name, variables.chain(calls)).map(|candidate| did_you_mean(&candidate))
     }
 
     /// The reference's `checkAvailableContext`. The message names the context in lower case,
@@ -221,7 +248,8 @@ impl Checker<'_> {
                     "property {} is not defined in object type {object}",
                     quote(prop)
                 );
-                self.error(expr, &UNDEFINED_PROPERTY, message);
+                let help = property_suggestion(object, prop);
+                self.error_with_help(expr, &UNDEFINED_PROPERTY, message, help);
                 Ty::Any
             }
             Ty::Array(array) if array.is_filtered() => match array.elem() {
@@ -237,7 +265,8 @@ impl Checker<'_> {
                         "property {} is not defined in object type {elem} as element of filtered array",
                         quote(prop)
                     );
-                    self.error(expr, &UNDEFINED_PROPERTY, message);
+                    let help = property_suggestion(elem, prop);
+                    self.error_with_help(expr, &UNDEFINED_PROPERTY, message, help);
                     Ty::filtered_array(Ty::Any)
                 }
                 elem => {
@@ -410,7 +439,8 @@ impl Checker<'_> {
                             "property {} is not defined in object type {object}",
                             quote(lit.value())
                         );
-                        self.error(expr, &UNDEFINED_PROPERTY, message);
+                        let help = property_suggestion(object, lit.folded());
+                        self.error_with_help(expr, &UNDEFINED_PROPERTY, message, help);
                     }
                     object.unknown_prop_ty().cloned().unwrap_or(Ty::Any)
                 }
@@ -443,7 +473,12 @@ impl Checker<'_> {
                 quote(callee.original()),
                 sorted_quotes(functions::keys()),
             );
-            self.error(expr, &UNDEFINED_FUNCTION, message);
+            let help = closest(
+                callee.as_str(),
+                functions::all().map(|function| (function.name, function.name)),
+            )
+            .map(did_you_mean);
+            self.error_with_help(expr, &UNDEFINED_FUNCTION, message, help);
             return Ty::Any;
         };
 
@@ -666,6 +701,18 @@ impl Checker<'_> {
             untrusted.leave_nested_chain();
         }
     }
+}
+
+/// Suggests the property of `object` closest to `prop`, which is lower case.
+fn property_suggestion(object: &ObjectTy, prop: &str) -> Option<String> {
+    closest(
+        prop,
+        object
+            .props()
+            .keys()
+            .map(|key| (key.as_str(), key.as_str())),
+    )
+    .map(did_you_mean)
 }
 
 /// Returns whether `index` is a string literal equal to `key` without regard to case. `key`

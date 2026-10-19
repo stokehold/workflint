@@ -223,6 +223,7 @@ impl UntrustedChecker {
             start: self.start,
             end: self.end,
             rule,
+            help: None,
         });
     }
 }

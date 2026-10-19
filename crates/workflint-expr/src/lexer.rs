@@ -158,6 +158,7 @@ impl<'src> Lexer<'src> {
                 start: to_u32(self.pos),
                 end: to_u32(self.pos + len),
                 rule: &INVALID_EXPRESSION_SYNTAX,
+                help: None,
             });
         }
     }

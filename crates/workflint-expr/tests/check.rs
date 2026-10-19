@@ -2476,3 +2476,142 @@ mod availability {
         assert_eq!(ranges, [(0, 6), (14, 22)]);
     }
 }
+
+/// The help text that suggests the closest known name. The reference has no suggestions.
+mod suggestions {
+    use super::*;
+
+    /// Checks `input` in `env` and returns the rule ID and help text of each error.
+    fn helps_in(env: &TypeEnv, input: &str) -> Vec<(&'static str, Option<String>)> {
+        let (_, errors) = env.check(&parse(input));
+        errors
+            .into_iter()
+            .map(|err| (err.rule.id, err.help))
+            .collect()
+    }
+
+    fn helps(input: &str) -> Vec<(&'static str, Option<String>)> {
+        helps_in(&open_env(), input)
+    }
+
+    fn did_you_mean(rule: &'static RuleMeta, name: &str) -> (&'static str, Option<String>) {
+        (rule.id, Some(format!("did you mean \"{name}\"?")))
+    }
+
+    #[test]
+    fn misspelled_context_suggests_the_context() {
+        assert_eq!(
+            helps("gihub.sha"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "github")]
+        );
+    }
+
+    #[test]
+    fn swapped_letters_count_as_one_edit() {
+        assert_eq!(
+            helps("gihtub.sha"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "github")]
+        );
+    }
+
+    #[test]
+    fn context_name_is_compared_without_regard_to_case() {
+        assert_eq!(
+            helps("SECRET.token"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "secrets")]
+        );
+    }
+
+    #[test]
+    fn jobs_is_suggested_only_where_it_is_a_variable() {
+        assert_eq!(helps("jebs.build"), [(UNDEFINED_VARIABLE.id, None)]);
+        let mut env = open_env();
+        env.set_jobs(strict([("build", Ty::empty_loose())]));
+        assert_eq!(
+            helps_in(&env, "jebs.build"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "jobs")]
+        );
+    }
+
+    #[test]
+    fn function_name_without_parentheses_suggests_the_call() {
+        assert_eq!(
+            helps("always"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "always()")]
+        );
+        assert_eq!(
+            helps("Success"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "success()")]
+        );
+    }
+
+    #[test]
+    fn function_that_needs_arguments_is_not_suggested_for_a_variable() {
+        assert_eq!(helps("contains"), [(UNDEFINED_VARIABLE.id, None)]);
+    }
+
+    #[test]
+    fn misspelled_property_suggests_the_property() {
+        assert_eq!(
+            helps("github.repositoy"),
+            [did_you_mean(&UNDEFINED_PROPERTY, "repository")]
+        );
+        assert_eq!(
+            helps("runner['tmp']"),
+            [did_you_mean(&UNDEFINED_PROPERTY, "temp")]
+        );
+    }
+
+    #[test]
+    fn misspelled_property_of_filtered_elements_suggests_the_property() {
+        let env = env_with_matrix(strict([(
+            "test",
+            Ty::array(Ty::strict([("name", Ty::String)])),
+        )]));
+        assert_eq!(
+            helps_in(&env, "matrix.test.*.nmae"),
+            [did_you_mean(&UNDEFINED_PROPERTY, "name")]
+        );
+    }
+
+    #[test]
+    fn misspelled_function_suggests_the_function_as_documented() {
+        assert_eq!(
+            helps("startWith('a', 'b')"),
+            [did_you_mean(&UNDEFINED_FUNCTION, "startsWith")]
+        );
+        assert_eq!(
+            helps("fromJosn('{}')"),
+            [did_you_mean(&UNDEFINED_FUNCTION, "fromJSON")]
+        );
+    }
+
+    #[test]
+    fn name_with_no_close_match_gets_no_suggestion() {
+        assert_eq!(
+            helps("foo.bar || github.foo || bar()"),
+            [
+                (UNDEFINED_VARIABLE.id, None),
+                (UNDEFINED_PROPERTY.id, None),
+                (UNDEFINED_FUNCTION.id, None),
+            ]
+        );
+    }
+
+    #[test]
+    fn other_errors_have_no_help() {
+        assert_eq!(helps("1 == github"), [(INVALID_COMPARISON.id, None)]);
+    }
+
+    #[test]
+    fn suggestion_leaves_the_message_unchanged() {
+        assert_eq!(
+            errors("gihub"),
+            [error(
+                &UNDEFINED_VARIABLE,
+                0,
+                format!("undefined variable \"gihub\". available variables are {GLOBAL_NAMES}")
+            )]
+        );
+    }
+}

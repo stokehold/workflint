@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-15
+- Amended by: ADR 0032, which adds an optional help text
 
 ## Context
 
@@ -19,6 +20,7 @@ workflint needs more from a diagnostic: severity (ADR 0008), a rule ID for ignor
 - `span`: the primary location, as a file ID plus a byte range. It always covers the token the message is about, not just its first character.
 - `labels`: optional secondary spans with short notes, such as "anchor defined here" or "job `build` declared here".
 - `fix`: optional. A list of text edits with an applicability of `safe` or `unsafe`. The type exists from M1. Rules start filling it after 1.0.
+- `help`: optional. A hint that the actionlint-compatible formats do not print (ADR 0032).
 
 Positions:
 

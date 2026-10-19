@@ -48,7 +48,7 @@ Rules that another crate reports are an exception to "rules live in `workflint-r
 |---|---|---|
 | `SourceFile` | diagnostics | Path, text, and a line index for byte offset to line and column conversion. |
 | `Span` | diagnostics | File ID and byte range. Every position in workflint is a `Span`. |
-| `Diagnostic` | diagnostics | Rule, severity, message, primary span, labels, optional fix (ADR 0007). |
+| `Diagnostic` | diagnostics | Rule, severity, message, primary span, labels, optional fix, optional help text (ADR 0007, ADR 0032). |
 | `RuleMeta` | diagnostics | Static rule metadata: kebab-case ID, one-line description, kind, category, default severity, docs URL. |
 | `yaml::Document` and `yaml::Node` | yaml | Arena-allocated span tree with tags, scalar styles, anchors, and comments. `Node::source_map` builds a scalar's source map on demand (ADR 0022). |
 | `Workflow`, `Event`, `Job`, `Step` | syntax | Typed AST that borrows from the `yaml::Document`. Keys and strings are `Str` leaves, which keep their YAML node and span. A string in a place where GitHub evaluates `${{ }}` is a `Template`: a `Str` and its parsed `Placeholder`s. A key's value is a `Field<T>` (absent, invalid, or valid) or, where it may be a `${{ }}` expression, a `Value<T>` (absent, invalid, a literal `T`, or an `Expr`). An invalid item of a list is `None`, so the list keeps its length. Collections keyed by name are `Keyed<T>`, in source order with case-insensitive lookup. Collections are shared through `Arc`, so cloning a subtree is cheap. The parser parses an anchored subtree again at each alias that uses it, as the reference does, and parses each template and expression once, sharing it between aliases. |

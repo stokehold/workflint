@@ -29,6 +29,9 @@ pub struct ExprError {
     /// [`INVALID_NUMBER_LITERAL`]: crate::rules::INVALID_NUMBER_LITERAL
     /// [`INVALID_EXPRESSION_SYNTAX`]: crate::rules::INVALID_EXPRESSION_SYNTAX
     pub rule: &'static RuleMeta,
+    /// A hint that the actionlint-compatible output formats do not print, such as the closest
+    /// known name to an undefined one.
+    pub help: Option<String>,
 }
 
 impl ExprError {

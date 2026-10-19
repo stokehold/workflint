@@ -814,7 +814,7 @@ impl Checker {
         }
         for error in errors {
             let span = source_span(cx, source, placeholder.to_value(error.range()));
-            cx.report(error.rule, span, error.message);
+            cx.report_with_help(error.rule, span, error.message, error.help);
         }
         None
     }

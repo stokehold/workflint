@@ -8,6 +8,8 @@ An expression reads a property that its strict object type does not have.
 
 Many contexts have strict object types that list every property, such as `job.container`, `inputs`, `matrix`, and an object that `fromJSON()` parses from a string literal. Reading another property is an error. A loose object, such as `github.event`, accepts any property. Property names are case insensitive, with a dot or with a string literal index.
 
+The diagnostic also has a help text with the closest property of the type, such as `did you mean "temp"?` for `runner.tmp`. The default and one-line formats do not print it (ADR 0032).
+
 ## Why
 
 A property that does not exist evaluates to an empty string, so a typo in a property name or an input name passes a wrong value to the step without failing it.
