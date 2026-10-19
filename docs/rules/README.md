@@ -51,10 +51,14 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`constant-condition`](constant-condition.md) | `if-cond` | correctness | error | An `if:` condition has the same value in every run |
 | [`context-not-allowed`](context-not-allowed.md) | `expression` | correctness | error | An expression reads a context that its workflow key does not allow |
 | [`cron-too-frequent`](cron-too-frequent.md) | `events` | correctness | error | A `schedule` cron expression runs more often than every 5 minutes |
+| [`cyclic-needs`](cyclic-needs.md) | `job-needs` | correctness | error | The jobs' `needs` make a cycle |
 | [`default-not-in-options`](default-not-in-options.md) | `events` | correctness | error | The default of a `choice` input of `workflow_dispatch` is not one of its options |
 | [`deprecated-action-input`](deprecated-action-input.md) | `action` | correctness | error | `with:` sets an input that the action has deprecated |
 | [`duplicate-input-option`](duplicate-input-option.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` lists an option more than once |
+| [`duplicate-job-id`](duplicate-job-id.md) | `job-needs` | correctness | error | Two jobs have the same ID, ignoring case |
 | [`duplicate-key`](duplicate-key.md) | `syntax-check` | correctness | error | A mapping repeats a key |
+| [`duplicate-needs`](duplicate-needs.md) | `job-needs` | correctness | error | A job lists the same job twice in `needs`, ignoring case |
+| [`duplicate-step-id`](duplicate-step-id.md) | `id` | correctness | error | Two steps of one job have the same ID, ignoring case |
 | [`empty-deprecation-message`](empty-deprecation-message.md) | `action` | correctness | error | An input of a local action has an empty `deprecationMessage` |
 | [`empty-section`](empty-section.md) | `syntax-check` | correctness | error | A mapping or sequence that must have entries is empty or null |
 | [`empty-string`](empty-string.md) | `syntax-check` | correctness | error | A string that must not be empty is empty |
@@ -82,6 +86,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-glob`](invalid-glob.md) | `glob` | correctness | error | A filter pattern is not valid glob syntax, or contains a newline |
 | [`invalid-index-access`](invalid-index-access.md) | `expression` | correctness | error | An index has the wrong type, or its operand is neither an object nor an array |
 | [`invalid-input-default`](invalid-input-default.md) | `events` | correctness | error | The default of a `number` or `boolean` input of `workflow_call` or `workflow_dispatch` does not match its type |
+| [`invalid-job-id`](invalid-job-id.md) | `id` | correctness | error | A job ID, or a job ID in `needs`, does not start with an ASCII letter or `_`, or has a character other than an ASCII letter, a digit, `-`, or `_` |
 | [`invalid-json-literal`](invalid-json-literal.md) | `expression` | correctness | error | The string literal passed to `fromJSON()` is not valid JSON |
 | [`invalid-literal-value`](invalid-literal-value.md) | `syntax-check` | correctness | error | A boolean, integer, or float value has the wrong tag or does not parse |
 | [`invalid-number-literal`](invalid-number-literal.md) | `expression` | correctness | error | A number literal in an expression has no value as a double |
@@ -94,6 +99,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`invalid-reusable-workflow-ref`](invalid-reusable-workflow-ref.md) | `workflow-call` | correctness | error | A job's `uses:` is not `./path/to/workflow.yml` or `owner/repo/path/to/workflow.yml@ref` |
 | [`invalid-runner-label-pattern`](invalid-runner-label-pattern.md) | `runner-label` | correctness | error | A runner label pattern in the config is not a valid glob |
 | [`invalid-runs-using`](invalid-runs-using.md) | `action` | correctness | error | A local action's `runs.using` is not `composite`, `docker`, or a Node.js runtime that GitHub has |
+| [`invalid-step-id`](invalid-step-id.md) | `id` | correctness | error | A step ID does not start with an ASCII letter or `_`, or has a character other than an ASCII letter, a digit, `-`, or `_` |
 | [`invalid-timezone`](invalid-timezone.md) | `events` | correctness | error | A `schedule` time zone is not an IANA time zone name |
 | [`invalid-workflow-call-input-type`](invalid-workflow-call-input-type.md) | `syntax-check` | correctness | error | A `workflow_call` input has an unknown `type` |
 | [`merge-key-unsupported`](merge-key-unsupported.md) | `syntax-check` | correctness | error | A mapping has a `<<` merge key, which GitHub Actions does not apply |
@@ -134,6 +140,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`unexpected-node-kind`](unexpected-node-kind.md) | `syntax-check` | correctness | error | A node has the wrong kind, such as a sequence where a mapping is expected |
 | [`unknown-anchor`](unknown-anchor.md) | `syntax-check` | correctness | error | An alias refers to an anchor that no earlier node defines |
 | [`unknown-event`](unknown-event.md) | `events` | correctness | error | `on` names an event that is not a GitHub webhook event |
+| [`unknown-needed-job`](unknown-needed-job.md) | `job-needs` | correctness | error | A job lists a job in `needs` that the workflow does not have |
 | [`unknown-permission-scope`](unknown-permission-scope.md) | `permissions` | correctness | error | A key in `permissions` is not a permission scope |
 | [`unknown-runner-label`](unknown-runner-label.md) | `runner-label` | correctness | error | A `runs-on` label is not a known runner label |
 | [`untrusted-input`](untrusted-input.md) | `expression` | correctness | error | A script reads a value that someone outside the repository can set |

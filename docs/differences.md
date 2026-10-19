@@ -662,7 +662,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the same input must give the same output.
 - Upstream issue: none.
 - Milestone: M4.
-- Status: jobs are visited in source order since M4.1, and the `runner-label` rule names the earliest partner since M4.16. The `job-needs` rule follows in M4.
+- Status: jobs are visited in source order since M4.1, the `runner-label` rule names the earliest partner since M4.16, and the `job-needs` rule reports the first cycle in source order since M4.20.
 
 <a id="cached-metadata-errors"></a>
 ### Errors in shared local actions and reusable workflows
