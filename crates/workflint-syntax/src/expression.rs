@@ -126,20 +126,34 @@ fn resume_after_error(text: &str) -> usize {
 /// JSON. A `}}` is stray only if neither of its braces closes a `{` in the
 /// text before it. The text of all the gaps between placeholders counts,
 /// so `{"a": ${{ x }}}` has no stray.
-pub(crate) fn stray_closings(value: &str) -> Vec<u32> {
+///
+/// `placeholders` are the result of [`scan`] on `value`. The end of a
+/// placeholder without a parse error is where GitHub ends it too, so only
+/// after a parse error does this search for the end again.
+pub(crate) fn stray_closings(value: &str, placeholders: &[Placeholder]) -> Vec<u32> {
+    // Most strings have no `}}` outside their placeholders, and `contains`
+    // finds that faster than the loop below counts braces.
+    if placeholders.is_empty() && !value.contains("}}") {
+        return Vec::new();
+    }
+    let texts = texts(value, placeholders);
+    if !texts
+        .clone()
+        .any(|text| value.get(text).is_some_and(|t| t.contains("}}")))
+    {
+        return Vec::new();
+    }
     let bytes = value.as_bytes();
     let mut strays = Vec::new();
     let mut depth = 0_usize;
-    let mut pos = 0;
-    loop {
-        let open = value.get(pos..).and_then(|rest| rest.find("${{"));
-        let text_end = open.map_or(value.len(), |found| pos + found);
-        let mut i = pos;
-        while i < text_end {
+    for text in texts {
+        let end = text.end;
+        let mut i = text.start;
+        while i < end {
             match bytes.get(i) {
                 Some(b'{') => depth += 1,
                 Some(b'}') if depth > 0 => depth -= 1,
-                Some(b'}') if i + 1 < text_end && bytes.get(i + 1) == Some(&b'}') => {
+                Some(b'}') if i + 1 < end && bytes.get(i + 1) == Some(&b'}') => {
                     strays.push(to_u32(i));
                     i += 1;
                 }
@@ -147,11 +161,37 @@ pub(crate) fn stray_closings(value: &str) -> Vec<u32> {
             }
             i += 1;
         }
-        let Some(end) = closing_end(value, text_end + "${{".len()) else {
-            return strays;
-        };
-        pos = end;
     }
+    strays
+}
+
+/// Returns the byte ranges of the text around the placeholders of `value`,
+/// in source order, as [`stray_closings`] describes.
+fn texts<'v>(
+    value: &'v str,
+    placeholders: &'v [Placeholder],
+) -> impl Iterator<Item = Range<usize>> + Clone + 'v {
+    let mut placeholders = placeholders.iter();
+    let mut pos = Some(0);
+    std::iter::from_fn(move || {
+        let start = pos?;
+        for placeholder in placeholders.by_ref() {
+            let open = to_usize(placeholder.start);
+            if open < start {
+                // GitHub's end of an earlier placeholder with an error is
+                // past the `${{` of this one.
+                continue;
+            }
+            pos = if placeholder.expr.is_ok() {
+                Some(to_usize(placeholder.end))
+            } else {
+                closing_end(value, to_usize(placeholder.offset))
+            };
+            return Some(start..open);
+        }
+        pos = None;
+        Some(start..value.len())
+    })
 }
 
 /// Returns the offset just past the `}}` that ends the `${{ }}` whose
@@ -178,6 +218,9 @@ fn closing_end(value: &str, from: usize) -> Option<usize> {
 /// `value`, which has no `${{ }}`, if one ends it before the end of
 /// `value`. The rest of the condition is not part of the expression.
 pub(crate) fn implicit_stray_closing(value: &str) -> Option<u32> {
+    if !value.contains("}}") {
+        return None;
+    }
     let text = format!("{value}}}}}");
     let mut lexer = Lexer::new(&text);
     loop {
@@ -421,7 +464,7 @@ mod tests {
     }
 
     fn strays(value: &str) -> Vec<&str> {
-        let offsets = stray_closings(value);
+        let offsets = stray_closings(value, &scan(value));
         offsets
             .iter()
             .map(|&offset| &value[to_usize(offset)..])
