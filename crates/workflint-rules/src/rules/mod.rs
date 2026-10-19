@@ -7,6 +7,7 @@ use crate::kind::{self, Kind};
 
 mod action;
 mod credentials;
+mod deprecated_commands;
 mod env_var;
 mod events;
 mod expression;
@@ -49,7 +50,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 74] = [
+pub(crate) static ALL: [&RuleMeta; 75] = [
     &action::ACTION_FILE_NOT_FOUND,
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &action::BROKEN_ACTION_METADATA,
@@ -61,6 +62,7 @@ pub(crate) static ALL: [&RuleMeta; 74] = [
     &job_needs::CYCLIC_NEEDS,
     &events::DEFAULT_NOT_IN_OPTIONS,
     &action::DEPRECATED_ACTION_INPUT,
+    &deprecated_commands::DEPRECATED_WORKFLOW_COMMAND,
     &events::DUPLICATE_INPUT_OPTION,
     &job_needs::DUPLICATE_JOB_ID,
     &matrix::DUPLICATE_MATRIX_VALUE,
@@ -140,6 +142,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
     match kind.name {
         "action" => Some(Box::new(action::Action)),
         "credentials" => Some(Box::new(credentials::Credentials)),
+        "deprecated-commands" => Some(Box::new(deprecated_commands::DeprecatedCommands)),
         "env-var" => Some(Box::new(env_var::EnvVar)),
         "events" => Some(Box::new(events::Events)),
         "expression" => Some(Box::new(expression::Expression::new())),

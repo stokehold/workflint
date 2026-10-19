@@ -54,6 +54,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`cyclic-needs`](cyclic-needs.md) | `job-needs` | correctness | error | The jobs' `needs` make a cycle |
 | [`default-not-in-options`](default-not-in-options.md) | `events` | correctness | error | The default of a `choice` input of `workflow_dispatch` is not one of its options |
 | [`deprecated-action-input`](deprecated-action-input.md) | `action` | correctness | error | `with:` sets an input that the action has deprecated |
+| [`deprecated-workflow-command`](deprecated-workflow-command.md) | `deprecated-commands` | correctness | error | A `run:` script uses the deprecated `set-output`, `save-state`, `set-env`, or `add-path` workflow command |
 | [`duplicate-input-option`](duplicate-input-option.md) | `events` | correctness | error | A `choice` input of `workflow_dispatch` lists an option more than once |
 | [`duplicate-job-id`](duplicate-job-id.md) | `job-needs` | correctness | error | Two jobs have the same ID, ignoring case |
 | [`duplicate-key`](duplicate-key.md) | `syntax-check` | correctness | error | A mapping repeats a key |

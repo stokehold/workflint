@@ -27,7 +27,9 @@ pub struct Section {
 const HAND_WRITTEN: &str = "Output:\n<!-- Skip update output -->\n";
 
 /// The sections of `markdown`, by the anchor that starts each one, such as
-/// `check-unexpected-keys`.
+/// `check-unexpected-keys`. A leading `#` in an anchor is left out: upstream
+/// writes `<a id="#check-deprecated-workflow-commands">`, which its own
+/// table-of-contents link misses.
 #[must_use]
 pub fn sections(markdown: &str) -> BTreeMap<String, Section> {
     markdown
@@ -40,7 +42,7 @@ pub fn sections(markdown: &str) -> BTreeMap<String, Section> {
                 output: block(body, "Output:\n\n```\n"),
                 hand_written_output: body.contains(HAND_WRITTEN),
             };
-            Some((anchor.to_owned(), section))
+            Some((anchor.trim_start_matches('#').to_owned(), section))
         })
         .collect()
 }
@@ -164,6 +166,12 @@ Output:
 /home/me/test.yaml:1:1: bad [syntax-check]
 ```
 ";
+
+    #[test]
+    fn a_leading_hash_is_left_out_of_an_anchor() {
+        let sections = sections("<a id=\"#check-d\"></a>\n## D\n");
+        assert_eq!(sections.keys().collect::<Vec<_>>(), ["check-d"]);
+    }
 
     #[test]
     fn sections_have_their_input_and_output() {
