@@ -12,12 +12,14 @@ use crate::{Context, Rule, create_rules};
 /// step hook for each step, and the job-post hook, then the workflow-post hook. Jobs are visited
 /// in source order, where the reference visits them in Go's random map order
 /// (`docs/differences.md#deterministic-order`). An invalid `jobs` or `steps` value, which the
-/// parser has reported, has no jobs or steps to visit.
+/// parser has reported, has no jobs or steps to visit. The context learns the alias paths of
+/// `workflow`, so [`Context::report_in`] can label diagnostics with them.
 pub fn visit<'a>(
     workflow: &'a Workflow<'a>,
     rules: &mut [Box<dyn Rule<'a> + 'a>],
     cx: &mut Context<'_>,
 ) {
+    cx.aliases = workflow.aliases.clone();
     for rule in rules.iter_mut() {
         rule.workflow_pre(workflow, cx);
     }

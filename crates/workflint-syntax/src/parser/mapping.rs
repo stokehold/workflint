@@ -10,10 +10,10 @@ use workflint_diagnostics::quote::{quote, sorted_quotes};
 use workflint_yaml::{Node, NodeKind, Tag, simple_lowercase};
 
 use super::{Parser, kind_name};
-use crate::Str;
 use crate::rules::{
     DUPLICATE_KEY, EMPTY_SECTION, MERGE_KEY_UNSUPPORTED, UNEXPECTED_KEY, UNEXPECTED_NODE_KIND,
 };
+use crate::{AliasPath, Str};
 
 /// What messages call a mapping, the reference's `where` argument of
 /// `parseMapping`.
@@ -65,6 +65,9 @@ pub(crate) struct MapEntry<'a> {
     pub(crate) key: Key<'a>,
     /// The value node.
     pub(crate) value: &'a Node,
+    /// The aliases through which the walk reaches the value. Parse the
+    /// value [`within`](Parser::within) this path.
+    pub(crate) path: Option<AliasPath>,
 }
 
 /// A section whose keys a table of [`KeySpec`] values describes.
@@ -132,15 +135,20 @@ impl<'a> Parser<'a, '_> {
         // The span of the first key with each ID.
         let mut first: BTreeMap<Cow<'a, str>, Span> = BTreeMap::new();
         let mut entries = Vec::new();
-        for entry in document.entries(mapping) {
+        for (entry, written) in document
+            .entries(mapping)
+            .iter()
+            .zip(document.written_entries(mapping))
+        {
             let Some(key_node) = self.node(entry.key) else {
                 continue;
             };
+            let key_path = self.path_to(written.key);
             let key = Key {
-                string: Str::new(key_node),
+                string: Str::new(key_node).map(|key| key.with_alias_path(key_path)),
                 span: key_node.span,
             };
-            self.check_string(key_node, false);
+            self.within(key_path, |p| p.check_string(key_node, false));
             if key.value() == "<<" {
                 self.error(
                     &MERGE_KEY_UNSUPPORTED,
@@ -172,7 +180,13 @@ impl<'a> Parser<'a, '_> {
                 continue;
             };
             first.insert(id.clone(), key.span);
-            entries.push(MapEntry { id, key, value });
+            let path = self.path_to(written.value);
+            entries.push(MapEntry {
+                id,
+                key,
+                value,
+                path,
+            });
         }
         if !allow_empty && entries.is_empty() {
             self.empty_mapping(label, node);
@@ -199,7 +213,7 @@ impl<'a> Parser<'a, '_> {
     ) {
         for entry in entries {
             match keys.iter().find(|spec| spec.name == entry.id) {
-                Some(spec) => (spec.parse)(self, ast, &entry),
+                Some(spec) => self.within(entry.path, |p| (spec.parse)(p, ast, &entry)),
                 None => self.unexpected_key(entry.key, section, keys.iter().map(|spec| spec.name)),
             }
         }

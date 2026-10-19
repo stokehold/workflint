@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use workflint_diagnostics::Span;
 
-use crate::{Event, Field, Job, Keyed, Str, Template, Value, WorkflowCallEvent};
+use crate::{AliasUses, Event, Field, Job, Keyed, Str, Template, Value, WorkflowCallEvent};
 
 /// A workflow file.
 ///
@@ -42,6 +42,9 @@ pub struct Workflow<'a> {
     /// entries. A job whose ID is not a scalar is left out after the parser
     /// reports it.
     pub jobs: Field<'a, Keyed<'a, Job<'a>>>,
+    /// The paths of the aliases through which the parser reached the
+    /// strings of the workflow. See [`Str::alias_path`].
+    pub aliases: AliasUses,
 }
 
 impl<'a> Workflow<'a> {
@@ -283,6 +286,7 @@ jobs:
             defaults: Field::Absent,
             concurrency: Field::Absent,
             jobs: valid(document, &["jobs"], jobs),
+            aliases: AliasUses::default(),
         }
     }
 

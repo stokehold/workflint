@@ -66,7 +66,8 @@ fn check(permissions: &PermissionsSection<'_>, cx: &mut Context<'_>) {
     match permissions {
         PermissionsSection::All(all) => {
             if !PERMISSIONS_FOR_ALL_SCOPES.contains(&all.value()) {
-                cx.report(
+                cx.report_in(
+                    *all,
                     &INVALID_PERMISSIONS_VALUE,
                     all.span(),
                     format!(
@@ -81,7 +82,8 @@ fn check(permissions: &PermissionsSection<'_>, cx: &mut Context<'_>) {
             for entry in scopes {
                 let name = entry.key.value();
                 let Some(scope) = permission_scope(name) else {
-                    cx.report(
+                    cx.report_in(
+                        entry.key,
                         &UNKNOWN_PERMISSION_SCOPE,
                         entry.key.span(),
                         format!(
@@ -96,7 +98,8 @@ fn check(permissions: &PermissionsSection<'_>, cx: &mut Context<'_>) {
                     continue;
                 };
                 if !scope.levels.contains(&level.value()) {
-                    cx.report(
+                    cx.report_in(
+                        *level,
                         &INVALID_PERMISSION_LEVEL,
                         level.span(),
                         format!(

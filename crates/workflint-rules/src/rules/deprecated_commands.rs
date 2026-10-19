@@ -32,7 +32,8 @@ impl<'a> Rule<'a> for DeprecatedCommands {
         };
         // One error per command, all at the start of the script, as in the reference.
         for command in find_commands(script.value()) {
-            cx.report(
+            cx.report_in(
+                script.source,
                 &DEPRECATED_WORKFLOW_COMMAND,
                 script.span(),
                 format!(

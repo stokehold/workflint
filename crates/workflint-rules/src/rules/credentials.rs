@@ -46,7 +46,8 @@ fn check(container: &Container<'_>, place: &str, cx: &mut Context<'_>) {
         return;
     };
     if !is_expression_assigned(password.value()) {
-        cx.report(
+        cx.report_in(
+            password.source,
             &HARDCODED_PASSWORD,
             password.span(),
             format!(

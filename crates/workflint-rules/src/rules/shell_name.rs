@@ -110,7 +110,8 @@ fn check(shell: &Field<'_, Template<'_>>, platform: ShellPlatform, cx: &mut Cont
             quote(&format!("{value} {{0}}"))
         )
     };
-    cx.report(
+    cx.report_in(
+        shell.source,
         &INVALID_SHELL_NAME,
         shell.span(),
         format!(

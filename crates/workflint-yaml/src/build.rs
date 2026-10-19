@@ -94,9 +94,13 @@ struct Builder<'a> {
     anchors: BTreeMap<String, NodeId>,
     frames: Vec<Frame>,
     /// The children of the open collections, innermost last.
-    scratch: Vec<NodeId>,
+    /// The children of the open collections: what each parent refers to,
+    /// and the node as written.
+    scratch: Vec<(NodeId, NodeId)>,
     items: Vec<NodeId>,
     entries: Vec<Entry>,
+    written_items: Vec<NodeId>,
+    written_entries: Vec<Entry>,
     comments: Vec<Comment>,
     comment_places: Vec<CommentPlace>,
     root: Option<NodeId>,
@@ -121,6 +125,8 @@ impl<'a> Builder<'a> {
             scratch: Vec::new(),
             items: Vec::new(),
             entries: Vec::new(),
+            written_items: Vec::new(),
+            written_entries: Vec::new(),
             comments: Vec::new(),
             comment_places: Vec::new(),
             root: None,
@@ -275,7 +281,7 @@ impl<'a> Builder<'a> {
         if self.frames.is_empty() {
             self.root = Some(child);
         } else {
-            self.scratch.push(child);
+            self.scratch.push((child, id));
         }
         id
     }
@@ -448,7 +454,7 @@ impl<'a> Builder<'a> {
         let Some(frame) = self.frames.pop() else {
             return;
         };
-        let children: Vec<NodeId> = self
+        let children: Vec<(NodeId, NodeId)> = self
             .scratch
             .drain(frame.scratch_start.min(self.scratch.len())..)
             .collect();
@@ -468,13 +474,21 @@ impl<'a> Builder<'a> {
             NodeKind::Mapping(mapping) => {
                 let first = to_u32(self.entries.len());
                 let (pairs, _) = children.as_chunks::<2>();
-                self.entries
-                    .extend(pairs.iter().map(|&[key, value]| Entry { key, value }));
+                for &[(key, written_key), (value, written_value)] in pairs {
+                    self.entries.push(Entry { key, value });
+                    self.written_entries.push(Entry {
+                        key: written_key,
+                        value: written_value,
+                    });
+                }
                 mapping.entries = first..to_u32(self.entries.len());
             }
             NodeKind::Sequence(sequence) => {
                 let first = to_u32(self.items.len());
-                self.items.extend(children);
+                for (item, written) in children {
+                    self.items.push(item);
+                    self.written_items.push(written);
+                }
                 sequence.items = first..to_u32(self.items.len());
             }
             NodeKind::Scalar(_) | NodeKind::Alias(_) => {}
@@ -559,6 +573,8 @@ impl<'a> Builder<'a> {
             nodes: self.nodes,
             items: self.items,
             entries: self.entries,
+            written_items: self.written_items,
+            written_entries: self.written_entries,
             comments: self.comments,
             node_comments,
         };

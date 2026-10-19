@@ -4,7 +4,7 @@ use workflint_diagnostics::Span;
 
 use super::{KeySpec, Label, MAX_YAML_NODES, MapEntry, Parser, Section, yaml_node_count};
 use crate::rules::{EMPTY_WORKFLOW, MISSING_REQUIRED_KEY, TOO_MANY_YAML_NODES};
-use crate::{Field, Value, Workflow};
+use crate::{AliasUses, Field, Value, Workflow};
 
 /// The keys of the workflow root.
 struct Root;
@@ -78,6 +78,7 @@ impl<'a> Parser<'a, '_> {
             defaults: Field::Absent,
             concurrency: Field::Absent,
             jobs: Field::Absent,
+            aliases: AliasUses::default(),
         };
         let Some(root) = root else {
             self.error(&EMPTY_WORKFLOW, span, "workflow is empty".to_owned());

@@ -256,15 +256,16 @@ impl<'a> Parser<'a, '_> {
         match &node.kind {
             NodeKind::Scalar(_) => events.push(self.parse_event_with_no_config(node)),
             NodeKind::Sequence(_) => {
-                for &id in self.check_sequence("on", node, false).unwrap_or_default() {
-                    if let Some(item) = self.node(id) {
-                        events.push(self.parse_event_with_no_config(item));
-                    }
+                for item in self.check_sequence("on", node, false).unwrap_or_default() {
+                    events
+                        .push(self.within(item.path, |p| p.parse_event_with_no_config(item.node)));
                 }
             }
             NodeKind::Mapping(_) => {
                 for entry in self.parse_mapping(Label::Section("on"), node, false, true) {
-                    events.push(self.parse_event(&entry.id, entry.key, Some(entry.value)));
+                    events.push(self.within(entry.path, |p| {
+                        p.parse_event(&entry.id, entry.key, Some(entry.value))
+                    }));
                 }
             }
             NodeKind::Alias(_) => {
@@ -414,17 +415,16 @@ impl<'a> Parser<'a, '_> {
         const ELEMENT: &str = "element of \"schedule\" section";
         let items = self.check_sequence("schedule", node, false)?;
         let mut schedules = Vec::with_capacity(items.len());
-        for &id in items {
-            let Some(item) = self.node(id) else {
-                continue;
-            };
+        for item in items {
             let mut entry = ScheduleEntry {
-                span: item.span,
+                span: item.node.span,
                 cron: Field::Absent,
                 timezone: Field::Absent,
             };
-            let entries = self.parse_mapping(Label::At(ELEMENT), item, false, true);
-            self.parse_keys(entries, ELEMENT, &SCHEDULE_KEYS, &mut entry);
+            self.within(item.path, |p| {
+                let entries = p.parse_mapping(Label::At(ELEMENT), item.node, false, true);
+                p.parse_keys(entries, ELEMENT, &SCHEDULE_KEYS, &mut entry);
+            });
             if entry.cron.is_valid() {
                 schedules.push(entry);
             }
@@ -466,7 +466,7 @@ impl<'a> Parser<'a, '_> {
         let span = node.span;
         let mut items = Vec::new();
         for entry in self.parse_mapping(Label::Section(section), node, true, false) {
-            let value = item(self, entry.key, entry.value);
+            let value = self.within(entry.path, |p| item(p, entry.key, entry.value));
             if let Some(name) = entry.key.string {
                 items.push(KeyedEntry::new(name, entry.value.span, value));
             }

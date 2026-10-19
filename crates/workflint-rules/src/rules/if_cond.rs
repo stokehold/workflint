@@ -115,11 +115,12 @@ fn report_always_true(condition: &Template<'_>, suggestion: Option<&str>, cx: &m
     if let Some(suggestion) = suggestion {
         let _ = write!(message, ". did you mean {}?", quote(suggestion));
     }
-    cx.report(&IF_ALWAYS_TRUE, condition.span(), message);
+    cx.report_in(condition.source, &IF_ALWAYS_TRUE, condition.span(), message);
 }
 
 fn report_constant(condition: &Template<'_>, text: &str, cx: &mut Context<'_>) {
-    cx.report(
+    cx.report_in(
+        condition.source,
         &CONSTANT_CONDITION,
         condition.span(),
         format!(

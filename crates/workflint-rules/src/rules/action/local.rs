@@ -152,7 +152,12 @@ pub(super) fn check(exec: &ExecAction<'_>, uses: &StepUses<'_>, cx: &mut Context
     let action = match cx.local_metadata().action(spec) {
         Lookup::None => return,
         Lookup::Error(err) => {
-            cx.report(&BROKEN_ACTION_METADATA, uses.span(), err.to_string());
+            cx.report_in(
+                uses.template.source,
+                &BROKEN_ACTION_METADATA,
+                uses.span(),
+                err.to_string(),
+            );
             return;
         }
         Lookup::Found { metadata, first } => {

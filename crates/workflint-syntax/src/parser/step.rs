@@ -108,10 +108,8 @@ impl<'a> Parser<'a, '_> {
             return Field::Invalid { key, span };
         };
         let mut steps = Vec::with_capacity(items.len());
-        for &id in items {
-            if let Some(item) = self.node(id) {
-                steps.push(self.parse_step(item));
-            }
+        for item in items {
+            steps.push(self.within(item.path, |p| p.parse_step(item.node)));
         }
         Field::Valid {
             key,
@@ -142,13 +140,13 @@ impl<'a> Parser<'a, '_> {
         let mut kind = Kind::Unknown;
         for entry in &entries {
             let key = entry.key.string;
-            match &*entry.id {
-                "id" => step.id = self.parse_step_id(key, entry.value),
-                "if" => step.condition = self.parse_condition(key, entry.value),
-                "name" => step.name = self.parse_template(key, entry.value, true),
-                "env" => step.env = self.parse_env(entry.key, entry.value),
-                "continue-on-error" => step.continue_on_error = self.parse_bool(key, entry.value),
-                "timeout-minutes" => step.timeout_minutes = self.parse_timeout_minutes(entry),
+            self.within(entry.path, |p| match &*entry.id {
+                "id" => step.id = p.parse_step_id(key, entry.value),
+                "if" => step.condition = p.parse_condition(key, entry.value),
+                "name" => step.name = p.parse_template(key, entry.value, true),
+                "env" => step.env = p.parse_env(entry.key, entry.value),
+                "continue-on-error" => step.continue_on_error = p.parse_bool(key, entry.value),
+                "timeout-minutes" => step.timeout_minutes = p.parse_timeout_minutes(entry),
                 // The reference reads the value without checking its kind,
                 // so a value that is not a scalar makes an action step.
                 "uses" => {
@@ -158,7 +156,7 @@ impl<'a> Parser<'a, '_> {
                 }
                 "run" => kind = Kind::Run,
                 _ => {}
-            }
+            });
         }
         step.exec = match kind {
             Kind::Action | Kind::Docker => {
@@ -210,12 +208,15 @@ impl<'a> Parser<'a, '_> {
         if body.docker {
             entries.retain(|input| match &*input.id {
                 "entrypoint" => {
-                    body.action.entrypoint =
-                        self.parse_template(input.key.string, input.value, false);
+                    body.action.entrypoint = self.within(input.path, |p| {
+                        p.parse_template(input.key.string, input.value, false)
+                    });
                     false
                 }
                 "args" => {
-                    body.action.args = self.parse_template(input.key.string, input.value, true);
+                    body.action.args = self.within(input.path, |p| {
+                        p.parse_template(input.key.string, input.value, true)
+                    });
                     false
                 }
                 _ => true,

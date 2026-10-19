@@ -113,7 +113,8 @@ impl<'a> Rule<'a> for WorkflowCall {
                 if spec.starts_with("./") {
                     cx.local_metadata().record_invalid_workflow(spec);
                 }
-                cx.report(
+                cx.report_in(
+                    uses.template.source,
                     &INVALID_REUSABLE_WORKFLOW_REF,
                     uses.span(),
                     format!(
@@ -144,7 +145,8 @@ fn check_local(call: &Call<'_>, uses: &JobUses<'_>, cx: &mut Context<'_>) {
     let required = metadata.inputs.values().filter(|input| input.required);
     for input in required {
         if !inputs.is_some_and(|inputs| inputs.contains_key(&input.name)) {
-            cx.report(
+            cx.report_in(
+                uses.template.source,
                 &MISSING_REQUIRED_WORKFLOW_INPUT,
                 uses.span(),
                 format!(
@@ -168,7 +170,12 @@ fn check_local(call: &Call<'_>, uses: &JobUses<'_>, cx: &mut Context<'_>) {
         if metadata.dispatch_inputs.contains(entry.folded()) {
             message.push_str(&dispatch_hint(name));
         }
-        cx.report(&UNDEFINED_WORKFLOW_INPUT, entry.key.span(), message);
+        cx.report_in(
+            entry.key,
+            &UNDEFINED_WORKFLOW_INPUT,
+            entry.key.span(),
+            message,
+        );
     }
 
     let secrets = match call.secrets.value() {
@@ -179,7 +186,8 @@ fn check_local(call: &Call<'_>, uses: &JobUses<'_>, cx: &mut Context<'_>) {
     let required = metadata.secrets.values().filter(|secret| secret.required);
     for secret in required {
         if !secrets.is_some_and(|secrets| secrets.contains_key(&secret.name)) {
-            cx.report(
+            cx.report_in(
+                uses.template.source,
                 &MISSING_REQUIRED_WORKFLOW_SECRET,
                 uses.span(),
                 format!(
@@ -194,7 +202,8 @@ fn check_local(call: &Call<'_>, uses: &JobUses<'_>, cx: &mut Context<'_>) {
         if metadata.secrets.contains_key(entry.folded()) {
             continue;
         }
-        cx.report(
+        cx.report_in(
+            entry.key,
             &UNDEFINED_WORKFLOW_SECRET,
             entry.key.span(),
             format!(
@@ -220,7 +229,7 @@ pub(crate) fn report_lookup_error(
             &BROKEN_REUSABLE_WORKFLOW
         }
     };
-    cx.report(rule, uses.span(), err.to_string());
+    cx.report_in(uses.template.source, rule, uses.span(), err.to_string());
 }
 
 /// The entries of `keyed` in source order without the ones that repeat an earlier key, which

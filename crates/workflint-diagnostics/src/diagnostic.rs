@@ -92,7 +92,9 @@ pub enum Applicability {
 /// (`docs/differences.md#sort-order`). Diagnostics with the same line, column, and message
 /// collapse into one even if their rule IDs differ, as in actionlint. The one kept has the
 /// highest severity and, among those, the smallest rule ID. When those are equal too, the first
-/// in `diagnostics` is kept.
+/// in `diagnostics` is kept. The kept diagnostic gains the labels of the ones it replaces, after
+/// its own and without repeats, so a diagnostic repeated through several YAML aliases keeps a
+/// label at each alias.
 ///
 /// Every diagnostic's span must be in `file`.
 pub fn sort_and_dedup(file: &SourceFile, diagnostics: &mut Vec<Diagnostic>) {
@@ -110,7 +112,17 @@ pub fn sort_and_dedup(file: &SourceFile, diagnostics: &mut Vec<Diagnostic>) {
             .then_with(|| rhs.severity.cmp(&lhs.severity))
             .then_with(|| lhs.rule.id.cmp(rhs.rule.id))
     });
-    keyed.dedup_by(|(pos, d), (kept_pos, kept)| pos == kept_pos && d.message == kept.message);
+    keyed.dedup_by(|(pos, d), (kept_pos, kept)| {
+        let duplicate = pos == kept_pos && d.message == kept.message;
+        if duplicate {
+            for label in d.labels.drain(..) {
+                if !kept.labels.contains(&label) {
+                    kept.labels.push(label);
+                }
+            }
+        }
+        duplicate
+    });
 
     keyed.sort_by(|(lhs_pos, lhs), (rhs_pos, rhs)| {
         lhs_pos
@@ -324,5 +336,31 @@ mod tests {
             .collect();
         sort_and_dedup(&file, &mut diagnostics);
         assert_eq!(diagnostics.len(), 1);
+    }
+
+    #[test]
+    fn collapsed_duplicates_keep_the_labels_of_each_copy_once() {
+        let file = file();
+        let label = |line: usize| Label {
+            span: at(&RULE_A, line, 1, "").span,
+            note: format!("note {line}"),
+        };
+        let with_labels = |rule, lines: &[usize]| Diagnostic {
+            labels: lines.iter().map(|&line| label(line)).collect(),
+            ..at(rule, 5, 7, "duplicate")
+        };
+        let mut diagnostics = vec![
+            with_labels(&RULE_B, &[10, 11]),
+            with_labels(&RULE_A, &[12, 11]),
+            with_labels(&RULE_A, &[]),
+        ];
+        sort_and_dedup(&file, &mut diagnostics);
+        assert_eq!(summary(&diagnostics), [("a-rule", "duplicate")]);
+        let notes: Vec<_> = diagnostics[0]
+            .labels
+            .iter()
+            .map(|l| l.note.as_str())
+            .collect();
+        assert_eq!(notes, ["note 12", "note 11", "note 10"]);
     }
 }
