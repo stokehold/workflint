@@ -6,6 +6,7 @@ use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_syntax::{Env, Job, KeyedEntry, Step, Value, Workflow, contains_expression};
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// A name in `env` contains `&`, `=`, a space, or a tab.
@@ -23,6 +24,10 @@ pub(crate) static INVALID_ENV_VAR_NAME: RuleMeta = RuleMeta {
 pub(crate) struct EnvVar;
 
 impl<'a> Rule<'a> for EnvVar {
+    fn kind(&self) -> &'static Kind {
+        &kind::ENV_VAR
+    }
+
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         check(&workflow.env, cx);
     }

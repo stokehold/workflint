@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use workflint_diagnostics::{FileId, SourceFile};
+use workflint_rules::kind::{self, Kind};
 use workflint_rules::local::{LocalMetadata, Lookup, MemoryProject, NoProject};
 use workflint_rules::{Context, Rule, visit};
 use workflint_syntax::{Exec, ReusableWorkflowMetadata, Step, Workflow};
@@ -31,6 +32,28 @@ fn a_memory_project_finds_an_action_and_remembers_the_first_lookup() {
         project.action("./greet"),
         Lookup::Found { first: false, .. }
     ));
+}
+
+/// The same cases as `files_in_the_action_directory_are_found` in the tests of the linter's
+/// cache, which asks the file system.
+#[test]
+fn a_memory_project_finds_files_and_directories_as_the_file_system_does() {
+    let project = MemoryProject::new()
+        .with_file("greet/action.yml", ACTION)
+        .with_file("greet/dist/index.js", "")
+        .with_file("shared/lib.js", "");
+    let Lookup::Found { metadata, .. } = project.action("./x/../greet/.") else {
+        panic!("the action is found");
+    };
+    assert_eq!(metadata.dir.to_str(), Some("greet"));
+    assert!(project.action_file_exists(&metadata, "dist/index.js"));
+    assert!(project.action_file_exists(&metadata, "./dist/../action.yml"));
+    assert!(project.action_file_exists(&metadata, "dist"));
+    assert!(project.action_file_exists(&metadata, "dist/"));
+    assert!(project.action_file_exists(&metadata, "."));
+    assert!(project.action_file_exists(&metadata, "../shared/lib.js"));
+    assert!(!project.action_file_exists(&metadata, "index.js"));
+    assert!(!project.action_file_exists(&metadata, "dis"));
 }
 
 #[test]
@@ -120,6 +143,10 @@ struct LookUp {
 }
 
 impl<'a> Rule<'a> for LookUp {
+    fn kind(&self) -> &'static Kind {
+        &kind::ACTION
+    }
+
     fn step(&mut self, step: &'a Step<'a>, cx: &mut Context<'_>) {
         let Some(Exec::Action(action)) = &step.exec else {
             return;

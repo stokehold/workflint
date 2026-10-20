@@ -28,6 +28,7 @@ use workflint_syntax::{
 };
 use workflint_yaml::{Tag, simple_lowercase};
 
+use crate::kind::{self, Kind};
 use crate::local::{Lookup, is_local_action};
 use crate::rules::workflow_call::report_lookup_error;
 use crate::{Context, Rule};
@@ -114,6 +115,10 @@ impl Expression<'_> {
 }
 
 impl<'a> Rule<'a> for Expression<'a> {
+    fn kind(&self) -> &'static Kind {
+        &kind::EXPRESSION
+    }
+
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         // The events add their inputs to the contexts of the workflow, in the order of `on`.
         self.workflow = TypeEnv::new();

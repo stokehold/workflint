@@ -169,8 +169,8 @@ fn download_artifact_has_the_download_path_output() {
     }
 }
 
-/// Lookup allocates nothing: the crate is `no_std` and never links `alloc`, so no code in it
-/// can allocate.
+/// Lookup allocates nothing: the crate is `no_std` and links neither `alloc` nor `std`, so no
+/// code in it can allocate.
 #[test]
 fn crate_cannot_allocate() {
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
@@ -187,11 +187,18 @@ fn crate_cannot_allocate() {
             }
             let source =
                 fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-            assert!(
-                !source.contains("extern crate alloc"),
-                "{} links alloc",
-                path.display()
-            );
+            let words: Vec<&str> = source
+                .split(|c: char| c.is_whitespace() || c == ';')
+                .filter(|word| !word.is_empty())
+                .collect();
+            let linked: Vec<_> = words
+                .windows(3)
+                .filter_map(|words| match words {
+                    ["extern", "crate", name @ ("alloc" | "std")] => Some(*name),
+                    _ => None,
+                })
+                .collect();
+            assert!(linked.is_empty(), "{} links {linked:?}", path.display());
             if path.ends_with("lib.rs") {
                 assert!(source.contains("#![no_std]"), "lib.rs is not no_std");
             }

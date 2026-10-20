@@ -11,6 +11,7 @@ use workflint_syntax::{
 };
 use workflint_yaml::simple_lowercase;
 
+use crate::kind::{self, Kind};
 use crate::runner::resolve;
 use crate::{Context, Rule};
 
@@ -39,6 +40,10 @@ impl ShellName {
 }
 
 impl<'a> Rule<'a> for ShellName {
+    fn kind(&self) -> &'static Kind {
+        &kind::SHELL_NAME
+    }
+
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         check_defaults(&workflow.defaults, ShellPlatform::Any, cx);
     }

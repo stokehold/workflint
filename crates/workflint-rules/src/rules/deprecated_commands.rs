@@ -7,6 +7,7 @@ use workflint_data::{DEPRECATED_COMMANDS, DeprecatedCommand};
 use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_syntax::{Exec, Step};
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// A `run:` script uses a workflow command that GitHub deprecated.
@@ -23,6 +24,10 @@ pub(crate) static DEPRECATED_WORKFLOW_COMMAND: RuleMeta = RuleMeta {
 pub(crate) struct DeprecatedCommands;
 
 impl<'a> Rule<'a> for DeprecatedCommands {
+    fn kind(&self) -> &'static Kind {
+        &kind::DEPRECATED_COMMANDS
+    }
+
     fn step(&mut self, step: &'a Step<'a>, cx: &mut Context<'_>) {
         let Some(Exec::Run(run)) = &step.exec else {
             return;

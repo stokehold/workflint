@@ -1,0 +1,9 @@
+# A literal block scalar on the last line, with no line break after it, has
+# no line break in its value: the label below is "ubuntu-latest-foo".
+on: push
+jobs:
+  test:
+    steps:
+      - run: echo hi
+    runs-on: |
+      ubuntu-latest-foo

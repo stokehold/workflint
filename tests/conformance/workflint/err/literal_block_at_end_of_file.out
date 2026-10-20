@@ -1,0 +1,1 @@
+/test\.yaml:8:14: label "ubuntu-latest-foo" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/

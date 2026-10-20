@@ -11,6 +11,7 @@ use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
 use workflint_syntax::{Job, KeyedEntry, Workflow};
 use workflint_yaml::simple_lowercase;
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// A job lists the same job twice in `needs`, ignoring case.
@@ -85,6 +86,10 @@ pub(crate) struct JobNeeds<'a> {
 }
 
 impl<'a> Rule<'a> for JobNeeds<'a> {
+    fn kind(&self) -> &'static Kind {
+        &kind::JOB_NEEDS
+    }
+
     fn job_pre(&mut self, job: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
         let mut needs: Vec<Cow<'a, str>> = Vec::new();
         // An item that is not a valid string is `None`, and the parser has reported it.

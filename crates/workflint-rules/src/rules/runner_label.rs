@@ -21,6 +21,7 @@ use workflint_syntax::{
     contains_expression, is_expression_assigned,
 };
 
+use crate::kind::{self, Kind};
 use crate::path_match::path_match;
 use crate::{Context, Rule};
 
@@ -216,6 +217,10 @@ impl<'a> Seen<'a> {
 }
 
 impl<'a> Rule<'a> for RunnerLabel {
+    fn kind(&self) -> &'static Kind {
+        &kind::RUNNER_LABEL
+    }
+
     fn job_pre(&mut self, job: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
         let Some(runner) = job.value.runs_on.value() else {
             return;

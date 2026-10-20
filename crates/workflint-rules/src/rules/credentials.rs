@@ -6,6 +6,7 @@ use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_syntax::{Container, Job, KeyedEntry, is_expression_assigned};
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// `credentials.password` of a container or service is not a single `${{ }}` expression.
@@ -22,6 +23,10 @@ pub(crate) static HARDCODED_PASSWORD: RuleMeta = RuleMeta {
 pub(crate) struct Credentials;
 
 impl<'a> Rule<'a> for Credentials {
+    fn kind(&self) -> &'static Kind {
+        &kind::CREDENTIALS
+    }
+
     fn job_pre(&mut self, job: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
         if let Some(container) = job.value.container.value() {
             check(container, "\"container\" section", cx);

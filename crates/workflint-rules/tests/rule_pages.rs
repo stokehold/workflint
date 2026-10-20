@@ -253,8 +253,7 @@ fn parse_head(head: &[&str], page: &mut Page) -> Result<(), String> {
     Ok(())
 }
 
-/// Lints `workflow` as the binary does, without the file system: the YAML layer, the workflow
-/// parser, and the rules. The workflow is `test.yaml` at the root of a project in memory that
+/// Lints `workflow` as the binary does, with [`workflint_rules::check_file`]. The workflow is `test.yaml` at the root of a project in memory that
 /// has `files`. Returns the diagnostics in the one-line format.
 fn lint(workflow: &str, files: &[ProjectFile]) -> Vec<String> {
     let project = files
@@ -264,17 +263,7 @@ fn lint(workflow: &str, files: &[ProjectFile]) -> Vec<String> {
         })
         .linting(EXAMPLE_PATH);
     let file = SourceFile::new(FileId::new(0), EXAMPLE_PATH, workflow).unwrap();
-    let parsed = workflint_yaml::parse(&file);
-    let mut diagnostics = parsed.diagnostics;
-    if let Some(document) = &parsed.document {
-        let syntax = workflint_syntax::parse(&file, document);
-        diagnostics.extend(syntax.diagnostics);
-        diagnostics.extend(workflint_rules::run_in_project(
-            &file,
-            &syntax.workflow,
-            &project,
-        ));
-    }
+    let mut diagnostics = workflint_rules::check_file(&file, &project);
     sort_and_dedup(&file, &mut diagnostics);
     let mut out = Vec::new();
     render_oneline(&mut out, &file, &diagnostics, Color::Off).unwrap();
@@ -412,22 +401,17 @@ fn check_coverage(rules: &[&RuleMeta], pages: &BTreeMap<String, String>) -> Vec<
     problems
 }
 
-/// Renders the rules index: one table row per rule in `rules`, with a link to the page when
-/// `pages` has one.
-fn render_index(rules: &[&RuleMeta], pages: &BTreeMap<String, String>) -> String {
+/// Renders the rules index: one table row per rule in `rules`, with a link to its page.
+fn render_index(rules: &[&RuleMeta]) -> String {
     let mut index = String::from(
         "| Rule | Kind | Category | Default severity | Description |\n\
          |---|---|---|---|---|\n",
     );
     for rule in rules {
-        let name = if pages.contains_key(rule.id) {
-            format!("[`{0}`]({0}.md)", rule.id)
-        } else {
-            format!("`{}`", rule.id)
-        };
         writeln!(
             index,
-            "| {name} | `{}` | {} | {} | {} |",
+            "| [`{0}`]({0}.md) | `{1}` | {2} | {3} | {4} |",
+            rule.id,
             rule.kind,
             rule.category.as_str(),
             rule.default_severity.as_str(),
@@ -463,7 +447,7 @@ fn every_registered_rule_has_a_page_and_every_page_a_registered_rule() {
 #[test]
 fn the_rules_index_matches_the_registry() {
     let readme = read_doc(&docs_dir().join("rules/README.md"));
-    let expected = render_index(registry::rules(), &read_pages());
+    let expected = render_index(registry::rules());
     assert!(
         written_index(&readme) == Some(expected.as_str()),
         "the rules index in docs/rules/README.md must be, between {INDEX_START} and \
@@ -695,16 +679,13 @@ fn the_coverage_check_fails_when_a_docs_url_names_another_page() {
 }
 
 #[test]
-fn the_rules_index_links_only_the_rules_that_have_a_page() {
-    let mut pages = BTreeMap::new();
-    pages.insert("new-rule".to_owned(), String::new());
+fn the_rules_index_links_the_page_of_each_rule() {
     assert_eq!(
-        render_index(&[&NEW_RULE], &pages),
+        render_index(&[&NEW_RULE]),
         "| Rule | Kind | Category | Default severity | Description |\n\
          |---|---|---|---|---|\n\
          | [`new-rule`](new-rule.md) | `syntax-check` | correctness | error | A rule without a page |\n"
     );
-    assert!(render_index(&[&NEW_RULE], &BTreeMap::new()).contains("\n| `new-rule` |"));
 }
 
 /// A page of `single-expression-required`, a rule that never reports, with `section` in place

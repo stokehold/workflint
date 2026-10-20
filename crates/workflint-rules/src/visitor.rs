@@ -67,3 +67,20 @@ pub fn run_in_project<'a>(
     visit(workflow, &mut rules, &mut cx);
     cx.into_diagnostics()
 }
+
+/// Lints `file` without the file system: parses it with the YAML layer and, if that gives a
+/// document, with the workflow parser, then runs the rules on the workflow with the local
+/// metadata in `local`. Returns the diagnostics of all three, unsorted.
+///
+/// The binary and the tests of the rule pages both lint this way.
+#[must_use]
+pub fn check_file(file: &SourceFile, local: &dyn LocalMetadata) -> Vec<Diagnostic> {
+    let parsed = workflint_yaml::parse(file);
+    let mut diagnostics = parsed.diagnostics;
+    if let Some(document) = &parsed.document {
+        let syntax = workflint_syntax::parse(file, document);
+        diagnostics.extend(syntax.diagnostics);
+        diagnostics.extend(run_in_project(file, &syntax.workflow, local));
+    }
+    diagnostics
+}

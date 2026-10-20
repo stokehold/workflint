@@ -22,4 +22,4 @@ mod visitor;
 
 pub use rule::{Context, Rule};
 pub use rules::{CREATION_ORDER, create_rules};
-pub use visitor::{run, run_in_project, visit};
+pub use visitor::{check_file, run, run_in_project, visit};

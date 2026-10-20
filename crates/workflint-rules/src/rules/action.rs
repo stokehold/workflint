@@ -9,6 +9,7 @@ use workflint_diagnostics::quote::{quote, sorted_quotes};
 use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
 use workflint_syntax::{Exec, ExecAction, Step, StepUses, StepUsesKind, UsesPart};
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 mod local;
@@ -85,6 +86,10 @@ pub(crate) static DEPRECATED_ACTION_INPUT: RuleMeta = RuleMeta {
 pub(crate) struct Action;
 
 impl<'a> Rule<'a> for Action {
+    fn kind(&self) -> &'static Kind {
+        &kind::ACTION
+    }
+
     fn step(&mut self, step: &'a Step<'a>, cx: &mut Context<'_>) {
         let Some(Exec::Action(exec)) = &step.exec else {
             return;
