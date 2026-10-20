@@ -14,7 +14,7 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0008](0008-rule-registry-and-defaults.md) | Rule registry and default rule set | accepted | [0024](0024-parse-stage-rules.md), [0029](0029-rule-modules-and-descriptions.md), [0030](0030-rule-pages-and-rules-index.md) |
 | [0009](0009-inline-ignore-comments.md) | Inline ignore comments | accepted | |
 | [0010](0010-configuration.md) | Configuration | accepted | |
-| [0011](0011-platform-data.md) | GitHub platform data | accepted | [0028](0028-revisions-after-the-m1-m3-review.md) |
+| [0011](0011-platform-data.md) | GitHub platform data | accepted | [0028](0028-revisions-after-the-m1-m3-review.md), [0033](0033-platform-data-updates-before-m7.md) |
 | [0012](0012-external-tools.md) | External tools | accepted | |
 | [0013](0013-concurrency-and-determinism.md) | Concurrency and determinism | accepted | |
 | [0014](0014-distribution-and-releases.md) | Distribution and release pipeline | accepted | |
@@ -36,3 +36,4 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0030](0030-rule-pages-and-rules-index.md) | Rule pages and the rules index | accepted | |
 | [0031](0031-agents-enable-auto-merge.md) | Agents enable auto-merge | accepted | |
 | [0032](0032-diagnostic-help-text.md) | Diagnostic help text | accepted | |
+| [0033](0033-platform-data-updates-before-m7.md) | Platform data updates before M7 | accepted | |

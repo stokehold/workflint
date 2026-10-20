@@ -1,6 +1,7 @@
 //! `tests/conformance/allowed-differences.toml`: the expected lines that
-//! workflint replaces, removes, or adds on purpose. Each entry names an anchor
-//! in `docs/differences.md` (ADR 0004).
+//! workflint replaces, removes, or adds on purpose, in fixtures and in the
+//! `Output` blocks of upstream `docs/checks.md`. Each entry names an anchor in
+//! `docs/differences.md` (ADR 0004).
 
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
@@ -19,6 +20,26 @@ pub struct AllowList {
     /// The `[[difference]]` tables, in file order.
     #[serde(default, rename = "difference")]
     pub entries: Vec<Entry>,
+    /// The `[[example]]` tables, in file order.
+    #[serde(default, rename = "example")]
+    pub examples: Vec<Example>,
+}
+
+/// One `[[example]]` table: a line of the `Output` block of a section of
+/// upstream `docs/checks.md` that workflint prints differently. It is for
+/// lines that the section's fixtures match with a `/pattern/`, which needs no
+/// `[[difference]]` entry, while the `Output` block has the whole line.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Example {
+    /// An anchor in `docs/differences.md`, without the `#`.
+    pub anchor: String,
+    /// The anchor of the section in `docs/checks.md`, without the `#`.
+    pub section: String,
+    /// The error line of the `Output` block, with the kind in brackets.
+    pub upstream: String,
+    /// The line that workflint prints instead, with the kind in brackets.
+    pub workflint: String,
 }
 
 /// One `[[difference]]` table.
@@ -54,8 +75,18 @@ impl AllowList {
             .collect()
     }
 
+    /// The `[[example]]` tables for the `docs/checks.md` section `section`,
+    /// in file order.
+    #[must_use]
+    pub fn examples_for(&self, section: &str) -> Vec<&Example> {
+        self.examples
+            .iter()
+            .filter(|example| example.section == section)
+            .collect()
+    }
+
     /// Checks every entry against the anchors of `docs/differences.md` and
-    /// the known fixture IDs.
+    /// the known fixture IDs, and every example against the anchors.
     ///
     /// # Errors
     ///
@@ -83,6 +114,15 @@ impl AllowList {
                 problems.push(format!(
                     "the entry for {} and anchor {} has neither `upstream` nor `workflint`",
                     entry.fixture, entry.anchor
+                ));
+            }
+        }
+        for example in &self.examples {
+            if !anchors.contains(&example.anchor) {
+                problems.push(format!(
+                    "anchor {:?} of the example for checks.md#{} does not exist in \
+                     docs/differences.md",
+                    example.anchor, example.section
                 ));
             }
         }
@@ -267,6 +307,36 @@ workflint = "workflows/a.yaml:1:1: b [action]"
     }
 
     #[test]
+    fn the_file_parses_example_tables() {
+        let list = AllowList::parse(
+            r#"
+[[example]]
+anchor = "platform-data-updates"
+section = "check-runner-labels"
+upstream = "test.yaml:1:1: a [runner-label]"
+workflint = "test.yaml:1:1: b [runner-label]"
+"#,
+        )
+        .unwrap();
+        assert_eq!(list.entries, []);
+        assert_eq!(list.examples_for("check-runner-labels").len(), 1);
+        assert_eq!(list.examples_for("permissions"), Vec::<&Example>::new());
+    }
+
+    #[test]
+    fn an_example_with_an_unknown_anchor_fails_validation() {
+        let list = AllowList::parse(
+            "[[example]]\nanchor = \"no-such-anchor\"\nsection = \"s\"\n\
+             upstream = \"a\"\nworkflint = \"b\"\n",
+        )
+        .unwrap();
+        let error = list
+            .validate(&BTreeSet::new(), &BTreeSet::new())
+            .unwrap_err();
+        assert!(error.contains("anchor \"no-such-anchor\""), "{error}");
+    }
+
+    #[test]
     fn an_empty_file_has_no_entries() {
         assert_eq!(AllowList::parse("").unwrap(), AllowList::default());
     }
@@ -284,6 +354,7 @@ workflint = "workflows/a.yaml:1:1: b [action]"
     fn an_entry_with_an_unknown_anchor_fails_validation() {
         let list = AllowList {
             entries: vec![entry(Some("a"), None)],
+            ..AllowList::default()
         };
         let anchors = BTreeSet::from(["rule-id-in-brackets".to_owned()]);
         let fixtures = BTreeSet::from(["err/x".to_owned()]);
@@ -295,6 +366,7 @@ workflint = "workflows/a.yaml:1:1: b [action]"
     fn an_entry_with_an_unknown_fixture_fails_validation() {
         let list = AllowList {
             entries: vec![entry(Some("a"), None)],
+            ..AllowList::default()
         };
         let anchors = BTreeSet::from(["sort-order".to_owned()]);
         let error = list.validate(&anchors, &BTreeSet::new()).unwrap_err();
@@ -305,6 +377,7 @@ workflint = "workflows/a.yaml:1:1: b [action]"
     fn an_entry_without_lines_fails_validation() {
         let list = AllowList {
             entries: vec![entry(None, None)],
+            ..AllowList::default()
         };
         let anchors = BTreeSet::from(["sort-order".to_owned()]);
         let fixtures = BTreeSet::from(["err/x".to_owned()]);
@@ -315,6 +388,7 @@ workflint = "workflows/a.yaml:1:1: b [action]"
     fn a_valid_entry_passes_validation() {
         let list = AllowList {
             entries: vec![entry(Some("a"), None)],
+            ..AllowList::default()
         };
         let anchors = BTreeSet::from(["sort-order".to_owned()]);
         let fixtures = BTreeSet::from(["err/x".to_owned()]);

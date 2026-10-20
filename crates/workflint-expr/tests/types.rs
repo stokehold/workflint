@@ -598,14 +598,16 @@ mod from_type_desc {
     use workflint_data::{GLOBAL_CONTEXTS, TypeDesc, global_context};
 
     /// The printed form of each type in the reference's `BuiltinGlobalVariableTypes`, from
-    /// `BuiltinGlobalVariableTypes[name].String()` at commit `011a6d1`.
+    /// `BuiltinGlobalVariableTypes[name].String()` at commit `011a6d1`, with the properties
+    /// that workflint adds to `github` and `job` (`docs/differences.md#platform-data-updates`).
     const REFERENCE: &[(&str, &str)] = &[
         ("env", "{string => string}"),
         (
             "github",
             "{action: string; action_path: string; action_ref: string; action_repository: string; \
              action_status: string; actor: string; actor_id: string; api_url: string; \
-             artifact_cache_size_limit: number; base_ref: string; env: string; event: object; \
+             artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; \
+             base_ref: string; env: string; event: object; \
              event_name: string; event_path: string; graphql_url: string; head_ref: string; \
              job: string; output: string; path: string; ref: string; ref_name: string; \
              ref_protected: bool; ref_type: string; repository: string; repository_id: string; \
@@ -620,7 +622,8 @@ mod from_type_desc {
             "job",
             "{check_run_id: number; container: {id: string; network: string}; \
              services: {string => {id: string; network: string; ports: {string => string}}}; \
-             status: string}",
+             status: string; workflow_file_path: string; workflow_ref: string; \
+             workflow_repository: string; workflow_sha: string}",
         ),
         ("matrix", "{}"),
         ("needs", "{}"),
@@ -685,6 +688,10 @@ mod from_type_desc {
                 ])),
             ),
             ("status", Ty::String),
+            ("workflow_file_path", Ty::String),
+            ("workflow_ref", Ty::String),
+            ("workflow_repository", Ty::String),
+            ("workflow_sha", Ty::String),
         ]);
         assert_eq!(Ty::from(job), want);
 

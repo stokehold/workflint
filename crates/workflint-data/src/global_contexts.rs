@@ -2,7 +2,15 @@
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `BuiltinGlobalVariableTypes` in
 //! `expr_sema.go`, lines 261-357. Until M7 replaces it with a generated file (ADR 0011), keep
-//! it equal to that table. The test `global_contexts_match_the_reference_table` compares them.
+//! it equal to that table plus `github.artifacts`, `github.artifacts_list`,
+//! `job.workflow_file_path`, `job.workflow_ref`, `job.workflow_repository`, and
+//! `job.workflow_sha`, which workflint adds (ADR 0033,
+//! `docs/differences.md#platform-data-updates`). The test
+//! `global_contexts_are_the_reference_table_and_the_added_properties` compares them.
+//!
+//! The added properties and their types come from
+//! <https://docs.github.com/en/actions/reference/workflows-and-actions/contexts>, checked on
+//! 2026-10-20.
 //!
 //! The reference has no `jobs` context here. It exists only in `on.workflow_call.outputs`,
 //! where the checker adds it.
@@ -43,6 +51,8 @@ pub static GLOBAL_CONTEXTS: &[Context] = &[
             P::new("api_url", T::String),
             // Undocumented.
             P::new("artifact_cache_size_limit", T::Number),
+            P::new("artifacts", T::String),
+            P::new("artifacts_list", T::String),
             P::new("base_ref", T::String),
             P::new("env", T::String),
             // The reference does not type the event payload.
@@ -104,6 +114,10 @@ pub static GLOBAL_CONTEXTS: &[Context] = &[
                 ])),
             ),
             P::new("status", T::String),
+            P::new("workflow_file_path", T::String),
+            P::new("workflow_ref", T::String),
+            P::new("workflow_repository", T::String),
+            P::new("workflow_sha", T::String),
         ]),
     ),
     context("matrix", T::strict(&[])),

@@ -23,6 +23,8 @@ pub(crate) struct Case {
 struct File {
     #[serde(default)]
     difference: Vec<Record>,
+    #[serde(default, rename = "type")]
+    types: Vec<TypeRecord>,
 }
 
 /// A difference that `docs/differences.md` explains.
@@ -57,10 +59,34 @@ impl Record {
     }
 }
 
+/// A type that workflint prints differently in every outcome, because
+/// `docs/differences.md` explains a change to it, such as an added property of
+/// a context.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct TypeRecord {
+    /// An anchor in `docs/differences.md`, without the `#`.
+    pub(crate) anchor: String,
+    /// The type as the reference prints it.
+    pub(crate) upstream: String,
+    /// The type as workflint prints it.
+    pub(crate) workflint: String,
+}
+
+impl TypeRecord {
+    fn describe(&self) -> String {
+        format!(
+            "the type record for {:?} with anchor {}",
+            self.upstream, self.anchor
+        )
+    }
+}
+
 /// The records of `tests/expr-parity/allowed-differences.toml`.
 #[derive(Debug, Default)]
 pub(crate) struct AllowList {
     records: Vec<Record>,
+    types: Vec<TypeRecord>,
 }
 
 impl AllowList {
@@ -69,12 +95,37 @@ impl AllowList {
         let file: File = toml::from_str(text).context("cannot parse the allow-list")?;
         Ok(Self {
             records: file.difference,
+            types: file.types,
         })
+    }
+
+    /// Rewrites each type of the type records in the reference's outcome
+    /// `upstream` as workflint prints it. Returns the rewritten outcome and the
+    /// indexes of the records that changed it.
+    fn rewrite_types(&self, upstream: &str) -> (String, Vec<usize>) {
+        let mut text = upstream.to_owned();
+        let mut applied = Vec::new();
+        for (index, record) in self.types.iter().enumerate() {
+            if text.contains(&record.upstream) {
+                text = text.replace(&record.upstream, &record.workflint);
+                applied.push(index);
+            }
+        }
+        (text, applied)
     }
 
     /// Fails unless every record names an anchor in `anchors` and only setups
     /// in `setups`.
     pub(crate) fn validate(&self, anchors: &BTreeSet<String>, setups: &[Setup]) -> Result<()> {
+        for record in &self.types {
+            if !anchors.contains(&record.anchor) {
+                bail!(
+                    "anchor {:?} of {} does not exist in docs/differences.md",
+                    record.anchor,
+                    record.describe()
+                );
+            }
+        }
         for record in &self.records {
             if !anchors.contains(&record.anchor) {
                 bail!(
@@ -138,6 +189,7 @@ pub(crate) fn compare(
         ..Report::default()
     };
     let mut used = vec![false; allow_list.records.len()];
+    let mut used_types = vec![false; allow_list.types.len()];
     for (case, upstream) in cases.iter().zip(upstream) {
         let setup = setups
             .get(case.setup)
@@ -156,12 +208,23 @@ pub(crate) fn compare(
                 &workflint_text,
             )
         });
+        let (rewritten, applied) = allow_list.rewrite_types(&upstream_text);
         if let Some(index) = record {
             used[index] = true;
             *report
                 .allowed
                 .entry(allow_list.records[index].anchor.clone())
                 .or_default() += 1;
+        } else if !applied.is_empty() && rewritten == workflint_text {
+            for &index in &applied {
+                used_types[index] = true;
+            }
+            let anchor = applied
+                .first()
+                .and_then(|&index| allow_list.types.get(index))
+                .map(|record| record.anchor.clone())
+                .unwrap_or_default();
+            *report.allowed.entry(anchor).or_default() += 1;
         } else {
             report.unexplained.push(Difference {
                 setup: setup.name.clone(),
@@ -177,6 +240,14 @@ pub(crate) fn compare(
         .zip(used)
         .filter(|(_, used)| !used)
         .map(|(record, _)| record.describe())
+        .chain(
+            allow_list
+                .types
+                .iter()
+                .zip(used_types)
+                .filter(|(_, used)| !used)
+                .map(|(record, _)| record.describe()),
+        )
         .collect();
     Ok(report)
 }
@@ -261,7 +332,8 @@ expressions = ["cases"]
         .unwrap()
     }
 
-    const EXPRESSIONS: [&str; 9] = [
+    const EXPRESSIONS: [&str; 10] = [
+        "matrix",
         "matrix.arch && foo",
         "matrix.os",
         "matrix.arch",
@@ -463,6 +535,65 @@ workflint = "type: string, constant: true"
         assert!(report.check().is_err());
     }
 
+    /// Adds the property `extra` to the type `{os: string}` of `matrix`.
+    fn added_property(_: &str, mut outcome: Outcome) -> Outcome {
+        if let Outcome::Checked { ty, .. } = &mut outcome {
+            *ty = ty.replace("{os: string}", "{extra: string; os: string}");
+        }
+        outcome
+    }
+
+    #[test]
+    fn a_type_record_explains_every_outcome_that_prints_the_type() {
+        let allow_list = AllowList::parse(
+            r#"
+[[type]]
+anchor = "platform-data-updates"
+upstream = "{os: string}"
+workflint = "{extra: string; os: string}"
+"#,
+        )
+        .unwrap();
+        let report = compare_with(&allow_list, added_property);
+        // Only the first setup has a matrix, and only `matrix` prints it.
+        assert_eq!(report.allowed["platform-data-updates"], 1);
+        report.check().unwrap();
+    }
+
+    #[test]
+    fn a_type_record_does_not_explain_other_changes() {
+        let allow_list = AllowList::parse(
+            r#"
+[[type]]
+anchor = "platform-data-updates"
+upstream = "{os: string}"
+workflint = "{extra: string; os: string}"
+"#,
+        )
+        .unwrap();
+        let report = compare_with(&allow_list, |expression, outcome| {
+            changed_type(expression, added_property(expression, outcome))
+        });
+        assert_eq!(report.unexplained.len(), 2, "{}", report.render());
+        assert!(report.unexplained.iter().all(|d| d.expression == "1 == 1"));
+    }
+
+    #[test]
+    fn a_type_record_that_applies_nowhere_is_stale() {
+        let allow_list = AllowList::parse(
+            r#"
+[[type]]
+anchor = "platform-data-updates"
+upstream = "{arch: string}"
+workflint = "{arch: string; extra: string}"
+"#,
+        )
+        .unwrap();
+        let report = compare_with(&allow_list, |_, outcome| outcome);
+        assert_eq!(report.stale.len(), 1);
+        assert!(report.check().is_err());
+    }
+
     #[test]
     fn records_must_name_known_anchors_and_setups() {
         let setups = setups();
@@ -486,6 +617,13 @@ workflint = "type: string, constant: true"
             .unwrap_err();
         assert!(format!("{error:#}").contains("\"other\""), "{error:#}");
         assert!(AllowList::parse("[[difference]]\nanchor = \"a\"\n").is_err());
+        let error = AllowList::parse(
+            "[[type]]\nanchor = \"no-such-anchor\"\nupstream = \"a\"\nworkflint = \"b\"\n",
+        )
+        .unwrap()
+        .validate(&anchors, &setups)
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("no-such-anchor"), "{error:#}");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! Checks the global context types against the reference's `BuiltinGlobalVariableTypes` in
-//! the vendored `expr_sema.go`, and against the rules of
-//! `TestBuiltinGlobalVariableTypesValidation` in `expr_sema_test.go`.
+//! the vendored `expr_sema.go`, plus the properties that workflint adds, and against the rules
+//! of `TestBuiltinGlobalVariableTypesValidation` in `expr_sema_test.go`.
 
 #![allow(clippy::panic)]
 
@@ -8,7 +8,7 @@ mod go_source;
 
 use std::collections::BTreeMap;
 
-use go_source::{Ty, builtin_global_variable_types, update_secrets_built_ins};
+use go_source::{OwnedRest, Ty, builtin_global_variable_types, update_secrets_built_ins};
 use workflint_data::{
     BUILT_IN_SECRETS, GLOBAL_CONTEXTS, ObjectDesc, Rest, TypeDesc, global_context,
 };
@@ -20,9 +20,32 @@ fn workflint_contexts() -> BTreeMap<String, Ty> {
         .collect()
 }
 
+/// The properties that workflint adds to the reference's contexts, each a string, as
+/// `context.property` (`docs/differences.md#platform-data-updates`).
+const ADDED_PROPERTIES: [&str; 6] = [
+    "github.artifacts",
+    "github.artifacts_list",
+    "job.workflow_file_path",
+    "job.workflow_ref",
+    "job.workflow_repository",
+    "job.workflow_sha",
+];
+
 #[test]
-fn global_contexts_match_the_reference_table() {
-    let reference = builtin_global_variable_types();
+fn global_contexts_are_the_reference_table_and_the_added_properties() {
+    let mut reference = builtin_global_variable_types();
+    for path in ADDED_PROPERTIES {
+        let Some((context, property)) = path.split_once('.') else {
+            panic!("{path} has no property");
+        };
+        let Some(Ty::Object(properties, OwnedRest::Strict)) = reference.get_mut(context) else {
+            panic!("{context} is not a strict object in the reference");
+        };
+        assert!(
+            properties.insert(property.to_owned(), Ty::String).is_none(),
+            "the reference has {path} already"
+        );
+    }
     let workflint = workflint_contexts();
 
     assert_eq!(

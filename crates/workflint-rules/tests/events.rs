@@ -100,7 +100,7 @@ fn an_invalid_activity_type_is_reported_with_the_sorted_types() {
     assert_eq!(
         events(&workflow("  issues:\n    types: [opened, created]\n")),
         [
-            r#"3:21: invalid activity type "created" for "issues" Webhook event. available types are "assigned", "closed", "deleted", "demilestoned", "edited", "labeled", "locked", "milestoned", "opened", "pinned", "reopened", "transferred", "typed", "unassigned", "unlabeled", "unlocked", "unpinned", "untyped" [invalid-activity-type]"#
+            r#"3:21: invalid activity type "created" for "issues" Webhook event. available types are "assigned", "closed", "deleted", "demilestoned", "edited", "field_added", "field_removed", "labeled", "locked", "milestoned", "opened", "pinned", "reopened", "transferred", "typed", "unassigned", "unlabeled", "unlocked", "unpinned", "untyped" [invalid-activity-type]"#
         ]
     );
 }

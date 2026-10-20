@@ -190,7 +190,7 @@ jobs:
         assert!(
             out[0].starts_with("test.yaml:6:7: unknown permission scope \"Contents\". all available permission scopes are \"actions\", ")
         );
-        assert!(out[0].ends_with(", \"statuses\" [unknown-permission-scope]"));
+        assert!(out[0].ends_with(", \"vulnerability-alerts\" [unknown-permission-scope]"));
     }
 
     #[test]

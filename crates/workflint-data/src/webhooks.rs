@@ -3,8 +3,10 @@
 //! Ported from rhysd/actionlint at commit `011a6d1`: `AllWebhookTypes` in `all_webhooks.go`,
 //! lines 10-44, which a script generates from
 //! <https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows>.
-//! Until M7 replaces it with a generated file (ADR 0011), keep it equal to that table. The test
-//! `webhook_events_match_the_reference_table` compares them.
+//! Until M7 replaces it with a generated file (ADR 0011), keep it equal to that table plus the
+//! `field_added` and `field_removed` types of `issues`, which workflint adds from that page,
+//! checked on 2026-10-20 (ADR 0033, `docs/differences.md#platform-data-updates`). The test
+//! `webhook_events_are_the_reference_table_and_the_added_activity_types` compares them.
 
 /// The activity types that `on.<event>.types` may list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,6 +102,8 @@ pub static WEBHOOK_EVENTS: &[WebhookEvent] = &[
             "demilestoned",
             "typed",
             "untyped",
+            "field_added",
+            "field_removed",
         ]),
     ),
     WebhookEvent::new(

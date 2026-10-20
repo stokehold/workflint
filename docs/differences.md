@@ -788,6 +788,27 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Fixtures: `workflint/err/runner_provider_os` and `workflint/ok/runner_provider_labels.yaml`. The output of no vendored fixture changes.
 - Corpus: no output changes. None of the 827 `unknown-runner-label` hits is a provider label.
 
+<a id="platform-data-updates"></a>
+### Runner labels, permissions, activity types, and context properties from GitHub's current documentation
+
+- Upstream: the tables in `rule_runner_label.go`, `rule_permissions.go`, `all_webhooks.go`, and `expr_sema.go` describe GitHub as of early 2026. `ubuntu-26.04`, `ubuntu-26.04-arm`, `windows-11-vs2026-arm`, `xcode-27`, and `xcode-27-xlarge` are unknown labels. `code-quality`, `copilot-requests`, and `vulnerability-alerts` are unknown permission scopes. `field_added` and `field_removed` are invalid activity types of `issues`. `github.artifacts`, `github.artifacts_list`, `job.workflow_ref`, `job.workflow_sha`, `job.workflow_repository`, and `job.workflow_file_path` are undefined properties. `windows-latest` runs Windows Server 2022 and `macos-latest` runs macOS 15, so `[windows-latest, windows-2025]` and `[macos-latest, macos-26]` are conflicts.
+- workflint: these labels, scopes, activity types, and properties are known. The properties are strings. `copilot-requests` accepts `write` and `none`, and `vulnerability-alerts` accepts `read` and `none`. The images of these labels change:
+  - `windows-latest` runs Windows Server 2025, so it conflicts with `windows-2022`.
+  - `macos-latest` runs macOS 26, so it conflicts with `macos-15`.
+  - `ubuntu-latest` runs Ubuntu 24.04 or 26.04, because GitHub moves it to 26.04 between 2026-10-19 and 2026-11-19.
+  - `macos-latest-xlarge` runs macOS 15 or 26, because GitHub's larger-runners page says 15 and its changelog says 26.
+  - `windows-2025-vs2026` runs the image of `windows-2025`, and `windows-11-vs2026-arm` the image of `windows-11-arm`, because GitHub moved those labels to Visual Studio 2026.
+  - `xcode-27` and `xcode-27-xlarge` run macOS 27, so they conflict with every other GitHub-hosted macOS label. The self-hosted label `macos` covers them, and `linux` covers Ubuntu 26.04.
+- The list of available labels in the `unknown-runner-label` message, and the list of scopes in the `unknown-permission-scope` message, name the added labels and scopes.
+- Each module in `workflint-data` names the docs.github.com page or changelog entry for each fact, and the date it was checked (ADR 0033).
+- Not changed: `windows-latest-8-cores` and the `ubuntu-latest-*-cores` labels keep the reference's images, because no GitHub page documents them any more. `macos-latest-large` keeps macOS 15, as GitHub's larger-runners page says. `models` and `repository-projects` stay, although the workflow syntax page no longer lists them, because no GitHub source says that they were removed.
+- Why: GitHub accepts these labels, scopes, activity types, and properties, and runs the `-latest` labels on the newer images. Release 0.1.0 comes before the generators of M7.1 to M7.3, and without the update it would report errors on valid workflows.
+- Upstream issue: none.
+- Milestone: M4.38. M7.1 to M7.3 replace the hand-written updates with generated data.
+- Status: implemented.
+- Fixtures: `workflint/ok/current_platform_data.yaml` and `workflint/err/latest_runner_labels`. The allow-list replaces the scope list in `err/invalid_permissions` and `examples/permissions`, and the activity types of `issues` in `examples/webhook_checks`. Its `[[example]]` tables replace the label list and the type of `github` in the `docs/checks.md` sections `check-runner-labels` and `check-contexts-and-builtin-func`, whose fixtures match those lines with a pattern. `tests/expr-parity/allowed-differences.toml` has a `[[type]]` record for the types of `github` and `job`.
+- Corpus: the label list changes in 824 `unknown-runner-label` lines of 305 files. No diagnostic is added or removed. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+
 ## Configuration and project discovery
 
 <a id="paths-relative-to-root"></a>

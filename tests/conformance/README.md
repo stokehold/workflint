@@ -114,7 +114,7 @@ The binary has linted for real since M2.0, so the file lists only fixtures that 
 - A listed fixture whose binary crashes, hangs, or prints to standard error fails its test.
 - The test `expected_failures::expected-failures.toml` fails if a line names a fixture that does not exist, names another milestone than the rule above gives, or names a milestone in `milestones.toml`. It also fails if a note in the checklist says a row waits on a fixture that passes, or gives another milestone than this file.
 - The test `parity_checklist::parity-checklist.md` fails if a ticked row cites a fixture that does not exist or is listed here, if an open row with a milestone in `milestones.toml` cites a listed fixture, or if a row has more or fewer cells than its table's header.
-- The test `checks_md::checks.md` lints the `Example input` of each ticked row of the "docs/checks.md sections" table in the default output format, and compares the output with the section's `Output` block. It changes each rule ID to its kind and leaves out the `^~~~` lines, which differ by `docs/differences.md#column-units`. An allow-list record of a fixture in the row's "Upstream fixtures" cell that has both an `upstream` and a `workflint` line replaces that line of the `Output` block, if the block has it, and keeps the snippet under it. A section whose only `Output` block upstream marks `<!-- Skip update output -->` is written by hand and printed by no binary, so the test compares nothing for it, and the row's fixtures check the section.
+- The test `checks_md::checks.md` lints the `Example input` of each ticked row of the "docs/checks.md sections" table in the default output format, and compares the output with the section's `Output` block. It changes each rule ID to its kind and leaves out the `^~~~` lines, which differ by `docs/differences.md#column-units`. An allow-list record of a fixture in the row's "Upstream fixtures" cell that has both an `upstream` and a `workflint` line replaces that line of the `Output` block, if the block has it, and keeps the snippet under it. So does each `[[example]]` table of the section. A section whose only `Output` block upstream marks `<!-- Skip update output -->` is written by hand and printed by no binary, so the test compares nothing for it, and the row's fixtures check the section.
 
 To see the full reason a listed fixture fails, remove its line and run its test.
 
@@ -141,10 +141,22 @@ An entry with both `upstream` and `workflint` replaces a line. With only `upstre
 
 The runner fails:
 
-- the test `allowed_differences::allowed-differences.toml` if an anchor is not in `docs/differences.md`, a fixture does not exist, an entry has neither `upstream` nor `workflint`, or an `upstream` line is not in the fixture's `.out` file.
+- the test `allowed_differences::allowed-differences.toml` if an anchor is not in `docs/differences.md`, a fixture does not exist, an entry has neither `upstream` nor `workflint`, an `upstream` line is not in the fixture's `.out` file, or the `upstream` line of an `[[example]]` table is not in the `Output` block of its section.
 - a fixture that is not in `expected-failures.toml` if it also passes without one of its entries. Remove such an entry.
 
 Every entry needs a matching section in `docs/differences.md`. Write that section first, then the entry.
+
+An `[[example]]` table replaces a line of the `Output` block of a section of upstream `docs/checks.md`, for the test `checks_md::checks.md`. It is for a line that the section's fixtures match with a `/pattern/`, so that the fixtures need no `[[difference]]` entry, while the `Output` block has the whole line:
+
+```toml
+[[example]]
+anchor = "platform-data-updates"
+section = "check-runner-labels"
+upstream = 'test.yaml:10:13: label "linux-latest" is unknown. available labels are ... [runner-label]'
+workflint = 'test.yaml:10:13: label "linux-latest" is unknown. available labels are ... [runner-label]'
+```
+
+`section` is the section's anchor without the `#`. `upstream` and `workflint` are error lines with the kind in brackets. The fixture tests and `cargo xtask oracle` ignore these tables.
 
 `cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. An `upstream` line must be in the fixture's `.out` file, as in the runner. The oracle removes the first line of the reference's output that this `.out` line matches, exactly or as a `/pattern/`. An entry that does not apply is a problem in the report that names the `.out` file, and the other entries of the fixture still apply. The corpus files have no fixture ID, so no entry applies to them yet (#49).
 

@@ -6,7 +6,7 @@
 
 A permission scope is set to a level that the scope does not accept.
 
-The rule checks `permissions` of the workflow and of each job. Most scopes accept `read`, `write`, and `none`. `id-token` accepts only `write` and `none`, and `models` only `read` and `none`. Levels are case-sensitive, so `READ` is invalid. The message lists the levels of the scope.
+The rule checks `permissions` of the workflow and of each job. Most scopes accept `read`, `write`, and `none`. `id-token` and `copilot-requests` accept only `write` and `none`, and `models` and `vulnerability-alerts` only `read` and `none`. Levels are case-sensitive, so `READ` is invalid. The message lists the levels of the scope.
 
 ## Why
 
