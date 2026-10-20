@@ -11,6 +11,7 @@
 //! (`docs/differences.md#all-expressions-in-string`), and reports each error at its exact
 //! position in the scalar (`docs/differences.md#positions-inside-scalars`).
 
+use std::cell::OnceCell;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -113,10 +114,8 @@ impl Expression<'_> {
     }
 
     /// Returns a checker for the location with the workflow key `key`.
-    fn at(&self, key: &str) -> Checker {
-        let mut env = self.env().clone();
-        env.set_workflow_key(key);
-        Checker { env }
+    fn at<'e>(&'e self, key: &'e str) -> Checker<'e> {
+        Checker::new(self.env(), key)
     }
 }
 
@@ -125,7 +124,9 @@ impl<'a> Rule<'a> for Expression<'a> {
         // The events add their inputs to the contexts of the workflow, in the order of `on`.
         self.workflow = TypeEnv::new();
         self.jobs = workflow.jobs.value();
-        let none = self.at("");
+        // `name` and `defaults` see the contexts from before the events add theirs.
+        let before_events = TypeEnv::new();
+        let none = Checker::new(&before_events, "");
         none.string(cx, &workflow.name);
         for event in workflow
             .on
@@ -328,8 +329,7 @@ impl<'a> Rule<'a> for Expression<'a> {
         };
         let mut env = self.workflow.clone();
         env.set_jobs(jobs_ty(workflow.jobs.value().into_iter().flatten()));
-        env.set_workflow_key("on.workflow_call.outputs.<output_id>.value");
-        let checker = Checker { env };
+        let checker = Checker::new(&env, "on.workflow_call.outputs.<output_id>.value");
         for output in outputs {
             checker.string(cx, &output.value.value);
         }
@@ -406,7 +406,9 @@ impl Expression<'_> {
 
     /// Checks the expressions of `event`, and adds its inputs to the contexts of the workflow.
     fn event(&mut self, event: &Event<'_>, cx: &mut Context<'_>) {
-        let none = self.at("");
+        // The whole event sees the contexts from before it adds its inputs.
+        let before_event = self.workflow.clone();
+        let none = Checker::new(&before_event, "");
         match event {
             Event::Webhook(webhook) => {
                 for filter in [
@@ -475,10 +477,12 @@ impl Expression<'_> {
             none.string(cx, &input.value.description);
             let mut env = self.workflow.clone();
             env.add_inputs(ObjectTy::new(inputs.clone(), Rest::Strict));
-            env.set_workflow_key("on.workflow_call.inputs.<inputs_id>.default");
             let default = input.value.default.value();
             let types = default
-                .map(|default| Checker { env }.template(cx, default))
+                .map(|default| {
+                    Checker::new(&env, "on.workflow_call.inputs.<inputs_id>.default")
+                        .template(cx, default)
+                })
                 .unwrap_or_default();
             let ty = match input.value.input_type.value() {
                 Some(WorkflowCallInputType::String) => Ty::String,
@@ -542,7 +546,8 @@ impl Expression<'_> {
     ) {
         let checker = self.at(key);
         checker.string(cx, &container.image);
-        let credentials = self.at(&format!("{child}.credentials"));
+        let credentials_key = format!("{child}.credentials");
+        let credentials = self.at(&credentials_key);
         match &container.credentials {
             Value::Expression { expr, .. } => credentials.object(cx, expr, "credentials"),
             Value::Literal {
@@ -858,11 +863,32 @@ fn keyed(cx: &mut Context<'_>, checker: &Checker, keyed: Option<&Keyed<'_, Optio
 }
 
 /// Checks the expressions of one location against the contexts that its workflow key allows.
-struct Checker {
-    env: TypeEnv,
+///
+/// Most locations hold no expression, so the checker builds the environment of its location,
+/// a clone of `base` with the availability of `key`, when it checks the first one.
+struct Checker<'e> {
+    base: &'e TypeEnv,
+    key: &'e str,
+    env: OnceCell<TypeEnv>,
 }
 
-impl Checker {
+impl<'e> Checker<'e> {
+    fn new(base: &'e TypeEnv, key: &'e str) -> Self {
+        Self {
+            base,
+            key,
+            env: OnceCell::new(),
+        }
+    }
+
+    fn env(&self) -> &TypeEnv {
+        self.env.get_or_init(|| {
+            let mut env = self.base.clone();
+            env.set_workflow_key(self.key);
+            env
+        })
+    }
+
     /// Type-checks `placeholder` of `source` and reports its errors. Returns its type, or `None`
     /// if it holds a parse error, which the parser has reported, or has errors.
     fn placeholder(
@@ -872,7 +898,7 @@ impl Checker {
         placeholder: &Placeholder,
     ) -> Option<Ty> {
         let expr = placeholder.expr.as_ref().ok()?;
-        let (ty, errors) = self.env.check(expr);
+        let (ty, errors) = self.env().check(expr);
         if errors.is_empty() {
             return Some(ty);
         }
@@ -936,9 +962,12 @@ impl Checker {
     }
 
     fn script_template(&self, cx: &mut Context<'_>, template: &Template<'_>) {
-        let mut env = self.env.clone();
+        if template.placeholders().is_empty() {
+            return;
+        }
+        let mut env = self.base.clone();
         env.set_untrusted_inputs(UNTRUSTED_INPUTS);
-        Checker { env }.template(cx, template);
+        Checker::new(&env, self.key).template(cx, template);
     }
 
     /// Checks a value written as one `${{ }}` and returns its type, or `None` if it has errors.
