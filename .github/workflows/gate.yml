@@ -318,9 +318,9 @@ jobs:
         working-directory: fuzz
         run: cargo fuzz build --target "$FUZZ_BUILD_TARGET"
 
-  # The parsers must stay fast on hostile input: under one second in a
-  # release build on the inputs of these tests. The test job builds in debug,
-  # where the tests allow more time.
+  # The parsers and the rules must stay fast on hostile input: under one
+  # second in a release build on the inputs of these tests. The test job
+  # builds in debug, where the tests allow more time.
   release-timing:
     name: release timing
     needs: changes
@@ -336,6 +336,8 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: The parser timing tests pass in a release build
         run: cargo test --release --locked -p workflint-yaml -p workflint-syntax --test event_parser --test billion_laughs
+      - name: The rule timing tests pass in a release build
+        run: cargo test --release --locked -p workflint-rules --test linear_time
 
   rustdoc:
     name: rustdoc
