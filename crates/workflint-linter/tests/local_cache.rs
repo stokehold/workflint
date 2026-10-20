@@ -75,6 +75,20 @@ fn linting_ci(cache: &LocalCache) -> impl LocalMetadata + '_ {
     cache.for_file(&cache.root().join(".github/workflows/ci.yaml"))
 }
 
+/// Lints the file at `path`, relative to the root, after the files that earlier calls linted,
+/// as the binary does: through a view of its own, then, if [`LocalCache::commit`] finds that the
+/// earlier files change its answers, again with the state they left. `lint` is what the file
+/// does with the cache, and the result is that of the last lint.
+fn lint_next<R>(cache: &LocalCache, path: &str, lint: impl Fn(&dyn LocalMetadata) -> R) -> R {
+    let path = cache.root().join(path);
+    let view = cache.for_file(&path);
+    let result = lint(&view);
+    match cache.commit(view.into_record()) {
+        None => result,
+        Some(prior) => lint(&cache.for_file_after(&path, prior)),
+    }
+}
+
 fn found<T: std::fmt::Debug>(lookup: Lookup<T>) -> (Arc<T>, bool) {
     match lookup {
         Lookup::Found { metadata, first } => (metadata, first),
@@ -252,15 +266,57 @@ fn only_the_first_lookup_of_an_action_in_the_run_is_first() {
     let project = Project::new();
     project.write("greet/action.yml", ACTION);
     let cache = project.cache();
-    let first_file = cache.for_file(&project.root().join(".github/workflows/a.yaml"));
-    let second_file = cache.for_file(&project.root().join(".github/workflows/b.yaml"));
-    let (one, first) = found(first_file.action("./greet"));
+    let ((one, first), (two, second)) = lint_next(&cache, "a.yaml", |local| {
+        (
+            found(local.action("./greet")),
+            found(local.action("./greet")),
+        )
+    });
     assert!(first);
-    let (two, first) = found(first_file.action("./greet"));
-    assert!(!first);
-    let (three, first) = found(second_file.action("./greet"));
+    assert!(!second);
+    let (three, first) = lint_next(&cache, "b.yaml", |local| found(local.action("./greet")));
     assert!(!first);
     assert!(Arc::ptr_eq(&one, &two) && Arc::ptr_eq(&two, &three));
+}
+
+#[test]
+fn a_file_whose_answers_the_earlier_files_do_not_change_is_not_linted_again() {
+    let project = Project::new();
+    project.write("greet/action.yml", ACTION);
+    let cache = project.cache();
+    let first = cache.for_file(&project.root().join("a.yaml"));
+    found(first.action("./greet"));
+    assert!(cache.commit(first.into_record()).is_none());
+    // A missing action is nothing to check against, whichever file looks it up first.
+    let second = cache.for_file(&project.root().join("b.yaml"));
+    assert_eq!(second.action("./missing"), Lookup::None);
+    assert!(cache.commit(second.into_record()).is_none());
+    let third = cache.for_file(&project.root().join("c.yaml"));
+    assert_eq!(third.action("./missing"), Lookup::None);
+    assert!(cache.commit(third.into_record()).is_none());
+}
+
+#[test]
+fn a_file_linted_again_sees_only_what_the_earlier_files_did() {
+    let project = Project::new();
+    project.write("greet/action.yml", ACTION);
+    project.write("broken/action.yml", "outputs: x\n");
+    let cache = project.cache();
+    error(lint_next(&cache, "a.yaml", |local| {
+        local.action("./broken")
+    }));
+    // The second file is linted again, because the error belongs to the first. `./greet` is
+    // still first in the second lint, though the first lint claimed it in the cache.
+    let (broken, (_, first), (_, second)) = lint_next(&cache, "b.yaml", |local| {
+        (
+            local.action("./broken"),
+            found(local.action("./greet")),
+            found(local.action("./greet")),
+        )
+    });
+    assert_eq!(broken, Lookup::None);
+    assert!(first);
+    assert!(!second);
 }
 
 #[test]
@@ -326,7 +382,7 @@ fn a_parse_error_is_returned_on_the_first_lookup_only() {
     let project = Project::new();
     project.write("broken/action.yml", "outputs: x\n");
     let cache = project.cache();
-    let local = linting_ci(&cache);
+    let local = cache.for_file(&project.root().join(".github/workflows/ci.yaml"));
     let err = error(local.action("./broken"));
     assert_eq!(
         err.to_string(),
@@ -336,8 +392,11 @@ fn a_parse_error_is_returned_on_the_first_lookup_only() {
         )
     );
     assert_eq!(local.action("./broken"), Lookup::None);
-    let other = cache.for_file(&project.root().join(".github/workflows/other.yaml"));
-    assert_eq!(other.action("./broken"), Lookup::None);
+    assert!(cache.commit(local.into_record()).is_none());
+    assert_eq!(
+        lint_next(&cache, "other.yaml", |other| other.action("./broken")),
+        Lookup::None
+    );
 }
 
 #[test]
@@ -486,11 +545,12 @@ fn a_registered_workflow_is_found_without_reading_its_file() {
     let project = Project::new();
     // The file does not exist, so a lookup that read it would fail.
     let cache = project.cache();
-    cache
-        .for_file(&project.root().join(".github/workflows/reusable.yaml"))
-        .register_workflow_call(registered());
-    let local = linting_ci(&cache);
-    let (metadata, first) = found(local.reusable_workflow("./.github/workflows/reusable.yaml"));
+    lint_next(&cache, ".github/workflows/reusable.yaml", |local| {
+        local.register_workflow_call(registered());
+    });
+    let (metadata, first) = found(lint_next(&cache, "ci.yaml", |local| {
+        local.reusable_workflow("./.github/workflows/reusable.yaml")
+    }));
     assert!(!first);
     assert_eq!(*metadata, registered());
 }
@@ -501,11 +561,15 @@ fn registration_keeps_an_earlier_lookup() {
     project.write(".github/workflows/reusable.yaml", REUSABLE);
     let cache = project.cache();
     let spec = "./.github/workflows/reusable.yaml";
-    let (read, _) = found(linting_ci(&cache).reusable_workflow(spec));
-    cache
-        .for_file(&project.root().join(".github/workflows/reusable.yaml"))
-        .register_workflow_call(registered());
-    let (metadata, _) = found(linting_ci(&cache).reusable_workflow(spec));
+    let (read, _) = found(lint_next(&cache, "a.yaml", |local| {
+        local.reusable_workflow(spec)
+    }));
+    lint_next(&cache, ".github/workflows/reusable.yaml", |local| {
+        local.register_workflow_call(registered());
+    });
+    let (metadata, _) = found(lint_next(&cache, "b.yaml", |local| {
+        local.reusable_workflow(spec)
+    }));
     assert!(Arc::ptr_eq(&read, &metadata));
 }
 
@@ -513,11 +577,15 @@ fn registration_keeps_an_earlier_lookup() {
 fn registration_keeps_an_earlier_registration() {
     let project = Project::new();
     let cache = project.cache();
-    let reusable = cache.for_file(&project.root().join(".github/workflows/reusable.yaml"));
-    reusable.register_workflow_call(registered());
-    reusable.register_workflow_call(ReusableWorkflowMetadata::default());
-    let (metadata, _) =
-        found(linting_ci(&cache).reusable_workflow("./.github/workflows/reusable.yaml"));
+    lint_next(&cache, ".github/workflows/reusable.yaml", |local| {
+        local.register_workflow_call(registered());
+    });
+    lint_next(&cache, ".github/workflows/reusable.yaml", |local| {
+        local.register_workflow_call(ReusableWorkflowMetadata::default());
+    });
+    let (metadata, _) = found(lint_next(&cache, "ci.yaml", |local| {
+        local.reusable_workflow("./.github/workflows/reusable.yaml")
+    }));
     assert_eq!(*metadata, registered());
 }
 
@@ -525,11 +593,12 @@ fn registration_keeps_an_earlier_registration() {
 fn a_workflow_is_registered_under_its_path_from_the_project_root() {
     let project = Project::new();
     let cache = project.cache();
-    cache
-        .for_file(&project.root().join("sub/./dir/../reusable.yaml"))
-        .register_workflow_call(registered());
-    let local = linting_ci(&cache);
-    found(local.reusable_workflow("./sub/reusable.yaml"));
+    lint_next(&cache, "sub/./dir/../reusable.yaml", |local| {
+        local.register_workflow_call(registered());
+    });
+    found(lint_next(&cache, "ci.yaml", |local| {
+        local.reusable_workflow("./sub/reusable.yaml")
+    }));
 }
 
 #[test]
@@ -541,25 +610,30 @@ fn a_workflow_outside_the_project_root_is_not_registered() {
     fs::create_dir_all(root.join(".git")).unwrap();
     fs::create_dir_all(root.join(".github/workflows")).unwrap();
     let cache = LocalCache::new(root.clone());
-    cache
-        .for_file(&dir.path().join("repo-other/r.yaml"))
-        .register_workflow_call(registered());
-    let local = linting_ci(&cache);
-    assert!(matches!(
-        local.reusable_workflow("./../repo-other/r.yaml"),
-        Lookup::Error(_)
-    ));
+    lint_next(&cache, "../repo-other/r.yaml", |local| {
+        local.register_workflow_call(registered());
+    });
+    let lookup = lint_next(&cache, "ci.yaml", |local| {
+        local.reusable_workflow("./../repo-other/r.yaml")
+    });
+    assert!(matches!(lookup, Lookup::Error(_)));
 }
 
 #[test]
 fn a_recorded_invalid_workflow_is_not_read() {
     let project = Project::new();
-    // The file exists, but the reference never reads a spec it found invalid.
+    // The file exists, but the reference never reads a spec it found invalid, so it finds
+    // nothing.
     project.write(".github/workflows/reusable.yaml@main", REUSABLE);
     let cache = project.cache();
     let spec = "./.github/workflows/reusable.yaml@main";
-    linting_ci(&cache).record_invalid_workflow(spec);
-    assert_eq!(linting_ci(&cache).reusable_workflow(spec), Lookup::None);
+    lint_next(&cache, "a.yaml", |local| {
+        local.record_invalid_workflow(spec);
+    });
+    assert_eq!(
+        lint_next(&cache, "b.yaml", |local| local.reusable_workflow(spec)),
+        Lookup::None
+    );
 }
 
 #[test]
@@ -568,8 +642,14 @@ fn recording_an_invalid_workflow_keeps_an_earlier_lookup() {
     project.write(".github/workflows/reusable.yaml", REUSABLE);
     let cache = project.cache();
     let spec = "./.github/workflows/reusable.yaml";
-    let (read, _) = found(linting_ci(&cache).reusable_workflow(spec));
-    linting_ci(&cache).record_invalid_workflow(spec);
-    let (metadata, _) = found(linting_ci(&cache).reusable_workflow(spec));
+    let (read, _) = found(lint_next(&cache, "a.yaml", |local| {
+        local.reusable_workflow(spec)
+    }));
+    lint_next(&cache, "b.yaml", |local| {
+        local.record_invalid_workflow(spec);
+    });
+    let (metadata, _) = found(lint_next(&cache, "c.yaml", |local| {
+        local.reusable_workflow(spec)
+    }));
     assert!(Arc::ptr_eq(&read, &metadata));
 }

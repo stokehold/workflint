@@ -357,3 +357,60 @@ fn the_usage_says_stdin_is_not_supported_yet() {
         run.stderr
     );
 }
+
+/// A temporary project with a local action whose metadata does not parse, and `count`
+/// workflows that use it, `w0.yaml` to `w<count - 1>.yaml` in `.github/workflows/`.
+fn project_with_broken_action(count: usize) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join(".git")).unwrap();
+    let action = dir.path().join(".github/actions/broken");
+    std::fs::create_dir_all(&action).unwrap();
+    std::fs::write(action.join("action.yml"), "outputs: x\n").unwrap();
+    let workflows = dir.path().join(".github/workflows");
+    std::fs::create_dir_all(&workflows).unwrap();
+    for index in 0..count {
+        std::fs::write(
+            workflows.join(format!("w{index}.yaml")),
+            "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/broken\n",
+        )
+        .unwrap();
+    }
+    dir
+}
+
+/// Runs the binary on `files` in `dir` with `threads` threads.
+fn runner_with_threads(dir: &Path, files: &[String], threads: usize) -> Run {
+    let args: Vec<&str> = RUNNER
+        .iter()
+        .copied()
+        .chain(files.iter().map(String::as_str))
+        .collect();
+    run(command(dir, &args)
+        .env("RAYON_NUM_THREADS", threads.to_string())
+        .output()
+        .unwrap())
+}
+
+#[test]
+fn the_first_file_in_argument_order_reports_a_broken_local_action_whatever_the_thread_count() {
+    let project = project_with_broken_action(16);
+    let mut files: Vec<String> = (0..16)
+        .map(|index| format!(".github/workflows/w{index}.yaml"))
+        .collect();
+    files.reverse();
+    let one = runner_with_threads(project.path(), &files, 1);
+    let lines: Vec<&str> = one
+        .stdout
+        .lines()
+        .filter(|line| line.contains("could not parse action metadata"))
+        .collect();
+    assert_eq!(lines.len(), 1, "{}", one.stdout);
+    assert!(
+        lines[0].starts_with(".github/workflows/w15.yaml:6:15:"),
+        "{}",
+        lines[0]
+    );
+    for threads in [2, 8] {
+        assert_eq!(runner_with_threads(project.path(), &files, threads), one);
+    }
+}

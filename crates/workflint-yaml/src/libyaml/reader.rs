@@ -3,9 +3,7 @@
 // block. It moves characters into the scanner's buffer in the same chunks as
 // go-yaml's `updateBuffer` and `updateRawBuffer` in `reader.go`, so that a
 // control character is reported at the same point of the scan as in go-yaml.
-// The character checks in `push_char` are upstream's.
-
-use std::collections::VecDeque;
+// The character checks in `is_allowed` are upstream's.
 
 use super::scanner::Scanner;
 use super::{Error, Result};
@@ -34,29 +32,80 @@ pub(crate) struct ReaderState {
     nuls: usize,
 }
 
-fn push_char(out: &mut VecDeque<char>, ch: char, offset: usize) -> Result<()> {
-    if !(ch == '\x09'
+/// Whether YAML allows `ch` in a stream, as upstream's reader checks.
+fn is_allowed(ch: char) -> bool {
+    ch == '\x09'
         || ch == '\x0A'
         || ch == '\x0D'
         || ch >= '\x20' && ch <= '\x7E'
         || ch == '\u{0085}'
         || ch >= '\u{00A0}' && ch <= '\u{D7FF}'
         || ch >= '\u{E000}' && ch <= '\u{FFFD}'
-        || ch >= '\u{10000}' && ch <= '\u{10FFFF}')
-    {
-        return Err(Error::reader(
-            "control characters are not allowed",
-            offset,
-            ch as _,
-        ));
+        || ch >= '\u{10000}' && ch <= '\u{10FFFF}'
+}
+
+/// The scanner's buffer of decoded characters, which upstream kept in a
+/// `VecDeque<char>`.
+///
+/// The characters live in a `Vec` with a cursor at the first unread one, so
+/// that reading a character by index is one bounds check. The reader drops
+/// the read characters before it decodes the next chunk, as go-yaml's
+/// `updateBuffer` moves the unread characters to the start of its buffer.
+pub(crate) struct CharBuffer {
+    chars: Vec<char>,
+    /// The index in `chars` of the first unread character.
+    start: usize,
+}
+
+impl CharBuffer {
+    pub(crate) fn with_capacity(capacity: usize) -> Self {
+        Self {
+            chars: Vec::with_capacity(capacity),
+            start: 0,
+        }
     }
-    out.push_back(ch);
-    Ok(())
+
+    /// The number of unread characters.
+    pub(crate) fn len(&self) -> usize {
+        self.chars.len() - self.start
+    }
+
+    /// The unread character at `index`, counting from the first unread one.
+    #[inline]
+    pub(crate) fn get(&self, index: usize) -> Option<&char> {
+        self.chars.get(self.start.checked_add(index)?)
+    }
+
+    #[inline]
+    pub(crate) fn front(&self) -> Option<&char> {
+        self.chars.get(self.start)
+    }
+
+    /// Reads the first unread character.
+    #[inline]
+    pub(crate) fn pop_front(&mut self) -> Option<char> {
+        let ch = self.front().copied()?;
+        self.start += 1;
+        Some(ch)
+    }
+
+    /// Reads the first `count` unread characters, or every one if there are
+    /// fewer.
+    pub(crate) fn skip(&mut self, count: usize) {
+        self.start = self.chars.len().min(self.start + count);
+    }
+
+    /// Drops the characters that were read.
+    fn compact(&mut self) {
+        self.chars.drain(..self.start);
+        self.start = 0;
+    }
 }
 
 impl Scanner<'_> {
     /// The characters in the buffer that the scanner has not consumed,
     /// counted as go-yaml's `unread`, which includes the NULs at the end.
+    #[inline]
     pub(crate) fn unread(&self) -> usize {
         self.buffer.len() + self.reader.nuls
     }
@@ -87,14 +136,27 @@ impl Scanner<'_> {
             .source
             .get(self.reader.decoded..)
             .ok_or_else(|| Error::internal(super::ErrorKind::Reader, self.mark))?;
-        for ch in chunk.chars() {
-            let offset = self.reader.decoded;
-            if offset + ch.len_utf8() > self.reader.read {
-                break;
-            }
-            push_char(&mut self.buffer, ch, offset)?;
-            self.reader.decoded += ch.len_utf8();
+        // The raw buffer ends at `read`, which can split a character. That
+        // character waits for the next chunk.
+        let mut end = self.reader.read - self.reader.decoded;
+        while !chunk.is_char_boundary(end) {
+            end -= 1;
         }
+        let chunk = chunk.get(..end).unwrap_or_default();
+        self.buffer.chars.reserve(chunk.len());
+        for (offset, ch) in chunk.char_indices() {
+            if !is_allowed(ch) {
+                let offset = self.reader.decoded + offset;
+                self.reader.decoded = offset;
+                return Err(Error::reader(
+                    "control characters are not allowed",
+                    offset,
+                    ch as _,
+                ));
+            }
+            self.buffer.chars.push(ch);
+        }
+        self.reader.decoded += end;
         Ok(())
     }
 }
@@ -121,6 +183,7 @@ pub(crate) fn yaml_parser_update_buffer(parser: &mut Scanner<'_>, length: usize)
             parser.mark.index += width as u64;
         }
     }
+    parser.buffer.compact();
     let mut first = true;
     while parser.unread() < length {
         if !first || parser.reader.decoded == parser.reader.read {

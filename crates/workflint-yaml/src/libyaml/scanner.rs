@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use super::macros::{is_blank, is_blankz, is_break};
 use super::parser::SimpleKey;
-use super::reader::{ReaderState, yaml_parser_update_buffer};
+use super::reader::{CharBuffer, ReaderState, yaml_parser_update_buffer};
 use super::token::{Token, TokenData};
 use super::{
     CommentKind, Encoding, Error, ErrorKind, INPUT_BUFFER_SIZE, Mark, Result, ScalarStyle,
@@ -105,7 +105,7 @@ struct BytePeek {
 }
 
 impl BytePeek {
-    fn get(self, buffer: &VecDeque<char>) -> Option<(char, u8)> {
+    fn get(self, buffer: &CharBuffer) -> Option<(char, u8)> {
         let ch = *buffer.get(self.index)?;
         let mut bytes = [0; 4];
         let byte = *ch.encode_utf8(&mut bytes).as_bytes().get(self.byte)?;
@@ -113,16 +113,16 @@ impl BytePeek {
     }
 
     /// The byte here, or NUL past the end of the buffer as in go-yaml.
-    fn byte(self, buffer: &VecDeque<char>) -> u8 {
+    fn byte(self, buffer: &CharBuffer) -> u8 {
         self.get(buffer).map_or(0, |(_, byte)| byte)
     }
 
     /// Whether a line break starts here, as go-yaml's `isLineBreak`.
-    fn is_line_break(self, buffer: &VecDeque<char>) -> bool {
+    fn is_line_break(self, buffer: &CharBuffer) -> bool {
         self.byte == 0 && self.get(buffer).is_some_and(|(ch, _)| is_break(ch))
     }
 
-    fn advance(&mut self, buffer: &VecDeque<char>) {
+    fn advance(&mut self, buffer: &CharBuffer) {
         let width = buffer.get(self.index).map_or(1, |ch| ch.len_utf8());
         if self.byte + 1 < width {
             self.byte += 1;
@@ -145,7 +145,7 @@ pub(crate) struct Scanner<'input> {
     /// The working buffer.
     ///
     /// This always contains valid UTF-8.
-    pub(crate) buffer: VecDeque<char>,
+    pub(crate) buffer: CharBuffer,
     /// Whether go-yaml's buffer starts with a byte order mark, which its
     /// `isBOM` checks instead of the current character.
     pub(crate) buffer_starts_with_bom: bool,
@@ -195,7 +195,7 @@ impl<'input> Scanner<'input> {
         Self {
             source: input,
             reader: ReaderState::default(),
-            buffer: VecDeque::with_capacity(INPUT_BUFFER_SIZE),
+            buffer: CharBuffer::with_capacity(INPUT_BUFFER_SIZE),
             buffer_starts_with_bom: false,
             mark: Mark::default(),
             chars: 0,
@@ -217,6 +217,7 @@ impl<'input> Scanner<'input> {
         }
     }
 
+    #[inline]
     fn cache(&mut self, length: usize) -> Result<()> {
         if self.unread() >= length {
             Ok(())
@@ -235,6 +236,7 @@ impl<'input> Scanner<'input> {
     /// Equivalent to the libyaml macro `SKIP`.
     ///
     /// Does nothing at the end of the input.
+    #[inline]
     fn skip_char(&mut self) {
         if let Some(popped) = self.buffer.pop_front() {
             if !is_blank(popped) {
@@ -256,7 +258,7 @@ impl<'input> Scanner<'input> {
                 self.mark.line += 1;
                 self.chars += 2;
                 self.newlines += 1;
-                self.buffer.drain(0..2);
+                self.buffer.skip(2);
             } else if is_break(front) {
                 let width = front.len_utf8();
                 self.mark.index += width as u64;
@@ -272,6 +274,7 @@ impl<'input> Scanner<'input> {
     /// Equivalent to the libyaml macro `READ`.
     ///
     /// Does nothing at the end of the input.
+    #[inline]
     fn read_char(&mut self, string: &mut String) {
         if let Some(popped) = self.buffer.pop_front() {
             if !is_blank(popped) {
@@ -297,7 +300,7 @@ impl<'input> Scanner<'input> {
 
         if let ('\r', Some('\n')) = (front, self.buffer.get(1).copied()) {
             string.push('\n');
-            self.buffer.drain(0..2);
+            self.buffer.skip(2);
             self.mark.index += 2;
             self.mark.column = 0;
             self.mark.line += 1;

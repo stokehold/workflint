@@ -2,7 +2,8 @@
 //! `LocalActionsCache` (`action_metadata.go:195`) and `LocalReusableWorkflowCache`
 //! (`reusable_workflow.go:169`).
 
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
@@ -17,21 +18,49 @@ use workflint_syntax::{ActionMetadata, MetadataError, ReusableWorkflowMetadata};
 
 use crate::path::clean;
 
-/// The entries of one kind, keyed by `uses:` value. An entry is `None` when the file is missing
-/// or invalid, so that only its first lookup reports it.
-type Entries<T> = Mutex<BTreeMap<String, Arc<OnceLock<Option<Arc<T>>>>>>;
+/// What reading and decoding the file behind a `uses:` value gave. `Ok(None)` is a local action
+/// without a metadata file.
+type Loaded<T> = Result<Option<Arc<T>>, LocalMetadataError>;
+
+/// The files of one kind read in the run, keyed by `uses:` value. Each is read once, whichever
+/// thread asks first.
+type Store<T> = Mutex<BTreeMap<String, Arc<OnceLock<Loaded<T>>>>>;
+
+/// The `uses:` values of one kind that the run has used, with the metadata that later lookups
+/// find. A value is `None` when there is nothing to check against: the file is missing or
+/// invalid, or its first lookup reported an error.
+type Claims<T> = BTreeMap<String, Option<Arc<T>>>;
+
+/// The state of the reference's caches: what a lookup finds at some point of the run.
+#[derive(Debug, Clone, Default)]
+struct State {
+    actions: Claims<LocalAction>,
+    workflows: Claims<ReusableWorkflowMetadata>,
+}
 
 /// The local actions and local reusable workflows of one project, read and decoded once per run.
 ///
-/// The binary creates one cache per project root and lints each file of the project through
-/// [`for_file`](Self::for_file). Each entry is computed once, even when several threads look it
-/// up at the same time, and the lookup that computes it is the first. The binary lints files one
-/// after another, so the first lookup is the first use in file order, then source position.
+/// In the reference, the first lookup of a `uses:` value in the run reads the file, reports its
+/// error, and checks its metadata. A registration or an invalid `uses:` before any lookup stops
+/// the file from being read. Which file is first depends on the order of the files, so the files
+/// are linted in parallel in three steps that give the same diagnostics as linting them one
+/// after another:
+///
+/// 1. Each file is linted through its own view from [`for_file`](Self::for_file), which answers
+///    as if no other file had used the cache. The view records what the file did.
+/// 2. [`commit`](Self::commit) replays the records in file order. It returns the state that the
+///    earlier files left for a file whose answers that state would change.
+/// 3. Each such file is linted again through [`for_file_after`](Self::for_file_after).
+///
+/// Which lookups and registrations a file makes depends only on the file, not on the answers,
+/// so the second lint makes the same ones.
 #[derive(Debug)]
 pub struct LocalCache {
     root: PathBuf,
-    actions: Entries<LocalAction>,
-    workflows: Entries<ReusableWorkflowMetadata>,
+    actions: Store<LocalAction>,
+    workflows: Store<ReusableWorkflowMetadata>,
+    /// The state after the files committed so far.
+    committed: Mutex<State>,
 }
 
 impl LocalCache {
@@ -42,6 +71,7 @@ impl LocalCache {
             root,
             actions: Mutex::default(),
             workflows: Mutex::default(),
+            committed: Mutex::default(),
         }
     }
 
@@ -52,17 +82,87 @@ impl LocalCache {
     }
 
     /// Returns the view of the cache for linting the file at `path`, an absolute and cleaned
-    /// path. The view registers the file's `on.workflow_call` under its path from the root.
+    /// path, as if no other file had used the cache. The view registers the file's
+    /// `on.workflow_call` under its path from the root.
     #[must_use]
     pub fn for_file(&self, path: &Path) -> FileMetadata<'_> {
+        self.view(path, State::default())
+    }
+
+    /// Returns the view of the cache for linting the file at `path` again, after the files
+    /// before it left `prior`, which [`commit`](Self::commit) returned for the file.
+    #[must_use]
+    pub fn for_file_after(&self, path: &Path, prior: Prior) -> FileMetadata<'_> {
+        self.view(path, prior.0)
+    }
+
+    fn view(&self, path: &Path, state: State) -> FileMetadata<'_> {
         FileMetadata {
             cache: self,
             spec: workflow_spec(&self.root, path),
+            state: RefCell::new(state),
+            events: RefCell::default(),
         }
     }
 
+    /// Replays the lookups and registrations of a file after those of every file committed
+    /// before it. Call it once per file, in file order.
+    ///
+    /// Returns `None` if the file's view gave the answers that the files before it allow.
+    /// Otherwise the diagnostics of the file are wrong, and the result is the state to lint it
+    /// again with, through [`for_file_after`](Self::for_file_after).
+    pub fn commit(&self, record: FileRecord) -> Option<Prior> {
+        let mut committed = self
+            .committed
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        let mut prior = State::default();
+        // The `uses:` values the file used before the current event, whose state in
+        // `committed` is now the file's own.
+        let mut seen_actions = BTreeSet::new();
+        let mut seen_workflows = BTreeSet::new();
+        let mut same = true;
+        for event in record.events {
+            match event {
+                Event::Action { spec, answer } => {
+                    if seen_actions.insert(spec.clone()) {
+                        keep_prior(&mut prior.actions, &committed.actions, &spec);
+                    }
+                    let truth = lookup(&mut committed.actions, &spec, || self.load_action(&spec));
+                    same &= same_answer(&truth, &answer);
+                }
+                Event::Workflow { spec, answer } => {
+                    if seen_workflows.insert(spec.clone()) {
+                        keep_prior(&mut prior.workflows, &committed.workflows, &spec);
+                    }
+                    let truth = lookup(&mut committed.workflows, &spec, || {
+                        self.load_workflow(&spec)
+                    });
+                    same &= same_answer(&truth, &answer);
+                }
+                Event::Claim { spec, metadata } => {
+                    if seen_workflows.insert(spec.clone()) {
+                        keep_prior(&mut prior.workflows, &committed.workflows, &spec);
+                    }
+                    claim(&mut committed.workflows, &spec, metadata);
+                }
+            }
+        }
+        (!same).then_some(Prior(prior))
+    }
+
+    /// Returns the local action at `spec`, reading and decoding it on the first call.
+    fn load_action(&self, spec: &str) -> Loaded<LocalAction> {
+        load(&self.actions, spec, || self.read_action(spec))
+    }
+
+    /// Returns the local reusable workflow at `spec`, reading and decoding it on the first call.
+    fn load_workflow(&self, spec: &str) -> Loaded<ReusableWorkflowMetadata> {
+        load(&self.workflows, spec, || self.read_workflow(spec))
+    }
+
     /// Reads and decodes the local action at `spec`.
-    fn load_action(&self, spec: &str) -> Result<Option<LocalAction>, LocalMetadataError> {
+    fn read_action(&self, spec: &str) -> Result<Option<LocalAction>, LocalMetadataError> {
         let dir = clean(&self.root.join(spec));
         let found = ["action.yaml", "action.yml"].into_iter().find_map(|name| {
             let file = dir.join(name);
@@ -84,7 +184,7 @@ impl LocalCache {
     }
 
     /// Reads and decodes the local reusable workflow at `spec`.
-    fn load_workflow(
+    fn read_workflow(
         &self,
         spec: &str,
     ) -> Result<Option<ReusableWorkflowMetadata>, LocalMetadataError> {
@@ -103,12 +203,63 @@ impl LocalCache {
     }
 }
 
+/// The state that the files before a file left for the `uses:` values the file uses.
+#[derive(Debug)]
+pub struct Prior(State);
+
+/// What linting one file did with the cache, in order, for [`LocalCache::commit`].
+#[derive(Debug, Default)]
+pub struct FileRecord {
+    events: Vec<Event>,
+}
+
+#[derive(Debug)]
+enum Event {
+    /// A lookup of a local action, with the answer the view gave.
+    Action {
+        spec: String,
+        answer: Lookup<LocalAction>,
+    },
+    /// A lookup of a local reusable workflow, with the answer the view gave.
+    Workflow {
+        spec: String,
+        answer: Lookup<ReusableWorkflowMetadata>,
+    },
+    /// A registered `on.workflow_call`, or `None` for an invalid `uses:` value.
+    Claim {
+        spec: String,
+        metadata: Option<Arc<ReusableWorkflowMetadata>>,
+    },
+}
+
 /// The view of a [`LocalCache`] for linting one file.
 #[derive(Debug)]
 pub struct FileMetadata<'c> {
     cache: &'c LocalCache,
     /// The `uses:` value that names the linted file, or `None` if it is outside the root.
     spec: Option<String>,
+    /// The state of the caches as this file sees it.
+    state: RefCell<State>,
+    events: RefCell<Vec<Event>>,
+}
+
+impl FileRecord {
+    /// Whether the file did nothing with the cache, so that [`LocalCache::commit`] would find
+    /// nothing to change.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+}
+
+impl FileMetadata<'_> {
+    /// Returns what the file did with the cache, for [`LocalCache::commit`].
+    #[must_use]
+    pub fn into_record(self) -> FileRecord {
+        FileRecord {
+            events: self.events.into_inner(),
+        }
+    }
 }
 
 impl LocalMetadata for FileMetadata<'_> {
@@ -116,28 +267,38 @@ impl LocalMetadata for FileMetadata<'_> {
         if !is_local_action(spec) {
             return Lookup::None;
         }
-        lookup(&self.cache.actions, spec, || self.cache.load_action(spec))
+        let answer = lookup(&mut self.state.borrow_mut().actions, spec, || {
+            self.cache.load_action(spec)
+        });
+        self.events.borrow_mut().push(Event::Action {
+            spec: spec.to_owned(),
+            answer: answer.clone(),
+        });
+        answer
     }
 
     fn reusable_workflow(&self, spec: &str) -> Lookup<ReusableWorkflowMetadata> {
         if !is_local_reusable_workflow(spec) {
             return Lookup::None;
         }
-        lookup(&self.cache.workflows, spec, || {
+        let answer = lookup(&mut self.state.borrow_mut().workflows, spec, || {
             self.cache.load_workflow(spec)
-        })
+        });
+        self.events.borrow_mut().push(Event::Workflow {
+            spec: spec.to_owned(),
+            answer: answer.clone(),
+        });
+        answer
     }
 
     fn register_workflow_call(&self, metadata: ReusableWorkflowMetadata) {
         if let Some(spec) = &self.spec {
-            // A spec that is already set keeps its value.
-            let _ = slot(&self.cache.workflows, spec).set(Some(Arc::new(metadata)));
+            self.claim_workflow(spec, Some(Arc::new(metadata)));
         }
     }
 
     fn record_invalid_workflow(&self, spec: &str) {
-        // A spec that is already set keeps its value.
-        let _ = slot(&self.cache.workflows, spec).set(None);
+        self.claim_workflow(spec, None);
     }
 
     fn action_file_exists(&self, action: &LocalAction, file: &str) -> bool {
@@ -147,39 +308,87 @@ impl LocalMetadata for FileMetadata<'_> {
     }
 }
 
-/// Returns the slot of `spec` in `entries`, creating it if needed.
-fn slot<T>(entries: &Entries<T>, spec: &str) -> Arc<OnceLock<Option<Arc<T>>>> {
-    let mut entries = entries.lock().unwrap_or_else(PoisonError::into_inner);
-    Arc::clone(entries.entry(spec.to_owned()).or_default())
+impl FileMetadata<'_> {
+    fn claim_workflow(&self, spec: &str, metadata: Option<Arc<ReusableWorkflowMetadata>>) {
+        claim(
+            &mut self.state.borrow_mut().workflows,
+            spec,
+            metadata.clone(),
+        );
+        self.events.borrow_mut().push(Event::Claim {
+            spec: spec.to_owned(),
+            metadata,
+        });
+    }
 }
 
-/// Looks up `spec` in `entries`, computing its entry with `load` if this is the first lookup.
-///
-/// Only the lookup that computes the entry is first, and only it gets the error.
-fn lookup<T>(
-    entries: &Entries<T>,
+/// Returns the entry of `spec` in `store`, computing it with `read` if no thread has.
+fn load<T>(
+    store: &Store<T>,
     spec: &str,
-    load: impl FnOnce() -> Result<Option<T>, LocalMetadataError>,
-) -> Lookup<T> {
-    let slot = slot(entries, spec);
-    let mut computed = None;
-    let entry = slot.get_or_init(|| match load() {
-        Ok(found) => {
-            computed = Some(None);
-            found.map(Arc::new)
-        }
-        Err(err) => {
-            computed = Some(Some(err));
-            None
-        }
-    });
-    match (computed, entry) {
-        (Some(Some(err)), _) => Lookup::Error(err),
-        (computed, Some(metadata)) => Lookup::Found {
-            metadata: Arc::clone(metadata),
-            first: computed.is_some(),
+    read: impl FnOnce() -> Result<Option<T>, LocalMetadataError>,
+) -> Loaded<T> {
+    let slot = {
+        let mut store = store.lock().unwrap_or_else(PoisonError::into_inner);
+        Arc::clone(store.entry(spec.to_owned()).or_default())
+    };
+    slot.get_or_init(|| read().map(|found| found.map(Arc::new)))
+        .clone()
+}
+
+/// Looks up `spec` in `claims` as the reference's cache does. The first lookup claims `spec`
+/// with what `load` returns, and only it is first and gets the error.
+fn lookup<T>(claims: &mut Claims<T>, spec: &str, load: impl FnOnce() -> Loaded<T>) -> Lookup<T> {
+    if let Some(claimed) = claims.get(spec) {
+        return match claimed {
+            Some(metadata) => Lookup::Found {
+                metadata: Arc::clone(metadata),
+                first: false,
+            },
+            None => Lookup::None,
+        };
+    }
+    let loaded = load();
+    let found = loaded.as_ref().ok().and_then(Option::clone);
+    claims.insert(spec.to_owned(), found);
+    match loaded {
+        Ok(Some(metadata)) => Lookup::Found {
+            metadata,
+            first: true,
         },
-        (_, None) => Lookup::None,
+        Ok(None) => Lookup::None,
+        Err(err) => Lookup::Error(err),
+    }
+}
+
+/// Claims `spec` with `metadata` unless it is already claimed.
+fn claim<T>(claims: &mut Claims<T>, spec: &str, metadata: Option<Arc<T>>) {
+    claims.entry(spec.to_owned()).or_insert(metadata);
+}
+
+/// Copies the claim on `spec` in `committed`, if there is one, to `prior`.
+fn keep_prior<T>(prior: &mut Claims<T>, committed: &Claims<T>, spec: &str) {
+    if let Some(claimed) = committed.get(spec) {
+        prior.insert(spec.to_owned(), claimed.clone());
+    }
+}
+
+/// Whether two answers to the same lookup are the same, with the same metadata.
+fn same_answer<T>(a: &Lookup<T>, b: &Lookup<T>) -> bool {
+    match (a, b) {
+        (Lookup::None, Lookup::None) => true,
+        (
+            Lookup::Found {
+                metadata: a,
+                first: a_first,
+            },
+            Lookup::Found {
+                metadata: b,
+                first: b_first,
+            },
+        ) => a_first == b_first && Arc::ptr_eq(a, b),
+        (Lookup::Error(a), Lookup::Error(b)) => a == b,
+        _ => false,
     }
 }
 
