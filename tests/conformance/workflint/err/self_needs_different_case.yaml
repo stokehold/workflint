@@ -1,0 +1,8 @@
+on: push
+jobs:
+  # The job needs itself. The expression names it in lower case
+  Build:
+    needs: Build
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '${{ needs.build.result }}'

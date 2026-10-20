@@ -129,6 +129,24 @@ fn a_git_file_marks_a_project_root_as_a_git_directory_does() {
 }
 
 #[test]
+fn a_nested_repository_is_its_own_project_whichever_file_comes_first() {
+    let project = Project::new();
+    project.write("sub/.git/HEAD", "");
+    project.write("sub/.github/workflows/caller.yaml", "");
+    let root = project.root();
+    let outer = root.join(".github/workflows/ci.yaml");
+    let nested = root.join("sub/.github/workflows/caller.yaml");
+    let cwd = Path::new("/");
+    // Upstream gives the nested file the outer project when it finds the outer project first.
+    let mut roots = ProjectRoots::default();
+    assert_eq!(roots.find(&outer, cwd), Some(root.clone()));
+    assert_eq!(roots.find(&nested, cwd), Some(root.join("sub")));
+    let mut roots = ProjectRoots::default();
+    assert_eq!(roots.find(&nested, cwd), Some(root.join("sub")));
+    assert_eq!(roots.find(&outer, cwd), Some(root));
+}
+
+#[test]
 fn a_relative_path_is_found_from_the_working_directory() {
     let project = Project::new();
     let root = project.root();
