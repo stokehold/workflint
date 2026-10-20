@@ -32,6 +32,31 @@ jobs:
       # Action specs that are empty or not strings
       - uses: ''
       - uses: [x]
+  credentials:
+    runs-on: ubuntu-latest
+    # Passwords that are empty or not strings
+    container:
+      image: node:24
+      credentials:
+        username: user
+        password: ''
+    services:
+      redis:
+        image: redis
+        credentials:
+          username: user
+          password: [x]
+    steps:
+      # Step IDs that are empty
+      - id: ''
+        run: echo hello
+      - id: ''
+        run: echo hello
+  call:
+    uses: ./.github/workflows/number_input.yaml
+    # An input value that is not a scalar
+    with:
+      n: [1]
 # Permission scopes whose value or key is not a non-empty string
 permissions:
   contents:

@@ -310,7 +310,12 @@ impl<'a> Parser<'a, '_> {
 
     /// Reports `value`, the value of an `${{ insert }}` key, which is
     /// neither one `${{ }}` expression nor a mapping that `inserts` accepts.
+    /// An alias is not reported: only a recursive alias stays in the tree,
+    /// and the YAML layer has reported it, as the reference does.
     fn invalid_insert(&mut self, label: Label<'_>, value: &Node, inserts: Inserts) {
+        if let NodeKind::Alias(_) = value.kind {
+            return;
+        }
         let or_mapping = match inserts {
             Inserts::MappingOrExpression => " or mapping value",
             Inserts::No | Inserts::Expression => "",
@@ -703,8 +708,8 @@ d: 4
             "&m\na: 1\n${{ insert }}: *m\n",
             Inserts::MappingOrExpression,
         );
-        assert_eq!(found.last().unwrap(), "a=a");
-        assert!(found[0].contains("but found alias node"), "{found:#?}");
+        // The YAML layer reports the recursive alias, so the insert gets no error of its own.
+        assert_eq!(found, ["a=a"]);
     }
 
     #[test]

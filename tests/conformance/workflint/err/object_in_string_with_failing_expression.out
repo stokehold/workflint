@@ -1,0 +1,2 @@
+test.yaml:7:20: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type object [expression]
+test.yaml:7:44: property "x" is not defined in object type {} [expression]

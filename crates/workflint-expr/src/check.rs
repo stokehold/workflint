@@ -2,7 +2,9 @@
 //!
 //! Ported from rhysd/actionlint at commit `011a6d1`: `ExprSemanticsChecker` in `expr_sema.go`.
 
-use workflint_data::{RESERVED_CONFIG_VARIABLE_PREFIX, is_config_variable_name_char};
+use workflint_data::{
+    RESERVED_CONFIG_VARIABLE_PREFIX, SPECIAL_FUNCTIONS, is_config_variable_name_char,
+};
 use workflint_diagnostics::RuleMeta;
 use workflint_diagnostics::quote::{ordinal, quote, quotes, sorted_quotes};
 
@@ -193,11 +195,17 @@ impl Checker<'_> {
     }
 
     /// Suggests the variable closest to `name`, or the call of a function that takes no
-    /// arguments, such as `always()` for `always`.
+    /// arguments, such as `always()` for `always`. Only the contexts and special functions
+    /// available at the workflow key are suggested.
     fn variable_suggestion(&self, name: &str) -> Option<String> {
-        let variables = self.env.variable_names().map(|variable| (variable, false));
+        let availability = self.env.availability();
+        let variables = self
+            .env
+            .variable_names()
+            .filter(|variable| availability.contexts.contains(variable))
+            .map(|variable| (variable, false));
         let calls = functions::all()
-            .filter(|function| function.takes_no_arguments())
+            .filter(|function| function.takes_no_arguments() && self.is_available(function))
             .map(|function| (function.name, true));
         let (candidate, call) = closest(
             name,
@@ -482,7 +490,9 @@ impl Checker<'_> {
             );
             let help = closest(
                 callee.as_str(),
-                functions::all().map(|function| (function.name, function.name)),
+                functions::all()
+                    .filter(|function| self.is_available(function))
+                    .map(|function| (function.name, function.name)),
             )
             .map(did_you_mean);
             self.error_with_help(expr, &UNDEFINED_FUNCTION, message, help);
@@ -594,6 +604,14 @@ impl Checker<'_> {
             );
             self.error(expr, &CASE_ARGUMENT_COUNT, message);
         }
+    }
+
+    /// Returns whether expressions at the workflow key may call `function`: it is not a
+    /// special function, or the key allows it.
+    fn is_available(&self, function: &Function) -> bool {
+        let key = function.key.as_str();
+        !SPECIAL_FUNCTIONS.contains(&key)
+            || self.env.availability().special_functions.contains(&key)
     }
 
     /// The reference's `checkSpecialFunctionAvailability`. It runs only for a call whose

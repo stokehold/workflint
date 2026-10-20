@@ -15,7 +15,7 @@ use std::cell::OnceCell;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use workflint_data::{UNTRUSTED_INPUTS, popular_action};
+use workflint_data::{UNTRUSTED_INPUTS, is_github_script, popular_action, webhook_event};
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_expr::{MAX_TYPE_DEPTH, ObjectTy, Rest, Ty, TypeEnv};
@@ -255,8 +255,7 @@ impl<'a> Rule<'a> for Expression<'a> {
                     self.at("").template(cx, &uses.template);
                 }
                 let with = self.at("jobs.<job_id>.steps.with");
-                let github_script =
-                    uses.is_some_and(|uses| uses.value().starts_with("actions/github-script@"));
+                let github_script = uses.is_some_and(|uses| is_github_script(uses.value()));
                 for input in action.inputs.value().into_iter().flatten() {
                     let Some(value) = &input.value else {
                         continue;
@@ -716,7 +715,7 @@ fn action_outputs(uses: Option<&StepUses<'_>>, cx: &Context<'_>) -> Arc<ObjectTy
             Lookup::None | Lookup::Error(_) => any_string(),
         };
     }
-    if spec.starts_with("actions/github-script@") {
+    if is_github_script(spec) {
         return loose();
     }
     match popular_action(spec) {
@@ -749,14 +748,18 @@ fn dispatch_inputs_ty(dispatch: &WorkflowDispatchEvent<'_>) -> ObjectTy {
 }
 
 /// Returns the secrets that `on.workflow_call.secrets` declares, if `workflow_call` is the only
-/// trigger of `workflow` and the key is written. `secrets` then has only these and the
+/// valid trigger of `workflow` and the key is written. `secrets` then has only these and the
 /// built-in secrets. Otherwise it accepts any name: a caller may pass every secret with
 /// `secrets: inherit`, and another trigger runs the workflow with every repository secret
-/// (`docs/differences.md#secrets-context-mixed-triggers`). A value that is not a mapping
-/// declares no secret, as in the reference.
+/// (`docs/differences.md#secrets-context-mixed-triggers`). An event that the `events` rule
+/// reports as unknown, or that the parser could not build, triggers nothing, so it does not
+/// count. A value that is not a mapping declares no secret, as in the reference.
 fn declared_secrets(workflow: &Workflow<'_>) -> Option<ObjectTy> {
     let events = workflow.on.value()?;
-    let [Some(Event::WorkflowCall(call))] = &events[..] else {
+    let mut valid = events.iter().flatten().filter(|event| {
+        !matches!(event, Event::Webhook(hook) if webhook_event(hook.name.value()).is_none())
+    });
+    let (Some(Event::WorkflowCall(call)), None) = (valid.next(), valid.next()) else {
         return None;
     };
     let secrets = match &call.secrets {
