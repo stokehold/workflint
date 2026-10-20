@@ -25,6 +25,7 @@ use workflint_syntax::{
     contains_expression,
 };
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// A `schedule` cron expression that robfig/cron cannot parse: `invalid CRON format %q in
@@ -173,6 +174,10 @@ const fn events(id: &'static str, description: &'static str, docs_url: &'static 
 pub(crate) struct Events;
 
 impl<'a> Rule<'a> for Events {
+    fn kind(&self) -> &'static Kind {
+        &kind::EVENTS
+    }
+
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         for event in workflow
             .on

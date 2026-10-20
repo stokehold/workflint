@@ -10,6 +10,7 @@ use workflint_diagnostics::quote::{quote, sorted_quotes};
 use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
 use workflint_syntax::{Job, KeyedEntry, MatrixCombination, MatrixRow, RawValue, Str, Value};
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// A matrix row has the same value twice.
@@ -56,6 +57,10 @@ pub(crate) static UNMATCHED_EXCLUDE_VALUE: RuleMeta = RuleMeta {
 pub(crate) struct Matrix;
 
 impl<'a> Rule<'a> for Matrix {
+    fn kind(&self) -> &'static Kind {
+        &kind::MATRIX
+    }
+
     fn job_pre(&mut self, job: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
         let Some(strategy) = job.value.strategy.value() else {
             return;

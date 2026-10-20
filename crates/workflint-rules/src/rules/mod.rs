@@ -218,7 +218,11 @@ mod tests {
     /// A rule with no hooks.
     struct Stub;
 
-    impl Rule<'_> for Stub {}
+    impl Rule<'_> for Stub {
+        fn kind(&self) -> &'static Kind {
+            &kind::MATRIX
+        }
+    }
 
     #[test]
     fn rules_are_created_in_the_creation_order_and_missing_rules_are_skipped() {
@@ -230,6 +234,17 @@ mod tests {
         let order: Vec<_> = CREATION_ORDER.iter().map(|kind| kind.name).collect();
         assert_eq!(created.into_inner(), order);
         assert_eq!(rules.len(), order.len() - 1);
+    }
+
+    #[test]
+    fn each_rule_is_created_for_its_own_kind_in_the_creation_order() {
+        let created: Vec<_> = create_rules().iter().map(|rule| rule.kind().name).collect();
+        let order: Vec<_> = CREATION_ORDER
+            .iter()
+            .filter(|kind| create(kind).is_some())
+            .map(|kind| kind.name)
+            .collect();
+        assert_eq!(created, order);
     }
 
     #[test]

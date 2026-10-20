@@ -338,16 +338,32 @@ impl LocalMetadata for MemoryProject {
 
     fn action_file_exists(&self, action: &LocalAction, file: &str) -> bool {
         let path = join(&action.dir.to_string_lossy(), file);
-        self.files.contains_key(&normalize(&path))
+        if path.is_empty() || self.files.contains_key(&path) {
+            return true;
+        }
+        // A path that some file is in is a directory, which exists as the cache sees it.
+        let dir = format!("{path}/");
+        self.files
+            .range(dir.clone()..)
+            .next()
+            .is_some_and(|(name, _)| name.starts_with(&dir))
     }
 }
 
-/// Removes `./` prefixes and empty and `.` names from a `/`-separated relative path.
+/// Cleans a `/`-separated relative path as Go's `path.Clean` does, without the `.` it returns for
+/// an empty path: it removes empty and `.` names, and each `..` with the name before it.
 fn normalize(path: &str) -> String {
-    path.split('/')
-        .filter(|name| !name.is_empty() && *name != ".")
-        .collect::<Vec<_>>()
-        .join("/")
+    let mut names: Vec<&str> = Vec::new();
+    for name in path.split('/') {
+        match name {
+            "" | "." => {}
+            ".." if names.last().is_some_and(|last| *last != "..") => {
+                names.pop();
+            }
+            _ => names.push(name),
+        }
+    }
+    names.join("/")
 }
 
 /// Joins two `/`-separated relative paths.

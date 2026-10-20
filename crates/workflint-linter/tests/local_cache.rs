@@ -516,15 +516,19 @@ fn a_workflow_is_registered_under_its_path_from_the_project_root() {
 
 #[test]
 fn a_workflow_outside_the_project_root_is_not_registered() {
-    let project = Project::new();
-    let cache = project.cache();
-    let outside = project.root().join("../repo-other/reusable.yaml");
+    // The sibling's name starts with the root's name, so a string prefix test, as in the
+    // reference, would take `<tmp>/repo-other/r.yaml` for a file of `<tmp>/repo`.
+    let dir = tempfile::tempdir().unwrap();
+    let root = workflint_linter::path::clean(&dir.path().join("repo"));
+    fs::create_dir_all(root.join(".git")).unwrap();
+    fs::create_dir_all(root.join(".github/workflows")).unwrap();
+    let cache = LocalCache::new(root.clone());
     cache
-        .for_file(&outside)
+        .for_file(&dir.path().join("repo-other/r.yaml"))
         .register_workflow_call(registered());
     let local = linting_ci(&cache);
     assert!(matches!(
-        local.reusable_workflow("./../repo-other/reusable.yaml"),
+        local.reusable_workflow("./../repo-other/r.yaml"),
         Lookup::Error(_)
     ));
 }

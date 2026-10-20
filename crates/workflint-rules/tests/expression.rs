@@ -414,8 +414,17 @@ fn every_placeholder_that_the_parser_reports_errors_in_is_checked_by_the_rule() 
     let text = text
         .replace("if: env\n", "if: undefined_env\n")
         .replace("if: secrets\n", "if: undefined_secrets\n");
-    let (file, diagnostics) = diagnostics(&text);
-    let checked: BTreeSet<_> = diagnostics
+    let (checked, walked) = checked_and_walked(&text);
+    assert_eq!(checked, walked);
+    assert_eq!(checked, expression_starts(&text));
+}
+
+/// Returns the positions of the expressions in `workflow` that the rule reports an undefined
+/// variable or function in, and of those that `workflint_syntax::placeholders` visits, where the
+/// parser reports syntax errors.
+fn checked_and_walked(workflow: &str) -> (BTreeSet<String>, BTreeSet<String>) {
+    let (file, diagnostics) = diagnostics(workflow);
+    let checked = diagnostics
         .iter()
         .filter(|d| matches!(d.rule.id, "undefined-variable" | "undefined-function"))
         .map(|d| file.line_col(d.span.start))
@@ -435,8 +444,52 @@ fn every_placeholder_that_the_parser_reports_errors_in_is_checked_by_the_rule() 
             walked.insert(format!("{line}:{column}"));
         }
     });
+    (checked, walked)
+}
+
+#[test]
+fn the_rule_and_the_parser_skip_the_same_placeholders() {
+    // The parser skips `uses`, `with`, and `secrets` of a job that also has `steps`, the
+    // `required` of workflow_call inputs and secrets, and the output values of a workflow with
+    // no jobs. The rule must skip the same ones, and check the rest.
+    let with_jobs = "\
+on:
+  workflow_call:
+    inputs:
+      i:
+        type: boolean
+        required: ${{ undefined_a }}
+    secrets:
+      s:
+        required: ${{ undefined_b }}
+    outputs:
+      o:
+        value: ${{ undefined_c }}
+jobs:
+  call:
+    uses: ./.github/workflows/${{ undefined_d }}.yaml
+    with:
+      x: ${{ undefined_e }}
+    secrets:
+      y: ${{ undefined_f }}
+    steps:
+      - run: echo ${{ undefined_g }}
+";
+    let (checked, walked) = checked_and_walked(with_jobs);
     assert_eq!(checked, walked);
-    assert_eq!(checked, expression_starts(&text));
+    assert_eq!(checked, BTreeSet::from(["12:20".into(), "21:23".into()]));
+
+    let without_jobs = "\
+on:
+  workflow_call:
+    outputs:
+      o:
+        description: ${{ undefined_a }}
+        value: ${{ undefined_b }}
+";
+    let (checked, walked) = checked_and_walked(without_jobs);
+    assert_eq!(checked, walked);
+    assert_eq!(checked, BTreeSet::from(["5:26".into()]));
 }
 
 #[test]

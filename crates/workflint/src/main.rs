@@ -210,28 +210,10 @@ fn lint(
                 format!("could not parse as YAML: {}", err.problem()),
             )]
         }
-        None => parse_file(&file, local),
+        None => workflint_rules::check_file(&file, local),
     };
     sort_and_dedup(&file, &mut diagnostics);
     Ok((file, diagnostics))
-}
-
-/// Parses `file` with the YAML layer and, if it gives a document, with the workflow parser, runs
-/// the rules on the workflow with the project's local metadata in `local`, and returns the
-/// diagnostics of all three.
-fn parse_file(file: &SourceFile, local: &dyn LocalMetadata) -> Vec<Diagnostic> {
-    let parsed = workflint_yaml::parse(file);
-    let mut diagnostics = parsed.diagnostics;
-    if let Some(document) = &parsed.document {
-        let syntax = workflint_syntax::parse(file, document);
-        diagnostics.extend(syntax.diagnostics);
-        diagnostics.extend(workflint_rules::run_in_project(
-            file,
-            &syntax.workflow,
-            local,
-        ));
-    }
-    diagnostics
 }
 
 /// Decodes the longest prefix of `bytes` that ends at or before `end` and decodes without error.

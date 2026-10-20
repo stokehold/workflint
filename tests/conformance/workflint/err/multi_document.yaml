@@ -1,0 +1,17 @@
+# Only the first document of the stream is linted. The error in the second
+# document and the broken YAML in the third are not reported.
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ first }}
+---
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ second }}
+---
+foo: [

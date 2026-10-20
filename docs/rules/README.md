@@ -36,7 +36,7 @@ The test holds these files in memory, in a project whose root also holds `test.y
 
 ## Index
 
-The test `the_rules_index_matches_the_registry` compares this table with the registry and prints the expected table when they differ. A rule ID links its page when the page exists.
+The test `the_rules_index_matches_the_registry` compares this table with the registry and prints the expected table when they differ.
 
 <!-- rules-index:start -->
 | Rule | Kind | Category | Default severity | Description |

@@ -10,6 +10,7 @@ use workflint_syntax::{
     WorkflowCall as Call, WorkflowCallSecrets,
 };
 
+use crate::kind::{self, Kind};
 use crate::local::{LocalMetadataError, Lookup};
 use crate::{Context, Rule};
 
@@ -88,6 +89,10 @@ pub(crate) static UNDEFINED_WORKFLOW_SECRET: RuleMeta = RuleMeta {
 pub(crate) struct WorkflowCall;
 
 impl<'a> Rule<'a> for WorkflowCall {
+    fn kind(&self) -> &'static Kind {
+        &kind::WORKFLOW_CALL
+    }
+
     /// Registers the workflow's `on.workflow_call`, so that later callers in the run do not read
     /// its file.
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {

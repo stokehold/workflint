@@ -11,6 +11,7 @@ use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
 use workflint_syntax::{Job, KeyedEntry, Step, contains_expression};
 use workflint_yaml::simple_lowercase;
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// A job ID, or a job ID in `needs`, does not match `^[a-zA-Z_][a-zA-Z0-9_-]*$`.
@@ -51,6 +52,10 @@ pub(crate) struct Id<'a> {
 }
 
 impl<'a> Rule<'a> for Id<'a> {
+    fn kind(&self) -> &'static Kind {
+        &kind::ID
+    }
+
     fn job_pre(&mut self, job: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
         self.seen.clear();
         check_convention(job.key.value(), job.key.span(), &INVALID_JOB_ID, "job", cx);
