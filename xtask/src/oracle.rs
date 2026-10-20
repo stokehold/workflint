@@ -124,7 +124,7 @@ pub(crate) fn run(layout: &Layout, options: &Options) -> Result<()> {
     let corpus_files = match &selection.corpus {
         Corpus::None => 0,
         selected => {
-            let (run, files) = corpus_run(&archive, selected, &sides)?;
+            let (run, files) = corpus_run(&archive, selected, &sides, &allow_list)?;
             runs.push(run);
             files
         }
@@ -313,13 +313,15 @@ fn fixture_run(
     ))
 }
 
-/// Unpacks the corpus into a temporary project and runs both binaries once
-/// on the `selected` files, in sorted order. Returns the number of files
-/// too.
+/// Unpacks the corpus into a temporary project, runs both binaries once on
+/// the `selected` files, in sorted order, and compares them with the entries
+/// in `allow_list` for those files and for every corpus file. Returns the
+/// number of files too.
 fn corpus_run(
     archive: &Path,
     selected: &Corpus,
     sides: &Sides<'_>,
+    allow_list: &AllowList,
 ) -> Result<(compare::Run, usize)> {
     let temp = tempfile::Builder::new()
         .prefix("workflint-oracle-")
@@ -360,12 +362,17 @@ fn corpus_run(
 
     let expected = execute(sides.reference, &project, &args, CORPUS_TIME_LIMIT)?;
     let actual = execute(sides.workflint, &project, &args, CORPUS_TIME_LIMIT)?;
+    let entries = allow_list.corpus_entries(&names);
+    let allowed = Allowed {
+        entries: &entries,
+        ..Allowed::default()
+    };
     let run = compare::compare(
         "realworld",
         &names,
         &expected,
         &actual,
-        &Allowed::default(),
+        &allowed,
         sides.map_kinds,
         sides.kinds,
     );
@@ -464,6 +471,62 @@ mod tests {
         assert!(output.timed_out);
         assert_eq!(output.code, None);
         assert_eq!(output.stdout, "partial\n");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_allow_list_entry_for_a_corpus_file_explains_its_difference_in_the_report() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        const FILE: &str = "Alamofire_Alamofire_.github_workflows_ci.yml";
+        let dir = tempfile::tempdir().unwrap();
+        let script = |name: &str, line: &str| {
+            let path = dir.path().join(name);
+            fs::write(
+                &path,
+                format!("#!/bin/sh\necho '{FILE}:1:1: {line}'\nexit 1\n"),
+            )
+            .unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+            path
+        };
+        let reference = script("reference", "old [syntax-check]");
+        let workflint = script("workflint", "new [yaml-syntax-error]");
+        let allow_list = AllowList::parse(&format!(
+            "[[difference]]\nanchor = \"yaml-error-positions\"\nfixture = \"realworld/{FILE}\"\n\
+             upstream = \"{FILE}:1:1: old [syntax-check]\"\n\
+             workflint = \"{FILE}:1:1: new [syntax-check]\"\n"
+        ))
+        .unwrap();
+        let sides = Sides {
+            reference: &reference,
+            workflint: &workflint,
+            map_kinds: true,
+            kinds: &Kinds::default(),
+        };
+        let archive = Layout::repository()
+            .root()
+            .join(vendor_testdata::DESTINATION)
+            .join("testdata/realworld/dataset.zip");
+        let selected = Corpus::Names([FILE.to_owned()].into());
+        let (run, files) = corpus_run(&archive, &selected, &sides, &allow_list).unwrap();
+        assert_eq!(files, 1);
+        let report = Report {
+            description: String::new(),
+            self_check: false,
+            kinds: Kinds::default(),
+            skipped: Vec::new(),
+            reference_failures: Vec::new(),
+            runs: vec![run],
+        };
+        let totals = report.totals();
+        assert_eq!(
+            (totals.applied, totals.differing),
+            (1, 0),
+            "{}",
+            report.render()
+        );
+        assert!(totals.clean(), "{}", report.render());
     }
 
     #[test]

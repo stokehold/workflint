@@ -281,3 +281,72 @@ anchor = "platform-data-updates"
 section = "check-contexts-and-builtin-func"
 upstream = 'test.yaml:9:24: property "events" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]'
 workflint = 'test.yaml:9:24: property "events" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]'
+
+# Corpus files. An entry for realworld/* rewrites each line of every corpus
+# file that its pattern matches.
+
+[[difference]]
+anchor = "dispatch-input-key-list"
+fixture = "realworld/netdata_netdata_.github_workflows_dashboard-pr.yml"
+upstream = 'netdata_netdata_.github_workflows_dashboard-pr.yml:11:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "required" [syntax-check]'
+workflint = 'netdata_netdata_.github_workflows_dashboard-pr.yml:11:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "options", "required", "type" [syntax-check]'
+
+[[difference]]
+anchor = "dispatch-input-key-list"
+fixture = "realworld/netdata_netdata_.github_workflows_docker.yml"
+upstream = 'netdata_netdata_.github_workflows_docker.yml:11:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "required" [syntax-check]'
+workflint = 'netdata_netdata_.github_workflows_docker.yml:11:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "options", "required", "type" [syntax-check]'
+
+[[difference]]
+anchor = "dispatch-input-key-list"
+fixture = "realworld/netdata_netdata_.github_workflows_packaging.yml"
+upstream = 'netdata_netdata_.github_workflows_packaging.yml:12:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "required" [syntax-check]'
+workflint = 'netdata_netdata_.github_workflows_packaging.yml:12:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "options", "required", "type" [syntax-check]'
+
+[[difference]]
+anchor = "dispatch-input-key-list"
+fixture = "realworld/netdata_netdata_.github_workflows_packaging.yml"
+upstream = 'netdata_netdata_.github_workflows_packaging.yml:16:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "required" [syntax-check]'
+workflint = 'netdata_netdata_.github_workflows_packaging.yml:16:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "options", "required", "type" [syntax-check]'
+
+[[difference]]
+anchor = "if-cond-suggestion"
+fixture = "realworld/apache_superset_.github_workflows_latest-release-tag.yml"
+upstream = 'apache_superset_.github_workflows_latest-release-tag.yml:25:11: if: condition "(! ${{ steps.latest-tag.outputs.SKIP_TAG }} )" is always evaluated to true because extra characters are around ${{ }} [if-cond]'
+workflint = 'apache_superset_.github_workflows_latest-release-tag.yml:25:11: if: condition "(! ${{ steps.latest-tag.outputs.SKIP_TAG }} )" is always evaluated to true because extra characters are around ${{ }}. did you mean "${{ (! steps.latest-tag.outputs.SKIP_TAG ) }}"? [if-cond]'
+
+[[difference]]
+anchor = "deprecated-command-digits"
+fixture = "realworld/babel_babel_.github_workflows_update-parser-tests.yml"
+workflint = 'babel_babel_.github_workflows_update-parser-tests.yml:35:14: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]'
+
+[[difference]]
+anchor = "deprecated-command-digits"
+fixture = "realworld/facebook_folly_.github_workflows_TagIt.yml"
+workflint = 'facebook_folly_.github_workflows_TagIt.yml:25:14: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]'
+
+[[difference]]
+anchor = "workflow-run-untrusted-input"
+fixture = "realworld/yewstack_yew_.github_workflows_publish-website.yml"
+workflint = 'yewstack_yew_.github_workflows_publish-website.yml:50:31: "github.event.workflow_run.head_branch" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+
+[[difference]]
+anchor = "runs-on-expressions"
+fixture = "realworld/apache_airflow_.github_workflows_build-images.yml"
+workflint = 'apache_airflow_.github_workflows_build-images.yml:61:14: label "ubuntu-20.04" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "runs-on-expressions"
+fixture = "realworld/apache_airflow_.github_workflows_build-images.yml"
+workflint = 'apache_airflow_.github_workflows_build-images.yml:308:14: label "ubuntu-20.04" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "runs-on-expressions"
+fixture = "realworld/apache_airflow_.github_workflows_ci.yml"
+workflint = 'apache_airflow_.github_workflows_ci.yml:87:14: label "ubuntu-20.04" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "realworld/*"
+upstream = '/available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-24\.04", "ubuntu-24\.04-arm", "ubuntu-22\.04", "ubuntu-22\.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows"\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+workflint = 'available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'

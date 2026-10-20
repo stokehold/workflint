@@ -120,7 +120,7 @@ To see the full reason a listed fixture fails, remove its line and run its test.
 
 ## Allowed differences
 
-`allowed-differences.toml` lists the expected lines that workflint replaces, removes, or adds on purpose. It has one `[[difference]]` table per changed line:
+`allowed-differences.toml` lists the expected lines that workflint replaces, removes, or adds on purpose, in fixtures and in the corpus files of `actionlint/testdata/realworld/dataset.zip`. It has one `[[difference]]` table per changed line:
 
 ```toml
 [[difference]]
@@ -133,15 +133,15 @@ workflint = "test.yaml:3:5: could not parse as YAML: ... [syntax-check]"
 | Key | Meaning |
 |---|---|
 | `anchor` | An anchor in `docs/differences.md`, without the `#`. Required. |
-| `fixture` | The fixture ID. Required. |
-| `upstream` | An expected line of the fixture's `.out` file, copied exactly, that workflint does not report. |
+| `fixture` | The fixture ID, `realworld/<file name>` for a corpus file, or `realworld/*` for every corpus file. Required. |
+| `upstream` | An expected line of the fixture's `.out` file, copied exactly, that workflint does not report. For a corpus file, a line of the reference's output for that file. |
 | `workflint` | The line workflint reports instead or in addition, in the same form as `.out` lines: with the actionlint kind in brackets, or a `/pattern/`. |
 
 An entry with both `upstream` and `workflint` replaces a line. With only `upstream` it removes one, and with only `workflint` it adds one. The runner inserts each `workflint` line before the first expected line that sorts after it by path, line, column and message. It sorts a pattern line by the position at its start, if it has one, and places the new line after pattern lines at the same position. A pattern line that replaces a line at its own position takes that line's place instead, because its order among the lines at that position is unknown.
 
 The runner fails:
 
-- the test `allowed_differences::allowed-differences.toml` if an anchor is not in `docs/differences.md`, a fixture does not exist, an entry has neither `upstream` nor `workflint`, an `upstream` line is not in the fixture's `.out` file, or the `upstream` line of an `[[example]]` table is not in the `Output` block of its section.
+- the test `allowed_differences::allowed-differences.toml` if an anchor is not in `docs/differences.md`, a fixture does not exist, a corpus file is not in the archive, an entry has neither `upstream` nor `workflint`, an `upstream` line is not in the fixture's `.out` file, a line of an entry for a corpus file does not start with that file's name and a position, an entry for every corpus file lacks a valid `/pattern/` or a `workflint`, or the `upstream` line of an `[[example]]` table is not in the `Output` block of its section.
 - a fixture that is not in `expected-failures.toml` if it also passes without one of its entries. Remove such an entry.
 
 Every entry needs a matching section in `docs/differences.md`. Write that section first, then the entry.
@@ -158,7 +158,31 @@ workflint = 'test.yaml:10:13: label "linux-latest" is unknown. available labels 
 
 `section` is the section's anchor without the `#`. `upstream` and `workflint` are error lines with the kind in brackets. The fixture tests and `cargo xtask oracle` ignore these tables.
 
-`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. An `upstream` line must be in the fixture's `.out` file, as in the runner. The oracle removes the first line of the reference's output that this `.out` line matches, exactly or as a `/pattern/`. An entry that does not apply is a problem in the report that names the `.out` file, and the other entries of the fixture still apply. The corpus files have no fixture ID, so no entry applies to them yet (#49).
+`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. An `upstream` line must be in the fixture's `.out` file, as in the runner. The oracle removes the first line of the reference's output that this `.out` line matches, exactly or as a `/pattern/`. An entry that does not apply is a problem in the report that names the `.out` file, and the other entries of the fixture still apply.
+
+### Corpus files
+
+The runner does not lint the corpus, so only `cargo xtask oracle` reads the entries for corpus files. It applies them to the reference's output in the corpus run, the entries for single files first. An entry for a corpus file works as a fixture's entry, but its `upstream` line quotes the reference's output, because a corpus file has no `.out` file. It removes the first line of that file that `upstream` matches. Each line of the entry, exact or a `/pattern/`, starts with the file name and a position:
+
+```toml
+[[difference]]
+anchor = "dispatch-input-key-list"
+fixture = "realworld/netdata_netdata_.github_workflows_docker.yml"
+upstream = 'netdata_netdata_.github_workflows_docker.yml:11:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "required" [syntax-check]'
+workflint = 'netdata_netdata_.github_workflows_docker.yml:11:9: unexpected key "name" for "inputs" section. expected one of "default", "description", "options", "required", "type" [syntax-check]'
+```
+
+One entry can cover a difference that changes the same text in many corpus files. Its `fixture` is `realworld/*`, its `upstream` is a `/pattern/`, and its `workflint` is the text that replaces each match of the pattern in each line of the reference's output, so the rest of the line stays as the reference printed it. `$1` or `${name}` in `workflint` inserts a group of the pattern, and `$$` inserts a `$`. The entry for `platform-data-updates` replaces the list of labels in the 824 `unknown-runner-label` lines of 305 files:
+
+```toml
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "realworld/*"
+upstream = '/available labels are "windows-latest", ... config file \[runner-label\]/'
+workflint = 'available labels are "windows-latest", ... config file [runner-label]'
+```
+
+Such an entry applies when it matches at least one line, and is a problem in the report when it matches none. Its pattern should end with `\[kind\]`, so that `--kind` skips it for other kinds. Use it only when the changed text is the same in every file. A difference that adds or removes lines, or that changes text that differs from file to file, needs an entry for each file.
 
 `cargo xtask oracle --kind KIND` compares only the lines of the given kinds (`CONTRIBUTING.md#oracle`). It reads the kind of an `upstream` or `workflint` line, and of a `.out` line, from its brackets. A `/pattern/` line has the kind its pattern ends with, as `\[kind\]` or `\[(kind|kind)\]`, and a pattern line without one counts for every kind. The oracle uses only the `upstream` and `workflint` lines of the given kinds, and skips an entry that has neither, without a problem. An entry that replaces a line of one kind with a line of another kind applies one half: the half of the given kind.
 
