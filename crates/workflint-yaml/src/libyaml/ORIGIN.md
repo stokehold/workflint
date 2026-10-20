@@ -32,6 +32,7 @@ This directory is a fork of the `libyaml-safer` crate, version 0.3.0, under the 
 - `Event` has a `node_marks` field of the new type `NodeMarks`. `parse_node` fills it with the marks of the `&anchor` token and the mark where the node's content starts after its anchor and tag. Upstream dropped both, so the tree could not give the anchor its own span. Every other event gets the default value.
 - `Error::problem_offset` returns the byte offset of the problem. Reader errors have no problem mark, so this is the only position they report.
 - The parser's iterator returns `None` after the first error, as `FusedIterator` promises.
+- The scanner's buffer is a `Vec<char>` with a cursor at the first unread character instead of a `VecDeque<char>`, so reading a character by index skips the ring buffer's index arithmetic. The reader drops the read characters before it decodes the next chunk, and checks a chunk's characters in one pass.
 
 ## Changed to match go-yaml
 
