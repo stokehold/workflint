@@ -1,0 +1,73 @@
+# A `${{ insert }}` key in `strategy`, a job's container and its
+# credentials, a service, a job's `defaults.run`, `concurrency`,
+# `environment`, and the mapping form of `runs-on`.
+on: push
+# The inserted mapping may hold the required `group`.
+concurrency:
+  ${{ insert }}: ${{ fromJSON(vars.WORKFLOW_CONCURRENCY) }}
+jobs:
+  expression:
+    runs-on:
+      ${{ insert }}: ${{ fromJSON(vars.RUNS_ON) }}
+    strategy:
+      ${{ insert }}: ${{ fromJSON(vars.STRATEGY) }}
+    concurrency:
+      ${{ insert }}: ${{ fromJSON(vars.CONCURRENCY) }}
+    environment:
+      ${{ insert }}: ${{ fromJSON(vars.ENVIRONMENT) }}
+    defaults:
+      run:
+        ${{ insert }}: ${{ fromJSON(vars.DEFAULTS_RUN) }}
+    # The inserted mappings may hold `image`, `username`, and `password`.
+    container:
+      ${{ insert }}: ${{ fromJSON(vars.CONTAINER) }}
+      credentials:
+        ${{ insert }}: ${{ fromJSON(secrets.CREDENTIALS) }}
+    services:
+      redis:
+        ${{ insert }}: ${{ fromJSON(vars.REDIS) }}
+        credentials:
+          username: ${{ github.actor }}
+          ${{ insert }}: ${{ fromJSON(secrets.REDIS_PASSWORD) }}
+    steps:
+      # The inserted strategy may hold a matrix with any property.
+      - run: echo "$OS"
+        env:
+          OS: ${{ matrix.os }}
+  mapping:
+    runs-on:
+      ${{ insert }}:
+        labels: ubuntu-latest
+      group: linux
+    strategy:
+      fail-fast: false
+      ${{ insert }}:
+        matrix:
+          node: [22, 24]
+    concurrency:
+      ${{ insert }}:
+        group: ${{ github.workflow }}
+      cancel-in-progress: true
+    environment:
+      ${{ insert }}:
+        name: production
+        url: https://example.com
+    defaults:
+      run:
+        ${{ insert }}:
+          shell: bash
+    container:
+      ${{ insert }}:
+        image: node:24
+      credentials:
+        ${{ insert }}:
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN }}
+    services:
+      redis:
+        ${{ insert }}:
+          image: redis
+    steps:
+      - run: echo "$NODE"
+        env:
+          NODE: ${{ matrix.node }}

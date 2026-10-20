@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use workflint_diagnostics::Span;
 
-use crate::{AliasUses, Event, Field, Job, Keyed, Str, Template, Value, WorkflowCallEvent};
+use crate::{AliasUses, Event, Expr, Field, Job, Keyed, Str, Template, Value, WorkflowCallEvent};
 
 /// A workflow file.
 ///
@@ -115,6 +115,10 @@ pub struct DefaultsRun<'a> {
     pub shell: Field<'a, Template<'a>>,
     /// `working-directory`.
     pub working_directory: Field<'a, Template<'a>>,
+    /// The values of `${{ insert }}` keys written as one `${{ }}`
+    /// expression, in source order. GitHub merges the mapping that each one
+    /// evaluates to into the mapping, so `shell` and `working-directory` may come from it.
+    pub inserts: Arc<[Expr<'a>]>,
 }
 
 /// `concurrency` of a workflow or job.
@@ -125,6 +129,10 @@ pub struct Concurrency<'a> {
     pub group: Field<'a, Template<'a>>,
     /// `cancel-in-progress`.
     pub cancel_in_progress: Value<'a, bool>,
+    /// The values of `${{ insert }}` keys written as one `${{ }}`
+    /// expression, in source order. GitHub merges the mapping that each one
+    /// evaluates to into the mapping, so `group` may come from it.
+    pub inserts: Arc<[Expr<'a>]>,
 }
 
 #[cfg(test)]

@@ -187,7 +187,12 @@ fn event_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, event: &'w Event<'a>, h
 fn job_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, job: &'w Job<'a>) {
     string(f, &job.name);
     strings(f, &job.needs);
-    if let Some(Runner { labels, group }) = job.runs_on.value() {
+    if let Some(Runner {
+        labels,
+        group,
+        inserts,
+    }) = job.runs_on.value()
+    {
         expression(f, labels);
         for label in labels
             .literal()
@@ -197,6 +202,7 @@ fn job_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, job: &'w Job<'a>) {
             template(f, label);
         }
         string(f, group);
+        exprs(f, inserts);
     }
     concurrency(f, &job.concurrency);
     env(f, &job.env);
@@ -206,6 +212,7 @@ fn job_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, job: &'w Job<'a>) {
         matrix(f, &strategy.matrix);
         expression(f, &strategy.fail_fast);
         expression(f, &strategy.max_parallel);
+        exprs(f, &strategy.inserts);
     }
     expression(f, &job.continue_on_error);
     expression(f, &job.timeout_minutes);
@@ -240,11 +247,13 @@ fn job_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, job: &'w Job<'a>) {
         name,
         url,
         deployment,
+        inserts,
     }) = job.environment.value()
     {
         string(f, name);
         string(f, url);
         expression(f, deployment);
+        exprs(f, inserts);
     }
     keyed(f, job.outputs.value());
     for step in job.steps.value().into_iter().flat_map(|steps| steps.iter()) {
@@ -280,9 +289,15 @@ fn step_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, step: &'w Step<'a>) {
 fn container_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, container: &'w Container<'a>) {
     string(f, &container.image);
     expression(f, &container.credentials);
-    if let Some(Credentials { username, password }) = container.credentials.literal() {
+    if let Some(Credentials {
+        username,
+        password,
+        inserts,
+    }) = container.credentials.literal()
+    {
         string(f, username);
         string(f, password);
+        exprs(f, inserts);
     }
     env(f, &container.env);
     strings(f, &container.ports);
@@ -290,6 +305,7 @@ fn container_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, container: &'w Cont
     string(f, &container.options);
     string(f, &container.command);
     string(f, &container.entrypoint);
+    exprs(f, &container.inserts);
 }
 
 fn matrix<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, matrix: &'w Value<'a, Matrix<'a>>) {
@@ -356,6 +372,7 @@ fn defaults<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, defaults: &'w Field<'a, Defaults<
     if let Some(run) = defaults.value().and_then(|defaults| defaults.run.value()) {
         string(f, &run.shell);
         string(f, &run.working_directory);
+        exprs(f, &run.inserts);
     }
 }
 
@@ -363,6 +380,7 @@ fn concurrency<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, concurrency: &'w Field<'a, Con
     if let Some(concurrency) = concurrency.value() {
         string(f, &concurrency.group);
         expression(f, &concurrency.cancel_in_progress);
+        exprs(f, &concurrency.inserts);
     }
 }
 
@@ -379,7 +397,13 @@ fn keyed<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, keyed: Option<&'w Keyed<'a, Option<T
 
 /// Visits the expressions under the `${{ insert }}` keys of `keyed`.
 fn inserts<'w, 'a, T>(f: &mut Visit<'_, 'w, 'a>, keyed: &'w Keyed<'a, T>) {
-    for expr in keyed.inserts() {
+    exprs(f, keyed.inserts());
+}
+
+/// Visits each expression of `exprs`, such as those under the
+/// `${{ insert }}` keys of a mapping.
+fn exprs<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, exprs: &'w [Expr<'a>]) {
+    for expr in exprs {
         expr_placeholders(f, expr);
     }
 }

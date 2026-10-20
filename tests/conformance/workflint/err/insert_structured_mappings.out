@@ -1,0 +1,8 @@
+test.yaml:8:7: "defaults" section should have "run" section [syntax-check]
+test.yaml:8:7: expected "run" key for "defaults" section but got "${{ insert }}" [syntax-check]
+test.yaml:12:26: context "matrix" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+test.yaml:15:22: type of expression at "concurrency" must be object but found type string [expression]
+test.yaml:16:5: "image" is missing in "container" section [syntax-check]
+test.yaml:17:22: expecting a single ${{...}} expression or mapping value for "${{ insert }}" key in "container" section, but found plain text node [syntax-check]
+test.yaml:21:7: key "name" is duplicated in "environment" section. previously defined at line:20,col:9 [syntax-check]
+test.yaml:26:59: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression]

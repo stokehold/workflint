@@ -59,12 +59,11 @@ enum RawStep<'a> {
 impl<'a> Parser<'a, '_> {
     /// Parses `strategy` of a job, the reference's `parseStrategy`: a
     /// mapping with `matrix`, `fail-fast`, and `max-parallel` that must have
-    /// entries.
+    /// entries or an `${{ insert }}` key.
     pub(super) fn parse_strategy(&mut self, entry: &MapEntry<'a>) -> Field<'a, Strategy<'a>> {
         let node = entry.value;
         let mut strategy = Strategy::default();
-        let entries = self.parse_mapping(Label::Section("strategy"), node, false, true);
-        self.parse_keys(entries, "strategy", &STRATEGY_KEYS, &mut strategy);
+        strategy.inserts = self.parse_section_keys(node, "strategy", &STRATEGY_KEYS, &mut strategy);
         mapping_field(entry.key, node, strategy)
     }
 

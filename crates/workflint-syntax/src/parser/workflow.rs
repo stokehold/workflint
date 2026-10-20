@@ -36,7 +36,7 @@ static ROOT_KEYS: [KeySpec<Root>; 8] = [
     },
     KeySpec {
         name: "defaults",
-        parse: |p, w, e| w.defaults = p.parse_defaults(e.key, e.value),
+        parse: |p, w, e| w.defaults = p.parse_defaults(e.key, e.value, false),
     },
     KeySpec {
         name: "concurrency",

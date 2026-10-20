@@ -128,6 +128,7 @@ defaults:
 concurrency:
   group: ${{ env }}
   cancel-in-progress: ${{ env }}
+  ${{ insert }}: ${{ env }}
 jobs:
   a:
     name: ${{ env }}
@@ -135,12 +136,14 @@ jobs:
     runs-on:
       labels: ['${{ env }}']
       group: ${{ env }}
+      ${{ insert }}: ${{ env }}
     concurrency: ${{ env }}
     env: ${{ env }}
     defaults:
       run:
         shell: ${{ secrets }}
         working-directory: ${{ secrets }}
+        ${{ insert }}: ${{ secrets }}
     if: ${{ env }}
     strategy:
       matrix:
@@ -157,6 +160,7 @@ jobs:
           - ${{ env }}
       fail-fast: ${{ env }}
       max-parallel: ${{ env }}
+      ${{ insert }}: ${{ env }}
     continue-on-error: ${{ env }}
     timeout-minutes: ${{ env }}
     container:
@@ -168,18 +172,22 @@ jobs:
       ports: ['${{ env }}']
       volumes: ['${{ env }}']
       options: ${{ env }}
+      ${{ insert }}: ${{ env }}
     services:
       redis:
         image: ${{ env }}
         credentials:
           username: ${{ job }}
           password: ${{ job }}
+          ${{ insert }}: ${{ job }}
         command: ${{ env }}
         entrypoint: ${{ env }}
+        ${{ insert }}: ${{ env }}
     environment:
       name: ${{ env }}
       url: ${{ secrets }}
       deployment: ${{ env }}
+      ${{ insert }}: ${{ env }}
     outputs:
       o: ${{ hashFiles('job_output') }}
     snapshot:
@@ -212,6 +220,7 @@ jobs:
     concurrency:
       group: ${{ env }}
       cancel-in-progress: ${{ env }}
+      ${{ insert }}: ${{ env }}
     env:
       ${{ env }}: ${{ env }}
       ${{ insert }}: ${{ env }}
@@ -228,6 +237,7 @@ jobs:
       credentials:
         username: ${{ job }}
         password: ${{ job }}
+        ${{ insert }}: ${{ job }}
     services:
       ${{ insert }}: ${{ env }}
       redis:

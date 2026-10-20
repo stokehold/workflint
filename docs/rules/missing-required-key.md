@@ -6,7 +6,7 @@
 
 A required section or key is missing.
 
-Required keys include `on` and `jobs` at the workflow root, `runs-on` and `steps` in a job without `uses`, `image` in a container or a service, and `type` of a `workflow_call` input. A job whose `steps` is present but invalid also lacks `steps`.
+Required keys include `on` and `jobs` at the workflow root, `runs-on` and `steps` in a job without `uses`, `image` in a container or a service, and `type` of a `workflow_call` input. A job whose `steps` is present but invalid also lacks `steps`. A mapping with an `${{ insert }}` expression is not checked for its required keys, such as `image` in a container, because the inserted mapping may hold them.
 
 ## Why
 
@@ -36,3 +36,7 @@ jobs:
     steps:
       - run: ./test.sh
 ```
+
+## Differences from actionlint
+
+- [`${{ insert }}` as a mapping key](../differences.md#insert-mapping-key)

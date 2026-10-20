@@ -26,9 +26,17 @@ impl Section for DefaultsSection {
     type Ast<'a> = Defaults<'a>;
 }
 
-static DEFAULTS_KEYS: [KeySpec<DefaultsSection>; 1] = [KeySpec {
+/// The keys of a workflow's `defaults`. Its `run` accepts no
+/// `${{ insert }}` key, since GitHub's schema gives it no contexts.
+static WORKFLOW_DEFAULTS_KEYS: [KeySpec<DefaultsSection>; 1] = [KeySpec {
     name: "run",
-    parse: |p, d, e| d.run = p.parse_defaults_run(e),
+    parse: |p, d, e| d.run = p.parse_defaults_run(e, Inserts::No),
+}];
+
+/// The keys of a job's `defaults`.
+static JOB_DEFAULTS_KEYS: [KeySpec<DefaultsSection>; 1] = [KeySpec {
+    name: "run",
+    parse: |p, d, e| d.run = p.parse_defaults_run(e, Inserts::MappingOrExpression),
 }];
 
 /// The keys of `defaults.run`.
@@ -157,8 +165,10 @@ impl<'a> Parser<'a, '_> {
         }
     }
 
-    /// Parses `defaults`, the reference's `parseDefaults`: a mapping whose
-    /// only key is `run`, with `shell` and `working-directory`.
+    /// Parses `defaults` of a workflow, or of a job if `job`, the
+    /// reference's `parseDefaults`: a mapping whose only key is `run`, with
+    /// `shell` and `working-directory`. Only a job's `run` accepts
+    /// `${{ insert }}` keys.
     ///
     /// Without a `run` key it reports `"defaults" section should have "run"
     /// section` at the value. A `run` key with an invalid value counts as
@@ -167,10 +177,16 @@ impl<'a> Parser<'a, '_> {
         &mut self,
         key: Key<'a>,
         node: &'a Node,
+        job: bool,
     ) -> Field<'a, Defaults<'a>> {
         let mut defaults = Defaults::default();
+        let keys = if job {
+            &JOB_DEFAULTS_KEYS
+        } else {
+            &WORKFLOW_DEFAULTS_KEYS
+        };
         let entries = self.parse_mapping(Label::Section("defaults"), node, false, true);
-        self.parse_keys(entries, "defaults", &DEFAULTS_KEYS, &mut defaults);
+        self.parse_keys(entries, "defaults", keys, &mut defaults);
         if !defaults.run.is_present() {
             self.error(
                 &MISSING_REQUIRED_KEY,
@@ -181,10 +197,16 @@ impl<'a> Parser<'a, '_> {
         mapping_field(key, node, defaults)
     }
 
-    fn parse_defaults_run(&mut self, entry: &MapEntry<'a>) -> Field<'a, DefaultsRun<'a>> {
+    fn parse_defaults_run(
+        &mut self,
+        entry: &MapEntry<'a>,
+        inserts: Inserts,
+    ) -> Field<'a, DefaultsRun<'a>> {
         let mut run = DefaultsRun::default();
-        let entries = self.parse_mapping(Label::Section("run"), entry.value, false, true);
-        self.parse_keys(entries, "run", &DEFAULTS_RUN_KEYS, &mut run);
+        let mapping =
+            self.parse_mapping_with(Label::Section("run"), entry.value, false, true, inserts);
+        self.parse_keys(mapping.entries, "run", &DEFAULTS_RUN_KEYS, &mut run);
+        run.inserts = mapping.inserts.into();
         mapping_field(entry.key, entry.value, run)
     }
 
@@ -193,7 +215,8 @@ impl<'a> Parser<'a, '_> {
     /// A scalar is the group, with no key. Otherwise it is a mapping with
     /// `group` and `cancel-in-progress`. Without a `group` key it reports
     /// `group name is missing in "concurrency" section` at the section's
-    /// key, also when the value is not a mapping.
+    /// key, also when the value is not a mapping, unless the mapping has an
+    /// `${{ insert }}` expression, which may hold the group.
     pub(crate) fn parse_concurrency(
         &mut self,
         key: Key<'a>,
@@ -211,9 +234,9 @@ impl<'a> Parser<'a, '_> {
             };
         }
         let mut concurrency = Concurrency::default();
-        let entries = self.parse_mapping(Label::Section("concurrency"), node, false, true);
-        self.parse_keys(entries, "concurrency", &CONCURRENCY_KEYS, &mut concurrency);
-        if !concurrency.group.is_present() {
+        concurrency.inserts =
+            self.parse_section_keys(node, "concurrency", &CONCURRENCY_KEYS, &mut concurrency);
+        if !concurrency.group.is_present() && concurrency.inserts.is_empty() {
             self.error(
                 &MISSING_REQUIRED_KEY,
                 key.span,
@@ -228,7 +251,8 @@ impl<'a> Parser<'a, '_> {
     /// A scalar is the name, with no key. Otherwise it is a mapping with
     /// `name`, `url`, and `deployment`. Without a `name` key it reports
     /// `name is missing in "environment" section` at the section's key,
-    /// also when the value is not a mapping.
+    /// also when the value is not a mapping, unless the mapping has an
+    /// `${{ insert }}` expression, which may hold the name.
     pub(crate) fn parse_environment(
         &mut self,
         key: Key<'a>,
@@ -246,9 +270,9 @@ impl<'a> Parser<'a, '_> {
             };
         }
         let mut environment = Environment::default();
-        let entries = self.parse_mapping(Label::Section("environment"), node, false, true);
-        self.parse_keys(entries, "environment", &ENVIRONMENT_KEYS, &mut environment);
-        if !environment.name.is_present() {
+        environment.inserts =
+            self.parse_section_keys(node, "environment", &ENVIRONMENT_KEYS, &mut environment);
+        if !environment.name.is_present() && environment.inserts.is_empty() {
             self.error(
                 &MISSING_REQUIRED_KEY,
                 key.span,
@@ -399,16 +423,19 @@ mod tests {
 
     fn defaults(text: &str) -> Vec<String> {
         section(text, |p, key, node| {
-            field(&p.parse_defaults(key, node), |defaults: &Defaults<'_>| {
-                let run = field(&defaults.run, |run| {
-                    format!(
-                        "shell {} working-directory {}",
-                        string(&run.shell),
-                        string(&run.working_directory)
-                    )
-                });
-                format!("run {run}")
-            })
+            field(
+                &p.parse_defaults(key, node, false),
+                |defaults: &Defaults<'_>| {
+                    let run = field(&defaults.run, |run| {
+                        format!(
+                            "shell {} working-directory {}",
+                            string(&run.shell),
+                            string(&run.working_directory)
+                        )
+                    });
+                    format!("run {run}")
+                },
+            )
         })
     }
 

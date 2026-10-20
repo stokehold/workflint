@@ -157,9 +157,13 @@ impl<'a> Rule<'a> for Expression<'a> {
         self.loose_steps = false;
         let strategy = job.strategy.value();
         if let Some(strategy) = strategy {
-            let matrix = self
+            let mut matrix = self
                 .at("jobs.<job_id>.strategy")
                 .matrix(cx, &strategy.matrix);
+            // An `${{ insert }}` expression in `strategy` may hold the whole matrix.
+            if !strategy.inserts.is_empty() && !strategy.matrix.is_present() {
+                matrix = Some((*loose()).clone());
+            }
             if let (Some(matrix), Some(env)) = (matrix, &mut self.job) {
                 env.set_matrix(matrix);
             }
@@ -167,7 +171,12 @@ impl<'a> Rule<'a> for Expression<'a> {
 
         self.at("jobs.<job_id>.name").string(cx, &job.name);
         self.at("").strings(cx, &job.needs);
-        if let Some(Runner { labels, group }) = job.runs_on.value() {
+        if let Some(Runner {
+            labels,
+            group,
+            inserts,
+        }) = job.runs_on.value()
+        {
             let runs_on = self.at("jobs.<job_id>.runs-on");
             match labels {
                 Value::Expression { expr, .. } => runs_on.runs_on(cx, expr),
@@ -179,6 +188,9 @@ impl<'a> Rule<'a> for Expression<'a> {
                 Value::Absent | Value::Invalid { .. } => {}
             }
             runs_on.string(cx, group);
+            for expr in inserts.iter() {
+                runs_on.object(cx, expr, "runs-on");
+            }
         }
         concurrency(cx, &self.at("jobs.<job_id>.concurrency"), &job.concurrency);
         self.env_vars(cx, &job.env, "jobs.<job_id>.env");
@@ -188,6 +200,9 @@ impl<'a> Rule<'a> for Expression<'a> {
             let strategy_env = self.at("jobs.<job_id>.strategy");
             strategy_env.bool(cx, &strategy.fail_fast);
             strategy_env.number(cx, &strategy.max_parallel, "integer value");
+            for expr in strategy.inserts.iter() {
+                strategy_env.object(cx, expr, "strategy");
+            }
         }
         self.at("jobs.<job_id>.continue-on-error")
             .bool(cx, &job.continue_on_error);
@@ -200,6 +215,7 @@ impl<'a> Rule<'a> for Expression<'a> {
             self.container(
                 cx,
                 container,
+                "container",
                 "jobs.<job_id>.container",
                 "jobs.<job_id>.container",
             );
@@ -215,6 +231,7 @@ impl<'a> Rule<'a> for Expression<'a> {
             self.container(
                 cx,
                 &service.value,
+                "services",
                 "jobs.<job_id>.services",
                 "jobs.<job_id>.services.<service_id>",
             );
@@ -288,6 +305,9 @@ impl<'a> Rule<'a> for Expression<'a> {
             self.at("jobs.<job_id>.environment.url")
                 .string(cx, &environment.url);
             env.bool(cx, &environment.deployment);
+            for expr in environment.inserts.iter() {
+                env.object(cx, expr, "environment");
+            }
         }
         let outputs = self.at("jobs.<job_id>.outputs.<output_id>");
         for output in job.outputs.value().into_iter().flatten() {
@@ -509,20 +529,36 @@ impl Expression<'_> {
         }
     }
 
-    /// Checks a container or a service. `key` is the workflow key of the container's strings,
-    /// and `child` the prefix of the keys of its `credentials` and `env`.
-    fn container(&self, cx: &mut Context<'_>, container: &Container<'_>, key: &str, child: &str) {
+    /// Checks a container or a service. `section` names the container's mapping in messages,
+    /// `key` is the workflow key of the container's strings, and `child` the prefix of the keys
+    /// of its `credentials` and `env`.
+    fn container(
+        &self,
+        cx: &mut Context<'_>,
+        container: &Container<'_>,
+        section: &str,
+        key: &str,
+        child: &str,
+    ) {
         let checker = self.at(key);
         checker.string(cx, &container.image);
         let credentials = self.at(&format!("{child}.credentials"));
         match &container.credentials {
             Value::Expression { expr, .. } => credentials.object(cx, expr, "credentials"),
             Value::Literal {
-                value: Credentials { username, password },
+                value:
+                    Credentials {
+                        username,
+                        password,
+                        inserts,
+                    },
                 ..
             } => {
                 credentials.string(cx, username);
                 credentials.string(cx, password);
+                for expr in inserts.iter() {
+                    credentials.object(cx, expr, "credentials");
+                }
             }
             Value::Absent | Value::Invalid { .. } => {}
         }
@@ -532,6 +568,9 @@ impl Expression<'_> {
         checker.string(cx, &container.options);
         checker.string(cx, &container.command);
         checker.string(cx, &container.entrypoint);
+        for expr in container.inserts.iter() {
+            checker.object(cx, expr, section);
+        }
     }
 
     /// Checks the call of a reusable workflow, the reference's `checkWorkflowCall`. Each value
@@ -794,6 +833,9 @@ fn defaults(cx: &mut Context<'_>, checker: &Checker, defaults: &Field<'_, Defaul
     if let Some(run) = defaults.value().and_then(|defaults| defaults.run.value()) {
         checker.string(cx, &run.shell);
         checker.string(cx, &run.working_directory);
+        for expr in run.inserts.iter() {
+            checker.object(cx, expr, "run");
+        }
     }
 }
 
@@ -801,6 +843,9 @@ fn concurrency(cx: &mut Context<'_>, checker: &Checker, concurrency: &Field<'_, 
     if let Some(concurrency) = concurrency.value() {
         checker.string(cx, &concurrency.group);
         checker.bool(cx, &concurrency.cancel_in_progress);
+        for expr in concurrency.inserts.iter() {
+            checker.object(cx, expr, "concurrency");
+        }
     }
 }
 

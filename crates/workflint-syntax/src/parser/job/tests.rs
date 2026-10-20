@@ -1147,3 +1147,115 @@ fn an_absent_key_is_absent() {
         },
     );
 }
+
+#[test]
+fn job_sections_keep_an_insert_expression_and_need_no_required_key() {
+    let text = "\
+on: push
+concurrency:
+  ${{ insert }}: ${{ fromJSON(vars.A) }}
+jobs:
+  test:
+    runs-on:
+      ${{ insert }}: ${{ fromJSON(vars.B) }}
+    strategy:
+      ${{ insert }}: ${{ fromJSON(vars.C) }}
+    concurrency:
+      ${{ insert }}: ${{ fromJSON(vars.D) }}
+    environment:
+      ${{ insert }}: ${{ fromJSON(vars.E) }}
+    defaults:
+      run:
+        ${{ insert }}: ${{ fromJSON(vars.F) }}
+    steps: [{run: a}]
+";
+    parsed(text, |workflow| {
+        let inserts = |exprs: &[crate::Expr<'_>]| -> Vec<String> {
+            exprs.iter().map(|e| e.source.value().to_owned()).collect()
+        };
+        let concurrency = workflow.concurrency.value().unwrap();
+        assert_eq!(inserts(&concurrency.inserts), ["${{ fromJSON(vars.A) }}"]);
+        let body = job(workflow, "test");
+        let runner = body.runs_on.value().unwrap();
+        assert!(!runner.labels.is_present());
+        assert_eq!(inserts(&runner.inserts), ["${{ fromJSON(vars.B) }}"]);
+        let strategy = body.strategy.value().unwrap();
+        assert_eq!(inserts(&strategy.inserts), ["${{ fromJSON(vars.C) }}"]);
+        let concurrency = body.concurrency.value().unwrap();
+        assert_eq!(inserts(&concurrency.inserts), ["${{ fromJSON(vars.D) }}"]);
+        let environment = body.environment.value().unwrap();
+        assert_eq!(inserts(&environment.inserts), ["${{ fromJSON(vars.E) }}"]);
+        let run = body.defaults.value().unwrap().run.value().unwrap();
+        assert_eq!(inserts(&run.inserts), ["${{ fromJSON(vars.F) }}"]);
+    });
+}
+
+#[test]
+fn the_entries_of_an_inserted_mapping_join_the_job_sections() {
+    let text = "\
+on: push
+jobs:
+  test:
+    runs-on:
+      ${{ insert }}: {labels: [linux, x64]}
+      group: g
+    strategy:
+      ${{ insert }}: {fail-fast: false}
+    concurrency:
+      ${{ insert }}: {group: ci}
+    environment:
+      ${{ insert }}: {name: production}
+      url: https://example.com
+    defaults:
+      run:
+        ${{ insert }}: {shell: bash}
+    steps: [{run: a}]
+";
+    parsed(text, |workflow| {
+        let body = job(workflow, "test");
+        let runner = body.runs_on.value().unwrap();
+        let labels: Vec<_> = runner.labels.literal().unwrap().iter().flatten().collect();
+        assert_eq!(
+            labels.iter().map(|l| l.value()).collect::<Vec<_>>(),
+            ["linux", "x64"]
+        );
+        assert_eq!(runner.group.value().map(Template::value), Some("g"));
+        assert_eq!(
+            body.strategy.value().unwrap().fail_fast.literal(),
+            Some(&false)
+        );
+        let group = &body.concurrency.value().unwrap().group;
+        assert_eq!(group.value().map(Template::value), Some("ci"));
+        let environment = body.environment.value().unwrap();
+        assert_eq!(
+            environment.name.value().map(Template::value),
+            Some("production")
+        );
+        let run = body.defaults.value().unwrap().run.value().unwrap();
+        assert_eq!(run.shell.value().map(Template::value), Some("bash"));
+    });
+}
+
+#[test]
+fn an_insert_key_in_the_workflow_defaults_run_or_the_job_defaults_is_unexpected() {
+    let text = "\
+on: push
+defaults:
+  run:
+    ${{ insert }}: ${{ fromJSON(vars.A) }}
+jobs:
+  test:
+    runs-on: x
+    defaults:
+      ${{ insert }}: ${{ fromJSON(vars.B) }}
+    steps: [{run: a}]
+";
+    assert_eq!(
+        check(text),
+        [
+            r#"4:5: unexpected key "${{ insert }}" for "run" section. expected one of "shell", "working-directory" [unexpected-key]"#,
+            r#"9:7: "defaults" section should have "run" section [missing-required-key]"#,
+            r#"9:7: expected "run" key for "defaults" section but got "${{ insert }}" [unexpected-key]"#,
+        ]
+    );
+}

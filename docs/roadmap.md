@@ -127,6 +127,7 @@ Goal: every reference rule, with fine-grained rule IDs. Start with M4.1, which m
 - M4.26 Match the reference on every M4 fixture and the corpus [#163](https://github.com/stokehold/workflint/issues/163)
 - M4.27 Report a `}}` that has no opening `${{` [#164](https://github.com/stokehold/workflint/issues/164)
 - M4.28 Accept `${{ insert }}` as a mapping key [#165](https://github.com/stokehold/workflint/issues/165)
+- M4.28b Accept `${{ insert }}` in `strategy`, containers, and the other mappings with fixed keys [#215](https://github.com/stokehold/workflint/issues/215)
 - M4.29 Suggest the closest name for unknown contexts, properties, and functions [#166](https://github.com/stokehold/workflint/issues/166)
 - M4.30 Label diagnostics inside an anchored subtree with the alias that used it [#167](https://github.com/stokehold/workflint/issues/167)
 - M4.31 Report the head branch and head commit of `workflow_run` as untrusted input [#168](https://github.com/stokehold/workflint/issues/168)

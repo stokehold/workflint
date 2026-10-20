@@ -6,7 +6,7 @@
 
 `credentials` of a container or service lacks `username` or `password`.
 
-A `credentials` value that is one `${{ }}` expression is not checked. The parser drops incomplete credentials, so the rules do not check them.
+A `credentials` value that is one `${{ }}` expression is not checked, and neither is a mapping with an `${{ insert }}` expression, which may hold the missing key. The parser drops incomplete credentials, so the rules do not check them.
 
 ## Why
 
@@ -46,3 +46,7 @@ jobs:
     steps:
       - run: ./test.sh
 ```
+
+## Differences from actionlint
+
+- [`${{ insert }}` as a mapping key](../differences.md#insert-mapping-key)
