@@ -305,6 +305,12 @@ type: array<any>, constant: false
 1:1: "github.event.workflow_run.head_repository.description" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
 '''
 
+# The predicates of case() that are not booleans, in the cases and in the
+# generated expressions.
+[[added_error]]
+anchor = "case-predicate-type"
+message = "case() predicate must evaluate to a boolean value but "
+
 [[type]]
 anchor = "platform-data-updates"
 upstream = "{action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string}"

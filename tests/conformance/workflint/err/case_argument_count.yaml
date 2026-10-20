@@ -5,7 +5,7 @@ jobs:
     steps:
       # Two pairs without a default
       - run: echo ${{ case(github.ref == 'refs/heads/main', 'prod', github.event_name == 'pull_request', 'preview') }}
-      # One pair and a value in place of the default
+      # One pair and a value in place of the default, so 'dev' is a predicate
       - run: echo ${{ case(github.ref == 'refs/heads/main', 'prod', 'dev', 'test') }}
       # OK: two pairs and a default
       - run: echo ${{ case(github.ref == 'refs/heads/main', 'prod', github.event_name == 'pull_request', 'preview', 'dev') }}

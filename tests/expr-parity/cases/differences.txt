@@ -27,6 +27,9 @@ format('{0}{1}', matrix.targets.*.name, matrix.targets.name)
 # expression-nesting-limit
 (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!true
+# case-predicate-type
+case(github.ref, 'a', 'b')
+case(github.ref == 'a', 'a', 1, 'b', 'c')
 # bom-before-string-literal changes only the value of a string literal after a
 # byte order mark, which no outcome shows. These have no record, and check the
 # positions after the mark.

@@ -396,11 +396,22 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### `bool` no longer accepts every type
 
 - Upstream: any type is assignable to `bool` (`expr_type.go:123-128`). As a result, a string or number passed in `with:` to a `boolean` input of a local reusable workflow is never reported, and the type checks on `!`, `if:` and the `case()` predicate can never fire.
-- workflint: only `bool` and `any` are assignable to `bool` in assignments, which covers `with:` values for `boolean` inputs and function parameters. Where GitHub converts values to booleans, in `if:`, `!`, `&&`, `||` and the `case()` predicate, every type is still accepted.
+- workflint: only `bool` and `any` are assignable to `bool` in assignments, which covers `with:` values for `boolean` inputs. Where GitHub converts values to booleans, in `if:`, `!`, `&&`, and `||`, every type is still accepted. GitHub does not convert the predicates of `case()`, which [The predicate of `case()` must be a boolean](#case-predicate-type) covers.
 - Why: GitHub rejects a non-boolean value for a `boolean` input of a reusable workflow at run time.
 - Upstream issue: none.
 - Milestone: M3, M4.
 - Status: implemented in `workflint-expr`, and in the output from M4.6: `if:` and `!` accept every type (`workflint/ok/if_condition_any_type.yaml`). The `with:` check is implemented since M4.10, and adds a line to `projects/workflow_call_input_type_check` for a string passed to a `boolean` input.
+
+<a id="case-predicate-type"></a>
+### The predicate of `case()` must be a boolean
+
+- Upstream: the predicates of `case()` are not type-checked. The first parameter is `bool`, which accepts every type ([`bool` no longer accepts every type](#bool-assignability)), and the later ones are `any`. `${{ case(github.ref, 'a', 'b') }}` and `${{ case('x', 'a', 'b') }}` are not reported.
+- workflint: the predicates of `case()` are the odd-numbered arguments, except the last one when it is the default. Each predicate whose type is known and is not `bool` is reported with `wrong-argument-type`, as in `case() predicate must evaluate to a boolean value but the 1st argument has type "string"`. A predicate of type `any` is accepted. A call with an even number of arguments has no default, so its last odd-numbered argument is a predicate too, and `case-argument-count` reports the count.
+- Why: GitHub does not convert a predicate of `case()` to a boolean as it converts `if:`. Both the runner and GitHub's expression language service fail the call with `case predicate must evaluate to a boolean value`.
+- Upstream issue: none.
+- Milestone: M4.39.
+- Status: implemented.
+- Fixtures: `workflint/err/case_predicate_type`, and one more line in `workflint/err/case_argument_count`, whose `'dev'` is in the place of a predicate. The output of no vendored fixture changes, and no corpus file calls `case()`. An `[[added_error]]` record in `tests/expr-parity/allowed-differences.toml` explains each expression in `tests/expr-parity/` whose outcome changes, the generated ones included.
 
 <a id="literal-index-case"></a>
 ### Case-insensitive literal index keys
@@ -782,12 +793,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Expressions in `runs-on` labels are evaluated
 
 - Upstream: the `runner-label` rule checks a label with `${{ }}` only when it is exactly `${{ matrix.<prop> }}`, through the values of the matrix row and of `include` (`rule_runner_label.go:235`). It skips every other label with `${{ }}`, such as `${{ matrix.os }}-latest` or `${{ github.repository == 'o/r' && 'self-hosted' || 'ubuntu-20.04' }}`.
-- workflint: `${{ matrix.<prop> }}` keeps the upstream behaviour. Any other label with `${{ }}` is evaluated to the strings it can be, and each string is checked and reported at the label. The evaluator knows string, number, boolean, and null literals, `matrix.<prop>`, `format()`, `&&`, `||`, `!`, `==`, and `!=`, with GitHub's truthiness and comparison rules, and text around `${{ }}`. Any other expression is unknown. An unknown condition still lets `cond && 'a' || 'b'` be `a` or `b`. A label with a value that cannot be worked out is skipped, as upstream skips it.
+- workflint: `${{ matrix.<prop> }}` keeps the upstream behaviour. Any other label with `${{ }}` is evaluated to the strings it can be, and each string is checked and reported at the label. The evaluator knows string, number, boolean, and null literals, `matrix.<prop>`, `format()`, `case()`, `&&`, `||`, `!`, `==`, and `!=`, with GitHub's truthiness and comparison rules, and text around `${{ }}`. Any other expression is unknown. An unknown condition still lets `cond && 'a' || 'b'` and `case(cond, 'a', 'b')` be `a` or `b`. A `case()` call that GitHub rejects, with an even number of arguments or a predicate that is not a boolean, is unknown. A label with a value that cannot be worked out is skipped, as upstream skips it.
 - The values of `matrix.<prop>` come from the combinations of the matrix as GitHub expands them: every combination of the rows, without those that `exclude` matches, then `include`. So `${{ matrix.os }}-${{ matrix.version }}` pairs each `os` only with the `version` of the same combination. A matrix value that is a mapping, a sequence, or a scalar with `${{ }}` is unknown. The evaluator gives up on a matrix that is written as an expression, that has a row, `include`, or `exclude` written as an expression, or that has more than 256 combinations, and on a label that can have more than 256 strings. GitHub runs at most 256 jobs from one matrix.
 - Numbers become text as GitHub prints them, so the matrix value `3.10` gives `3.1`. A number that GitHub would print with an exponent or with more than 15 significant digits is unknown.
 - Why: GitHub queues a job whose labels no runner has until it times out. A retired image behind a condition, as in `... && 'self-hosted' || 'ubuntu-20.04'`, fails in forks and is never reported upstream.
 - Upstream issue: #656, #499.
-- Milestone: M4.32.
+- Milestone: M4.32, and M4.39 for `case()`.
 - Status: implemented.
 - Fixtures: `workflint/err/runs_on_expressions` and `workflint/ok/runs_on_expressions.yaml`. The output of no vendored fixture changes.
 - Corpus: `apache_airflow_.github_workflows_build-images.yml` (two jobs) and `apache_airflow_.github_workflows_ci.yml` report `ubuntu-20.04`. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).

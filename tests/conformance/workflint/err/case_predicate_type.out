@@ -1,0 +1,3 @@
+test.yaml:7:28: case() predicate must evaluate to a boolean value but the 1st argument has type "string" [expression]
+test.yaml:9:28: case() predicate must evaluate to a boolean value but the 1st argument has type "string" [expression]
+test.yaml:11:69: case() predicate must evaluate to a boolean value but the 3rd argument has type "number" [expression]

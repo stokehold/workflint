@@ -45,7 +45,19 @@ upstream = "parse error at 1:1: parsing invalid integer literal ..."
 workflint = "type: number, constant: true"
 ```
 
-`anchor` must exist in `docs/differences.md`. `setups` is optional. Without it, the record applies in every setup. `upstream` and `workflint` are the outcomes as the report prints them: `parse error at LINE:COLUMN: MESSAGE`, or `type: TYPE, constant: BOOL` followed by one `LINE:COLUMN: MESSAGE` line per error. A record explains a difference only if both outcomes match it exactly. The command fails on a difference that no record explains, and on a record that explains no difference.
+`anchor` must exist in `docs/differences.md`. `setups` is optional. Without it, the record applies in every setup. `upstream` and `workflint` are the outcomes as the report prints them: `parse error at LINE:COLUMN: MESSAGE`, or `type: TYPE, constant: BOOL` followed by one `LINE:COLUMN: MESSAGE` line per error. A record explains a difference only if both outcomes match it exactly.
+
+A new error that workflint reports wherever an expression has some construct, such as a `case()` predicate that is not a boolean, can change the outcome of many generated expressions. One `[[added_error]]` record explains all of them:
+
+```toml
+[[added_error]]
+anchor = "case-predicate-type"
+message = "case() predicate must evaluate to a boolean value but "
+```
+
+It applies to every expression in every setup. A difference is explained when the outcomes are equal once workflint's errors whose message starts with `message` are removed. Any other change in the same outcome still needs a `[[difference]]` record, and an expression that has both kinds of difference is unexplained.
+
+The command fails on a difference that no record explains, and on a record of either kind that explains no difference.
 
 A `[[type]]` record covers a type that workflint prints differently wherever it appears, such as a context with an added property:
 
@@ -56,6 +68,6 @@ upstream = "{check_run_id: number; ...; status: string}"
 workflint = "{check_run_id: number; ...; status: string; workflow_file_path: string; ...}"
 ```
 
-When no `[[difference]]` record explains a difference, the command replaces each `upstream` type of the `[[type]]` records in the reference's outcome with its `workflint` type. The difference is explained if the result equals workflint's outcome. A `[[type]]` record that explains no difference fails the command too.
+When no `[[difference]]` record explains a difference, the command replaces each `upstream` type of the `[[type]]` records in the reference's outcome with its `workflint` type. The difference is explained if the result equals workflint's outcome, or workflint's outcome without the errors of the `[[added_error]]` records. A `[[type]]` record that explains no difference fails the command too.
 
 `cases/differences.txt` holds an expression for each documented difference of the expression language that a setup can show, so that the documented outcome cannot change unnoticed.

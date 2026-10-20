@@ -120,8 +120,8 @@ impl Ty {
     }
 
     /// Returns whether a value of this type can be converted to a boolean, as GitHub does in
-    /// `if:`, for the operands of `!`, `&&`, and `||`, and for the predicates of `case()`.
-    /// Every type can.
+    /// `if:` and for the operands of `!`, `&&`, and `||`. Every type can. The predicates of
+    /// `case()` are not converted (`docs/differences.md#case-predicate-type`).
     #[must_use]
     pub fn converts_to_bool(&self) -> bool {
         match self {

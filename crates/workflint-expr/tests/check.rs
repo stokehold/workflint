@@ -117,6 +117,13 @@ fn needs_foo() -> ObjectTy {
     )])
 }
 
+/// The message for a predicate of `case()` whose type is `ty`.
+fn case_predicate(ordinal: &str, ty: &str) -> String {
+    format!(
+        "case() predicate must evaluate to a boolean value but the {ordinal} argument has type \"{ty}\""
+    )
+}
+
 fn env_with_matrix(matrix: ObjectTy) -> TypeEnv {
     let mut env = open_env();
     env.set_matrix(matrix);
@@ -543,21 +550,6 @@ mod semantics_check_ok {
     #[test]
     fn case_with_multiple_predicates() {
         assert_eq!(ty("case(true, 1, false, 2, 3)"), Ty::Any);
-    }
-
-    #[test]
-    fn case_with_number_predicate_coerced_to_bool() {
-        assert_eq!(ty("case(1, 'a', 'b')"), Ty::Any);
-    }
-
-    #[test]
-    fn case_with_string_predicate_coerced_to_bool() {
-        assert_eq!(ty("case('yes', 'a', 'b')"), Ty::Any);
-    }
-
-    #[test]
-    fn case_with_null_predicate_coerced_to_bool() {
-        assert_eq!(ty("case(null, 'a', 'b')"), Ty::Any);
     }
 
     #[test]
@@ -1929,38 +1921,119 @@ mod function_calls {
         );
     }
 
+    /// `'c'` is in the place of a predicate, so its type is reported too.
     #[test]
     fn case_with_a_default_in_place_of_the_last_value_has_an_even_count() {
         assert_eq!(
             errors("case(true, 'a', false, 'b', 'c', 'd')"),
+            [
+                error(&WRONG_ARGUMENT_TYPE, 28, case_predicate("5th", "string")),
+                error(
+                    &CASE_ARGUMENT_COUNT,
+                    0,
+                    "case() requires an odd number of arguments (pred/value pairs + default) but got 6"
+                ),
+            ]
+        );
+    }
+
+    /// `docs/differences.md#case-predicate-type`. GitHub fails a `case()` whose predicate is
+    /// not a boolean.
+    #[test]
+    fn case_predicate_of_a_known_type_other_than_bool_is_reported() {
+        assert_eq!(
+            errors("case(github.ref, 'a', 'b')"),
             [error(
-                &CASE_ARGUMENT_COUNT,
-                0,
-                "case() requires an odd number of arguments (pred/value pairs + default) but got 6"
+                &WRONG_ARGUMENT_TYPE,
+                5,
+                case_predicate("1st", "string")
+            )]
+        );
+        assert_eq!(
+            errors("case('x', 'a', 'b')"),
+            [error(
+                &WRONG_ARGUMENT_TYPE,
+                5,
+                case_predicate("1st", "string")
             )]
         );
     }
 
-    /// `docs/differences.md#bool-assignability`. GitHub converts the predicate to a boolean, so
-    /// it accepts every type, while a `bool` parameter of a reusable workflow does not.
+    /// Every predicate is checked, not only the first, and the default is not a predicate.
     #[test]
-    fn case_predicate_accepts_every_type() {
+    fn every_case_predicate_is_checked_and_the_default_is_not() {
         let env = env_with_matrix(strict([
             ("object", Ty::empty_strict()),
             ("array", Ty::array(Ty::Number)),
         ]));
+        assert_eq!(
+            errors_in(
+                &env,
+                "case(true, 1, 0, 2, null, 3, matrix.object, 4, matrix.array, 5, 'default')"
+            ),
+            [
+                error(&WRONG_ARGUMENT_TYPE, 14, case_predicate("3rd", "number")),
+                error(&WRONG_ARGUMENT_TYPE, 20, case_predicate("5th", "null")),
+                error(&WRONG_ARGUMENT_TYPE, 29, case_predicate("7th", "{}")),
+                error(
+                    &WRONG_ARGUMENT_TYPE,
+                    47,
+                    case_predicate("9th", "array<number>")
+                ),
+            ]
+        );
+    }
+
+    /// A predicate whose type is `bool` or `any` can be true or false.
+    #[test]
+    fn case_predicate_of_type_bool_or_any_is_not_reported() {
         for input in [
-            "case(env, 1, 2)",
-            "case(matrix.object, 1, 2)",
-            "case(matrix.array, 1, 2)",
+            "case(github.ref == 'a', 1, 2)",
+            "case(true, 1, !github.ref, 2, 3)",
+            "case(fromJSON(github.ref), 1, contains(github.ref, 'a'), 2, 3)",
         ] {
-            assert_eq!(ty_in(&env, input), Ty::Any, "{input}");
+            assert_eq!(errors(input), [], "{input}");
         }
+    }
+
+    /// A predicate of a call with an even number of arguments is checked too. The last value
+    /// follows a predicate, so it is not one.
+    #[test]
+    fn case_predicate_is_checked_when_the_default_is_missing() {
+        assert_eq!(
+            errors("case('x', 'a', 1, 'b')"),
+            [
+                error(&WRONG_ARGUMENT_TYPE, 5, case_predicate("1st", "string")),
+                error(&WRONG_ARGUMENT_TYPE, 15, case_predicate("3rd", "number")),
+                error(
+                    &CASE_ARGUMENT_COUNT,
+                    0,
+                    "case() requires an odd number of arguments (pred/value pairs + default) but got 4"
+                ),
+            ]
+        );
     }
 }
 
 mod differences {
     use super::*;
+
+    /// `docs/differences.md#case-predicate-type`. The reference's `semantics_check_ok` has these
+    /// as `case` with a number, string, or null predicate coerced to bool.
+    #[test]
+    fn case_predicate_that_the_reference_coerces_to_bool_is_reported() {
+        for (input, ty) in [
+            ("case(1, 'a', 'b')", "number"),
+            ("case('yes', 'a', 'b')", "string"),
+            ("case(null, 'a', 'b')", "null"),
+        ] {
+            assert_eq!(
+                errors(input),
+                [error(&WRONG_ARGUMENT_TYPE, 5, case_predicate("1st", ty))],
+                "{input}"
+            );
+        }
+    }
 
     /// `docs/differences.md#object-filter-mutation`. The reference marks the shared type of
     /// `matrix.os` as filtered while it checks the first expression.

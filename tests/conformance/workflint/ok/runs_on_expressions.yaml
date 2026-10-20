@@ -34,3 +34,11 @@ jobs:
     runs-on: ${{ github.event.inputs.platform || 'ubuntu' }}-latest
     steps:
       - run: echo
+  case:
+    strategy:
+      matrix:
+        os: [ubuntu, windows]
+    # In the `windows` combination the label is `windows-latest`.
+    runs-on: ${{ case(matrix.os == 'windows', 'windows-latest', format('{0}-latest', matrix.os)) }}
+    steps:
+      - run: echo
