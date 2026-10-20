@@ -92,7 +92,7 @@ pub static RUNNER_PROVIDERS: &[RunnerProvider] = &[
     RunnerProvider {
         name: "Namespace",
         source: "https://namespace.so/docs/reference/github-actions/runner-configuration",
-        retrieved: "2026-10-19",
+        retrieved: "2026-10-20",
         // `nscloud-{os}-{arch}-{shape}` with optional `-with-*` suffixes. The OS names of macOS
         // contain `-`, as `macos-tahoe-slim` does, so the rest of the label is not checked.
         labels: ProviderLabels::Patterns(&[
@@ -101,6 +101,16 @@ pub static RUNNER_PROVIDERS: &[RunnerProvider] = &[
             ("nscloud-macos-*", MACOS),
             ("namespace-profile-*", None),
             ("namespace-features:*", None),
+            // Labels that configure the runner next to the machine label.
+            ("nscloud-cache-size-#gb", None),
+            ("nscloud-cache-tag-*", None),
+            ("nscloud-cache-allow-commit-from-*", None),
+            ("nscloud-cache-exp-do-not-commit", None),
+            ("nscloud-container-image-cache", None),
+            ("nscloud-git-mirror-#gb", None),
+            ("nscloud-runner-tool-cache-#gb", None),
+            ("nscloud-in-runner-builder", None),
+            ("nscloud-no-remote-builders", None),
         ]),
     },
     RunnerProvider {
@@ -215,17 +225,33 @@ fn is_key_value_label(label: &str, keys: &[&str]) -> bool {
 /// that the words of the expression do not count.
 #[must_use]
 pub fn runner_label_os(label: &str) -> Option<RunnerOs> {
+    label_os(label).map(|(os, _)| os)
+}
+
+/// How a label names its system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OsSource {
+    /// A reference prefix or a provider pattern.
+    Known,
+    /// The label's words.
+    Words,
+}
+
+/// Returns the system that `label` names and how, as [`runner_label_os`] describes.
+fn label_os(label: &str) -> Option<(RunnerOs, OsSource)> {
     if let Some(os) = reference_label_os(label) {
-        return Some(os);
+        return Some((os, OsSource::Known));
     }
     if let Some(ProviderLabel { os: Some(os), .. }) = runner_provider(label) {
-        return Some(os);
+        return Some((os, OsSource::Known));
     }
     let mut words = label
         .split(|c: char| !(c.is_ascii_alphanumeric() || c == '.'))
         .filter_map(word_os);
     let first = words.next()?;
-    words.all(|os| os == first).then_some(first)
+    words
+        .all(|os| os == first)
+        .then_some((first, OsSource::Words))
 }
 
 /// The reference's `getPlatformFromRunner` for one label. The reference does not tell macOS
@@ -294,15 +320,18 @@ pub struct ResolvedRunner {
 ///
 /// A `self-hosted` label makes the runner self-hosted. Otherwise a GitHub-hosted or provider
 /// label makes it hosted, by the first such label, and a self-hosted label for a system or an
-/// architecture makes it self-hosted. The system is the one that the labels name, or `None` when
-/// they name none or two.
+/// architecture makes it self-hosted. The system is the one that the labels with a reference
+/// prefix or a provider pattern name. When no label has one, it is the one that the words of the
+/// labels name. It is `None` when the labels name none or two, so in
+/// `[self-hosted, windows, wsl-ubuntu]` the system is Windows, and in
+/// `[self-hosted, wsl-ubuntu, build-windows]` it is `None`.
 #[must_use]
 pub fn resolve_runner<'a>(labels: impl IntoIterator<Item = Option<&'a str>>) -> ResolvedRunner {
     let mut self_hosted = false;
     let mut hosted = None;
     let mut preset = false;
-    let mut os = None;
-    let mut os_conflict = false;
+    let mut known_os = NamedOs::default();
+    let mut word_os = NamedOs::default();
     for label in labels.into_iter().flatten() {
         if eq_go_fold(label, "self-hosted") {
             self_hosted = true;
@@ -323,9 +352,10 @@ pub fn resolve_runner<'a>(labels: impl IntoIterator<Item = Option<&'a str>>) -> 
         {
             preset = true;
         }
-        if let Some(named) = runner_label_os(label) {
-            os_conflict |= os.is_some_and(|os| os != named);
-            os = Some(named);
+        match label_os(label) {
+            Some((os, OsSource::Known)) => known_os.add(os),
+            Some((os, OsSource::Words)) => word_os.add(os),
+            None => {}
         }
     }
     let kind = if self_hosted {
@@ -337,8 +367,34 @@ pub fn resolve_runner<'a>(labels: impl IntoIterator<Item = Option<&'a str>>) -> 
     } else {
         RunnerKind::Unknown
     };
+    let os = if known_os.os.is_some() {
+        known_os
+    } else {
+        word_os
+    };
     ResolvedRunner {
         kind,
-        os: if os_conflict { None } else { os },
+        os: os.single(),
+    }
+}
+
+/// The systems that some labels name.
+#[derive(Debug, Default)]
+struct NamedOs {
+    /// The last system named.
+    os: Option<RunnerOs>,
+    /// Whether two of the labels name different systems.
+    conflict: bool,
+}
+
+impl NamedOs {
+    fn add(&mut self, named: RunnerOs) {
+        self.conflict |= self.os.is_some_and(|os| os != named);
+        self.os = Some(named);
+    }
+
+    /// The system the labels name, or `None` when they name none or two.
+    fn single(&self) -> Option<RunnerOs> {
+        if self.conflict { None } else { self.os }
     }
 }

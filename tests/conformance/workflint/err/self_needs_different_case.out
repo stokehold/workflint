@@ -1,0 +1,2 @@
+test.yaml:4:3: cyclic dependencies in "needs" job configurations are detected. detected cycle is "build" -> "build" [job-needs]
+test.yaml:8:24: property "build" is not defined in object type {} [expression]
