@@ -982,11 +982,13 @@ dependencies = [
 name = "workflint-rules"
 version = "0.0.1"
 dependencies = [
+ "codspeed-divan-compat",
  "workflint-data",
  "workflint-diagnostics",
  "workflint-expr",
  "workflint-syntax",
  "workflint-yaml",
+ "zip",
 ]
 
 [[package]]
