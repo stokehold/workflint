@@ -20,7 +20,7 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0014](0014-distribution-and-releases.md) | Distribution and release pipeline | accepted | |
 | [0015](0015-github-action.md) | Official GitHub Action | accepted | [0021](0021-supply-chain-and-ci-security.md) |
 | [0016](0016-agent-driven-development.md) | Agent-driven development process | accepted | [0020](0020-task-tracking-in-github-issues.md), [0028](0028-revisions-after-the-m1-m3-review.md), [0029](0029-rule-modules-and-descriptions.md) |
-| [0017](0017-licensing-and-attribution.md) | Licensing and attribution | accepted | [0025](0025-fuzz-workspace.md) |
+| [0017](0017-licensing-and-attribution.md) | Licensing and attribution | accepted | [0025](0025-fuzz-workspace.md), [0035](0035-code-ported-from-go.md) |
 | [0018](0018-toolchain-and-code-standards.md) | Rust toolchain and code standards | accepted | [0025](0025-fuzz-workspace.md), [0028](0028-revisions-after-the-m1-m3-review.md) |
 | [0019](0019-performance-targets.md) | Performance targets and tracking | accepted | [0028](0028-revisions-after-the-m1-m3-review.md) |
 | [0020](0020-task-tracking-in-github-issues.md) | Task tracking in GitHub issues | accepted | [0031](0031-agents-enable-auto-merge.md) |
@@ -38,3 +38,4 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0032](0032-diagnostic-help-text.md) | Diagnostic help text | accepted | |
 | [0033](0033-platform-data-updates-before-m7.md) | Platform data updates before M7 | accepted | |
 | [0034](0034-rules-of-the-driver.md) | Rules of the driver | accepted | |
+| [0035](0035-code-ported-from-go.md) | Code ported from Go | accepted | |

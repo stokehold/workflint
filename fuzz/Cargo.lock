@@ -314,9 +314,17 @@ dependencies = [
  "workflint-data",
  "workflint-diagnostics",
  "workflint-expr",
+ "workflint-gotemplate",
  "workflint-linter",
  "workflint-syntax",
  "workflint-yaml",
+]
+
+[[package]]
+name = "workflint-gotemplate"
+version = "0.0.1"
+dependencies = [
+ "unicode-general-category",
 ]
 
 [[package]]

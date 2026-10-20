@@ -38,6 +38,15 @@ libyaml
   The C library that unsafe-libyaml translates. The vendored parser in
   crates/workflint-yaml/src/libyaml/ derives from it.
 
+Go
+  https://go.dev
+  Copyright 2009 The Go Authors
+  BSD 3-Clause license
+  crates/workflint-gotemplate ports parts of the text/template,
+  text/template/parse, fmt, and strconv packages of Go 1.26.4. The crate
+  keeps Go's license as LICENSE-GO. xtask/go-template-golden runs the
+  unmodified packages to write the crate's expected test results.
+
 go-yaml v4.0.0-rc.3
   https://github.com/yaml/go-yaml
   Copyright (c) 2011-2019 Canonical Ltd

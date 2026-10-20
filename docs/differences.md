@@ -944,6 +944,23 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M5.
 - Status: planned.
 
+<a id="format-template-subset"></a>
+### What `-format` templates leave out of Go's template language
+
+- Upstream: `-format` takes any template that Go's `text/template` accepts, and Go prints its values.
+- workflint: the template engine, `workflint-gotemplate`, is a port of Go's and prints the same bytes for the templates in actionlint's docs and tests. It differs from Go in these places:
+  - `{{define}}`, `{{template}}`, and `{{block}}` are parse errors, such as `template: error formatter:1: {{define}} is not supported`.
+  - A complex number literal such as `1+2i` is a parse error.
+  - Parentheses and control structures (`if`, `range`, `with`) together nest at most 100 levels deep. Deeper nesting is the parse error `max expression depth exceeded`. Go allows 10,000 levels of parentheses and any depth of control structures.
+  - A pointer to a struct inside a list or map prints as `&{...}` in `printf "%v"`. Go prints its memory address, which changes from run to run.
+  - `printf` prints floats with `%b`, `%x`, and `%X` as a wrong verb, such as `%!x(float64=1.5)`. Go prints them in binary or hexadecimal notation.
+  - A string never holds invalid UTF-8. A `\xff` escape in a string literal, or `slice` through the middle of a character, gives U+FFFD where Go keeps the byte.
+  - `index` on a string returns an `int`, so an error names `int` where Go names `uint8`. `len` of a missing map key fails with `len of nil pointer`, the error of a nil value. Go fails with an error about a zero `reflect.Value`.
+- Why: the templates that users copy from actionlint use none of these. A limit on nesting keeps a crafted template from overflowing the stack, and printing addresses would make output differ between runs (ADR 0013).
+- Upstream issue: none.
+- Milestone: M5.7.
+- Status: implemented in `workflint-gotemplate`. The `-format` flag uses it from M5.8.
+
 <a id="log-interleaving"></a>
 ### Log lines do not interleave
 

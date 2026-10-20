@@ -16,6 +16,7 @@ libfuzzer-sys = "0.4.13"
 workflint-data = { path = "../crates/workflint-data" }
 workflint-diagnostics = { path = "../crates/workflint-diagnostics" }
 workflint-expr = { path = "../crates/workflint-expr" }
+workflint-gotemplate = { path = "../crates/workflint-gotemplate" }
 workflint-linter = { path = "../crates/workflint-linter" }
 workflint-syntax = { path = "../crates/workflint-syntax" }
 workflint-yaml = { path = "../crates/workflint-yaml" }
@@ -95,6 +96,13 @@ bench = false
 [[bin]]
 name = "expr_json"
 path = "fuzz_targets/expr_json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "gotemplate_parse"
+path = "fuzz_targets/gotemplate_parse.rs"
 test = false
 doc = false
 bench = false
