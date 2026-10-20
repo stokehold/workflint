@@ -83,7 +83,7 @@ fn lint_next<R>(cache: &LocalCache, path: &str, lint: impl Fn(&dyn LocalMetadata
     let path = cache.root().join(path);
     let view = cache.for_file(&path);
     let result = lint(&view);
-    match cache.commit(view.into_record()) {
+    match cache.commit(view.into_record()).unwrap() {
         None => result,
         Some(prior) => lint(&cache.for_file_after(&path, prior)),
     }
@@ -286,14 +286,14 @@ fn a_file_whose_answers_the_earlier_files_do_not_change_is_not_linted_again() {
     let cache = project.cache();
     let first = cache.for_file(&project.root().join("a.yaml"));
     found(first.action("./greet"));
-    assert!(cache.commit(first.into_record()).is_none());
+    assert!(cache.commit(first.into_record()).unwrap().is_none());
     // A missing action is nothing to check against, whichever file looks it up first.
     let second = cache.for_file(&project.root().join("b.yaml"));
     assert_eq!(second.action("./missing"), Lookup::None);
-    assert!(cache.commit(second.into_record()).is_none());
+    assert!(cache.commit(second.into_record()).unwrap().is_none());
     let third = cache.for_file(&project.root().join("c.yaml"));
     assert_eq!(third.action("./missing"), Lookup::None);
-    assert!(cache.commit(third.into_record()).is_none());
+    assert!(cache.commit(third.into_record()).unwrap().is_none());
 }
 
 #[test]
@@ -392,7 +392,7 @@ fn a_parse_error_is_returned_on_the_first_lookup_only() {
         )
     );
     assert_eq!(local.action("./broken"), Lookup::None);
-    assert!(cache.commit(local.into_record()).is_none());
+    assert!(cache.commit(local.into_record()).unwrap().is_none());
     assert_eq!(
         lint_next(&cache, "other.yaml", |other| other.action("./broken")),
         Lookup::None
@@ -524,6 +524,82 @@ fn a_reusable_workflow_spec_with_an_expression_or_not_local_finds_nothing() {
     assert_eq!(
         local.reusable_workflow("owner/repo/.github/workflows/reusable.yaml@v1"),
         Lookup::None
+    );
+}
+
+/// The files of the reference's `testdata/reusable_workflow_metadata/` that do not decode, with
+/// a part of the error of each, from `TestReusableWorkflowCacheFindMetadataError`
+/// (`reusable_workflow_test.go:379`).
+const BROKEN_REUSABLE_WORKFLOWS: [(&str, &str, &str); 5] = [
+    (
+        "broken.yaml",
+        "on:\n  workflow_call:\n    outputs: my cool outputs\n",
+        "error while parsing reusable workflow \"./broken.yaml\"",
+    ),
+    (
+        "no_hook.yaml",
+        "on: [push, pull_request]\n",
+        "\"workflow_call\" event trigger is not found in \"on:\"",
+    ),
+    (
+        "no_on.yaml",
+        "jobs:\n  test:\n    foo:\n      runs-on: ubuntu-latest\n      steps:\n        - run: echo ...\n",
+        "\"on:\" is not found",
+    ),
+    (
+        "broken_inputs.yaml",
+        "on:\n  workflow_call:\n    inputs:\n      validate: validate something when true\n",
+        "error while parsing reusable workflow \"./broken_inputs.yaml\"",
+    ),
+    (
+        "broken_secrets.yaml",
+        "on:\n  workflow_call:\n    secrets:\n      foo: my secret\n",
+        "error while parsing reusable workflow \"./broken_secrets.yaml\"",
+    ),
+];
+
+#[test]
+fn each_broken_reusable_workflow_of_the_reference_is_an_error_on_the_first_lookup_only() {
+    for (name, text, message) in BROKEN_REUSABLE_WORKFLOWS {
+        let project = Project::new();
+        project.write(name, text);
+        let cache = project.cache();
+        let local = linting_ci(&cache);
+        let spec = format!("./{name}");
+        let err = error(local.reusable_workflow(&spec)).to_string();
+        assert!(err.contains(message), "{name}: {err}");
+        assert_eq!(local.reusable_workflow(&spec), Lookup::None, "{name}");
+    }
+}
+
+#[test]
+fn files_linted_at_the_same_time_share_one_decoded_reusable_workflow() {
+    // `TestReusableWorkflowMetadataCacheFindOneMetadataConcurrently`
+    // (`reusable_workflow_test.go:780`).
+    let project = Project::new();
+    project.write(".github/workflows/reusable.yaml", REUSABLE);
+    let cache = project.cache();
+    let found: Vec<(Arc<ReusableWorkflowMetadata>, bool)> = std::thread::scope(|scope| {
+        let threads: Vec<_> = (0..10)
+            .map(|index| {
+                let cache = &cache;
+                scope.spawn(move || {
+                    let view = cache.for_file(&cache.root().join(format!("w{index}.yaml")));
+                    found(view.reusable_workflow("./.github/workflows/reusable.yaml"))
+                })
+            })
+            .collect();
+        threads
+            .into_iter()
+            .map(|thread| thread.join().unwrap())
+            .collect()
+    });
+    // Each view answers as if its file were the first to use the cache.
+    assert!(found.iter().all(|(_, first)| *first));
+    assert!(
+        found
+            .iter()
+            .all(|(metadata, _)| Arc::ptr_eq(metadata, &found[0].0))
     );
 }
 

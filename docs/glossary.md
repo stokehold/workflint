@@ -32,7 +32,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | platform data | Facts about GitHub that change over time: runner labels, permissions, events, contexts, popular actions (ADR 0011). |
 | runner provider | A company other than GitHub that hosts runners, such as Depot, which a job selects with the provider's labels (`RUNNER_PROVIDERS`). |
 | resolved runner | What a job's `runs-on` selects: a hosted, self-hosted, or unknown runner, and its system when the labels name one (`ResolvedRunner`). |
-| rule | One check with a stable ID and rule metadata, listed in the registry in `workflint-rules`. |
+| rule | One check with a stable ID and rule metadata, listed in the registry. `workflint_linter::registry` lists every rule, and `workflint_rules::registry` the rules with an actionlint kind (ADR 0034). |
 | reference rule | One of the reference's rules, such as `events`, ported as one module and one `Rule` implementation in `workflint-rules`. It reports the rule IDs of one kind (ADR 0029). |
 | hook | One of the five methods of the `Rule` trait that the visitor calls: workflow pre, job pre, step, job post, and workflow post. The reference calls them `VisitWorkflowPre` and so on. |
 | creation order | The order in which the linter creates the reference rules for each file and calls their hooks, from `linter.go:558` (`CREATION_ORDER`). |
@@ -75,6 +75,8 @@ Use these words with these meanings in code, docs, and pull requests.
 | YAML node limit | The 50,000 YAML nodes, aliases expanded, that GitHub reads in a workflow before it fails with `Maximum YAML nodes exceeded`. Past it, the parser reports `too-many-yaml-nodes` and parses nothing else. |
 | ignore comment | A `# workflint: ignore[...]` YAML comment that suppresses diagnostics (ADR 0009). |
 | project root | The directory that contains `.github/workflows` and a version control marker (ADR 0010). |
+| driver | The `Linter` in `workflint-linter`, which lints the inputs of a run in parallel with one cache per project and returns each file's diagnostics in input order (ADR 0013). |
+| internal error | An `internal-error` diagnostic: the driver's report of a panic in the lint of one file, or of a cache that a panic left unusable. The run lints the other files and exits with code 3 (ADR 0007). |
 | external tool | shellcheck, ruff, or pyflakes, run as a subprocess (ADR 0012). |
 | milestone | A roadmap stage, M0 to M9, or P for after 1.0. Each one is also a GitHub milestone. |
 | task | One unit of roadmap work, sized for one pull request, tracked as a GitHub issue (ADR 0020). |

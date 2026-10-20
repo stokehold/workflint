@@ -12,11 +12,12 @@ use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 use super::allow_list::{self, AllowList};
+use super::binary::{self, Threads};
 use super::expected_failures::{self, ExpectedFailures};
 use super::fixture::{self, Fixture, Tools};
 use super::verdict::{Listing, Verdict, judge};
-use super::{binary, conformance_dir, output, repository_root};
 use super::{checklist, checks_md, rule_kinds};
+use super::{conformance_dir, output, repository_root};
 
 /// The environment variable that names the reference binary to lint with in
 /// place of workflint. A relative path is relative to the repository root.
@@ -162,15 +163,23 @@ impl Setup {
             .map_err(|error| format!("preparing {}: {error}", fixture.id))?;
         // A crash, a hang, another exit code or output on standard error
         // fails the fixture even when a list expects it to fail: the lists
-        // excuse wrong diagnostics, not a broken binary.
-        let stdout = binary::run(self.program.path(), &invocation).map_err(|reason| {
-            match self.listings.get(&fixture.id) {
-                Some(_) => format!(
-                    "{reason}\nThe fixture is listed as an expected failure, but that covers only the diagnostics, not how the binary ran."
-                ),
-                None => reason,
-            }
-        })?;
+        // excuse wrong diagnostics, not a broken binary. So does output that
+        // depends on the thread count (ADR 0013).
+        let run = |threads| {
+            binary::run_with_threads(self.program.path(), &invocation, threads).map_err(|reason| {
+                match self.listings.get(&fixture.id) {
+                    Some(_) => format!(
+                        "{reason}\nThe fixture is listed as an expected failure, but that covers only the diagnostics, not how the binary ran."
+                    ),
+                    None => reason,
+                }
+            })
+        };
+        let stdout = run(Threads::One)?;
+        let parallel = run(Threads::Default)?;
+        if parallel != stdout {
+            return Err(thread_difference(&stdout, &parallel));
+        }
         let actual: Result<Vec<_>, String> =
             output::parse_output(&stdout).and_then(|diagnostics| {
                 if self.map_kinds {
@@ -483,9 +492,32 @@ pub fn check_rule_kinds() -> Result<(), String> {
     }
 }
 
+/// The reason a fixture fails when its output with one thread, `one`,
+/// differs from its output with the default thread count, `default`: a
+/// unified diff from the first to the second.
+fn thread_difference(one: &str, default: &str) -> String {
+    let diff = similar::TextDiff::from_lines(one, default);
+    format!(
+        "the output depends on the thread count (ADR 0013):\n{}",
+        diff.unified_diff()
+            .header("RAYON_NUM_THREADS=1", "the default thread count")
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_thread_difference_shows_the_changed_lines() {
+        let reason = thread_difference("a.yaml:1:1: x [r]\n", "b.yaml:1:1: x [r]\n");
+        assert!(
+            reason.starts_with("the output depends on the thread count"),
+            "{reason}"
+        );
+        assert!(reason.contains("-a.yaml:1:1: x [r]"), "{reason}");
+        assert!(reason.contains("+b.yaml:1:1: x [r]"), "{reason}");
+    }
     use crate::conformance::fixture::Origin;
 
     fn fixture(origin: Origin, path: &str) -> Fixture {

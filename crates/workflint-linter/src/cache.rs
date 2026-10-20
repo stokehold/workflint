@@ -2,12 +2,13 @@
 //! `LocalActionsCache` (`action_metadata.go:195`) and `LocalReusableWorkflowCache`
 //! (`reusable_workflow.go:169`).
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
+use std::convert::Infallible;
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
-use std::sync::{Arc, Mutex, OnceLock, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use workflint_diagnostics::{FileId, SourceFile};
 use workflint_rules::local::{
@@ -54,6 +55,11 @@ struct State {
 ///
 /// Which lookups and registrations a file makes depends only on the file, not on the answers,
 /// so the second lint makes the same ones.
+///
+/// A panic while a lock of the cache is held leaves the cache in an unknown state. The views
+/// then answer nothing and mark their record [poisoned](FileRecord::is_poisoned), and
+/// [`commit`](Self::commit) fails, so that the driver reports the files whose diagnostics the
+/// cache may have made wrong.
 #[derive(Debug)]
 pub struct LocalCache {
     root: PathBuf,
@@ -102,6 +108,7 @@ impl LocalCache {
             spec: workflow_spec(&self.root, path),
             state: RefCell::new(state),
             events: RefCell::default(),
+            poisoned: Cell::new(false),
         }
     }
 
@@ -111,11 +118,12 @@ impl LocalCache {
     /// Returns `None` if the file's view gave the answers that the files before it allow.
     /// Otherwise the diagnostics of the file are wrong, and the result is the state to lint it
     /// again with, through [`for_file_after`](Self::for_file_after).
-    pub fn commit(&self, record: FileRecord) -> Option<Prior> {
-        let mut committed = self
-            .committed
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
+    ///
+    /// # Errors
+    ///
+    /// Fails if a panic left a lock of the cache poisoned.
+    pub fn commit(&self, record: FileRecord) -> Result<Option<Prior>, CachePoisoned> {
+        let mut committed = self.committed.lock().map_err(|_| CachePoisoned)?;
         let mut prior = State::default();
         // The `uses:` values the file used before the current event, whose state in
         // `committed` is now the file's own.
@@ -128,7 +136,9 @@ impl LocalCache {
                     if seen_actions.insert(spec.clone()) {
                         keep_prior(&mut prior.actions, &committed.actions, &spec);
                     }
-                    let truth = lookup(&mut committed.actions, &spec, || self.load_action(&spec));
+                    let truth = lookup(&mut committed.actions, &spec, || {
+                        self.load_action(&spec).ok_or(CachePoisoned)
+                    })?;
                     same &= same_answer(&truth, &answer);
                 }
                 Event::Workflow { spec, answer } => {
@@ -136,8 +146,8 @@ impl LocalCache {
                         keep_prior(&mut prior.workflows, &committed.workflows, &spec);
                     }
                     let truth = lookup(&mut committed.workflows, &spec, || {
-                        self.load_workflow(&spec)
-                    });
+                        self.load_workflow(&spec).ok_or(CachePoisoned)
+                    })?;
                     same &= same_answer(&truth, &answer);
                 }
                 Event::Claim { spec, metadata } => {
@@ -148,16 +158,18 @@ impl LocalCache {
                 }
             }
         }
-        (!same).then_some(Prior(prior))
+        Ok((!same).then_some(Prior(prior)))
     }
 
-    /// Returns the local action at `spec`, reading and decoding it on the first call.
-    fn load_action(&self, spec: &str) -> Loaded<LocalAction> {
+    /// Returns the local action at `spec`, reading and decoding it on the first call, or `None`
+    /// if the store is poisoned.
+    fn load_action(&self, spec: &str) -> Option<Loaded<LocalAction>> {
         load(&self.actions, spec, || self.read_action(spec))
     }
 
-    /// Returns the local reusable workflow at `spec`, reading and decoding it on the first call.
-    fn load_workflow(&self, spec: &str) -> Loaded<ReusableWorkflowMetadata> {
+    /// Returns the local reusable workflow at `spec`, reading and decoding it on the first call,
+    /// or `None` if the store is poisoned.
+    fn load_workflow(&self, spec: &str) -> Option<Loaded<ReusableWorkflowMetadata>> {
         load(&self.workflows, spec, || self.read_workflow(spec))
     }
 
@@ -207,10 +219,19 @@ impl LocalCache {
 #[derive(Debug)]
 pub struct Prior(State);
 
+/// A panic while a lock of a [`LocalCache`] was held left the cache in an unknown state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error(
+    "a panic while linting an earlier file left the cache of local actions and reusable workflows unusable"
+)]
+pub struct CachePoisoned;
+
 /// What linting one file did with the cache, in order, for [`LocalCache::commit`].
 #[derive(Debug, Default)]
 pub struct FileRecord {
     events: Vec<Event>,
+    /// Whether a lookup found the cache poisoned and answered nothing.
+    poisoned: bool,
 }
 
 #[derive(Debug)]
@@ -241,6 +262,7 @@ pub struct FileMetadata<'c> {
     /// The state of the caches as this file sees it.
     state: RefCell<State>,
     events: RefCell<Vec<Event>>,
+    poisoned: Cell<bool>,
 }
 
 impl FileRecord {
@@ -250,6 +272,13 @@ impl FileRecord {
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
+
+    /// Whether a lookup of the file found the cache poisoned, and so answered nothing where the
+    /// cache may know an answer.
+    #[must_use]
+    pub fn is_poisoned(&self) -> bool {
+        self.poisoned
+    }
 }
 
 impl FileMetadata<'_> {
@@ -258,7 +287,17 @@ impl FileMetadata<'_> {
     pub fn into_record(self) -> FileRecord {
         FileRecord {
             events: self.events.into_inner(),
+            poisoned: self.poisoned.get(),
         }
+    }
+
+    /// Returns what `load` returns, or, if the store is poisoned, marks the view poisoned and
+    /// returns nothing.
+    fn unless_poisoned<T>(&self, load: Option<Loaded<T>>) -> Loaded<T> {
+        load.unwrap_or_else(|| {
+            self.poisoned.set(true);
+            Ok(None)
+        })
     }
 }
 
@@ -267,8 +306,8 @@ impl LocalMetadata for FileMetadata<'_> {
         if !is_local_action(spec) {
             return Lookup::None;
         }
-        let answer = lookup(&mut self.state.borrow_mut().actions, spec, || {
-            self.cache.load_action(spec)
+        let Ok(answer) = lookup(&mut self.state.borrow_mut().actions, spec, || {
+            Ok::<_, Infallible>(self.unless_poisoned(self.cache.load_action(spec)))
         });
         self.events.borrow_mut().push(Event::Action {
             spec: spec.to_owned(),
@@ -281,8 +320,8 @@ impl LocalMetadata for FileMetadata<'_> {
         if !is_local_reusable_workflow(spec) {
             return Lookup::None;
         }
-        let answer = lookup(&mut self.state.borrow_mut().workflows, spec, || {
-            self.cache.load_workflow(spec)
+        let Ok(answer) = lookup(&mut self.state.borrow_mut().workflows, spec, || {
+            Ok::<_, Infallible>(self.unless_poisoned(self.cache.load_workflow(spec)))
         });
         self.events.borrow_mut().push(Event::Workflow {
             spec: spec.to_owned(),
@@ -322,43 +361,53 @@ impl FileMetadata<'_> {
     }
 }
 
-/// Returns the entry of `spec` in `store`, computing it with `read` if no thread has.
+/// Returns the entry of `spec` in `store`, computing it with `read` if no thread has, or `None`
+/// if the store is poisoned.
+///
+/// A panic in `read` leaves the entry empty, so the next call reads it again.
 fn load<T>(
     store: &Store<T>,
     spec: &str,
     read: impl FnOnce() -> Result<Option<T>, LocalMetadataError>,
-) -> Loaded<T> {
+) -> Option<Loaded<T>> {
     let slot = {
-        let mut store = store.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut store = store.lock().ok()?;
         Arc::clone(store.entry(spec.to_owned()).or_default())
     };
-    slot.get_or_init(|| read().map(|found| found.map(Arc::new)))
-        .clone()
+    Some(
+        slot.get_or_init(|| read().map(|found| found.map(Arc::new)))
+            .clone(),
+    )
 }
 
 /// Looks up `spec` in `claims` as the reference's cache does. The first lookup claims `spec`
-/// with what `load` returns, and only it is first and gets the error.
-fn lookup<T>(claims: &mut Claims<T>, spec: &str, load: impl FnOnce() -> Loaded<T>) -> Lookup<T> {
+/// with what `load` returns, and only it is first and gets the error. Fails, claiming nothing,
+/// if `load` fails.
+fn lookup<T, E>(
+    claims: &mut Claims<T>,
+    spec: &str,
+    load: impl FnOnce() -> Result<Loaded<T>, E>,
+) -> Result<Lookup<T>, E> {
     if let Some(claimed) = claims.get(spec) {
-        return match claimed {
+        return Ok(match claimed {
             Some(metadata) => Lookup::Found {
                 metadata: Arc::clone(metadata),
                 first: false,
             },
             None => Lookup::None,
-        };
+        });
     }
-    let loaded = load();
+    let loaded = load()?;
     let found = loaded.as_ref().ok().and_then(Option::clone);
     claims.insert(spec.to_owned(), found);
-    match loaded {
+    Ok(match loaded {
         Ok(Some(metadata)) => Lookup::Found {
             metadata,
             first: true,
         },
         Ok(None) => Lookup::None,
         Err(err) => Lookup::Error(err),
-    }
+    })
 }
 
 /// Claims `spec` with `metadata` unless it is already claimed.
@@ -460,4 +509,80 @@ fn go_read_error(path: &Path, err: &io::Error) -> String {
         }
     };
     format!("{op} {}: {message}", path.display())
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic)]
+
+    use super::*;
+
+    /// Panics on another thread while `mutex` is locked, which poisons it.
+    fn poison<T: Send>(mutex: &Mutex<T>) {
+        let result = std::thread::scope(|scope| {
+            scope
+                .spawn(|| {
+                    let _guard = mutex.lock();
+                    panic!("poisoning the lock");
+                })
+                .join()
+        });
+        assert!(result.is_err());
+        assert!(mutex.is_poisoned());
+    }
+
+    fn cache() -> LocalCache {
+        // No test reads a file, so the root need not exist.
+        LocalCache::new(PathBuf::from("/project"))
+    }
+
+    #[test]
+    fn a_lookup_in_a_poisoned_store_finds_nothing_and_marks_the_record_poisoned() {
+        let cache = cache();
+        poison(&cache.actions);
+        poison(&cache.workflows);
+        let view = cache.for_file(Path::new("/project/.github/workflows/ci.yaml"));
+        assert_eq!(view.action("./greet"), Lookup::None);
+        assert_eq!(
+            view.reusable_workflow("./.github/workflows/reusable.yaml"),
+            Lookup::None
+        );
+        let record = view.into_record();
+        assert!(record.is_poisoned());
+    }
+
+    #[test]
+    fn a_view_that_finds_nothing_poisoned_leaves_its_record_clean() {
+        let cache = cache();
+        let view = cache.for_file(Path::new("/project/.github/workflows/ci.yaml"));
+        assert_eq!(view.action("owner/repo@v1"), Lookup::None);
+        assert!(!view.into_record().is_poisoned());
+    }
+
+    #[test]
+    fn commit_fails_when_the_committed_state_is_poisoned() {
+        let cache = cache();
+        poison(&cache.committed);
+        assert!(matches!(
+            cache.commit(FileRecord::default()),
+            Err(CachePoisoned)
+        ));
+    }
+
+    #[test]
+    fn commit_fails_when_a_replayed_lookup_finds_the_store_poisoned() {
+        let cache = cache();
+        poison(&cache.actions);
+        let record = FileRecord {
+            events: vec![Event::Action {
+                spec: "./greet".to_owned(),
+                answer: Lookup::None,
+            }],
+            poisoned: false,
+        };
+        assert!(matches!(cache.commit(record), Err(CachePoisoned)));
+        // The lookup that fails claims nothing.
+        let committed = cache.committed.lock().ok();
+        assert!(committed.is_some_and(|state| state.actions.is_empty()));
+    }
 }

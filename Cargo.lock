@@ -979,13 +979,10 @@ dependencies = [
 name = "workflint"
 version = "0.0.1"
 dependencies = [
- "rayon",
  "tempfile",
  "workflint-diagnostics",
  "workflint-linter",
  "workflint-rules",
- "workflint-syntax",
- "workflint-yaml",
 ]
 
 [[package]]
@@ -1018,7 +1015,9 @@ dependencies = [
 name = "workflint-linter"
 version = "0.0.1"
 dependencies = [
+ "rayon",
  "tempfile",
+ "thiserror",
  "workflint-diagnostics",
  "workflint-rules",
  "workflint-syntax",

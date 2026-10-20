@@ -26,6 +26,7 @@ use zip::ZipArchive;
 /// every workflow seed.
 pub(crate) const TARGETS: &[&str] = &[
     "glob",
+    "lint",
     "metadata",
     "render",
     "syntax",

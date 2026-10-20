@@ -1,26 +1,17 @@
 //! The `workflint` command-line tool.
 //!
 //! This is the minimal binary that the conformance suite runs, with the command line in
-//! `tests/conformance/README.md`. It lints the files given as arguments in parallel with the YAML
-//! layer, the workflow parser, and the rules, and prints the diagnostics in the order of the
-//! arguments. M5.6 replaces it with the full command-line interface.
+//! `tests/conformance/README.md`. It parses the flags, lints the files given as arguments with
+//! [`Linter`], prints the diagnostics in the order of the arguments, and picks the exit code.
+//! M5.6 replaces it with the full command-line interface.
 
-use std::collections::BTreeMap;
 use std::ffi::OsString;
-use std::fmt::Display;
-use std::fs;
 use std::io::{self, BufWriter, ErrorKind, Write};
-use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use rayon::prelude::*;
 use workflint_diagnostics::quote::quote;
-use workflint_diagnostics::{
-    Color, Diagnostic, FileId, SourceFile, Span, render_default, render_oneline, sort_and_dedup,
-};
-use workflint_linter::{FileMetadata, FileRecord, LocalCache, ProjectRoots, path};
-use workflint_rules::local::{LocalMetadata, NoProject};
-use workflint_yaml::rules::YAML_SYNTAX_ERROR;
+use workflint_diagnostics::{Color, Diagnostic, SourceFile, render_default, render_oneline};
+use workflint_linter::{Input, Linter, has_internal_error, path};
 
 /// No file has a diagnostic.
 const EXIT_NO_PROBLEM: u8 = 0;
@@ -28,7 +19,8 @@ const EXIT_NO_PROBLEM: u8 = 0;
 const EXIT_PROBLEM_FOUND: u8 = 1;
 /// The command line is invalid.
 const EXIT_INVALID_OPTION: u8 = 2;
-/// A file could not be read, or the output could not be written.
+/// A file could not be read, the output could not be written, or the lint of a file hit a bug
+/// in workflint and reported an `internal-error` diagnostic.
 const EXIT_FAILURE: u8 = 3;
 
 const USAGE: &str = "Usage: workflint [-oneline] [-no-color] [-shellcheck=PATH] [-pyflakes=PATH] \
@@ -55,42 +47,38 @@ fn main() -> ExitCode {
             return ExitCode::from(EXIT_INVALID_OPTION);
         }
     };
-
-    // As in actionlint, a file that cannot be read stops the run before anything is printed.
-    let cwd = path::working_dir();
-    let mut roots = ProjectRoots::default();
-    let mut caches = BTreeMap::new();
-    let inputs: Vec<Input> = paths
-        .iter()
-        .map(|path| {
-            let path = Path::new(path);
-            let root = roots.find(path, &cwd);
-            if let Some(root) = &root {
-                caches
-                    .entry(root.clone())
-                    .or_insert_with(|| LocalCache::new(root.clone()));
-            }
-            Input {
-                path,
-                absolute: path::absolute(&cwd, path),
-                root,
-            }
-        })
-        .collect();
     let format = if oneline {
         Format::Oneline
     } else {
         Format::Default
     };
-    let files = match lint(&inputs, &caches, &cwd, format) {
+    let inputs: Vec<Input> = paths.iter().map(Input::file).collect();
+    let linter = Linter::new(path::working_dir());
+    let mut out = BufWriter::new(io::stdout().lock());
+    ExitCode::from(run(&linter, &inputs, format, &mut out, &mut io::stderr()))
+}
+
+/// Lints `inputs` with `linter`, writes their diagnostics in `format` to `out` in the order of
+/// `inputs`, and returns the exit code. Fatal messages go to `err`.
+///
+/// As in actionlint, a file that cannot be read stops the run before anything is written.
+fn run(
+    linter: &Linter,
+    inputs: &[Input],
+    format: Format,
+    out: &mut impl Write,
+    err: &mut impl Write,
+) -> u8 {
+    let files = match linter.lint_with(inputs, |file, diagnostics| {
+        format.render(&file, &diagnostics)
+    }) {
         Ok(files) => files,
-        Err(message) => {
-            eprintln!("{message}");
-            return ExitCode::from(EXIT_FAILURE);
+        Err(read_error) => {
+            // Nothing is left to report a failed write of the message to.
+            let _ = writeln!(err, "{read_error}");
+            return EXIT_FAILURE;
         }
     };
-
-    let mut out = BufWriter::new(io::stdout().lock());
     let written = files
         .iter()
         .try_for_each(|rendered| match &rendered.output {
@@ -98,7 +86,9 @@ fn main() -> ExitCode {
             Err(err) => Err(io::Error::new(err.kind(), err.to_string())),
         })
         .and_then(|()| out.flush());
-    let code = if files.iter().any(|rendered| rendered.problems) {
+    let code = if files.iter().any(|rendered| rendered.internal_error) {
+        EXIT_FAILURE
+    } else if files.iter().any(|rendered| rendered.problems) {
         EXIT_PROBLEM_FOUND
     } else {
         EXIT_NO_PROBLEM
@@ -106,12 +96,12 @@ fn main() -> ExitCode {
     match written {
         // A reader that stops early, such as `head`, is not an error. actionlint dies of SIGPIPE
         // there without a message.
-        Err(err) if err.kind() == ErrorKind::BrokenPipe => ExitCode::from(code),
-        Err(err) => {
-            eprintln!("could not write the output: {err}");
-            ExitCode::from(EXIT_FAILURE)
+        Err(write_error) if write_error.kind() == ErrorKind::BrokenPipe => code,
+        Err(write_error) => {
+            let _ = writeln!(err, "could not write the output: {write_error}");
+            EXIT_FAILURE
         }
-        Ok(()) => ExitCode::from(code),
+        Ok(()) => code,
     }
 }
 
@@ -180,115 +170,14 @@ fn parse_bool(value: &str) -> Option<bool> {
     }
 }
 
-/// Lints the files of `inputs` in parallel, with the cache of each project in `caches`, and
-/// returns their output in `format`, in the order of `inputs`. The error is the message to print
-/// for the first file that cannot be read.
-///
-/// Each file is linted as if no other file had used the caches of local actions and local
-/// reusable workflows. Replaying the files' uses of the caches in order then finds the files
-/// whose diagnostics depend on the files before them, which are linted again (`LocalCache`).
-/// A file that did not use a cache is rendered at once, so that its text and diagnostics are
-/// freed.
-fn lint(
-    inputs: &[Input<'_>],
-    caches: &BTreeMap<PathBuf, LocalCache>,
-    cwd: &Path,
-    format: Format,
-) -> Result<Vec<Rendered>, String> {
-    let cache_of = |input: &Input<'_>| input.root.as_ref().and_then(|root| caches.get(root));
-    let linted: Result<Vec<Linted>, String> = inputs
-        .par_iter()
-        .enumerate()
-        .map(|(index, input)| {
-            let (file, decode_error) = read(index, input.path, cwd)?;
-            if let Some(diagnostic) = decode_error {
-                return Ok(Linted::Done(format.render(&file, &[diagnostic])));
-            }
-            let Some(cache) = cache_of(input) else {
-                return Ok(Linted::Done(
-                    format.render(&file, &check(&file, &NoProject)),
-                ));
-            };
-            let local = cache.for_file(&input.absolute);
-            let diagnostics = check(&file, &local);
-            let record = local.into_record();
-            Ok(if record.is_empty() {
-                Linted::Done(format.render(&file, &diagnostics))
-            } else {
-                Linted::Pending {
-                    file,
-                    diagnostics,
-                    cache,
-                    record,
-                }
-            })
-        })
-        .collect();
-    let again: Vec<Again> = inputs
-        .iter()
-        .zip(linted?)
-        .map(|(input, linted)| match linted {
-            Linted::Done(rendered) => Again::Done(rendered),
-            Linted::Pending {
-                file,
-                diagnostics,
-                cache,
-                record,
-            } => match cache.commit(record) {
-                Some(prior) => Again::Lint(file, cache.for_file_after(&input.absolute, prior)),
-                None => Again::Render(file, diagnostics),
-            },
-        })
-        .collect();
-    Ok(again
-        .into_par_iter()
-        .map(|again| match again {
-            Again::Lint(file, local) => format.render(&file, &check(&file, &local)),
-            Again::Render(file, diagnostics) => format.render(&file, &diagnostics),
-            Again::Done(rendered) => rendered,
-        })
-        .collect())
-}
-
-/// A file given on the command line.
-struct Input<'a> {
-    /// The path as given.
-    path: &'a Path,
-    /// The path made absolute and cleaned.
-    absolute: PathBuf,
-    /// The project root, if the file is in a project.
-    root: Option<PathBuf>,
-}
-
-/// A file linted as if no other file had used the cache of its project.
-enum Linted<'c> {
-    /// The file did not use a cache, so its output is final.
-    Done(Rendered),
-    /// The file used `cache`, so its diagnostics may depend on the files before it.
-    Pending {
-        file: SourceFile,
-        /// The sorted diagnostics.
-        diagnostics: Vec<Diagnostic>,
-        cache: &'c LocalCache,
-        record: FileRecord,
-    },
-}
-
-/// What is left to do for a file after the uses of the caches are replayed.
-enum Again<'c> {
-    /// Lint the file again with this view of its cache.
-    Lint(SourceFile, FileMetadata<'c>),
-    /// Render the diagnostics of the first lint.
-    Render(SourceFile, Vec<Diagnostic>),
-    Done(Rendered),
-}
-
 /// The output of one file.
 struct Rendered {
     /// The rendered diagnostics, or the error of rendering them.
     output: io::Result<Vec<u8>>,
     /// Whether the file has a diagnostic.
     problems: bool,
+    /// Whether the file has an `internal-error` diagnostic.
+    internal_error: bool,
 }
 
 /// The output format.
@@ -312,56 +201,7 @@ impl Format {
                 output
             }),
             problems: !diagnostics.is_empty(),
-        }
-    }
-}
-
-/// Reads and decodes the file at `path`, and returns it with the YAML syntax error of bytes that
-/// do not decode.
-///
-/// The file is named by its path relative to `cwd` when there is one. The error is the message to
-/// print when the file cannot be read, and names the file as given.
-fn read(index: usize, path: &Path, cwd: &Path) -> Result<(SourceFile, Option<Diagnostic>), String> {
-    let given = path.to_string_lossy();
-    let fail = |err: &dyn Display| format!("could not read {}: {err}", quote(&given));
-    let bytes = fs::read(path).map_err(|err| fail(&err))?;
-    let display = path::display_path(cwd, path);
-    let display = display.to_string_lossy();
-    let id = FileId::new(u32::try_from(index).map_err(|err| fail(&err))?);
-    let (text, decode_error) = match workflint_yaml::decode(&bytes) {
-        Ok(text) => (text.into_owned(), None),
-        Err(err) => (decoded_prefix(&bytes, err.offset()), Some(err)),
-    };
-    let file = SourceFile::new(id, display.as_ref(), text).map_err(|err| fail(&err))?;
-    // As in actionlint, bytes that do not decode are a YAML syntax error. It points at the end of
-    // the text that does decode.
-    let diagnostic = decode_error.map(|err| {
-        let end = u32::try_from(file.text().len()).unwrap_or(u32::MAX);
-        Diagnostic::new(
-            &YAML_SYNTAX_ERROR,
-            Span::new(id, end, end),
-            format!("could not parse as YAML: {}", err.problem()),
-        )
-    });
-    Ok((file, diagnostic))
-}
-
-/// Parses `file` with the YAML layer and, if it gives a document, with the workflow parser, runs
-/// the rules on the workflow with the project's local metadata in `local`, and returns the sorted
-/// diagnostics of all three.
-fn check(file: &SourceFile, local: &dyn LocalMetadata) -> Vec<Diagnostic> {
-    let mut diagnostics = workflint_rules::check_file(file, local);
-    sort_and_dedup(file, &mut diagnostics);
-    diagnostics
-}
-
-/// Decodes the longest prefix of `bytes` that ends at or before `end` and decodes without error.
-fn decoded_prefix(bytes: &[u8], mut end: usize) -> String {
-    loop {
-        match bytes.get(..end).map(workflint_yaml::decode) {
-            Some(Ok(text)) => return text.into_owned(),
-            Some(Err(err)) if err.offset() < end => end = err.offset(),
-            _ => return String::new(),
+            internal_error: has_internal_error(diagnostics),
         }
     }
 }
@@ -427,21 +267,68 @@ mod tests {
         );
     }
 
-    #[test]
-    fn decoded_prefix_stops_before_an_invalid_utf8_sequence() {
-        // 0xC3 starts a two-byte sequence, which `x` does not continue.
-        let bytes = b"a: b\xC3x";
-        let err = workflint_yaml::decode(bytes).unwrap_err();
-        assert_eq!(decoded_prefix(bytes, err.offset()), "a: b");
+    /// The rules, except that the lint of a file named `panics.yaml` panics.
+    fn check_or_panic(
+        file: &SourceFile,
+        local: &dyn workflint_rules::local::LocalMetadata,
+    ) -> Vec<Diagnostic> {
+        assert!(!file.path().ends_with("panics.yaml"), "a rule failed");
+        workflint_rules::check_file(file, local)
+    }
+
+    /// Runs `linter` on `paths` in `dir` with one-line output, and returns the exit code and
+    /// what was written to stdout and stderr.
+    fn run_oneline(linter: &Linter, paths: &[&str]) -> (u8, String, String) {
+        let inputs: Vec<Input> = paths.iter().map(Input::file).collect();
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let code = run(linter, &inputs, Format::Oneline, &mut out, &mut err);
+        (
+            code,
+            String::from_utf8(out).unwrap(),
+            String::from_utf8(err).unwrap(),
+        )
     }
 
     #[test]
-    fn decoded_prefix_stops_before_a_lone_utf16_surrogate() {
-        let mut bytes = vec![0xFF, 0xFE];
-        bytes.extend("a: ".encode_utf16().flat_map(u16::to_le_bytes));
-        bytes.extend(0xD800_u16.to_le_bytes());
-        bytes.extend(u16::from(b'x').to_le_bytes());
-        let err = workflint_yaml::decode(&bytes).unwrap_err();
-        assert_eq!(decoded_prefix(&bytes, err.offset()), "a: ");
+    fn a_panic_in_one_file_prints_every_file_and_exits_with_3() {
+        let dir = tempfile::tempdir().unwrap();
+        let no_steps = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n";
+        for name in ["a.yaml", "panics.yaml", "z.yaml"] {
+            std::fs::write(dir.path().join(name), no_steps).unwrap();
+        }
+        let paths = ["z.yaml", "panics.yaml", "a.yaml"];
+        let linter = Linter::new(dir.path().to_path_buf());
+        let (code, expected, _) = run_oneline(&linter, &paths);
+        assert_eq!(code, EXIT_PROBLEM_FOUND);
+
+        let (code, out, err) = run_oneline(&linter.with_check(check_or_panic), &paths);
+        assert_eq!(code, EXIT_FAILURE);
+        assert_eq!(err, "");
+        let expected: Vec<&str> = expected.lines().collect();
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(
+            lines,
+            [
+                expected[0],
+                "panics.yaml:1:1: workflint panicked while linting this file: a rule failed. \
+                 This is a bug in workflint. Please report it at \
+                 https://github.com/stokehold/workflint/issues [internal-error]",
+                expected[2],
+            ]
+        );
+    }
+
+    #[test]
+    fn an_unreadable_file_prints_nothing_and_exits_with_3() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.yaml"), "on: push\n").unwrap();
+        let linter = Linter::new(dir.path().to_path_buf());
+        let (code, out, err) = run_oneline(&linter, &["a.yaml", "missing.yaml"]);
+        assert_eq!(code, EXIT_FAILURE);
+        assert_eq!(out, "");
+        assert!(
+            err.starts_with("could not read \"missing.yaml\": "),
+            "{err}"
+        );
     }
 }

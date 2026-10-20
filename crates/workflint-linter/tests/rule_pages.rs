@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 use workflint_diagnostics::{
     Category, Color, FileId, RuleMeta, Severity, SourceFile, render_oneline, sort_and_dedup,
 };
+use workflint_linter::registry;
 use workflint_rules::local::MemoryProject;
-use workflint_rules::registry;
 
 /// The prefix of every `docs_url`. The page name follows it.
 const DOCS_URL_PREFIX: &str = "https://github.com/stokehold/workflint/blob/main/docs/rules/";
