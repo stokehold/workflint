@@ -10,6 +10,7 @@ use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_syntax::glob::{GlobProblem, GlobProblemKind, validate_path_glob, validate_ref_glob};
 use workflint_syntax::{Event, Field, Job, KeyedEntry, Str, Template, Workflow};
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// A filter pattern is not valid glob syntax, or contains a newline.
@@ -60,6 +61,10 @@ const CHEAT_SHEET: &str = "note: filter pattern syntax is explained at https://d
 pub(crate) struct Glob;
 
 impl<'a> Rule<'a> for Glob {
+    fn kind(&self) -> &'static Kind {
+        &kind::GLOB
+    }
+
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         let Some(events) = workflow.on.value() else {
             return;

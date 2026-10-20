@@ -10,6 +10,7 @@ use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_expr::{Expr, ExprKind, LogicalOp, Visit, parse_expression};
 use workflint_syntax::{Job, KeyedEntry, Placeholder, Step, Template};
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// An `if:` condition has text around its `${{ }}`, or more than one `${{ }}`, so GitHub reads
@@ -38,6 +39,10 @@ pub(crate) static CONSTANT_CONDITION: RuleMeta = RuleMeta {
 pub(crate) struct IfCond;
 
 impl<'a> Rule<'a> for IfCond {
+    fn kind(&self) -> &'static Kind {
+        &kind::IF_COND
+    }
+
     fn job_pre(&mut self, job: &'a KeyedEntry<'a, Job<'a>>, cx: &mut Context<'_>) {
         check(job.value.condition.value(), cx);
         if let Some(snapshot) = job.value.snapshot.value() {

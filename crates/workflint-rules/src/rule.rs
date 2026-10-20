@@ -3,6 +3,7 @@
 use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
 use workflint_syntax::{AliasUses, Job, KeyedEntry, Step, Str, Workflow};
 
+use crate::kind::Kind;
 use crate::local::{LocalMetadata, NoProject};
 
 /// A rule: the reference's `Rule`, which implements some of the five hooks of its `Pass`.
@@ -15,6 +16,10 @@ use crate::local::{LocalMetadata, NoProject};
 /// A rule reports its diagnostics through the [`Context`], each with the [`RuleMeta`] of the rule
 /// ID it reports. One rule may report several rule IDs, as the reference's `events` rule does.
 pub trait Rule<'a> {
+    /// The reference kind of the rule, such as [`ACTION`](crate::kind::ACTION). Its place in
+    /// [`CREATION_ORDER`](crate::CREATION_ORDER) decides when the rule is created.
+    fn kind(&self) -> &'static Kind;
+
     /// Runs before any job is visited, the reference's `VisitWorkflowPre`.
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         let _ = (workflow, cx);

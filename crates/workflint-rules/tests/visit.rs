@@ -6,6 +6,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use workflint_diagnostics::{FileId, SourceFile, Span};
+use workflint_rules::kind::{self, Kind};
 use workflint_rules::{Context, Rule, visit};
 use workflint_syntax::{Job, KeyedEntry, Step, Workflow};
 
@@ -24,6 +25,10 @@ impl Recorder {
 }
 
 impl<'a> Rule<'a> for Recorder {
+    fn kind(&self) -> &'static Kind {
+        &kind::MATRIX
+    }
+
     fn workflow_pre(&mut self, _workflow: &'a Workflow<'a>, _cx: &mut Context<'_>) {
         self.record("workflow-pre", "-");
     }

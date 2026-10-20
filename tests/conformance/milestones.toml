@@ -2,9 +2,9 @@
 # instead of GitHub, so it needs no network.
 #
 # No entry in expected-failures.toml may name one of these milestones, and no
-# open row of docs/parity-checklist.md with one of them may cite a fixture
-# that still fails. Add a milestone here when its last planned task merges.
+# open row of docs/parity-checklist.md may have one of them. A row that waits
+# on later work moves to that milestone and says so in its notes. Add a milestone here when its last planned task merges.
 # A follow-up issue filed in a done milestone does not take it out.
 # See tests/conformance/README.md#expected-failures.
 
-closed = ["M1", "M2", "M3"]
+closed = ["M1", "M2", "M3", "M4"]

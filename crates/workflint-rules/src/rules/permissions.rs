@@ -7,6 +7,7 @@ use workflint_diagnostics::quote::{quote, quotes, sorted_quotes};
 use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_syntax::{Job, KeyedEntry, Permissions as PermissionsSection, Workflow};
 
+use crate::kind::{self, Kind};
 use crate::{Context, Rule};
 
 /// The string form of `permissions` is not `read-all` or `write-all`.
@@ -43,6 +44,10 @@ pub(crate) static INVALID_PERMISSION_LEVEL: RuleMeta = RuleMeta {
 pub(crate) struct Permissions;
 
 impl<'a> Rule<'a> for Permissions {
+    fn kind(&self) -> &'static Kind {
+        &kind::PERMISSIONS
+    }
+
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         if let Some(permissions) = workflow.permissions.value() {
             check(permissions, cx);

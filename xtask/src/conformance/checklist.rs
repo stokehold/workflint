@@ -155,9 +155,8 @@ pub fn markdown_rows(markdown: &str) -> Vec<BTreeMap<String, String>> {
 /// and the `closed` milestones:
 ///
 /// - Every fixture of a ticked item exists and passes, so is not listed.
-/// - An item that is not ticked and has a closed milestone cites no listed
-///   fixture. Its milestone has passed, so the item would wait on a later
-///   milestone without saying so.
+/// - No item that is not ticked has a closed milestone. Its milestone has
+///   passed, so the item would wait on a later milestone without saying so.
 ///
 /// # Errors
 ///
@@ -171,22 +170,22 @@ pub fn check_items(
     let mut problems = Vec::new();
     for item in items {
         let at = format!("docs/parity-checklist.md:{}", item.line);
-        let closed_milestone = item
-            .milestone
-            .filter(|milestone| closed.contains(milestone));
+        if !item.ticked {
+            if let Some(milestone) = item.milestone.filter(|m| closed.contains(m)) {
+                problems.push(format!(
+                    "{at}: the row is open, but its milestone M{milestone} is closed. Tick it, or give it the milestone it waits on and say so in the notes."
+                ));
+            }
+            continue;
+        }
         for fixture in &item.fixtures {
-            let listed = failing.contains(fixture.as_str());
-            if item.ticked && !fixtures.contains(fixture) {
+            if !fixtures.contains(fixture) {
                 problems.push(format!(
                     "{at}: the row is ticked, but its fixture {fixture} does not exist"
                 ));
-            } else if item.ticked && listed {
+            } else if failing.contains(fixture.as_str()) {
                 problems.push(format!(
                     "{at}: the row is ticked, but its fixture {fixture} is in tests/conformance/expected-failures.toml. Untick the row, or make the fixture pass."
-                ));
-            } else if let (false, true, Some(milestone)) = (item.ticked, listed, closed_milestone) {
-                problems.push(format!(
-                    "{at}: the row has the closed milestone M{milestone}, but its fixture {fixture} still fails. Give the row the milestone it waits on."
                 ));
             }
         }
@@ -334,10 +333,15 @@ mod tests {
     }
 
     #[test]
-    fn an_open_row_of_a_closed_milestone_with_a_failing_fixture_fails() {
-        let error = check(&[item(false, 3, &["err/a"])], &["err/a"]).unwrap_err();
-        assert!(error.contains("the closed milestone M3"), "{error}");
-        assert_eq!(check(&[item(false, 4, &["err/a"])], &["err/a"]), Ok(()));
+    fn an_open_row_of_a_closed_milestone_fails() {
+        for fixtures in [&["err/a"][..], &["err/b"], &[]] {
+            let error = check(&[item(false, 3, fixtures)], &["err/b"]).unwrap_err();
+            assert_eq!(
+                error,
+                "docs/parity-checklist.md:7: the row is open, but its milestone M3 is closed. Tick it, or give it the milestone it waits on and say so in the notes."
+            );
+        }
+        assert_eq!(check(&[item(false, 4, &["err/b"])], &["err/b"]), Ok(()));
     }
 
     #[test]

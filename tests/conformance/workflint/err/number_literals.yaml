@@ -1,0 +1,11 @@
+# Number literals beyond the range of a double. The integer is a 1 followed by
+# 309 zeros, and the hexadecimal integer has 300 digits.
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 }}
+      - run: echo ${{ 1e400 }}
+      - run: echo ${{ 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff }}
+      - run: echo ${{ 0xff }} ${{ 1.5e3 }} ${{ -1e-400 }}

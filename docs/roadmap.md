@@ -133,6 +133,15 @@ Goal: every reference rule, with fine-grained rule IDs. Start with M4.1, which m
 - M4.31 Report the head branch and head commit of `workflow_run` as untrusted input [#168](https://github.com/stokehold/workflint/issues/168)
 - M4.32 Evaluate expressions in runs-on labels [#169](https://github.com/stokehold/workflint/issues/169)
 - M4.33 Know the labels of third-party runner providers and the OS of custom labels [#170](https://github.com/stokehold/workflint/issues/170)
+- M4.34 Lint many diagnostics in one scalar and many steps in linear time [#222](https://github.com/stokehold/workflint/issues/222)
+- M4.35 Bound the cost of suggestions and suggest only names available at the location [#223](https://github.com/stokehold/workflint/issues/223)
+- M4.36 Fix if-always-true suggestions that change the condition and report two `${{` in an unparsable condition [#224](https://github.com/stokehold/workflint/issues/224)
+- M4.37 Keep the OS of known runner labels next to custom labels and know Namespace's extra labels [#225](https://github.com/stokehold/workflint/issues/225)
+- M4.38 Update runner labels, permissions, activity types, and context properties to GitHub's current docs [#226](https://github.com/stokehold/workflint/issues/226)
+- M4.39 Check the type of the `case()` predicate and evaluate `case()` in runs-on [#227](https://github.com/stokehold/workflint/issues/227)
+- M4.40 Read `runs.using` and other platform facts from workflint-data and fix small parity gaps [#228](https://github.com/stokehold/workflint/issues/228)
+- M4.41 Document the remaining differences from the M4 review and fix rule-page errors [#229](https://github.com/stokehold/workflint/issues/229)
+- M4.42 Mark M4 closed in the conformance bookkeeping and strengthen tests from the M4 review [#230](https://github.com/stokehold/workflint/issues/230)
 
 ## M5: linter, CLI, and output
 

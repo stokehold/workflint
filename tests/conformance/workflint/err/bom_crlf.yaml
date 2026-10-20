@@ -1,0 +1,10 @@
+﻿# The file starts with a UTF-8 byte order mark and ends its lines with CRLF.
+# The mark takes no column, and each CRLF is one line break.
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ unknown }}
+      - run: echo hi
+        foo: bar

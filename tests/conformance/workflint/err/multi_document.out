@@ -1,0 +1,1 @@
+test.yaml:8:23: undefined variable "first". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression]
