@@ -147,9 +147,15 @@ impl Document {
     /// earlier entry under `comparison`.
     ///
     /// Each duplicate is paired with the first entry that has its key. Only
-    /// scalar keys are compared, by their decoded values. A `<<` key is
+    /// scalar keys are compared, by their decoded values, and a key reached
+    /// through an alias compares as its anchored scalar. A `<<` key is
     /// never a duplicate, as in actionlint, which reports merge keys on
     /// their own. The result is in source order of the duplicates.
+    ///
+    /// The entries come from [`written_entries`](Self::written_entries), so
+    /// a key or value written as an alias is the alias node. The anchored
+    /// node would put a duplicate written as `*a` at its anchor, and two
+    /// entries that alias the same key and value would be equal.
     #[must_use]
     pub fn duplicate_keys(
         &self,
@@ -158,11 +164,12 @@ impl Document {
     ) -> Vec<DuplicateKey> {
         let mut first: BTreeMap<String, Entry> = BTreeMap::new();
         let mut duplicates = Vec::new();
-        for &entry in self.entries(mapping) {
+        let written = self.written_entries(mapping);
+        for (resolved, &entry) in self.entries(mapping).iter().zip(written) {
             let Some(Node {
                 kind: NodeKind::Scalar(key),
                 ..
-            }) = self.node(entry.key)
+            }) = self.node(resolved.key)
             else {
                 continue;
             };
@@ -344,9 +351,9 @@ pub struct Entry {
 /// An entry whose key repeats the key of an earlier entry in its mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DuplicateKey {
-    /// The first entry with the key.
+    /// The first entry with the key, as written.
     pub first: Entry,
-    /// A later entry with the same key.
+    /// A later entry with the same key, as written.
     pub duplicate: Entry,
 }
 

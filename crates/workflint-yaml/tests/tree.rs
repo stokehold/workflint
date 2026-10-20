@@ -506,6 +506,34 @@ fn duplicate_keys_compare_lowercase_characters_like_go() {
 }
 
 #[test]
+fn a_duplicate_key_written_as_an_alias_is_the_alias_node() {
+    let file = source("&a a: &b b\n*a : *b\n");
+    let document = parse(&file).document.unwrap();
+    let root = document.node(document.root().unwrap()).unwrap();
+    let NodeKind::Mapping(mapping) = &root.kind else {
+        panic!("root is not a mapping");
+    };
+    let duplicates = document.duplicate_keys(mapping, KeyComparison::Exact);
+    let positions: Vec<_> = duplicates
+        .iter()
+        .map(|duplicate| {
+            let position = |id| {
+                let at = file.line_col(document.node(id).unwrap().span.start);
+                (at.line, at.column)
+            };
+            (
+                position(duplicate.first.key),
+                position(duplicate.duplicate.key),
+            )
+        })
+        .collect();
+    assert_eq!(positions, [((1, 1), (2, 1))]);
+    let duplicate = duplicates.first().unwrap().duplicate;
+    let alias = |id| matches!(document.node(id).unwrap().kind, NodeKind::Alias(_));
+    assert!(alias(duplicate.key) && alias(duplicate.value));
+}
+
+#[test]
 fn merge_keys_are_never_duplicates() {
     let file = source("<<: {a: 1}\n<<: {b: 2}\n'<<': {c: 3}\nx: 1\nX: 2\n");
     let document = parse(&file).document.unwrap();
