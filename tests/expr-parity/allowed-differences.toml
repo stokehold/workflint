@@ -304,3 +304,9 @@ workflint = '''
 type: array<any>, constant: false
 1:1: "github.event.workflow_run.head_repository.description" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details
 '''
+
+# The predicates of case() that are not booleans, in the cases and in the
+# generated expressions.
+[[added_error]]
+anchor = "case-predicate-type"
+message = "case() predicate must evaluate to a boolean value but "

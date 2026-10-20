@@ -1,2 +1,3 @@
 test.yaml:7:23: case() requires an odd number of arguments (pred/value pairs + default) but got 4 [expression]
 test.yaml:9:23: case() requires an odd number of arguments (pred/value pairs + default) but got 4 [expression]
+test.yaml:9:69: case() predicate must evaluate to a boolean value but the 3rd argument has type "string" [expression]

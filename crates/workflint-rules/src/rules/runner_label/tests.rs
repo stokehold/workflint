@@ -620,6 +620,59 @@ fn and_or_give_the_value_of_each_branch() {
 }
 
 #[test]
+fn case_gives_each_value_whose_predicate_is_not_known_to_be_false() {
+    // The predicate is unknown, so the label is the value or the default.
+    assert_eq!(
+        short(&job(
+            "",
+            "${{ case(github.ref == 'a', 'ubuntu-latest', 'ubuntu-latst') }}"
+        )),
+        [r#"4:14: label "ubuntu-latst" is unknown"#]
+    );
+    assert_eq!(
+        short(&job(
+            "",
+            "${{ case(github.ref == 'a', 'ubuntu-latst', 'ubuntu-latest') }}"
+        )),
+        [r#"4:14: label "ubuntu-latst" is unknown"#]
+    );
+    // A false predicate skips its value, and a true one ends the call.
+    assert_eq!(
+        short(&job(
+            "",
+            "${{ case(false, 'linux-a', github.ref == 'a', 'linux-b', true, 'linux-c', 'linux-d') }}"
+        )),
+        [
+            r#"4:14: label "linux-b" is unknown"#,
+            r#"4:14: label "linux-c" is unknown"#,
+        ]
+    );
+}
+
+#[test]
+fn case_predicates_on_the_matrix_are_evaluated_for_each_combination() {
+    assert_eq!(
+        short(&job(
+            "os: [ubuntu, windows]",
+            "${{ case(matrix.os == 'windows', 'windows-latest', format('{0}-latst', matrix.os)) }}"
+        )),
+        [r#"7:14: label "ubuntu-latst" is unknown"#]
+    );
+}
+
+#[test]
+fn case_that_github_rejects_is_skipped() {
+    // A predicate that is not a boolean, a missing default, and too few arguments.
+    for runs_on in [
+        "${{ case('x', 'linux-a', 'linux-b') }}",
+        "${{ case(github.ref == 'a', 'linux-a', true, 'linux-b') }}",
+        "${{ case(true, 'linux-a') }}",
+    ] {
+        assert_eq!(short(&job("", runs_on)), Vec::<String>::new(), "{runs_on}");
+    }
+}
+
+#[test]
 fn a_condition_on_the_matrix_is_evaluated_for_each_combination() {
     // In the `windows` combination the condition is true, so `windows` is never a label.
     assert_eq!(

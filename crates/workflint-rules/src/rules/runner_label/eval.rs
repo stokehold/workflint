@@ -1,9 +1,10 @@
 //! Works out the strings that a `runs-on` label with `${{ }}` can be.
 //!
 //! The evaluator knows string, number, boolean, and null literals, `matrix.<prop>`, `format()`,
-//! `&&`, `||`, `!`, `==`, and `!=`. Any other expression has an unknown value. An unknown value
-//! may still decide a condition: `cond && 'a' || 'b'` is `a` or `b` whatever `cond` is. A label
-//! is unknown when one of its values is unknown, and the rule skips it.
+//! `case()`, `&&`, `||`, `!`, `==`, and `!=`. Any other expression has an unknown value. An
+//! unknown value may still decide a condition: `cond && 'a' || 'b'` is `a` or `b` whatever `cond`
+//! is, and so is `case(cond, 'a', 'b')`. A label is unknown when one of its values is unknown,
+//! and the rule skips it.
 
 use workflint_expr::{CompareOp, ExprKind, LogicalOp};
 use workflint_syntax::{
@@ -340,6 +341,7 @@ impl Env<'_> {
             }
             ExprKind::Logical { op, operands } => self.logical(*op, operands)?,
             ExprKind::Call { callee, args } if callee.as_str() == "format" => self.format(args)?,
+            ExprKind::Call { callee, args } if callee.as_str() == "case" => self.case(args)?,
             ExprKind::Variable(_)
             | ExprKind::ObjectFilter { .. }
             | ExprKind::Index { .. }
@@ -374,6 +376,44 @@ impl Env<'_> {
             }
             if !go_on {
                 break;
+            }
+        }
+        Some(done)
+    }
+
+    /// Evaluates `case()`. A true predicate gives its value and ends the call, a false one goes
+    /// on to the next pair, and one whose value is not known does both. The default is the
+    /// value when no predicate is true. GitHub rejects a call without a default and a predicate
+    /// that is not a boolean, so either gives an unknown value.
+    fn case(&self, args: &[workflint_expr::Expr]) -> Option<Vec<Val>> {
+        let unknown = Some(vec![Val::Unknown(None)]);
+        if args.len() < 3 || args.len().is_multiple_of(2) {
+            return unknown;
+        }
+        let mut done = Vec::new();
+        let (pairs, default) = args.as_chunks::<2>();
+        for [predicate, value] in pairs {
+            let (mut take, mut go_on) = (false, false);
+            for val in self.eval(predicate)? {
+                match val {
+                    Val::Bool(true) => take = true,
+                    Val::Bool(false) => go_on = true,
+                    Val::Unknown(_) => (take, go_on) = (true, true),
+                    Val::Null | Val::Number(_) | Val::String(_) => return unknown,
+                }
+            }
+            if take {
+                for val in self.eval(value)? {
+                    push(&mut done, val)?;
+                }
+            }
+            if !go_on {
+                return Some(done);
+            }
+        }
+        for default in default {
+            for val in self.eval(default)? {
+                push(&mut done, val)?;
             }
         }
         Some(done)

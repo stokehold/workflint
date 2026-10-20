@@ -7,7 +7,7 @@ use std::fmt::Write as _;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
-use super::outcome::Outcome;
+use super::outcome::{Message, Outcome};
 use super::setups::Setup;
 
 /// One expression to check in one setup. The Go program reads it as JSON.
@@ -23,6 +23,8 @@ pub(crate) struct Case {
 struct File {
     #[serde(default)]
     difference: Vec<Record>,
+    #[serde(default)]
+    added_error: Vec<AddedError>,
 }
 
 /// A difference that `docs/differences.md` explains.
@@ -57,10 +59,32 @@ impl Record {
     }
 }
 
+/// An error that only workflint reports, which `docs/differences.md` explains.
+/// It explains a difference in any expression and setup when the outcomes are
+/// equal without workflint's errors whose message starts with `message`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct AddedError {
+    /// An anchor in `docs/differences.md`, without the `#`.
+    pub(crate) anchor: String,
+    /// The start of the message.
+    pub(crate) message: String,
+}
+
+impl AddedError {
+    fn describe(&self) -> String {
+        format!(
+            "the added error {:?} with anchor {}",
+            self.message, self.anchor
+        )
+    }
+}
+
 /// The records of `tests/expr-parity/allowed-differences.toml`.
 #[derive(Debug, Default)]
 pub(crate) struct AllowList {
     records: Vec<Record>,
+    added_errors: Vec<AddedError>,
 }
 
 impl AllowList {
@@ -69,6 +93,7 @@ impl AllowList {
         let file: File = toml::from_str(text).context("cannot parse the allow-list")?;
         Ok(Self {
             records: file.difference,
+            added_errors: file.added_error,
         })
     }
 
@@ -89,7 +114,53 @@ impl AllowList {
                 }
             }
         }
+        for added in &self.added_errors {
+            if !anchors.contains(&added.anchor) {
+                bail!(
+                    "anchor {:?} of {} does not exist in docs/differences.md",
+                    added.anchor,
+                    added.describe()
+                );
+            }
+            if added.message.is_empty() {
+                bail!("{} has an empty message", added.describe());
+            }
+        }
         Ok(())
+    }
+
+    /// Returns the index of the first added error that `workflint` reports, if
+    /// the outcomes are equal without the errors of every added error.
+    fn added_error_explaining(&self, upstream: &Outcome, workflint: &Outcome) -> Option<usize> {
+        let Outcome::Checked {
+            ty,
+            constant,
+            errors,
+        } = workflint
+        else {
+            return None;
+        };
+        let mut first = None;
+        let kept: Vec<Message> = errors
+            .iter()
+            .filter(|error| {
+                let added = self
+                    .added_errors
+                    .iter()
+                    .position(|added| error.text.starts_with(&added.message));
+                if let Some(index) = added {
+                    first.get_or_insert(index);
+                }
+                added.is_none()
+            })
+            .cloned()
+            .collect();
+        let without_added = Outcome::Checked {
+            ty: ty.clone(),
+            constant: *constant,
+            errors: kept,
+        };
+        first.filter(|_| without_added == *upstream)
     }
 }
 
@@ -138,6 +209,7 @@ pub(crate) fn compare(
         ..Report::default()
     };
     let mut used = vec![false; allow_list.records.len()];
+    let mut used_added = vec![false; allow_list.added_errors.len()];
     for (case, upstream) in cases.iter().zip(upstream) {
         let setup = setups
             .get(case.setup)
@@ -162,6 +234,12 @@ pub(crate) fn compare(
                 .allowed
                 .entry(allow_list.records[index].anchor.clone())
                 .or_default() += 1;
+        } else if let Some(index) = allow_list.added_error_explaining(&upstream, &workflint) {
+            used_added[index] = true;
+            *report
+                .allowed
+                .entry(allow_list.added_errors[index].anchor.clone())
+                .or_default() += 1;
         } else {
             report.unexplained.push(Difference {
                 setup: setup.name.clone(),
@@ -177,6 +255,14 @@ pub(crate) fn compare(
         .zip(used)
         .filter(|(_, used)| !used)
         .map(|(record, _)| record.describe())
+        .chain(
+            allow_list
+                .added_errors
+                .iter()
+                .zip(used_added)
+                .filter(|(_, used)| !used)
+                .map(|(added, _)| added.describe()),
+        )
         .collect();
     Ok(report)
 }
@@ -461,6 +547,79 @@ workflint = "type: string, constant: true"
         let rendered = report.render();
         assert!(rendered.contains("explain no difference"), "{rendered}");
         assert!(report.check().is_err());
+    }
+
+    /// Adds an error that only this checker reports to every checked outcome.
+    fn added_error(_: &str, mut outcome: Outcome) -> Outcome {
+        if let Some(errors) = errors_mut(&mut outcome) {
+            errors.push(Message {
+                line: 1,
+                column: 1,
+                text: "only here: x".to_owned(),
+            });
+        }
+        outcome
+    }
+
+    const ADDED_ERROR: &str = r#"
+[[added_error]]
+anchor = "case-predicate-type"
+message = "only here: "
+"#;
+
+    #[test]
+    fn an_added_error_explains_the_differences_it_adds_in_any_expression() {
+        let allow_list = AllowList::parse(ADDED_ERROR).unwrap();
+        let report = compare_with(&allow_list, added_error);
+        // Every expression but the parse error `a.`, in both setups.
+        assert_eq!(
+            report.allowed["case-predicate-type"],
+            2 * (EXPRESSIONS.len() - 1),
+            "{}",
+            report.render()
+        );
+        report.check().unwrap();
+    }
+
+    #[test]
+    fn an_added_error_does_not_explain_another_difference_in_the_same_outcome() {
+        let allow_list = AllowList::parse(ADDED_ERROR).unwrap();
+        let report = compare_with(&allow_list, |expression, outcome| {
+            added_error(expression, changed_type(expression, outcome))
+        });
+        assert_eq!(report.unexplained.len(), 2, "{}", report.render());
+        assert!(report.unexplained.iter().all(|d| d.expression == "1 == 1"));
+    }
+
+    #[test]
+    fn an_added_error_that_no_outcome_has_is_stale() {
+        let allow_list = AllowList::parse(ADDED_ERROR).unwrap();
+        let report = compare_with(&allow_list, |_, outcome| outcome);
+        assert_eq!(report.stale.len(), 1, "{}", report.render());
+        assert!(report.check().is_err());
+    }
+
+    #[test]
+    fn added_errors_must_name_known_anchors_and_a_message() {
+        let setups = setups();
+        let anchors = BTreeSet::from(["case-predicate-type".to_owned()]);
+        let added = |anchor: &str, message: &str| {
+            AllowList::parse(&format!(
+                "[[added_error]]\nanchor = {anchor:?}\nmessage = {message:?}\n"
+            ))
+            .unwrap()
+        };
+        added("case-predicate-type", "x")
+            .validate(&anchors, &setups)
+            .unwrap();
+        let error = added("no-such-anchor", "x")
+            .validate(&anchors, &setups)
+            .unwrap_err();
+        assert!(format!("{error:#}").contains("no-such-anchor"), "{error:#}");
+        let error = added("case-predicate-type", "")
+            .validate(&anchors, &setups)
+            .unwrap_err();
+        assert!(format!("{error:#}").contains("empty message"), "{error:#}");
     }
 
     #[test]

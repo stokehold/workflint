@@ -125,9 +125,10 @@ impl Signature {
     }
 }
 
-/// Returns whether a parameter of type `param` accepts an argument of type `arg`. A `bool`
-/// parameter is a condition that GitHub converts to a boolean, as the predicates of `case()`,
-/// so it accepts every type (`docs/differences.md#bool-assignability`).
+/// Returns whether a parameter of type `param` accepts an argument of type `arg`. The only
+/// `bool` parameter is the first predicate of `case()`. It accepts every type here, and the
+/// checker reports every predicate whose type is not `bool` with one message
+/// (`docs/differences.md#case-predicate-type`).
 fn accepts(param: &Ty, arg: &Ty) -> bool {
     match param {
         Ty::Bool => arg.converts_to_bool(),
