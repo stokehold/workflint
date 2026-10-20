@@ -10,6 +10,7 @@ use crate::document::{
     Alias, Anchor, BlockHeader, Chomping, CollectionStyle, Comment, Document, Entry, Mapping, Node,
     NodeId, NodeKind, Scalar, ScalarStyle, Sequence, Tag,
 };
+use crate::help::syntax_error_help;
 use crate::libyaml::{
     self, Error, Event, EventData, MappingStyle, Mark, NodeMarks, Parser, SequenceStyle,
 };
@@ -234,6 +235,7 @@ impl<'a> Builder<'a> {
             self.span(to_u32(offset), to_u32(end)),
             format!("could not parse as YAML: {}", err.problem()),
         )
+        .with_help(syntax_error_help(self.text, err))
     }
 
     fn comment(&mut self, kind: libyaml::CommentKind, event: &EventMarks) {
