@@ -8,7 +8,7 @@ An expression reads a variable that is not a context.
 
 The variables of an expression are the contexts, such as `github`, `env`, and `matrix`. The message lists the contexts that exist. Names are case insensitive, so `GitHub` is `github`.
 
-The diagnostic also has a help text with the closest context, such as `did you mean "github"?` for `gihub`. A built-in function that takes no arguments counts too, so `if: always` gets `did you mean "always()"?`. The default and one-line formats do not print the help text (ADR 0032).
+The diagnostic also has a help text with the closest context, such as `did you mean "github"?` for `gihub`. A built-in function that takes no arguments counts too, so `if: always` gets `did you mean "always()"?`. Only the contexts and functions available where the expression is count, so `matix` under `strategy` and `always` in `run:` get no help text. The default and one-line formats do not print the help text (ADR 0032).
 
 ## Why
 
