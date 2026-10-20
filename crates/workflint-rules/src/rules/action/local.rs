@@ -4,7 +4,10 @@
 //! Ported from rhysd/actionlint at commit `011a6d1`: `checkLocalAction`,
 //! `checkLocalActionMetadata`, and the `runs` checks in `rule_action.go`.
 
-use workflint_data::{is_branding_color, is_branding_icon, is_on_docker_registry};
+use workflint_data::{
+    RUNS_USING_VALUES, is_branding_color, is_branding_icon, is_on_docker_registry,
+    is_runs_using_value,
+};
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
 use workflint_syntax::{ActionRuns, ExecAction, StepUses};
@@ -350,16 +353,14 @@ impl<'m> Metadata<'m> {
                 self.span,
                 format!("\"runs.using\" is missing in local action {name} defined at {dir}"),
             ),
-            "docker" => self.check_docker(cx),
-            "composite" => self.check_composite(cx),
-            "node20" | "node24" => self.check_javascript(cx),
-            _ => {
+            _ if !is_runs_using_value(using) => {
                 cx.report(
                     &INVALID_RUNS_USING,
                     self.span,
                     format!(
-                        "invalid runner name {} at runs.using in {name} action defined at {dir}. valid runners are \"composite\", \"docker\", \"node20\", and \"node24\". see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs",
+                        "invalid runner name {} at runs.using in {name} action defined at {dir}. valid runners are {}. see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs",
                         quote(using),
+                        quoted_list(RUNS_USING_VALUES),
                     ),
                 );
                 // Likely an old Node.js runtime: check it as a JavaScript action to find as
@@ -368,6 +369,10 @@ impl<'m> Metadata<'m> {
                     self.check_javascript(cx);
                 }
             }
+            "docker" => self.check_docker(cx),
+            "composite" => self.check_composite(cx),
+            // Every other valid value is a Node.js runtime.
+            _ => self.check_javascript(cx),
         }
     }
 
@@ -541,9 +546,45 @@ fn go_base(path: &str) -> &str {
     trimmed.rsplit('/').next().map_or(trimmed, |base| base)
 }
 
+/// Quotes each of `values` and joins them as an English list, such as `"a", "b", and "c"`.
+fn quoted_list(values: &[&str]) -> String {
+    match values {
+        [] => String::new(),
+        [only] => quote(only),
+        [first, second] => format!("{} and {}", quote(first), quote(second)),
+        [init @ .., last] => {
+            let init: Vec<String> = init.iter().map(|value| quote(value)).collect();
+            format!("{}, and {}", init.join(", "), quote(last))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::go_base;
+    use super::{go_base, quoted_list};
+    use workflint_data::RUNS_USING_VALUES;
+
+    #[test]
+    fn the_runs_using_message_lists_the_values_from_the_data() {
+        assert_eq!(
+            quoted_list(RUNS_USING_VALUES),
+            r#""composite", "docker", "node20", and "node24""#
+        );
+    }
+
+    #[test]
+    fn a_quoted_list_joins_the_last_value_with_and() {
+        assert_eq!(quoted_list(&[]), "");
+        assert_eq!(quoted_list(&["docker"]), r#""docker""#);
+        assert_eq!(
+            quoted_list(&["docker", "node26"]),
+            r#""docker" and "node26""#
+        );
+        assert_eq!(
+            quoted_list(&["composite", "docker", "node26"]),
+            r#""composite", "docker", and "node26""#
+        );
+    }
 
     #[test]
     fn base_is_the_last_name_as_go_returns_it() {

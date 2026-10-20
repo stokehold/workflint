@@ -8,7 +8,7 @@ An expression calls a function that is not built in.
 
 The message lists the built-in functions. Function names are case insensitive, so `toJson` is `toJSON`.
 
-The diagnostic also has a help text with the closest built-in function, such as `did you mean "startsWith"?` for `startWith`. The default and one-line formats do not print it (ADR 0032).
+The diagnostic also has a help text with the closest built-in function, such as `did you mean "startsWith"?` for `startWith`. A function that is available only at some workflow keys, such as `always`, counts only where it is available. The default and one-line formats do not print it (ADR 0032).
 
 ## Why
 

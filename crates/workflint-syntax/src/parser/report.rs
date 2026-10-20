@@ -17,7 +17,7 @@ use crate::rules::UNMATCHED_CLOSING_BRACES;
 use crate::{
     Concurrency, Container, Credentials, Defaults, Env, Environment, Event, Exec, Expr, Field, Job,
     Keyed, Matrix, MatrixCombination, MatrixRow, Placeholder, RawValue, Runner, Snapshot, Step,
-    Str, Template, Value, Workflow, WorkflowCall, WorkflowCallSecrets,
+    Str, StrSpans, Template, Value, Workflow, WorkflowCall, WorkflowCallSecrets,
 };
 
 /// What the walk calls for each string with placeholders or with a `}}`
@@ -47,24 +47,23 @@ impl<'a> Parser<'a, '_> {
             if !seen.insert((shared, source.alias_path())) {
                 continue;
             }
+            let spans = source.spans(self.file);
             self.within(source.alias_path(), |p| {
                 for placeholder in placeholders {
-                    p.report_placeholder(source, placeholder);
+                    p.report_placeholder(&spans, placeholder);
                 }
                 for &offset in strays {
-                    p.report_stray_closing(source, offset);
+                    p.report_stray_closing(&spans, offset);
                 }
             });
         }
     }
 
-    /// Reports the `}}` at byte `offset` of `source`, which has no opening
-    /// `${{`.
-    fn report_stray_closing(&mut self, source: Str<'a>, offset: u32) {
+    /// Reports the `}}` at byte `offset` of the string of `spans`, which has
+    /// no opening `${{`.
+    fn report_stray_closing(&mut self, spans: &StrSpans<'_, '_>, offset: u32) {
         let start = usize::try_from(offset).unwrap_or(usize::MAX);
-        let span = source
-            .source_span(self.file, start..start.saturating_add("}}".len()))
-            .unwrap_or_else(|| source.span());
+        let span = spans.span(start..start.saturating_add("}}".len()));
         self.error(
             &UNMATCHED_CLOSING_BRACES,
             span,
@@ -74,14 +73,16 @@ impl<'a> Parser<'a, '_> {
     }
 
     /// Reports the parse error of `placeholder`, if it has one, at the
-    /// characters of `source` that the error is about.
-    pub(super) fn report_placeholder(&mut self, source: Str<'a>, placeholder: &Placeholder) {
+    /// characters of the string of `spans` that the error is about.
+    pub(super) fn report_placeholder(
+        &mut self,
+        spans: &StrSpans<'_, '_>,
+        placeholder: &Placeholder,
+    ) {
         let Err(err) = &placeholder.expr else {
             return;
         };
-        let span = source
-            .source_span(self.file, placeholder.to_value(err.range()))
-            .unwrap_or_else(|| source.span());
+        let span = spans.span(placeholder.to_value(err.range()));
         self.error(err.rule, span, err.message.clone());
     }
 }

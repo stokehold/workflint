@@ -296,11 +296,14 @@ The last section lists behaviour that was investigated and deliberately kept.
   - A `runs-on` label that is empty or not a scalar also gets `label "" is unknown` (`runner-label`).
   - A step's `uses` that is empty or not a scalar also gets `specifying action "" in invalid format because ref is missing` (`action`).
   - A `permissions` scope whose value is empty or not a scalar, as in `contents:` or `contents: [read]`, also gets `"" is invalid as permission of scope "contents"` (`permissions`).
+  - A `credentials.password` of a `container` or a service that is empty or not a scalar, as in `password: ''` or `password: [x]`, also gets `"password" section in "container" section should be specified via secrets` (`credentials`).
+  - Two steps of a job with `id: ''` also get `step ID "" duplicates` (`id`).
+  - A `with:` value that is not a scalar, as in `n: [1]`, also gets `input "n" is typed as number by reusable workflow "./.github/workflows/callee.yaml". string value cannot be assigned` when `n` is a `number` input of a local reusable workflow (`expression`).
 - workflint: the parser reports the value once, and the rules skip it. The value keeps its place in its list, so a check that only needs the value to be written still runs. `options: [[x]]` on a `string` input of `workflow_dispatch` still gets `"options" can not be set to "text" input because its input type is not "choice"`, and `options: ['']` on a `choice` input counts as set, as upstream. A `choice` input with an invalid option does not compare its default with the options, because the invalid option has no value to compare. Upstream compares the default with `""` in its place. A required `workflow_call` input with an invalid default is not reported either, although that check only needs the default to be written, because its message would quote `""`. The keys of `permissions` and `env` are in [Keys that are not strings in `permissions` and `env`](#non-scalar-keys). The string form of `permissions` keeps the upstream output: `permissions:` with no value gets `"" is invalid for permission for all the scopes` after `string should not be empty`, because `err/issue170_empty_permissions` expects both.
 - Why: the second error repeats the first and names a value that is not in the file.
 - Upstream issue: none.
 - Milestone: M2.
-- Status: implemented in the parser, the `events` rule (M4.13), the `runner-label` rule (M4.16), the `action` rule (M4.17), the `permissions` rule (M4.22), and the `shell-name` rule (M4.23).
+- Status: implemented in the parser, the `expression` rule (M4.10), the `events` rule (M4.13), the `runner-label` rule (M4.16), the `action` rule (M4.17), the `credentials` rule (M4.19), the `id` rule (M4.20), the `permissions` rule (M4.22), and the `shell-name` rule (M4.23).
 - Fixtures: `err/issue280_runs_on`, `workflint/err/invalid_value_reported_once`.
 
 <a id="insert-mapping-key"></a>
@@ -474,11 +477,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 - Upstream: the first `${{ }}` with any error, including an untrusted-input error, stops checking the rest of the string (`rule_expression.go:755-757`). `echo ${{ foo }} ${{ bar }}` reports only `foo`.
 - workflint: every expression in the string is checked and reported. After a syntax error, the search for the next `${{` goes on after the `}}` that ends the broken expression, or after the character that the lexer rejects if it finds no `}}`. Syntax errors are reported from M2, and type and context errors from M4.
+- The object, array, and null check differs too. Upstream runs it on the expressions of a string only if none of them has an error (`rule_expression.go:755`). In `run: echo ${{ github.event }} ${{ matrix.x }}`, the second expression has an error, so upstream reports only `property "x" is not defined`. workflint also reports `object, array, and null values should not be evaluated in template with ${{ }}` for `github.event`.
 - Why: users fix one error, rerun, and find the next one.
 - Upstream issue: none.
 - Milestone: M2, M4.
 - Status: implemented. Syntax errors from M2, and type, context, and untrusted-input errors from M4.6.
-- Fixtures: `err/context_availability` (line 106, where upstream reports only the first of two errors).
+- Fixtures: `err/context_availability` (line 106, where upstream reports only the first of two errors), `workflint/err/object_in_string_with_failing_expression`.
 
 <a id="unmatched-closing-braces"></a>
 ### A `}}` with no opening `${{`
@@ -511,15 +515,26 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M4.
 - Status: implemented in M4.7. No fixture reads `jobs.<job_id>.result`, and the reference's fixtures keep their output, because a message about a missing output prints only the type of `outputs`. The test `jobs_in_the_workflow_call_outputs_has_the_outputs_and_result_of_each_job` in `crates/workflint-rules/tests/expression.rs` covers it.
 
+<a id="self-needs-case"></a>
+### A job that needs itself
+
+- Upstream: the `needs` context of a job has the jobs in its `needs`, except the job itself, which would be a cycle. The check compares the lower-cased name in `needs` with the job ID as written (`rule_expression.go:841`). For a job `Build:` with `needs: Build`, `build` is not `Build`, so the job is in its own `needs` and `${{ needs.build.result }}` passes. For a job `build:` with `needs: build`, the job is left out and the same expression gets `property "build" is not defined in object type {}`.
+- workflint: compares both names in lower case, so a job is never in its own `needs`, whatever the case of its ID. The job `Build:` also gets `property "build" is not defined in object type {}`. Both tools report the cycle.
+- Why: job IDs are case insensitive, so the case of an ID should not change the type of `needs`.
+- Upstream issue: none.
+- Milestone: M4.
+- Status: implemented in M4.10.
+- Fixtures: `workflint/err/self_needs_different_case`.
+
 <a id="secrets-context-mixed-triggers"></a>
 ### `secrets` in workflows with several triggers
 
 - Upstream: when `on.workflow_call.secrets` exists, `secrets` only has the declared secrets for every job, even when the workflow also runs on `push` or `workflow_dispatch`, where every repository secret is available (`rule_expression.go:152-158`).
-- workflint: `secrets` is limited to the declared secrets and the built-in ones only when `workflow_call` is the only trigger and `on.workflow_call.secrets` is written. Otherwise any secret name is accepted.
+- workflint: `secrets` is limited to the declared secrets and the built-in ones only when `workflow_call` is the only trigger and `on.workflow_call.secrets` is written. An unknown event, which the `events` rule reports, does not count as a trigger. Otherwise any secret name is accepted.
 - Why: upstream rejects valid workflows that have more than one trigger. When `workflow_call` is the only trigger, an undeclared secret stays an error, as upstream reports it, although a caller may pass it with `secrets: inherit` (#148). workflint cannot see the callers, and a typo in a secret name is the more common mistake.
 - Upstream issue: #701, PR #703.
 - Milestone: M4.
-- Status: implemented in M4.7. The two fixtures that declare secrets and have another trigger, `err/unexpected_keys` and `err/case_sensitive_keys`, never read `secrets`, so no fixture output changes. The tests `secrets_has_only_the_declared_and_built_in_secrets_when_workflow_call_is_the_only_trigger` and `secrets_accepts_any_name_when_the_workflow_has_another_trigger` in `crates/workflint-rules/tests/expression.rs` cover it.
+- Status: implemented in M4.7. The two fixtures that declare secrets and have another trigger, `err/unexpected_keys` and `err/case_sensitive_keys`, never read `secrets`, so no fixture output changes. The tests `secrets_has_only_the_declared_and_built_in_secrets_when_workflow_call_is_the_only_trigger`, `secrets_has_only_the_declared_secrets_when_the_other_trigger_is_an_unknown_event`, and `secrets_accepts_any_name_when_the_workflow_has_another_trigger` in `crates/workflint-rules/tests/expression.rs` cover it.
 
 <a id="tag-before-flow-comma"></a>
 ### A tag followed by a comma in a flow collection
@@ -625,12 +640,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Escaped characters in branch and tag globs
 
 - Upstream: for `\[`, `\?` and `\*` in a branch or tag filter, the error reports the character after the escaped one (`glob.go:100`). `\[x` reports `'x'`, and `\[` at the end reports the end-of-input rune.
-- workflint: the error reports the escaped character, for example `'['`. The column is the same as upstream.
+- workflint: the error reports the escaped character, for example `'['`. The column is the same as upstream for a plain or single-quoted pattern. In a double-quoted pattern each escape shifts upstream's column, as [Exact positions inside multi-line and quoted strings](#positions-inside-scalars) says, so for `"*\\*?"` at column 9 workflint reports column 13 and upstream column 12.
 - Why: the message names the wrong character.
 - Upstream issue: none.
 - Milestone: M2.
 - Status: implemented in the validator, and the `glob` rule reports it from M4.15.
-- Fixtures: none. The `workflint-syntax` test `an_escaped_special_character_in_a_ref_glob_reports_that_character` and the `workflint-rules` test `an_escaped_special_character_in_a_ref_pattern_is_reported_at_that_character` cover it.
+- Fixtures: `workflint/err/glob_escape_character`. The `workflint-syntax` test `an_escaped_special_character_in_a_ref_glob_reports_that_character` and the `workflint-rules` test `an_escaped_special_character_in_a_ref_pattern_is_reported_at_that_character` also cover it.
 
 <a id="branding-color-message"></a>
 ### Branding color message names `branding.color`
@@ -778,12 +793,13 @@ The last section lists behaviour that was investigated and deliberately kept.
 
 - Upstream: the `runner-label` rule knows only GitHub-hosted labels, the self-hosted presets, and configured labels. `blacksmith-4vcpu-ubuntu-2404` or a RunsOn label such as `image=ubuntu22-full-x64` is unknown. The `shell-name` rule finds the platform only in literal labels that are `windows`, `macos`, or `linux`, or that start with `windows-`, `macos-`, or `ubuntu-`, so a job on `[self-hosted, self-32vcpu-windows-2022]` or `depot-windows-2022` accepts `shell: sh`.
 - workflint: `workflint-data` lists the label formats of Blacksmith, Depot, Namespace, RunsOn, Ubicloud, and WarpBuild, each with the documentation page it comes from and the date it was read. Their labels are known, and they have no runner images, so they conflict with no label. A RunsOn label is one or more `key=value` parts, separated by `/` or `,`, whose keys RunsOn documents, such as `runs-on`, `runner`, `image`, and `cpu`.
-- The platform of `shell-name` comes from what `runs-on` resolves to. The upstream prefixes decide first. A provider label names the system of its format, such as Windows for `depot-windows-2022`. Any other label names the system of its words: `linux`, `ubuntu`, `macos`, or `windows`, alone or followed by a version, so `self-32vcpu-windows-2022` and `image=windows25-full-x64` name Windows. The words of a `${{ }}` do not count. Labels that name two systems, Linux and macOS included, give no platform, where upstream treats Linux and macOS as one.
+- Namespace's labels include the ones that configure a runner next to its machine label, such as `nscloud-cache-tag-<tag>`, `nscloud-cache-size-<n>gb`, and `nscloud-git-mirror-<n>gb`. They name no system.
+- The platform of `shell-name` comes from what `runs-on` resolves to. A label with an upstream prefix names the system upstream gives it, and a provider label names the system of its format, such as Windows for `depot-windows-2022`. When a label of the job names a system in one of these two ways, only these labels decide the platform. Otherwise each label names the system of its words: `linux`, `ubuntu`, `macos`, or `windows`, alone or followed by a version, so `self-32vcpu-windows-2022` and `image=windows25-full-x64` name Windows. The words of a `${{ }}` do not count. So `[self-hosted, windows, wsl-ubuntu]` is Windows, as it is upstream, and `[self-hosted, wsl-ubuntu, build-windows]` gives no platform. Labels that name two systems, Linux and macOS included, give no platform, where upstream treats Linux and macOS as one.
 - A custom label that names a system is still unknown to `runner-label` until the config lists it.
 - BuildJet is not listed, because it stopped running jobs on 2026-03-31.
 - Why: these providers run jobs for many repositories, and their documented labels were reported as unknown. A self-hosted Windows runner with a custom label got no check of its shells.
 - Upstream issue: #499.
-- Milestone: M4.33. M5.2 adds configured labels, and M7.3 generates runner label data.
+- Milestone: M4.33, and M4.37 for the extra Namespace labels and the order of known labels before words. M5.2 adds configured labels, and M7.3 generates runner label data.
 - Status: implemented.
 - Fixtures: `workflint/err/runner_provider_os` and `workflint/ok/runner_provider_labels.yaml`. The output of no vendored fixture changes.
 - Corpus: no output changes. None of the 827 `unknown-runner-label` hits is a provider label.
@@ -803,12 +819,12 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="project-root-boundary"></a>
 ### Project root checks compare whole path components
 
-- Upstream: `Project.Knows` and the reusable workflow path conversion use a string prefix test, so a project at `/work/repo` claims files in `/work/repo-other/` (`project.go:66`, `reusable_workflow.go:244`).
-- workflint: paths are compared by whole components. Each file gets the project of its own nearest root, so a file in `/work/repo-other/` never uses the caches of `/work/repo`.
-- Why: files from a sibling directory got the wrong config and caches.
+- Upstream: `Project.Knows` and the reusable workflow path conversion use a string prefix test, so a project at `/work/repo` claims files in `/work/repo-other/` (`project.go:66`, `reusable_workflow.go:244`). The same test makes a project claim the files of a repository nested in it, such as a submodule at `/work/repo/sub`. `Projects.At` returns the first project found so far that claims the file (`project.go:90`), so the result depends on the order of the arguments. Take `/work/repo/.github/workflows/ci.yaml` and `/work/repo/sub/.github/workflows/caller.yaml`, where `caller.yaml` calls `./.github/workflows/callee.yaml` of `sub`. With `ci.yaml` first, `caller.yaml` gets the project of `/work/repo`, and upstream reports `could not read reusable workflow file for "./.github/workflows/callee.yaml"` because it looks for the file in `/work/repo/.github/workflows`. With `caller.yaml` first, it gets the project of `sub` and reads the callee.
+- workflint: paths are compared by whole components. Each file gets the project of its own nearest root, whatever order the files come in. A file in `/work/repo-other/` never uses the caches of `/work/repo`, and a file in `/work/repo/sub/` uses those of `sub`.
+- Why: files from a sibling directory or a nested repository got the wrong config and caches.
 - Upstream issue: #750.
 - Milestone: M4 for the caches, M5 for the config.
-- Status: implemented for the caches of local actions and local reusable workflows. No fixture covers it. The config is planned for M5.
+- Status: implemented for the caches of local actions and local reusable workflows. No fixture covers it, because a fixture cannot hold the `.git` directory of a nested repository. The `workflint-linter` tests `a_workflow_outside_the_project_root_is_not_registered` and `a_nested_repository_is_its_own_project_whichever_file_comes_first` cover it. The config is planned for M5.
 
 <a id="project-root-detection"></a>
 ### Project root without `.git`

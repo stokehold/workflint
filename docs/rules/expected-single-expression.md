@@ -6,7 +6,7 @@
 
 A value that must be a literal or a single `${{ }}` expression is other text.
 
-Boolean, integer, and float values, such as `continue-on-error`, `max-parallel`, and `timeout-minutes`, accept a literal of their type or one expression that computes it, and `env` accepts a mapping or one expression. Text around the expression, or text without one, gets this error. The value of an `${{ insert }}` key must be one expression too, or a mapping in the places that accept one, such as `matrix`, `strategy`, and a container ([differences](../differences.md#insert-mapping-key)).
+Boolean, integer, and float values, such as `continue-on-error`, `max-parallel`, and `timeout-minutes`, accept a literal of their type or one expression that computes it, and `env` accepts a mapping or one expression. Text around the expression, or text without one, gets this error. The value of an `${{ insert }}` key must be one expression too, or a mapping in the places that accept one, such as `matrix`, `strategy`, and a container ([differences](../differences.md#insert-mapping-key)). An alias there is recursive, and it gets only [recursive-alias](recursive-alias.md).
 
 ## Why
 

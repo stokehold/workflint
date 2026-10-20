@@ -28,6 +28,8 @@ test.yaml:6:24: configuration variable name "github_token" must not start with t
 test.yaml:6:49: configuration variable name "deploy-target" can only contain alphabets, decimal numbers, and '_'. note: see the convention at https://docs.github.com/en/actions/learn-github-actions/variables#naming-conventions-for-configuration-variables [invalid-config-variable-name]
 ```
 
+actionlint stops at the first expression with an error in a string, so it reports only the first of these.
+
 ## Passing example
 
 ```yaml
@@ -38,3 +40,7 @@ jobs:
     steps:
       - run: echo '${{ vars.DEPLOY_TARGET }}'
 ```
+
+## Differences from actionlint
+
+- [Every `${{ }}` in a string is checked](../differences.md#all-expressions-in-string)

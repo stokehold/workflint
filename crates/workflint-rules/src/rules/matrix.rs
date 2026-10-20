@@ -138,7 +138,13 @@ fn check_exclude(matrix: &workflint_syntax::Matrix<'_>, position: Span, cx: &mut
                     format!(
                         "{} in \"exclude\" section does not exist in matrix. available matrix configurations are {}",
                         quote(name),
-                        sorted_quotes(matrix.rows.iter().map(KeyedEntry::folded)),
+                        sorted_quotes(
+                            matrix
+                                .rows
+                                .iter()
+                                .filter(|row| !matches!(row.value, MatrixRow::Expression(_)))
+                                .map(KeyedEntry::folded)
+                        ),
                     ),
                 );
                 continue;

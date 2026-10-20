@@ -803,8 +803,10 @@ mod tests {
         leaf(text, |p, n| {
             let field = parse(p, n);
             let placeholders = field.value().map_or(&[][..], Template::placeholders);
+            let source = Str::new(n).unwrap();
+            let spans = source.spans(p.file);
             for placeholder in placeholders {
-                p.report_placeholder(Str::new(n).unwrap(), placeholder);
+                p.report_placeholder(&spans, placeholder);
             }
             format!("{} placeholders", placeholders.len())
         })

@@ -128,6 +128,7 @@ fn check(pattern: Str<'_>, validate: fn(&str) -> Vec<GlobProblem>, cx: &mut Cont
     if value.is_empty() {
         return;
     }
+    let spans = pattern.spans(cx.file());
     for problem in validate(value) {
         let rule = match problem.kind {
             GlobProblemKind::Syntax => &INVALID_GLOB,
@@ -136,9 +137,7 @@ fn check(pattern: Str<'_>, validate: fn(&str) -> Vec<GlobProblem>, cx: &mut Cont
             GlobProblemKind::PathDot => &GLOB_PATH_DOT,
         };
         let range = problem.range.unwrap_or(0..value.len());
-        let span = pattern
-            .source_span(cx.file(), range)
-            .unwrap_or_else(|| pattern.span());
+        let span = spans.span(range);
         cx.report(rule, span, format!("{}. {CHEAT_SHEET}", problem.message));
     }
 }
