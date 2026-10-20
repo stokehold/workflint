@@ -20,6 +20,10 @@
 //! - [`Keyed`]: a collection keyed by case-insensitive names, such as jobs
 //!   or `env`, in source order.
 //!
+//! A key that few sections write, such as `timeout-minutes` of a step, holds
+//! its [`Field`] or [`Value`] in a [`Rare`], which takes one word when the key
+//! is absent and dereferences to the field or value.
+//!
 //! "Invalid" means the key is written but its value is not usable. The
 //! parser has reported it, so rules skip it instead of reporting it again.
 //! An invalid item of a list, such as an activity type in `types` or an
@@ -148,5 +152,5 @@ pub use typed::MetadataError;
 pub use uses::{
     InvalidAction, InvalidWorkflow, JobUses, JobUsesKind, StepUses, StepUsesKind, UsesPart,
 };
-pub use value::{Field, Value};
+pub use value::{Field, Rare, Value};
 pub use workflow::{Concurrency, Defaults, DefaultsRun, Env, EnvVar, Permissions, Workflow};

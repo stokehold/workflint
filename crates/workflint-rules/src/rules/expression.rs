@@ -219,7 +219,7 @@ impl<'a> Rule<'a> for Expression<'a> {
             );
         }
         let services = self.at("jobs.<job_id>.services");
-        if let Value::Expression { expr, .. } = &job.services {
+        if let Value::Expression { expr, .. } = &*job.services {
             services.object(cx, expr, "services");
         }
         for expr in job.services.literal().into_iter().flat_map(Keyed::inserts) {

@@ -26,8 +26,9 @@ use crate::{AliasPath, Placeholder, contains_expression, is_expression_assigned}
 /// it can point at the alias that used it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Str<'a> {
+    /// A scalar node: [`new`](Self::new) checks it. The scalar is not kept
+    /// beside it, so that a `Str` takes two words.
     node: &'a Node,
-    scalar: &'a Scalar,
     path: Option<AliasPath>,
 }
 
@@ -37,11 +38,7 @@ impl<'a> Str<'a> {
     #[must_use]
     pub fn new(node: &'a Node) -> Option<Self> {
         match &node.kind {
-            NodeKind::Scalar(scalar) => Some(Self {
-                node,
-                scalar,
-                path: None,
-            }),
+            NodeKind::Scalar(_) => Some(Self { node, path: None }),
             NodeKind::Sequence(_) | NodeKind::Mapping(_) | NodeKind::Alias(_) => None,
         }
     }
@@ -49,7 +46,7 @@ impl<'a> Str<'a> {
     /// Returns the decoded value: unquoted, unescaped, folded, and chomped.
     #[must_use]
     pub fn value(&self) -> &'a str {
-        &self.scalar.value
+        self.scalar().map_or("", |scalar| &scalar.value)
     }
 
     /// Returns the span of the node, from its first property to its end.
@@ -61,7 +58,8 @@ impl<'a> Str<'a> {
     /// Returns how the scalar is written.
     #[must_use]
     pub fn style(&self) -> ScalarStyle {
-        self.scalar.style
+        self.scalar()
+            .map_or(ScalarStyle::Plain, |scalar| scalar.style)
     }
 
     /// Returns whether the scalar is single-quoted or double-quoted, which is
@@ -70,7 +68,7 @@ impl<'a> Str<'a> {
     #[must_use]
     pub fn is_quoted(&self) -> bool {
         matches!(
-            self.scalar.style,
+            self.style(),
             ScalarStyle::SingleQuoted | ScalarStyle::DoubleQuoted
         )
     }
@@ -78,7 +76,16 @@ impl<'a> Str<'a> {
     /// Returns the tag of the scalar.
     #[must_use]
     pub fn tag(&self) -> &'a Tag {
-        &self.scalar.tag
+        self.scalar().map_or(&Tag::Str, |scalar| &scalar.tag)
+    }
+
+    /// Returns the scalar of the node. It is never `None`, because
+    /// [`new`](Self::new) takes only scalar nodes.
+    fn scalar(&self) -> Option<&'a Scalar> {
+        match &self.node.kind {
+            NodeKind::Scalar(scalar) => Some(scalar),
+            NodeKind::Sequence(_) | NodeKind::Mapping(_) | NodeKind::Alias(_) => None,
+        }
     }
 
     /// Returns the YAML node.
@@ -228,9 +235,9 @@ pub struct Template<'a> {
 #[derive(Debug, PartialEq)]
 struct Parts {
     /// The placeholders in source order.
-    placeholders: Vec<Placeholder>,
+    placeholders: Box<[Placeholder]>,
     /// The offsets of the `}}` with no opening `${{`, in source order.
-    stray_closings: Vec<u32>,
+    stray_closings: Box<[u32]>,
 }
 
 impl<'a> Template<'a> {
@@ -286,9 +293,11 @@ impl<'a> Template<'a> {
 
     fn with(source: Str<'a>, placeholders: Vec<Placeholder>, stray_closings: Vec<u32>) -> Self {
         let parts = (!placeholders.is_empty() || !stray_closings.is_empty()).then(|| {
+            // Boxed slices drop the spare capacity: a vector of one
+            // placeholder has room for four.
             Arc::new(Parts {
-                placeholders,
-                stray_closings,
+                placeholders: placeholders.into_boxed_slice(),
+                stray_closings: stray_closings.into_boxed_slice(),
             })
         });
         Self { source, parts }
@@ -430,5 +439,12 @@ mod tests {
         let root = document.node(document.root().unwrap()).unwrap();
 
         assert!(Str::new(root).is_none());
+    }
+
+    // Every key and string value of the AST is a `Str`, so its size counts
+    // many times over in a large workflow (#240).
+    #[test]
+    fn a_string_takes_two_words() {
+        assert_eq!(size_of::<Str<'_>>(), 2 * size_of::<usize>());
     }
 }

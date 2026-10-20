@@ -57,11 +57,13 @@ static RUN_STEP_KEYS: [KeySpec<ExecRun<'static>>; 9] = [
     },
     KeySpec {
         name: "shell",
-        parse: |p, r, e| r.shell = p.parse_template(e.key.string, e.value, false),
+        parse: |p, r, e| r.shell = p.parse_template(e.key.string, e.value, false).into(),
     },
     KeySpec {
         name: "working-directory",
-        parse: |p, r, e| r.working_directory = p.parse_template(e.key.string, e.value, false),
+        parse: |p, r, e| {
+            r.working_directory = p.parse_template(e.key.string, e.value, false).into();
+        },
     },
 ];
 
@@ -130,24 +132,26 @@ impl<'a> Parser<'a, '_> {
             self.parse_mapping(Label::At("element of \"steps\" section"), node, false, true);
         let mut step = Step {
             span: node.span,
-            id: Field::Absent,
-            condition: Field::Absent,
+            id: Field::Absent.into(),
+            condition: Field::Absent.into(),
             name: Field::Absent,
             exec: None,
-            env: Value::Absent,
-            continue_on_error: Value::Absent,
-            timeout_minutes: Value::Absent,
+            env: Value::Absent.into(),
+            continue_on_error: Value::Absent.into(),
+            timeout_minutes: Value::Absent.into(),
         };
         let mut kind = Kind::Unknown;
         for entry in &entries {
             let key = entry.key.string;
             self.within(entry.path, |p| match &*entry.id {
-                "id" => step.id = p.parse_step_id(key, entry.value),
-                "if" => step.condition = p.parse_condition(key, entry.value),
+                "id" => step.id = p.parse_step_id(key, entry.value).into(),
+                "if" => step.condition = p.parse_condition(key, entry.value).into(),
                 "name" => step.name = p.parse_template(key, entry.value, true),
-                "env" => step.env = p.parse_env(entry.key, entry.value),
-                "continue-on-error" => step.continue_on_error = p.parse_bool(key, entry.value),
-                "timeout-minutes" => step.timeout_minutes = p.parse_timeout_minutes(entry),
+                "env" => step.env = p.parse_env(entry.key, entry.value).into(),
+                "continue-on-error" => {
+                    step.continue_on_error = p.parse_bool(key, entry.value).into();
+                }
+                "timeout-minutes" => step.timeout_minutes = p.parse_timeout_minutes(entry).into(),
                 // The reference reads the value without checking its kind,
                 // so a value that is not a scalar makes an action step.
                 "uses" => {
@@ -219,15 +223,19 @@ impl<'a> Parser<'a, '_> {
         if body.docker {
             entries.retain(|input| match &*input.id {
                 "entrypoint" => {
-                    body.action.entrypoint = self.within(input.path, |p| {
-                        p.parse_template(input.key.string, input.value, false)
-                    });
+                    body.action.entrypoint = self
+                        .within(input.path, |p| {
+                            p.parse_template(input.key.string, input.value, false)
+                        })
+                        .into();
                     false
                 }
                 "args" => {
-                    body.action.args = self.within(input.path, |p| {
-                        p.parse_template(input.key.string, input.value, true)
-                    });
+                    body.action.args = self
+                        .within(input.path, |p| {
+                            p.parse_template(input.key.string, input.value, true)
+                        })
+                        .into();
                     false
                 }
                 _ => true,

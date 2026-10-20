@@ -1,6 +1,9 @@
 //! Values under a key: absent, invalid, or valid, and for [`Value`] a
 //! literal or an expression.
 
+use std::fmt;
+use std::ops::Deref;
+
 use workflint_diagnostics::Span;
 
 use crate::{Expr, Str};
@@ -189,11 +192,68 @@ impl<'a, T> Field<'a, T> {
     }
 }
 
+/// A [`Field`] or [`Value`] of a key that few sections write, such as
+/// `timeout-minutes` of a step.
+///
+/// An absent value takes one word instead of the size of the value, and a
+/// present one is boxed. It dereferences to the value, so a rule reads it as
+/// it reads a [`Field`] or [`Value`]. A large workflow has hundreds of steps,
+/// and most of their keys are absent.
+#[derive(Clone, Default)]
+pub struct Rare<T>(Option<Box<T>>);
+
+impl<'a, T> From<Field<'a, T>> for Rare<Field<'a, T>> {
+    fn from(field: Field<'a, T>) -> Self {
+        Self(field.is_present().then(|| Box::new(field)))
+    }
+}
+
+impl<'a, T> From<Value<'a, T>> for Rare<Value<'a, T>> {
+    fn from(value: Value<'a, T>) -> Self {
+        Self(value.is_present().then(|| Box::new(value)))
+    }
+}
+
+impl<'a, T> Deref for Rare<Field<'a, T>> {
+    type Target = Field<'a, T>;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_deref().unwrap_or(&Field::Absent)
+    }
+}
+
+impl<'a, T> Deref for Rare<Value<'a, T>> {
+    type Target = Value<'a, T>;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_deref().unwrap_or(&Value::Absent)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Rare<T>
+where
+    Self: Deref<Target = T>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        T::fmt(self, f)
+    }
+}
+
+impl<T: PartialEq> PartialEq for Rare<T>
+where
+    Self: Deref<Target = T>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        **self == **other
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
     use super::*;
+    use crate::Template;
     use crate::testing::{document, root_entries};
 
     #[test]
@@ -289,5 +349,32 @@ mod tests {
         assert!(invalid.is_present() && !invalid.is_valid() && invalid.value().is_none());
         assert_eq!(valid.value().map(Str::value), Some("build"));
         assert_eq!(valid.key().map(Str::value), Some("name"));
+    }
+
+    #[test]
+    fn an_absent_rare_field_reads_as_absent_and_takes_one_word() {
+        let field: Rare<Field<'_, Template<'_>>> = Field::Absent.into();
+
+        assert_eq!(*field, Field::Absent);
+        assert_eq!(field, Rare::default());
+        assert_eq!(size_of_val(&field), size_of::<usize>());
+    }
+
+    #[test]
+    fn a_present_rare_value_reads_as_its_value() {
+        let document = document("continue-on-error: true\n");
+        let [(key, value)] = root_entries(&document)[..] else {
+            panic!()
+        };
+        let literal = Value::Literal {
+            key: Some(key),
+            span: value.span(),
+            value: true,
+        };
+        let rare: Rare<Value<'_, bool>> = literal.clone().into();
+
+        assert_eq!(*rare, literal);
+        assert_eq!(rare.literal(), Some(&true));
+        assert_eq!(format!("{rare:?}"), format!("{literal:?}"));
     }
 }

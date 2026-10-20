@@ -165,9 +165,7 @@ impl<'a> Source<'a> {
                 NodeKind::Sequence(sequence) => document.items(sequence).len(),
                 NodeKind::Mapping(mapping) => document.entries(mapping).len() * 2,
                 NodeKind::Alias(alias) => {
-                    let target = alias
-                        .target
-                        .or_else(|| anchors.get(alias.name.as_str()).copied());
+                    let target = alias.target.or_else(|| anchors.get(&*alias.name).copied());
                     if let Some(target) = target {
                         alias_targets.insert(id, target);
                     }
@@ -258,7 +256,7 @@ impl<'a> Source<'a> {
     pub(crate) fn is_merge_key(&self, id: NodeId) -> bool {
         match self.node(id).map(|node| &node.kind) {
             Some(NodeKind::Scalar(scalar)) => {
-                scalar.value == "<<"
+                &*scalar.value == "<<"
                     && match &scalar.tag {
                         Tag::Str => scalar.style == ScalarStyle::Plain,
                         Tag::Other(tag) => &**tag == "!!merge",
@@ -506,7 +504,7 @@ impl<'s> Decoder<'s> {
         };
         let tag = node.tag().map_or("", Tag::as_str);
         let value = match &node.kind {
-            NodeKind::Scalar(scalar) => scalar.value.as_str(),
+            NodeKind::Scalar(scalar) => &scalar.value,
             _ => "",
         };
         let shown = if tag == "!!seq" || tag == "!!map" {
@@ -596,7 +594,8 @@ impl<'s> Decoder<'s> {
                     Ok(true)
                 }
                 _ => {
-                    out.clone_from(&scalar.value);
+                    out.clear();
+                    out.push_str(&scalar.value);
                     Ok(true)
                 }
             }

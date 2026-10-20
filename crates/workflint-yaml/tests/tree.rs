@@ -54,7 +54,7 @@ fn mapping_entries(document: &Document) -> Vec<(String, String)> {
         .iter()
         .map(|entry| {
             let text = |id| match &document.node(id).unwrap().kind {
-                NodeKind::Scalar(scalar) => scalar.value.clone(),
+                NodeKind::Scalar(scalar) => scalar.value.to_string(),
                 other => format!("{other:?}"),
             };
             (text(entry.key), text(entry.value))

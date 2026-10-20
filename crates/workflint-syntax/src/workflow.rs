@@ -231,8 +231,8 @@ jobs:
     fn workflow(document: &Document) -> Workflow<'_> {
         let steps: Arc<[Step<'_>]> = Arc::new([Step {
             span: node_at(document, &["jobs", "Build", "steps", "0"]).span,
-            id: Field::Absent,
-            condition: Field::Absent,
+            id: Field::Absent.into(),
+            condition: Field::Absent.into(),
             name: Field::Absent,
             exec: Some(Exec::Run(ExecRun {
                 run: valid(
@@ -242,9 +242,9 @@ jobs:
                 ),
                 ..ExecRun::default()
             })),
-            env: Value::Absent,
-            continue_on_error: Value::Absent,
-            timeout_minutes: Value::Absent,
+            env: Value::Absent.into(),
+            continue_on_error: Value::Absent.into(),
+            timeout_minutes: Value::Absent.into(),
         }]);
         let build = Job {
             steps: valid(document, &["jobs", "Build", "steps"], Arc::clone(&steps)),
@@ -276,7 +276,8 @@ jobs:
                     },
                     ..Strategy::default()
                 },
-            ),
+            )
+            .into(),
             ..Job::default()
         };
         let jobs = Keyed::new(vec![

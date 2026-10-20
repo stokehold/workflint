@@ -155,8 +155,8 @@ fn an_action_step_has_uses_and_with_with_case_insensitive_keys() {
             ["Fetch-Depth=0", "entrypoint=e", "args="]
         );
         assert!(inputs.contains_key("fetch-depth"));
-        assert_eq!(checkout.entrypoint, Field::Absent);
-        assert_eq!(checkout.args, Field::Absent);
+        assert_eq!(*checkout.entrypoint, Field::Absent);
+        assert_eq!(*checkout.args, Field::Absent);
     });
 }
 
@@ -178,7 +178,7 @@ fn a_docker_action_step_moves_entrypoint_and_args_out_of_with() {
         assert_eq!(keyed_strings(docker.inputs.value().unwrap()), ["foo=Hello"]);
         let bare = action(&steps[1]);
         assert_eq!(bare.inputs, Field::Absent);
-        assert_eq!(bare.entrypoint, Field::Absent);
+        assert_eq!(*bare.entrypoint, Field::Absent);
     });
 }
 
@@ -325,7 +325,7 @@ fn the_later_of_run_and_uses_gives_the_steps_exec() {
         Some("echo hello")
     );
     // The key that lost is not parsed.
-    assert_eq!(run(&steps[1]).shell, Field::Absent);
+    assert_eq!(*run(&steps[1]).shell, Field::Absent);
 }
 
 #[test]
@@ -490,7 +490,7 @@ fn the_common_keys_are_parsed_in_both_kinds_of_step() {
         assert!(step.env.expression().is_some());
         assert!(step.continue_on_error.expression().is_some());
         assert!(step.timeout_minutes.expression().is_some());
-        assert_eq!(step.condition, Field::Absent);
+        assert_eq!(*step.condition, Field::Absent);
         assert_eq!(step.name, Field::Absent);
     });
 }

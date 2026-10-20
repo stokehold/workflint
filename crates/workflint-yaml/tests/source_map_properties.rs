@@ -583,7 +583,7 @@ fn check(written: &Written) -> Result<(), TestCaseError> {
         _ => matches!(scalar.style, ScalarStyle::Plain),
     };
     prop_assert!(style, "unexpected style {:?}", scalar.style);
-    prop_assert_eq!(&scalar.value, &written.value);
+    prop_assert_eq!(&*scalar.value, written.value.as_str());
     let map = node.source_map(&file).unwrap();
     prop_assert!(map.is_exact());
     let (start, end) = (node.span.start, node.span.end);

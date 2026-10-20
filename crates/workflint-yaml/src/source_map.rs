@@ -162,7 +162,7 @@ impl Node {
             .then(|| text.get(start..end))
             .flatten()
             .and_then(|_| decode(text, start, end, scalar))
-            .filter(|out| out.value == scalar.value);
+            .filter(|out| *out.value == *scalar.value);
         let to_u32 = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
         Some(match decoded {
             Some(out) => SourceMap {
@@ -214,10 +214,15 @@ fn decode(text: &str, start: usize, end: usize, scalar: &Scalar) -> Option<Out> 
         ScalarStyle::SingleQuoted => decoder.flow(true)?,
         ScalarStyle::DoubleQuoted => decoder.flow(false)?,
         ScalarStyle::Literal(header) => {
-            decoder.block(true, header.chomping, header.indent, scalar.parent_indent)?;
+            decoder.block(true, header.chomping, header.indent, scalar.parent_indent())?;
         }
         ScalarStyle::Folded(header) => {
-            decoder.block(false, header.chomping, header.indent, scalar.parent_indent)?;
+            decoder.block(
+                false,
+                header.chomping,
+                header.indent,
+                scalar.parent_indent(),
+            )?;
         }
     }
     Some(decoder.out)

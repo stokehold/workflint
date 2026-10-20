@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::{
-    Concurrency, Defaults, Env, Expr, Field, JobUses, Keyed, Matrix, Permissions, Step, Str,
+    Concurrency, Defaults, Env, Expr, Field, JobUses, Keyed, Matrix, Permissions, Rare, Step, Str,
     Template, Value,
 };
 
@@ -21,44 +21,44 @@ pub struct Job<'a> {
     /// `runs-on`.
     pub runs_on: Field<'a, Runner<'a>>,
     /// `permissions`. The reference's `Permissions.Pos` is this field's key.
-    pub permissions: Field<'a, Permissions<'a>>,
+    pub permissions: Rare<Field<'a, Permissions<'a>>>,
     /// `environment`. The reference's `Environment.Pos` is this field's key.
-    pub environment: Field<'a, Environment<'a>>,
+    pub environment: Rare<Field<'a, Environment<'a>>>,
     /// `concurrency`. The reference's `Concurrency.Pos` is this field's key.
-    pub concurrency: Field<'a, Concurrency<'a>>,
+    pub concurrency: Rare<Field<'a, Concurrency<'a>>>,
     /// `outputs`, keyed by output name. An output's value is `None` when it
     /// is not a scalar, which the parser reports. The reference's
     /// `Output.Name` is the entry's key.
-    pub outputs: Field<'a, Keyed<'a, Option<Template<'a>>>>,
+    pub outputs: Rare<Field<'a, Keyed<'a, Option<Template<'a>>>>>,
     /// `env`.
-    pub env: Value<'a, Env<'a>>,
+    pub env: Rare<Value<'a, Env<'a>>>,
     /// `defaults`. The reference's `Defaults.Pos` is this field's key.
-    pub defaults: Field<'a, Defaults<'a>>,
+    pub defaults: Rare<Field<'a, Defaults<'a>>>,
     /// `if`.
-    pub condition: Field<'a, Template<'a>>,
+    pub condition: Rare<Field<'a, Template<'a>>>,
     /// `steps`, in source order.
     pub steps: Field<'a, Arc<[Step<'a>]>>,
     /// `timeout-minutes`. A literal that is zero or less stays a literal
     /// after the parser reports it.
-    pub timeout_minutes: Value<'a, f64>,
+    pub timeout_minutes: Rare<Value<'a, f64>>,
     /// `strategy`. The reference's `Strategy.Pos` is this field's key.
-    pub strategy: Field<'a, Strategy<'a>>,
+    pub strategy: Rare<Field<'a, Strategy<'a>>>,
     /// `continue-on-error`.
-    pub continue_on_error: Value<'a, bool>,
+    pub continue_on_error: Rare<Value<'a, bool>>,
     /// `container`. The reference's `Container.Pos` is this field's key.
-    pub container: Field<'a, Container<'a>>,
+    pub container: Rare<Field<'a, Container<'a>>>,
     /// `services`. The reference's `Services.Pos` is the span of this
     /// field's value.
-    pub services: Value<'a, Services<'a>>,
+    pub services: Rare<Value<'a, Services<'a>>>,
     /// The call of a reusable workflow, from `uses`, `with`, and `secrets`.
     ///
     /// It is set only when `uses` is written, valid or not, and no key that
     /// only a job with steps may have is written, such as `runs-on`.
     /// `services` does not count here, as in the reference, although the
     /// parser reports it (`docs/differences.md#reusable-call-services`).
-    pub workflow_call: Option<WorkflowCall<'a>>,
+    pub workflow_call: Option<Box<WorkflowCall<'a>>>,
     /// `snapshot`. The reference's `snapshot` position is this field's key.
-    pub snapshot: Field<'a, Snapshot<'a>>,
+    pub snapshot: Rare<Field<'a, Snapshot<'a>>>,
 }
 
 /// `runs-on`: the runner a job runs on.
@@ -198,4 +198,15 @@ pub struct Snapshot<'a> {
     pub version: Field<'a, Str<'a>>,
     /// `if`.
     pub condition: Field<'a, Template<'a>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Most keys of a job are absent, so those keys are `Rare` (#240).
+    #[test]
+    fn a_job_fits_in_416_bytes() {
+        assert!(size_of::<Job<'_>>() <= 416, "{}", size_of::<Job<'_>>());
+    }
 }
