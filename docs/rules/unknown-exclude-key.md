@@ -6,7 +6,7 @@
 
 An `exclude` entry names a key that is not a matrix row.
 
-Keys compare without case, and the message lists the rows in lower case. A key that only `include` adds is not a row. A row written as one `${{ }}` expression is a row, and its values are not checked.
+Keys compare without case, and the message lists the rows in lower case. A key that only `include` adds is not a row. A row written as one `${{ }}` expression is a row, but its values are not checked and the message does not list it.
 
 ## Why
 

@@ -530,11 +530,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### `secrets` in workflows with several triggers
 
 - Upstream: when `on.workflow_call.secrets` exists, `secrets` only has the declared secrets for every job, even when the workflow also runs on `push` or `workflow_dispatch`, where every repository secret is available (`rule_expression.go:152-158`).
-- workflint: `secrets` is limited to the declared secrets and the built-in ones only when `workflow_call` is the only trigger and `on.workflow_call.secrets` is written. Otherwise any secret name is accepted.
+- workflint: `secrets` is limited to the declared secrets and the built-in ones only when `workflow_call` is the only trigger and `on.workflow_call.secrets` is written. An unknown event, which the `events` rule reports, does not count as a trigger. Otherwise any secret name is accepted.
 - Why: upstream rejects valid workflows that have more than one trigger. When `workflow_call` is the only trigger, an undeclared secret stays an error, as upstream reports it, although a caller may pass it with `secrets: inherit` (#148). workflint cannot see the callers, and a typo in a secret name is the more common mistake.
 - Upstream issue: #701, PR #703.
 - Milestone: M4.
-- Status: implemented in M4.7. The two fixtures that declare secrets and have another trigger, `err/unexpected_keys` and `err/case_sensitive_keys`, never read `secrets`, so no fixture output changes. The tests `secrets_has_only_the_declared_and_built_in_secrets_when_workflow_call_is_the_only_trigger` and `secrets_accepts_any_name_when_the_workflow_has_another_trigger` in `crates/workflint-rules/tests/expression.rs` cover it.
+- Status: implemented in M4.7. The two fixtures that declare secrets and have another trigger, `err/unexpected_keys` and `err/case_sensitive_keys`, never read `secrets`, so no fixture output changes. The tests `secrets_has_only_the_declared_and_built_in_secrets_when_workflow_call_is_the_only_trigger`, `secrets_has_only_the_declared_secrets_when_the_other_trigger_is_an_unknown_event`, and `secrets_accepts_any_name_when_the_workflow_has_another_trigger` in `crates/workflint-rules/tests/expression.rs` cover it.
 
 <a id="tag-before-flow-comma"></a>
 ### A tag followed by a comma in a flow collection
