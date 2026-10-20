@@ -236,12 +236,94 @@ fn unrelated_simple_key_error_has_no_help() {
 
 #[test]
 fn other_syntax_errors_have_no_help() {
-    let (message, help) = error("on: push\n  jobs: {}\n");
+    let (message, help) = error("name: \"CI\n");
     assert_eq!(
         message,
-        "could not parse as YAML: mapping values are not allowed in this context"
+        "could not parse as YAML: found unexpected end of stream"
     );
     assert_eq!(help, None);
+}
+
+/// The help text of the one syntax error in `text`, which must be
+/// `mapping values are not allowed in this context`.
+fn mapping_values_help(text: &str) -> Option<String> {
+    let (message, help) = error(text);
+    assert_eq!(
+        message, "could not parse as YAML: mapping values are not allowed in this context",
+        "{text:?}"
+    );
+    help
+}
+
+#[test]
+fn colon_inside_a_plain_value_says_to_quote_the_value() {
+    let text = "\
+jobs:
+  test:
+    steps:
+      - run: echo hello: world
+";
+    assert_eq!(
+        mapping_values_help(text).as_deref(),
+        Some(
+            "a \":\" followed by a space or the end of the line starts a mapping, so YAML \
+             does not allow it in a plain value; quote the value, as in \
+             \"run: 'echo hello: world'\""
+        ),
+    );
+}
+
+#[test]
+fn colon_at_the_end_of_a_plain_value_says_to_quote_the_value() {
+    assert_eq!(
+        mapping_values_help("name: it's done:\n").as_deref(),
+        Some(
+            "a \":\" followed by a space or the end of the line starts a mapping, so YAML \
+             does not allow it in a plain value; quote the value, as in \
+             \"name: 'it''s done:'\""
+        ),
+    );
+}
+
+#[test]
+fn key_indented_under_a_plain_value_names_the_key_above() {
+    let text = "\
+on: push
+  jobs: {}
+";
+    assert_eq!(
+        mapping_values_help(text).as_deref(),
+        Some(
+            "this key is indented deeper than the key on line 1, so YAML reads it as more \
+             of that key's value, where a \":\" followed by a space is not allowed; align \
+             it with the keys of the mapping it belongs to"
+        ),
+    );
+}
+
+#[test]
+fn key_indented_under_a_plain_value_in_a_list_item_names_the_key_above() {
+    let text = "\
+steps:
+  - name: Build
+
+     run: make
+";
+    assert_eq!(
+        mapping_values_help(text).as_deref(),
+        Some(
+            "this key is indented deeper than the key on line 2, so YAML reads it as more \
+             of that key's value, where a \":\" followed by a space is not allowed; align \
+             it with the keys of the mapping it belongs to"
+        ),
+    );
+}
+
+#[test]
+fn unrelated_mapping_values_error_has_no_help() {
+    for text in ["- a\n  b: c\n", "a:\n  b\n  c: d\n", "\"a\": b: c\n"] {
+        assert_eq!(mapping_values_help(text), None, "{text:?}");
+    }
 }
 
 #[test]

@@ -16,6 +16,11 @@ The parser's `did not find expected key` says only that a block mapping met some
 - Text after a flow sequence, a flow mapping, or a quoted string on the same line, as in `name: [Foo] bar`.
 - A key with no space after its `:`, as in `runs-on:ubuntu-latest`. The parser reports this as `could not find expected ':'` when the key is at the indentation of the other keys, and the help text names the cause there too.
 
+The parser's `mapping values are not allowed in this context` says only that a `:` came where no key can start. It gets a help text for two causes:
+
+- A `: ` inside a plain value, as in `run: echo hello: world`. The help text suggests the value in single quotes.
+- A key indented deeper than the key on the line above, whose value is a plain scalar. YAML reads the indented line as more of that value.
+
 Other errors get no help text. The default and one-line formats do not print it (ADR 0032).
 
 ## Why
@@ -36,6 +41,26 @@ jobs:
 ```text
 test.yaml:6:24: could not parse as YAML: mapping values are not allowed in this context [yaml-syntax-error]
 ```
+
+The help text is `a ":" followed by a space or the end of the line starts a mapping, so YAML does not allow it in a plain value; quote the value, as in "run: 'echo hello: world'"`.
+
+A key indented under a plain value:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+      timeout-minutes: 10
+    steps:
+      - run: echo test
+```
+
+```text
+test.yaml:5:22: could not parse as YAML: mapping values are not allowed in this context [yaml-syntax-error]
+```
+
+The help text is `this key is indented deeper than the key on line 4, so YAML reads it as more of that key's value, where a ":" followed by a space is not allowed; align it with the keys of the mapping it belongs to`.
 
 A list item indented less than the item before it:
 
