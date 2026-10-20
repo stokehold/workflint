@@ -11,6 +11,7 @@
 //! with the cache of each project, and returns each file's diagnostics in input order. A panic in
 //! the lint of one file becomes an [`internal-error`](rules::INTERNAL_ERROR) diagnostic on that
 //! file. The [`registry`] lists every rule, with the rules of [`rules`] that the driver reports.
+//! [`tool`] runs external tools such as shellcheck with a timeout and a limit on processes.
 //!
 //! M5 adds file discovery and the config.
 //!
@@ -22,6 +23,7 @@ pub mod path;
 mod project;
 pub mod registry;
 pub mod rules;
+pub mod tool;
 
 pub use cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
 pub use linter::{Check, Input, Linted, Linter, ReadError, has_internal_error};

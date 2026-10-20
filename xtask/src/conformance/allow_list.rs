@@ -1,7 +1,7 @@
 //! `tests/conformance/allowed-differences.toml`: the expected lines that
-//! workflint replaces, removes, or adds on purpose, in fixtures and in the
-//! `Output` blocks of upstream `docs/checks.md`. Each entry names an anchor in
-//! `docs/differences.md` (ADR 0004).
+//! workflint replaces, removes, or adds on purpose, in fixtures, in corpus
+//! files, and in the `Output` blocks of upstream `docs/checks.md`. Each entry
+//! names an anchor in `docs/differences.md` (ADR 0004).
 
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
@@ -10,7 +10,8 @@ use std::sync::LazyLock;
 use regex::Regex;
 use serde::Deserialize;
 
-use super::matcher::pattern;
+use super::corpus;
+use super::matcher::{line_matches, pattern};
 use super::output::parse_line;
 
 /// The parsed file.
@@ -48,12 +49,27 @@ pub struct Example {
 pub struct Entry {
     /// An anchor in `docs/differences.md`, without the `#`.
     pub anchor: String,
-    /// The fixture ID, as in `expected-failures.toml`.
+    /// The fixture ID, as in `expected-failures.toml`, `realworld/<file
+    /// name>` for a corpus file, or `realworld/*` for every corpus file.
     pub fixture: String,
-    /// The line of the `.out` file that workflint does not report.
+    /// The line of the `.out` file that workflint does not report. For a
+    /// corpus file, a line that the reference prints. For every corpus file,
+    /// a `/pattern/`.
     pub upstream: Option<String>,
-    /// The line that workflint reports instead, or in addition.
+    /// The line that workflint reports instead, or in addition. For every
+    /// corpus file, the text that replaces each match of `upstream`.
     pub workflint: Option<String>,
+}
+
+/// What an entry applies to, from its `fixture`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Target<'a> {
+    /// The fixture with this ID.
+    Fixture(&'a str),
+    /// The corpus file with this name.
+    CorpusFile(&'a str),
+    /// Every corpus file.
+    EveryCorpusFile,
 }
 
 impl AllowList {
@@ -75,6 +91,22 @@ impl AllowList {
             .collect()
     }
 
+    /// The entries for the corpus files `names`, in file order, then the
+    /// entries for every corpus file, in file order.
+    #[must_use]
+    pub fn corpus_entries(&self, names: &[String]) -> Vec<&Entry> {
+        let (every, files): (Vec<&Entry>, Vec<&Entry>) = self
+            .entries
+            .iter()
+            .filter(|entry| match entry.target() {
+                Target::CorpusFile(name) => names.iter().any(|selected| selected == name),
+                Target::EveryCorpusFile => true,
+                Target::Fixture(_) => false,
+            })
+            .partition(|entry| entry.target() == Target::EveryCorpusFile);
+        files.into_iter().chain(every).collect()
+    }
+
     /// The `[[example]]` tables for the `docs/checks.md` section `section`,
     /// in file order.
     #[must_use]
@@ -85,8 +117,14 @@ impl AllowList {
             .collect()
     }
 
-    /// Checks every entry against the anchors of `docs/differences.md` and
-    /// the known fixture IDs, and every example against the anchors.
+    /// Checks every entry against the anchors of `docs/differences.md`, the
+    /// known fixture IDs, and the names of the corpus files, and every
+    /// example against the anchors.
+    ///
+    /// An entry for a corpus file must name a file in the corpus, and each
+    /// of its lines must start with that file's name and a position, as an
+    /// exact line or a `/pattern/`. An entry for every corpus file needs an
+    /// `upstream` that is a valid `/pattern/`, and a `workflint`.
     ///
     /// # Errors
     ///
@@ -95,6 +133,7 @@ impl AllowList {
         &self,
         anchors: &BTreeSet<String>,
         fixtures: &BTreeSet<String>,
+        corpus: &BTreeSet<String>,
     ) -> Result<(), String> {
         let mut problems = Vec::new();
         for entry in &self.entries {
@@ -104,11 +143,52 @@ impl AllowList {
                     entry.anchor, entry.fixture
                 ));
             }
-            if !fixtures.contains(&entry.fixture) {
-                problems.push(format!(
-                    "fixture {:?} of the entry for anchor {} does not exist",
-                    entry.fixture, entry.anchor
-                ));
+            match entry.target() {
+                Target::Fixture(id) => {
+                    if !fixtures.contains(id) {
+                        problems.push(format!(
+                            "fixture {id:?} of the entry for anchor {} does not exist",
+                            entry.anchor
+                        ));
+                    }
+                }
+                Target::CorpusFile(name) => {
+                    if !corpus.contains(name) {
+                        problems.push(format!(
+                            "corpus file {name:?} of the entry for anchor {} is not in {}",
+                            entry.anchor,
+                            corpus::ARCHIVE
+                        ));
+                    }
+                    for line in entry.upstream.iter().chain(&entry.workflint) {
+                        if line_path(line).as_deref() != Some(name) {
+                            problems.push(format!(
+                                "{}: {line:?} is not a line of {name}: it must start with \
+                                 the file name and a position",
+                                entry.describe()
+                            ));
+                        }
+                    }
+                }
+                Target::EveryCorpusFile => {
+                    let upstream = entry.upstream.as_deref();
+                    match upstream.map(|line| (pattern(line), line_matches(line, ""))) {
+                        Some((Some(_), Ok(_))) => {}
+                        Some((Some(_), Err(problem))) => {
+                            problems.push(format!("{}: `upstream` {problem}", entry.describe()));
+                        }
+                        _ => problems.push(format!(
+                            "{}: `upstream` must be a /pattern/",
+                            entry.describe()
+                        )),
+                    }
+                    if entry.workflint.is_none() {
+                        problems.push(format!(
+                            "{}: `workflint` must give the text that replaces each match",
+                            entry.describe()
+                        ));
+                    }
+                }
             }
             if entry.upstream.is_none() && entry.workflint.is_none() {
                 problems.push(format!(
@@ -135,6 +215,18 @@ impl AllowList {
 }
 
 impl Entry {
+    /// What the entry applies to.
+    #[must_use]
+    pub fn target(&self) -> Target<'_> {
+        if self.fixture == corpus::EVERY_FILE {
+            Target::EveryCorpusFile
+        } else if let Some(name) = self.fixture.strip_prefix(corpus::PREFIX) {
+            Target::CorpusFile(name)
+        } else {
+            Target::Fixture(&self.fixture)
+        }
+    }
+
     /// Names the entry in a message.
     #[must_use]
     pub fn describe(&self) -> String {
@@ -331,7 +423,7 @@ workflint = "test.yaml:1:1: b [runner-label]"
         )
         .unwrap();
         let error = list
-            .validate(&BTreeSet::new(), &BTreeSet::new())
+            .validate(&BTreeSet::new(), &BTreeSet::new(), &BTreeSet::new())
             .unwrap_err();
         assert!(error.contains("anchor \"no-such-anchor\""), "{error}");
     }
@@ -358,7 +450,9 @@ workflint = "test.yaml:1:1: b [runner-label]"
         };
         let anchors = BTreeSet::from(["rule-id-in-brackets".to_owned()]);
         let fixtures = BTreeSet::from(["err/x".to_owned()]);
-        let error = list.validate(&anchors, &fixtures).unwrap_err();
+        let error = list
+            .validate(&anchors, &fixtures, &BTreeSet::new())
+            .unwrap_err();
         assert!(error.contains("anchor \"sort-order\""), "{error}");
     }
 
@@ -369,7 +463,9 @@ workflint = "test.yaml:1:1: b [runner-label]"
             ..AllowList::default()
         };
         let anchors = BTreeSet::from(["sort-order".to_owned()]);
-        let error = list.validate(&anchors, &BTreeSet::new()).unwrap_err();
+        let error = list
+            .validate(&anchors, &BTreeSet::new(), &BTreeSet::new())
+            .unwrap_err();
         assert!(error.contains("fixture \"err/x\""), "{error}");
     }
 
@@ -381,7 +477,10 @@ workflint = "test.yaml:1:1: b [runner-label]"
         };
         let anchors = BTreeSet::from(["sort-order".to_owned()]);
         let fixtures = BTreeSet::from(["err/x".to_owned()]);
-        assert!(list.validate(&anchors, &fixtures).is_err());
+        assert!(
+            list.validate(&anchors, &fixtures, &BTreeSet::new())
+                .is_err()
+        );
     }
 
     #[test]
@@ -392,7 +491,120 @@ workflint = "test.yaml:1:1: b [runner-label]"
         };
         let anchors = BTreeSet::from(["sort-order".to_owned()]);
         let fixtures = BTreeSet::from(["err/x".to_owned()]);
-        assert_eq!(list.validate(&anchors, &fixtures), Ok(()));
+        assert_eq!(list.validate(&anchors, &fixtures, &BTreeSet::new()), Ok(()));
+    }
+
+    fn corpus_entry(fixture: &str, upstream: Option<&str>, workflint: Option<&str>) -> Entry {
+        Entry {
+            fixture: fixture.into(),
+            ..entry(upstream, workflint)
+        }
+    }
+
+    /// Validates `entries` with the anchor `sort-order`, the fixture
+    /// `err/x`, and the corpus file `a_ci.yml`.
+    fn validate_corpus(entries: Vec<Entry>) -> Result<(), String> {
+        let list = AllowList {
+            entries,
+            ..AllowList::default()
+        };
+        list.validate(
+            &BTreeSet::from(["sort-order".to_owned()]),
+            &BTreeSet::from(["err/x".to_owned()]),
+            &BTreeSet::from(["a_ci.yml".to_owned()]),
+        )
+    }
+
+    #[test]
+    fn an_entry_for_a_file_in_the_corpus_archive_passes_validation() {
+        let replaced = corpus_entry(
+            "realworld/a_ci.yml",
+            Some("a_ci.yml:1:2: a [x]"),
+            Some(r"/a_ci\.yml:1:3: a/"),
+        );
+        assert_eq!(validate_corpus(vec![replaced]), Ok(()));
+    }
+
+    #[test]
+    fn an_entry_for_a_file_that_is_not_in_the_corpus_archive_fails_validation() {
+        let missing = corpus_entry("realworld/b_ci.yml", Some("b_ci.yml:1:2: a [x]"), None);
+        let error = validate_corpus(vec![missing]).unwrap_err();
+        assert!(
+            error.contains("corpus file \"b_ci.yml\" of the entry for anchor sort-order is not in"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn a_line_of_a_corpus_entry_must_be_on_its_file() {
+        for line in [
+            "b_ci.yml:1:2: a [x]",
+            r"/b_ci\.yml:1:2: a/",
+            "/a_ci.yml/",
+            "no position",
+        ] {
+            for (upstream, workflint) in [(Some(line), None), (None, Some(line))] {
+                let elsewhere = corpus_entry("realworld/a_ci.yml", upstream, workflint);
+                let error = validate_corpus(vec![elsewhere]).unwrap_err();
+                assert!(
+                    error.contains("is not a line of a_ci.yml"),
+                    "{line}: {error}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_entry_for_every_corpus_file_needs_an_upstream_pattern_and_a_replacement() {
+        let valid = corpus_entry("realworld/*", Some(r"/old \[x\]/"), Some("new [x]"));
+        assert_eq!(validate_corpus(vec![valid]), Ok(()));
+        for (upstream, workflint) in [
+            (Some("a_ci.yml:1:2: old [x]"), Some("new [x]")),
+            (Some(r"/old \[x\]/"), None),
+            (None, Some("new [x]")),
+            (Some("/(/"), Some("new [x]")),
+        ] {
+            let invalid = corpus_entry("realworld/*", upstream, workflint);
+            let error = validate_corpus(vec![invalid]).unwrap_err();
+            assert!(error.contains("realworld/*"), "{upstream:?}: {error}");
+        }
+    }
+
+    #[test]
+    fn the_corpus_entries_of_selected_files_come_before_the_entries_for_every_file() {
+        let list = AllowList {
+            entries: vec![
+                corpus_entry("realworld/*", Some("/a/"), Some("b")),
+                corpus_entry("realworld/b.yml", Some("b.yml:1:1: b [x]"), None),
+                corpus_entry("realworld/a.yml", Some("a.yml:1:1: a [x]"), None),
+                corpus_entry("realworld/c.yml", Some("c.yml:1:1: c [x]"), None),
+                entry(Some("a.yml:1:1: a [x]"), None),
+            ],
+            ..AllowList::default()
+        };
+        let names = ["a.yml".to_owned(), "b.yml".to_owned()];
+        let fixtures: Vec<&str> = list
+            .corpus_entries(&names)
+            .iter()
+            .map(|entry| entry.fixture.as_str())
+            .collect();
+        assert_eq!(
+            fixtures,
+            ["realworld/b.yml", "realworld/a.yml", "realworld/*"]
+        );
+    }
+
+    #[test]
+    fn an_entry_names_its_target() {
+        assert_eq!(entry(None, None).target(), Target::Fixture("err/x"));
+        assert_eq!(
+            corpus_entry("realworld/a.yml", None, None).target(),
+            Target::CorpusFile("a.yml")
+        );
+        assert_eq!(
+            corpus_entry("realworld/*", None, None).target(),
+            Target::EveryCorpusFile
+        );
     }
 
     #[test]

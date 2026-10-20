@@ -10,6 +10,7 @@ use crate::document::{
     Alias, Anchor, BlockHeader, Chomping, CollectionStyle, Comment, Document, Entry, Mapping, Node,
     NodeId, NodeKind, Scalar, ScalarStyle, Sequence, Tag,
 };
+use crate::help::syntax_error_help;
 use crate::libyaml::{
     self, Error, Event, EventData, MappingStyle, Mark, NodeMarks, Parser, SequenceStyle,
 };
@@ -234,6 +235,7 @@ impl<'a> Builder<'a> {
             self.span(to_u32(offset), to_u32(end)),
             format!("could not parse as YAML: {}", err.problem()),
         )
+        .with_help(syntax_error_help(self.text, err))
     }
 
     fn comment(&mut self, kind: libyaml::CommentKind, event: &EventMarks) {
@@ -308,7 +310,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    fn anchor(&self, name: Option<String>, event: &EventMarks, start: u32) -> Option<Anchor> {
+    fn anchor(&self, name: Option<String>, event: &EventMarks, start: u32) -> Option<Box<Anchor>> {
         let name = name?;
         let span = match event.node_marks.anchor {
             Some((anchor_start, anchor_end)) => {
@@ -316,7 +318,7 @@ impl<'a> Builder<'a> {
             }
             None => self.span(start, start),
         };
-        Some(Anchor { name, span })
+        Some(Box::new(Anchor { name, span }))
     }
 
     fn scalar(
@@ -347,18 +349,18 @@ impl<'a> Builder<'a> {
             ScalarStyle::Plain => resolve::plain(&value),
             _ => Tag::Str,
         });
-        let parent_indent = self.block_indent();
+        let parent_indent_plus_one =
+            u32::try_from(self.block_indent().saturating_add(1)).unwrap_or(u32::MAX);
         let node = Node {
             span: self.span(start, end),
             content_start,
             anchor: self.anchor(anchor, event, start),
             kind: NodeKind::Scalar(Scalar {
-                value,
+                value: value.into_boxed_str(),
                 style,
                 tag,
-                parent_indent,
+                parent_indent_plus_one,
             }),
-            comments: 0..0,
         };
         let id = self.add(node, event.start_mark.line, None);
         self.set_closed(id);
@@ -430,7 +432,6 @@ impl<'a> Builder<'a> {
             content_start: Self::offset(content),
             anchor: self.anchor(anchor, event, start),
             kind,
-            comments: 0..0,
         };
         let id = self.add(node, event.start_mark.line, None);
         // The column where a block collection's content starts is the
@@ -535,10 +536,9 @@ impl<'a> Builder<'a> {
             content_start: start,
             anchor: None,
             kind: NodeKind::Alias(Alias {
-                name,
+                name: name.into_boxed_str(),
                 target: resolved.then_some(target),
             }),
-            comments: 0..0,
         };
         self.add(node, event.start_mark.line, resolved.then_some(target));
         self.child_ended(end);
@@ -560,12 +560,22 @@ impl<'a> Builder<'a> {
             ));
         }
         let node_comments = attach(
-            &mut self.nodes,
+            &self.nodes,
             &self.lines,
             &self.roles,
             &mut self.comments,
             &self.comment_places,
         );
+        // The vectors grew by doubling. The document lives while the
+        // workflow is parsed and checked, so give back the spare capacity.
+        for list in [&mut self.items, &mut self.written_items] {
+            list.shrink_to_fit();
+        }
+        for list in [&mut self.entries, &mut self.written_entries] {
+            list.shrink_to_fit();
+        }
+        self.nodes.shrink_to_fit();
+        self.comments.shrink_to_fit();
         let document = Document {
             file: self.id,
             root: self.root,

@@ -13,6 +13,7 @@ readme = "README.md"
 include = ["/src", "/README.md", "/LICENSE", "/NOTICE"]
 
 [dependencies]
+ctrlc = { version = "3.5.2", features = ["termination"] }
 rayon = "1.12.0"
 thiserror = "2.0.21"
 workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
@@ -22,6 +23,14 @@ workflint-yaml = { path = "../workflint-yaml", version = "0.0.1" }
 
 [dev-dependencies]
 tempfile = "3.27.0"
+
+# The external tool that the tests of the `tool` module run, so that they need no system tool and
+# behave the same on every OS. It is not published: `include` leaves out `/tests`.
+[[bin]]
+name = "workflint-test-tool"
+path = "tests/support/test_tool.rs"
+test = false
+doc = false
 
 [lints]
 workspace = true

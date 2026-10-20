@@ -2,7 +2,7 @@
 
 use workflint_diagnostics::Span;
 
-use crate::{Env, Field, Keyed, StepUses, Template, Value};
+use crate::{Env, Field, Keyed, Rare, StepUses, Template, Value};
 
 /// One step of `steps`.
 #[derive(Debug, Clone, PartialEq)]
@@ -12,19 +12,19 @@ pub struct Step<'a> {
     /// `id`. Its placeholders are parsed only if it
     /// [contains an expression](crate::contains_expression), as in the
     /// reference.
-    pub id: Field<'a, Template<'a>>,
+    pub id: Rare<Field<'a, Template<'a>>>,
     /// `if`.
-    pub condition: Field<'a, Template<'a>>,
+    pub condition: Rare<Field<'a, Template<'a>>>,
     /// `name`. It may be empty.
     pub name: Field<'a, Template<'a>>,
     /// What the step runs, or `None` when it has neither `run` nor `uses`.
     pub exec: Option<Exec<'a>>,
     /// `env`.
-    pub env: Value<'a, Env<'a>>,
+    pub env: Rare<Value<'a, Env<'a>>>,
     /// `continue-on-error`.
-    pub continue_on_error: Value<'a, bool>,
+    pub continue_on_error: Rare<Value<'a, bool>>,
     /// `timeout-minutes`.
-    pub timeout_minutes: Value<'a, f64>,
+    pub timeout_minutes: Rare<Value<'a, f64>>,
 }
 
 /// What a step runs: a script or an action.
@@ -42,9 +42,9 @@ pub struct ExecRun<'a> {
     /// `run`. The key's span is the reference's `RunPos`.
     pub run: Field<'a, Template<'a>>,
     /// `shell`.
-    pub shell: Field<'a, Template<'a>>,
+    pub shell: Rare<Field<'a, Template<'a>>>,
     /// `working-directory`.
-    pub working_directory: Field<'a, Template<'a>>,
+    pub working_directory: Rare<Field<'a, Template<'a>>>,
 }
 
 /// A step that runs an action.
@@ -62,7 +62,19 @@ pub struct ExecAction<'a> {
     /// it into the fields below, as in the reference.
     pub inputs: Field<'a, Keyed<'a, Option<Template<'a>>>>,
     /// `with.entrypoint` of a `docker://` action.
-    pub entrypoint: Field<'a, Template<'a>>,
+    pub entrypoint: Rare<Field<'a, Template<'a>>>,
     /// `with.args` of a `docker://` action.
-    pub args: Field<'a, Template<'a>>,
+    pub args: Rare<Field<'a, Template<'a>>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // A large workflow has hundreds of steps, and most of their keys are
+    // absent, so those keys are `Rare` (#240).
+    #[test]
+    fn a_step_fits_in_360_bytes() {
+        assert!(size_of::<Step<'_>>() <= 360, "{}", size_of::<Step<'_>>());
+    }
 }

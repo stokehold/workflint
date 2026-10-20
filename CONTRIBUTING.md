@@ -84,7 +84,7 @@ After the report, the job compares the `syntax-check` kind on the four fixture d
 cargo xtask oracle --kind syntax-check tests/conformance/actionlint/testdata/{err,examples,ok,projects}
 ```
 
-The corpus stays out of this step until #49 adds its known `syntax-check` differences to the allow-list. Last, the job unpacks the corpus with `cargo xtask reference` and runs the two ignored corpus tests, `every_corpus_file_passes_the_fuzz_check` in `workflint-syntax` and `every_corpus_file_passes_the_fuzz_checks` in `workflint-yaml`:
+The allow-list explains the known `syntax-check` differences on the corpus too, and M5.9 adds the corpus to this step. Last, the job unpacks the corpus with `cargo xtask reference` and runs the two ignored corpus tests, `every_corpus_file_passes_the_fuzz_check` in `workflint-syntax` and `every_corpus_file_passes_the_fuzz_checks` in `workflint-yaml`:
 
 ```sh
 cargo nextest run --run-ignored only -p workflint-yaml -p workflint-syntax -E 'binary(reference_files)'

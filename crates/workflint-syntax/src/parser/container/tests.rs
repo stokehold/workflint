@@ -208,7 +208,7 @@ fn a_sequence_container_is_invalid_and_has_no_image() {
             r#"6:16: "container" section is sequence node but mapping node is expected [unexpected-node-kind]"#,
         ],
         |workflow| {
-            assert!(matches!(job(workflow).container, Field::Invalid { .. }));
+            assert!(matches!(*job(workflow).container, Field::Invalid { .. }));
         },
     );
 }
@@ -371,7 +371,7 @@ fn services_must_be_a_mapping_with_entries() {
             r#"6:15: "services" section is scalar node but mapping node is expected [unexpected-node-kind]"#,
         ],
         |workflow| {
-            assert!(matches!(job(workflow).services, Value::Invalid { .. }));
+            assert!(matches!(*job(workflow).services, Value::Invalid { .. }));
         },
     );
     assert_eq!(

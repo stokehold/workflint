@@ -251,7 +251,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2.
 - Status: implemented.
 - Fixtures: `err/case_sensitive_keys`, `err/unexpected_keys`.
-- Corpus: `netdata_netdata_.github_workflows_dashboard-pr.yml`, `netdata_netdata_.github_workflows_docker.yml`, `netdata_netdata_.github_workflows_packaging.yml`. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+- Corpus: `netdata_netdata_.github_workflows_dashboard-pr.yml`, `netdata_netdata_.github_workflows_docker.yml`, `netdata_netdata_.github_workflows_packaging.yml`. The allow-list has records for them.
 
 <a id="empty-event-name-section"></a>
 ### Section name of an event with an empty name
@@ -649,7 +649,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M4.12.
 - Status: implemented.
 - Fixtures: `examples/if_cond_always_true` line 29.
-- Corpus: `apache_superset_.github_workflows_latest-release-tag.yml`, which suggests `${{ (! steps.latest-tag.outputs.SKIP_TAG ) }}`. The allow-list has no record for it, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+- Corpus: `apache_superset_.github_workflows_latest-release-tag.yml`, which suggests `${{ (! steps.latest-tag.outputs.SKIP_TAG ) }}`. The allow-list has a record for it.
 
 <a id="glob-escape-character"></a>
 ### Escaped characters in branch and tag globs
@@ -701,7 +701,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - workflint: digits are allowed after the first letter.
 - Why: upstream misses real uses. The command is deprecated whatever the name.
 - Upstream issue: none.
-- Corpus: `babel_babel_.github_workflows_update-parser-tests.yml` (`name=sha1`) and `facebook_folly_.github_workflows_TagIt.yml` (`name=tgz_256` and others). The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+- Corpus: `babel_babel_.github_workflows_update-parser-tests.yml` (`name=sha1`) and `facebook_folly_.github_workflows_TagIt.yml` (`name=tgz_256` and others). The allow-list has records for them.
 - Milestone: M4.
 - Status: implemented.
 
@@ -785,7 +785,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a pull request from a fork can trigger a `workflow_run` workflow, which runs with the base repository's secrets and write token. The fork's owner sets the branch name, the pull request title that `display_title` holds, the commit's message, author, and committer, and the fork's description and owner name.
 - Upstream issue: #734, and the open pull request #737, which adds `head_branch` and `head_repository.owner.login`.
 - Fixtures: `workflint/err/workflow_run_untrusted_input`. No reference fixture uses these paths. `tests/expr-parity/allowed-differences.toml` has a record for each expression in `tests/expr-parity/cases/untrusted.txt` whose outcome changes.
-- Corpus: one new diagnostic, `yewstack_yew_.github_workflows_publish-website.yml:50:31` (`head_branch`). The allow-list has no record for it, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+- Corpus: one new diagnostic, `yewstack_yew_.github_workflows_publish-website.yml:50:31` (`head_branch`). The allow-list has a record for it.
 - Milestone: M4.31. M7.10 lets users add paths in the config file.
 - Status: implemented.
 
@@ -801,7 +801,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M4.32, and M4.39 for `case()`.
 - Status: implemented.
 - Fixtures: `workflint/err/runs_on_expressions` and `workflint/ok/runs_on_expressions.yaml`. The output of no vendored fixture changes.
-- Corpus: `apache_airflow_.github_workflows_build-images.yml` (two jobs) and `apache_airflow_.github_workflows_ci.yml` report `ubuntu-20.04`. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+- Corpus: `apache_airflow_.github_workflows_build-images.yml` (two jobs) and `apache_airflow_.github_workflows_ci.yml` report `ubuntu-20.04`. The allow-list has records for them.
 
 <a id="runner-provider-labels"></a>
 ### Labels of runner providers, and the system that custom labels name
@@ -838,7 +838,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M4.38. M7.1 to M7.3 replace the hand-written updates with generated data.
 - Status: implemented.
 - Fixtures: `workflint/ok/current_platform_data.yaml` and `workflint/err/latest_runner_labels`. The allow-list replaces the scope list in `err/invalid_permissions` and `examples/permissions`, and the activity types of `issues` in `examples/webhook_checks`. Its `[[example]]` tables replace the label list and the type of `github` in the `docs/checks.md` sections `check-runner-labels` and `check-contexts-and-builtin-func`, whose fixtures match those lines with a pattern. `tests/expr-parity/allowed-differences.toml` has a `[[type]]` record for the types of `github` and `job`.
-- Corpus: the label list changes in 824 `unknown-runner-label` lines of 305 files. No diagnostic is added or removed. The allow-list has no records for them, because `cargo xtask oracle` cannot apply records to corpus files yet (#49).
+- Corpus: the label list changes in 824 `unknown-runner-label` lines of 305 files. No diagnostic is added or removed. One allow-list record for every corpus file replaces the list.
 
 ## Configuration and project discovery
 
@@ -990,11 +990,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### External processes cannot hang the run
 
 - Upstream: shellcheck runs can deadlock. On the reference commit, a run over the 1,503-file corpus on macOS hung for more than 10 minutes. There is no timeout.
-- workflint: stdin is written from its own thread while output is read, each process has a timeout (60 seconds by default), a timed-out script gets a diagnostic, and SIGINT or SIGTERM kills the child processes (ADR 0012). Output of runs that finish is unchanged.
+- workflint: stdin is written from its own thread while output is read, each process has a timeout (60 seconds by default), a timed-out script gets a diagnostic, and SIGINT or SIGTERM kills the child processes and exits with code 130 (ADR 0012). Output of runs that finish is unchanged.
 - Why: CI jobs hung for hours.
 - Upstream issue: #702, #704, #712.
 - Milestone: M5.
-- Status: planned.
+- Status: `workflint_linter::tool` runs the processes this way since M5.4. The diagnostic for a timed-out script follows with M5.5 (#248) and M5.12 (#249).
 
 <a id="python-linter-auto"></a>
 ### ruff is used for Python scripts when installed

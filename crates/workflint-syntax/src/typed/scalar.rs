@@ -29,7 +29,7 @@ pub(crate) enum Resolved {
 /// of that type, or decoding ends with go-yaml's `cannot decode` error. A
 /// `!!binary` scalar is decoded from base64.
 pub(crate) fn resolve(scalar: &Scalar) -> Result<Resolved, Fatal> {
-    let value = scalar.value.as_str();
+    let value = &*scalar.value;
     let tag = &scalar.tag;
     match tag {
         Tag::Str | Tag::Map | Tag::Seq => Ok(Resolved::Str(value.to_owned())),

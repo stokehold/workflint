@@ -231,7 +231,7 @@ fn job_placeholders<'w, 'a>(f: &mut Visit<'_, 'w, 'a>, job: &'w Job<'a>) {
         uses,
         inputs,
         secrets,
-    }) = &job.workflow_call
+    }) = job.workflow_call.as_deref()
     {
         if let Some(uses) = uses.value() {
             template(f, &uses.template);

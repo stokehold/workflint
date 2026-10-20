@@ -16,7 +16,7 @@ use super::binary::{self, Threads};
 use super::expected_failures::{self, ExpectedFailures};
 use super::fixture::{self, Fixture, Tools};
 use super::verdict::{Listing, Verdict, judge};
-use super::{checklist, checks_md, rule_kinds};
+use super::{checklist, checks_md, corpus, rule_kinds};
 use super::{conformance_dir, output, repository_root};
 
 /// The environment variable that names the reference binary to lint with in
@@ -317,16 +317,18 @@ pub fn skip_summary() -> Result<String, String> {
 }
 
 /// Checks `allowed-differences.toml`: every anchor exists in
-/// `docs/differences.md`, every fixture exists, every `upstream` line is in
-/// its fixture's `.out` file, and the `upstream` line of every example is in
-/// the `Output` block of its section of `docs/checks.md`.
+/// `docs/differences.md`, every fixture exists, every corpus file is in the
+/// vendored archive, every `upstream` line is in its fixture's `.out` file,
+/// and the `upstream` line of every example is in the `Output` block of its
+/// section of `docs/checks.md`. See [`AllowList::validate`].
 ///
 /// # Errors
 ///
 /// Returns one line per problem.
 pub fn check_allow_list() -> Result<(), String> {
     let anchors = allow_list::anchors(&read("docs/differences.md"));
-    ALLOW_LIST.validate(&anchors, &fixture::all_ids()?)?;
+    let corpus = corpus::file_names(&corpus::archive())?;
+    ALLOW_LIST.validate(&anchors, &fixture::all_ids()?, &corpus)?;
     let mut problems: Vec<String> = fixture::all()?
         .into_iter()
         .filter_map(|fixture| {

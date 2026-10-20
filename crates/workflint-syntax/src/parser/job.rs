@@ -75,43 +75,43 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     },
     KeySpec {
         name: "permissions",
-        parse: |p, b, e| b.job.permissions = p.parse_permissions(e.key, e.value),
+        parse: |p, b, e| b.job.permissions = p.parse_permissions(e.key, e.value).into(),
     },
     KeySpec {
         name: "environment",
         parse: |p, b, e| {
-            b.job.environment = p.parse_environment(e.key, e.value);
+            b.job.environment = p.parse_environment(e.key, e.value).into();
             b.steps_only.push(e.key);
         },
     },
     KeySpec {
         name: "concurrency",
-        parse: |p, b, e| b.job.concurrency = p.parse_concurrency(e.key, e.value),
+        parse: |p, b, e| b.job.concurrency = p.parse_concurrency(e.key, e.value).into(),
     },
     KeySpec {
         name: "outputs",
         parse: |p, b, e| {
-            b.job.outputs = p.parse_outputs(e);
+            b.job.outputs = p.parse_outputs(e).into();
             b.steps_only.push(e.key);
         },
     },
     KeySpec {
         name: "env",
         parse: |p, b, e| {
-            b.job.env = p.parse_env(e.key, e.value);
+            b.job.env = p.parse_env(e.key, e.value).into();
             b.steps_only.push(e.key);
         },
     },
     KeySpec {
         name: "defaults",
         parse: |p, b, e| {
-            b.job.defaults = p.parse_defaults(e.key, e.value, true);
+            b.job.defaults = p.parse_defaults(e.key, e.value, true).into();
             b.steps_only.push(e.key);
         },
     },
     KeySpec {
         name: "if",
-        parse: |p, b, e| b.job.condition = p.parse_condition(e.key.string, e.value),
+        parse: |p, b, e| b.job.condition = p.parse_condition(e.key.string, e.value).into(),
     },
     KeySpec {
         name: "steps",
@@ -123,32 +123,32 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     KeySpec {
         name: "timeout-minutes",
         parse: |p, b, e| {
-            b.job.timeout_minutes = p.parse_timeout_minutes(e);
+            b.job.timeout_minutes = p.parse_timeout_minutes(e).into();
             b.steps_only.push(e.key);
         },
     },
     KeySpec {
         name: "strategy",
-        parse: |p, b, e| b.job.strategy = p.parse_strategy(e),
+        parse: |p, b, e| b.job.strategy = p.parse_strategy(e).into(),
     },
     KeySpec {
         name: "continue-on-error",
         parse: |p, b, e| {
-            b.job.continue_on_error = p.parse_bool(e.key.string, e.value);
+            b.job.continue_on_error = p.parse_bool(e.key.string, e.value).into();
             b.steps_only.push(e.key);
         },
     },
     KeySpec {
         name: "container",
         parse: |p, b, e| {
-            b.job.container = p.parse_job_container(e);
+            b.job.container = p.parse_job_container(e).into();
             b.steps_only.push(e.key);
         },
     },
     KeySpec {
         name: "services",
         parse: |p, b, e| {
-            b.job.services = p.parse_services(e);
+            b.job.services = p.parse_services(e).into();
             b.steps_only.push(e.key);
         },
     },
@@ -175,7 +175,7 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     },
     KeySpec {
         name: "snapshot",
-        parse: |p, b, e| b.job.snapshot = p.parse_snapshot(e),
+        parse: |p, b, e| b.job.snapshot = p.parse_snapshot(e).into(),
     },
 ];
 
@@ -293,7 +293,7 @@ impl<'a> Parser<'a, '_> {
             // The reference keeps the call when `services` is the only such
             // key, because it does not count `services`.
             if steps_only.iter().all(|key| key.value() == "services") {
-                job.workflow_call = Some(call);
+                job.workflow_call = Some(Box::new(call));
             }
             return job;
         }

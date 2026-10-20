@@ -154,10 +154,11 @@ Goal: a drop-in binary. Release 0.1.0 at the end of this milestone.
 - M5.5 shellcheck and pyflakes rules with source-mapped positions, deduplication, and the opt-in cache. Evaluate batching.
 - M5.6 CLI with Go-style flag normalisation over clap, exit codes, `-version`, help.
 - M5.7 `workflint-gotemplate`: lexer, parser, executor, actionlint's functions; fixtures from the reference's format tests.
-- M5.8 Output formats: default, `-oneline`, `-format`, `json`, `sarif`, `github`. A hint line under go-yaml's `did not find expected key` error that names the likely cause, such as a mis-indented list item (rhysd/actionlint#519).
+- M5.8 Output formats: default, `-oneline`, `-format`, `json`, `sarif`, `github`.
 - M5.9 Whole conformance suite green; oracle diff clean apart from allowed differences, and the oracle job made blocking; performance targets met. Needs M5.11.
 - M5.10 Release 0.1.0.
 - M5.11 Apply allow-list entries to corpus files in cargo xtask oracle [#49](https://github.com/stokehold/workflint/issues/49)
+- M5.17 Explain the likely cause of "did not find expected key" in help text [#244](https://github.com/stokehold/workflint/issues/244)
 
 ## M6: release pipeline
 

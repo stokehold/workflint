@@ -201,7 +201,7 @@ fn steps(document: &Document) -> Vec<workflint_yaml::NodeId> {
             .entries(mapping)
             .iter()
             .find_map(|entry| match &document.node(entry.key)?.kind {
-                NodeKind::Scalar(scalar) if scalar.value == key => Some(entry.value),
+                NodeKind::Scalar(scalar) if &*scalar.value == key => Some(entry.value),
                 _ => None,
             })
     };

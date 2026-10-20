@@ -1124,7 +1124,7 @@ fn a_snapshot_that_is_not_a_mapping_or_string_is_invalid() {
         "on: push\njobs:\n  test:\n    runs-on: x\n    steps: [{run: a}]\n    snapshot: []\n",
         |workflow| {
             assert!(matches!(
-                job(workflow, "test").snapshot,
+                *job(workflow, "test").snapshot,
                 Field::Invalid { .. }
             ));
         },
@@ -1140,7 +1140,7 @@ fn an_absent_key_is_absent() {
             assert!(!test_job.name.is_present());
             assert!(!test_job.needs.is_present());
             assert!(!test_job.outputs.is_present());
-            assert!(matches!(test_job.env, Value::Absent));
+            assert!(matches!(*test_job.env, Value::Absent));
             assert!(!test_job.timeout_minutes.is_present());
             assert!(!test_job.snapshot.is_present());
             assert!(test_job.workflow_call.is_none());

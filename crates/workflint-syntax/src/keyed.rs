@@ -34,10 +34,11 @@ pub struct Keyed<'a, T> {
 
 #[derive(Debug)]
 struct Inner<'a, T> {
-    entries: Vec<KeyedEntry<'a, T>>,
+    /// Boxed slices, so that no spare capacity is kept.
+    entries: Box<[KeyedEntry<'a, T>]>,
     /// Indexes into `entries`, sorted by folded key and then by index.
-    sorted: Vec<u32>,
-    inserts: Vec<Expr<'a>>,
+    sorted: Box<[u32]>,
+    inserts: Box<[Expr<'a>]>,
 }
 
 impl<'a, T> Keyed<'a, T> {
@@ -58,9 +59,9 @@ impl<'a, T> Keyed<'a, T> {
         sorted.sort_by(|&a, &b| folded_at(&entries, a).cmp(folded_at(&entries, b)));
         Self {
             inner: Arc::new(Inner {
-                entries,
-                sorted,
-                inserts,
+                entries: entries.into_boxed_slice(),
+                sorted: sorted.into_boxed_slice(),
+                inserts: inserts.into_boxed_slice(),
             }),
         }
     }
@@ -125,7 +126,7 @@ impl<'a, T> Keyed<'a, T> {
     /// Returns the entries for changing their values, or `None` if a clone
     /// shares them.
     pub(crate) fn unique_entries_mut(&mut self) -> Option<&mut [KeyedEntry<'a, T>]> {
-        Arc::get_mut(&mut self.inner).map(|inner| inner.entries.as_mut_slice())
+        Arc::get_mut(&mut self.inner).map(|inner| &mut *inner.entries)
     }
 }
 
