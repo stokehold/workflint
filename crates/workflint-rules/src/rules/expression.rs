@@ -17,13 +17,13 @@ use std::sync::Arc;
 
 use workflint_data::{UNTRUSTED_INPUTS, popular_action};
 use workflint_diagnostics::quote::quote;
-use workflint_diagnostics::{Category, RuleMeta, Severity, Span};
+use workflint_diagnostics::{Category, RuleMeta, Severity};
 use workflint_expr::{MAX_TYPE_DEPTH, ObjectTy, Rest, Ty, TypeEnv};
 use workflint_syntax::{
     Concurrency, Container, Credentials, Defaults, Env, Event, Exec, Expr, Field, Job, JobUses,
     JobUsesKind, Keyed, KeyedEntry, Matrix, MatrixCombination, MatrixRow, Placeholder, RawValue,
-    ReusableWorkflowMetadata, Runner, Snapshot, Step, StepUses, Str, Template, Value, Workflow,
-    WorkflowCall, WorkflowCallEvent, WorkflowCallInputType, WorkflowCallSecrets,
+    ReusableWorkflowMetadata, Runner, Snapshot, Step, StepUses, Str, StrSpans, Template, Value,
+    Workflow, WorkflowCall, WorkflowCallEvent, WorkflowCallInputType, WorkflowCallSecrets,
     WorkflowDispatchEvent, WorkflowDispatchInputType, contains_expression,
 };
 use workflint_yaml::{Tag, simple_lowercase};
@@ -95,12 +95,6 @@ pub(crate) struct Expression<'a> {
     workflow: TypeEnv,
     /// The contexts of the job being visited, from its job-pre hook to its job-post hook.
     job: Option<TypeEnv>,
-    /// The steps of the job being visited that have an `id`, keyed by the lower-case `id`, as
-    /// far as the visit has come.
-    steps: BTreeMap<String, Ty>,
-    /// Whether a step of the job has an `id` that contains an expression, so that `steps`
-    /// accepts any step.
-    loose_steps: bool,
 }
 
 impl Expression<'_> {
@@ -151,11 +145,9 @@ impl<'a> Rule<'a> for Expression<'a> {
         // `matrix` is set before the other keys are checked, because they all see it.
         let mut env = self.workflow.clone();
         env.set_needs(self.needs_ty(entry, cx));
-        self.job = Some(env);
         // `steps` starts as the empty strict object of the global contexts, and each step with
         // an `id` adds itself once its own keys are checked.
-        self.steps.clear();
-        self.loose_steps = false;
+        self.job = Some(env);
         let strategy = job.strategy.value();
         if let Some(strategy) = strategy {
             let mut matrix = self
@@ -390,17 +382,12 @@ impl Expression<'_> {
             ("conclusion", Ty::String),
             ("outcome", Ty::String),
         ]);
-        self.steps
-            .insert(simple_lowercase(id.value()).into_owned(), ty);
-        self.loose_steps |= contains_expression(id.value());
-        let rest = if self.loose_steps {
-            Rest::Loose
-        } else {
-            Rest::Strict
-        };
-        let steps = ObjectTy::new(self.steps.clone(), rest);
         if let Some(env) = &mut self.job {
-            env.set_steps(steps);
+            env.add_step(
+                simple_lowercase(id.value()),
+                ty,
+                contains_expression(id.value()),
+            );
         }
     }
 
@@ -889,12 +876,12 @@ impl<'e> Checker<'e> {
         })
     }
 
-    /// Type-checks `placeholder` of `source` and reports its errors. Returns its type, or `None`
-    /// if it holds a parse error, which the parser has reported, or has errors.
+    /// Type-checks `placeholder` of the string of `spans` and reports its errors. Returns its
+    /// type, or `None` if it holds a parse error, which the parser has reported, or has errors.
     fn placeholder(
         &self,
         cx: &mut Context<'_>,
-        source: Str<'_>,
+        spans: &StrSpans<'_, '_>,
         placeholder: &Placeholder,
     ) -> Option<Ty> {
         let expr = placeholder.expr.as_ref().ok()?;
@@ -903,8 +890,8 @@ impl<'e> Checker<'e> {
             return Some(ty);
         }
         for error in errors {
-            let span = source_span(cx, source, placeholder.to_value(error.range()));
-            cx.report_in_with_help(source, error.rule, span, error.message, error.help);
+            let span = spans.span(placeholder.to_value(error.range()));
+            cx.report_in_with_help(spans.source(), error.rule, span, error.message, error.help);
         }
         None
     }
@@ -914,13 +901,14 @@ impl<'e> Checker<'e> {
     /// placeholders without errors.
     fn template(&self, cx: &mut Context<'_>, template: &Template<'_>) -> Vec<Ty> {
         let mut types = Vec::new();
+        let spans = template.source.spans(cx.file());
         for placeholder in template.placeholders() {
-            let Some(ty) = self.placeholder(cx, template.source, placeholder) else {
+            let Some(ty) = self.placeholder(cx, &spans, placeholder) else {
                 continue;
             };
             if !placeholder.is_implicit() && matches!(ty, Ty::Object(_) | Ty::Array(_) | Ty::Null) {
                 let start = usize::try_from(placeholder.start).unwrap_or(usize::MAX);
-                let span = source_span(cx, template.source, start..start + "${{".len());
+                let span = spans.span(start..start + "${{".len());
                 cx.report_in(
                     template.source,
                     &OBJECT_IN_TEMPLATE,
@@ -978,7 +966,7 @@ impl<'e> Checker<'e> {
             std::slice::from_ref(expr.placeholder()),
             what,
         )?;
-        self.placeholder(cx, expr.source, expr.placeholder())
+        self.placeholder(cx, &expr.source.spans(cx.file()), expr.placeholder())
     }
 
     fn bool(&self, cx: &mut Context<'_>, value: &Value<'_, bool>) {
@@ -1238,8 +1226,9 @@ impl<'e> Checker<'e> {
     fn raw_scalar(&self, cx: &mut Context<'_>, scalar: &Template<'_>) -> Ty {
         let mut types = Vec::new();
         let mut ok = true;
+        let spans = scalar.source.spans(cx.file());
         for placeholder in scalar.placeholders() {
-            match self.placeholder(cx, scalar.source, placeholder) {
+            match self.placeholder(cx, &spans, placeholder) {
                 Some(ty) => types.push(ty),
                 None => ok = false,
             }
@@ -1337,14 +1326,6 @@ fn wrong_type(cx: &mut Context<'_>, expr: &Expr<'_>, what: &str, want: Want, ty:
         want.name()
     );
     cx.report_in(expr.source, &WRONG_EXPRESSION_TYPE, expr.span(), message);
-}
-
-/// Returns the span of the bytes `range` of the value of `source`, or the span of `source` if
-/// its source map cannot map them.
-fn source_span(cx: &Context<'_>, source: Str<'_>, range: std::ops::Range<usize>) -> Span {
-    source
-        .source_span(cx.file(), range)
-        .unwrap_or_else(|| source.span())
 }
 
 #[cfg(test)]
