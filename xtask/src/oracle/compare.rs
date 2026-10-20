@@ -2,8 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use xtask::conformance::allow_list::{self, Entry};
-use xtask::conformance::matcher::line_matches;
+use regex::Regex;
+use xtask::conformance::allow_list::{self, Entry, Target};
+use xtask::conformance::matcher::{line_matches, pattern};
 use xtask::conformance::output::{Diagnostic, parse_line};
 use xtask::conformance::rule_kinds::actionlint_kind;
 
@@ -54,11 +55,11 @@ pub(crate) struct Run {
     pub(crate) problems: Vec<String>,
 }
 
-/// The allow-list entries of one fixture, with its `.out` file, which their
-/// `upstream` lines quote.
+/// The allow-list entries of one run: those of a fixture, with its `.out`
+/// file, which their `upstream` lines quote, or those of the corpus files.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Allowed<'a> {
-    /// The `.out` file as messages name it.
+    /// The `.out` file as messages name it, empty for the corpus.
     pub(crate) out_file: &'a str,
     pub(crate) out_lines: &'a [String],
     pub(crate) entries: &'a [&'a Entry],
@@ -206,10 +207,13 @@ fn check_reference(reference: &Output, problems: &mut BTreeSet<String>) {
 /// Applies the `allowed` entries to the reference's `printed` lines and
 /// returns the lines with the number of entries applied.
 ///
-/// An entry's `upstream` is a line of the `.out` file, as in the
-/// conformance runner, and may be a `/pattern/`. The entry removes the first
-/// printed line that this `.out` line matches. An entry that does not apply
-/// adds a problem and is skipped; the others still apply.
+/// The `upstream` of a fixture's entry is a line of the `.out` file, as in
+/// the conformance runner, and may be a `/pattern/`. The `upstream` of an
+/// entry for a corpus file quotes the reference's output for that file. The
+/// entry removes the first printed line of its file that this line matches.
+/// An entry for every corpus file rewrites each printed line instead: see
+/// [`rewrite`]. An entry that does not apply adds a problem and is skipped;
+/// the others still apply.
 ///
 /// Each line of an entry, and each `.out` line, counts only if `kinds` keeps
 /// it. An entry with neither line kept is skipped without a problem.
@@ -225,13 +229,22 @@ fn apply(
     let out_lines: Vec<&String> = allowed.out_lines.iter().filter(kept).collect();
     for entry in allowed.entries {
         let upstream = entry.upstream.as_ref().filter(kept);
+        let target = entry.target();
+        if target == Target::EveryCorpusFile {
+            if let Some(upstream) = upstream
+                && rewrite(&mut lines, entry, upstream, problems)
+            {
+                applied += 1;
+            }
+            continue;
+        }
         let workflint = entry.workflint.as_ref().filter(kept);
         if upstream.is_none() && workflint.is_none() {
             continue;
         }
         let mut removed = None;
         if let Some(upstream) = upstream {
-            if !out_lines.contains(&upstream) {
+            if matches!(target, Target::Fixture(_)) && !out_lines.contains(&upstream) {
                 problems.insert(format!(
                     "{}: `upstream` matches no line of {}: {upstream:?}",
                     entry.describe(),
@@ -243,9 +256,13 @@ fn apply(
                 problems.insert(format!("{}: `upstream` {problem}", entry.describe()));
                 continue;
             }
+            let on_file = |line: &String| match target {
+                Target::CorpusFile(name) => allow_list::line_path(line).as_deref() == Some(name),
+                _ => true,
+            };
             let Some(index) = lines
                 .iter()
-                .position(|line| line_matches(upstream, line) == Ok(true))
+                .position(|line| on_file(line) && line_matches(upstream, line) == Ok(true))
             else {
                 problems.insert(format!(
                     "{}: the reference printed no line that `upstream` matches: {upstream:?}",
@@ -262,6 +279,56 @@ fn apply(
         applied += 1;
     }
     (lines, applied)
+}
+
+/// Replaces each match of the `/pattern/` `upstream` of `entry`, an entry
+/// for every corpus file, in each of `lines` with its `workflint` text, as
+/// [`Regex::replace_all`] does, so `$1` names the first group. Returns
+/// whether the entry applied: whether a line matched.
+fn rewrite(
+    lines: &mut [String],
+    entry: &Entry,
+    upstream: &str,
+    problems: &mut BTreeSet<String>,
+) -> bool {
+    let regex = match pattern(upstream).map(Regex::new) {
+        Some(Ok(regex)) => regex,
+        Some(Err(error)) => {
+            problems.insert(format!(
+                "{}: `upstream` is not a valid regular expression: {error}",
+                entry.describe()
+            ));
+            return false;
+        }
+        None => {
+            problems.insert(format!(
+                "{}: `upstream` is not a /pattern/",
+                entry.describe()
+            ));
+            return false;
+        }
+    };
+    let Some(replacement) = entry.workflint.as_deref() else {
+        problems.insert(format!(
+            "{}: `workflint` must give the text that replaces each match",
+            entry.describe()
+        ));
+        return false;
+    };
+    let mut matched = false;
+    for line in lines.iter_mut() {
+        if regex.is_match(line) {
+            *line = regex.replace_all(line, replacement).into_owned();
+            matched = true;
+        }
+    }
+    if !matched {
+        problems.insert(format!(
+            "{}: the reference printed no line that `upstream` matches: {upstream:?}",
+            entry.describe()
+        ));
+    }
+    matched
 }
 
 /// Writes a line that parses as `path:line:col: message [code]` with `/`
@@ -737,6 +804,167 @@ workflows/a.yaml:3:1: c [expression]
         );
         assert_eq!(paths(&run), [Some("workflows/nested/a.yaml")]);
         assert!(run.files[0].identical);
+    }
+
+    fn corpus_entry(fixture: &str, upstream: Option<&str>, workflint: Option<&str>) -> Entry {
+        Entry {
+            fixture: fixture.into(),
+            ..entry(upstream, workflint)
+        }
+    }
+
+    /// Compares a corpus run of `a.yml` and `b.yml` with the `entries`.
+    fn corpus_run(reference: &str, workflint: &str, entries: &[&Entry], kinds: &Kinds) -> Run {
+        compare(
+            "realworld",
+            &inputs(&["a.yml", "b.yml"]),
+            &output(reference, 1),
+            &output(workflint, 1),
+            &Allowed {
+                entries,
+                ..Allowed::default()
+            },
+            true,
+            kinds,
+        )
+    }
+
+    #[test]
+    fn an_allow_list_entry_for_a_corpus_file_explains_a_difference_on_that_file() {
+        let replaced = corpus_entry(
+            "realworld/b.yml",
+            Some("b.yml:1:1: old [syntax-check]"),
+            Some("b.yml:1:1: new [syntax-check]"),
+        );
+        let run = corpus_run(
+            "a.yml:1:1: old [syntax-check]\nb.yml:1:1: old [syntax-check]\n",
+            "a.yml:1:1: old [yaml-syntax-error]\nb.yml:1:1: new [yaml-syntax-error]\n",
+            &[&replaced],
+            &Kinds::default(),
+        );
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert_eq!(run.applied, 1);
+        assert!(run.files.iter().all(|file| file.identical), "{run:?}");
+    }
+
+    #[test]
+    fn a_corpus_entry_pattern_does_not_remove_a_line_of_another_file() {
+        let removed = corpus_entry("realworld/a.yml", Some(r"/a\.yml:1:1: x/"), None);
+        let run = compare(
+            "realworld",
+            &inputs(&["a.yml", "ba.yml"]),
+            &output("ba.yml:1:1: x [expression]\n", 1),
+            &output("ba.yml:1:1: x [undefined-variable]\n", 1),
+            &Allowed {
+                entries: &[&removed],
+                ..Allowed::default()
+            },
+            true,
+            &Kinds::default(),
+        );
+        assert_eq!(run.applied, 0);
+        assert!(
+            run.problems[0].contains("the reference printed no line"),
+            "{run:?}"
+        );
+        assert!(run.files.iter().all(|file| file.identical), "{run:?}");
+    }
+
+    #[test]
+    fn a_corpus_entry_needs_no_out_file() {
+        let removed = corpus_entry("realworld/a.yml", Some("a.yml:1:1: x [expression]"), None);
+        let run = corpus_run(
+            "a.yml:1:1: x [expression]\n",
+            "",
+            &[&removed],
+            &Kinds::default(),
+        );
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert_eq!(run.applied, 1);
+        assert_eq!(run.expected_code, Some(0));
+    }
+
+    #[test]
+    fn an_entry_for_every_corpus_file_rewrites_each_line_it_matches() {
+        let rewritten = corpus_entry(
+            "realworld/*",
+            Some(r#"/labels are "a", "b" \[runner-label\]/"#),
+            Some(r#"labels are "a", "new", "b" [runner-label]"#),
+        );
+        let run = corpus_run(
+            "a.yml:1:1: label \"x\" is unknown. labels are \"a\", \"b\" [runner-label]\n\
+             a.yml:2:1: label \"y\" is unknown. labels are \"a\", \"b\" [runner-label]\n\
+             b.yml:3:1: label \"z\" is unknown. labels are \"a\", \"b\" [runner-label]\n",
+            "a.yml:1:1: label \"x\" is unknown. labels are \"a\", \"new\", \"b\" [unknown-runner-label]\n\
+             a.yml:2:1: label \"y\" is unknown. labels are \"a\", \"new\", \"b\" [unknown-runner-label]\n\
+             b.yml:3:1: label \"z\" is unknown. labels are \"a\", \"new\", \"b\" [unknown-runner-label]\n",
+            &[&rewritten],
+            &Kinds::default(),
+        );
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert_eq!(run.applied, 1);
+        assert!(run.files.iter().all(|file| file.identical), "{run:?}");
+        assert_eq!(
+            run.files[1].expected,
+            ["b.yml:3:1: label \"z\" is unknown. labels are \"a\", \"new\", \"b\" [runner-label]"]
+        );
+    }
+
+    #[test]
+    fn a_rewritten_line_keeps_its_position_and_label() {
+        let rewritten = corpus_entry("realworld/*", Some("/old/"), Some("new"));
+        let run = corpus_run(
+            "a.yml:1:1: old x [expression]\n",
+            "a.yml:1:2: new x [undefined-variable]\n",
+            &[&rewritten],
+            &Kinds::default(),
+        );
+        assert_eq!(run.files[0].expected, ["a.yml:1:1: new x [expression]"]);
+        assert!(!run.files[0].identical, "{run:?}");
+    }
+
+    #[test]
+    fn an_entry_for_every_corpus_file_that_matches_no_line_is_a_problem() {
+        let stale = corpus_entry("realworld/*", Some("/gone/"), Some("new"));
+        let run = corpus_run(
+            "a.yml:1:1: x [expression]\n",
+            "",
+            &[&stale],
+            &Kinds::default(),
+        );
+        assert_eq!(run.applied, 0);
+        assert_eq!(run.problems.len(), 1, "{run:?}");
+        assert!(
+            run.problems[0].contains("the reference printed no line that `upstream` matches"),
+            "{run:?}"
+        );
+    }
+
+    #[test]
+    fn an_entry_for_every_corpus_file_without_a_replacement_is_a_problem() {
+        let incomplete = corpus_entry("realworld/*", Some("/x/"), None);
+        let run = corpus_run(
+            "a.yml:1:1: x [expression]\n",
+            "a.yml:1:1: x [undefined-variable]\n",
+            &[&incomplete],
+            &Kinds::default(),
+        );
+        assert_eq!(run.applied, 0);
+        assert!(run.problems[0].contains("`workflint` must give"), "{run:?}");
+        assert!(run.files[0].identical, "{run:?}");
+    }
+
+    #[test]
+    fn an_entry_for_every_corpus_file_of_another_kind_is_skipped() {
+        let other = corpus_entry("realworld/*", Some(r"/gone \[runner-label\]/"), Some("new"));
+        let run = corpus_run(
+            "a.yml:1:1: x [syntax-check]\n",
+            "a.yml:1:1: x [yaml-syntax-error]\n",
+            &[&other],
+            &only(&["syntax-check"]),
+        );
+        assert_eq!(run.applied, 0);
+        assert_eq!(run.problems, Vec::<String>::new());
     }
 
     fn only(names: &[&str]) -> Kinds {
