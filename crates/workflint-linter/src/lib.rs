@@ -7,6 +7,8 @@
 //! the answers of files linted in parallel the same as in file order. [`path`] computes paths as
 //! Go's `path/filepath` does.
 //!
+//! [`tool`] runs external tools such as shellcheck with a timeout and a limit on processes.
+//!
 //! M5 adds file discovery, the config, and the rest of the parallel driver.
 //!
 //! This is an internal crate with no stability promise.
@@ -14,6 +16,7 @@
 mod cache;
 pub mod path;
 mod project;
+pub mod tool;
 
 pub use cache::{FileMetadata, FileRecord, LocalCache, Prior};
 pub use project::ProjectRoots;

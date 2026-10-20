@@ -990,11 +990,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### External processes cannot hang the run
 
 - Upstream: shellcheck runs can deadlock. On the reference commit, a run over the 1,503-file corpus on macOS hung for more than 10 minutes. There is no timeout.
-- workflint: stdin is written from its own thread while output is read, each process has a timeout (60 seconds by default), a timed-out script gets a diagnostic, and SIGINT or SIGTERM kills the child processes (ADR 0012). Output of runs that finish is unchanged.
+- workflint: stdin is written from its own thread while output is read, each process has a timeout (60 seconds by default), a timed-out script gets a diagnostic, and SIGINT or SIGTERM kills the child processes and exits with code 130 (ADR 0012). Output of runs that finish is unchanged.
 - Why: CI jobs hung for hours.
 - Upstream issue: #702, #704, #712.
 - Milestone: M5.
-- Status: planned.
+- Status: `workflint_linter::tool` runs the processes this way since M5.4. The diagnostic for a timed-out script follows with M5.5 (#248) and M5.12 (#249).
 
 <a id="python-linter-auto"></a>
 ### ruff is used for Python scripts when installed
