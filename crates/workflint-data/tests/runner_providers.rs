@@ -86,6 +86,42 @@ fn namespace_labels_name_their_os() {
 }
 
 #[test]
+fn namespace_extra_labels_are_known_and_name_no_os() {
+    let namespace = Some(("Namespace", None));
+    for label in [
+        "nscloud-cache-size-20gb",
+        "nscloud-cache-tag-my-repository-e2e-tests",
+        "nscloud-git-mirror-5gb",
+        "nscloud-runner-tool-cache-20gb",
+        "nscloud-cache-allow-commit-from-main",
+        "nscloud-cache-exp-do-not-commit",
+        "nscloud-container-image-cache",
+        "nscloud-in-runner-builder",
+        "nscloud-no-remote-builders",
+    ] {
+        assert_eq!(provider(label), namespace, "{label}");
+    }
+    assert_eq!(provider("nscloud-cache-size-20"), None);
+    assert_eq!(provider("nscloud-git-mirror-gb"), None);
+    assert_eq!(provider("nscloud-cache-tag-"), None);
+}
+
+#[test]
+fn namespace_extra_labels_keep_the_os_of_the_machine_label() {
+    let resolved = resolve_runner([
+        Some("nscloud-ubuntu-24.04-amd64-4x8-with-cache"),
+        Some("nscloud-cache-tag-windows-build"),
+        Some("nscloud-cache-size-50gb"),
+    ]);
+    assert!(
+        matches!(resolved.kind, RunnerKind::Hosted { provider: Some(p) } if p.name == "Namespace"),
+        "{:?}",
+        resolved.kind
+    );
+    assert_eq!(resolved.os, Some(RunnerOs::Linux));
+}
+
+#[test]
 fn runs_on_key_value_labels_are_known() {
     assert_eq!(
         provider("runs-on=12345/runner=2cpu-linux-x64"),
@@ -224,5 +260,46 @@ fn labels_that_name_two_systems_have_no_os() {
     assert_eq!(
         resolve_runner([Some("self-hosted"), Some("linux"), Some("gpu")]).os,
         Some(RunnerOs::Linux)
+    );
+}
+
+#[test]
+fn custom_labels_do_not_cancel_the_os_of_a_known_label() {
+    let wsl = resolve_runner([
+        Some("self-hosted"),
+        Some("windows"),
+        Some("x64"),
+        Some("wsl-ubuntu"),
+    ]);
+    assert_eq!(wsl.os, Some(RunnerOs::Windows));
+    assert_eq!(
+        resolve_runner([
+            Some("self-hosted"),
+            Some("linux"),
+            Some("my-windows-builder")
+        ])
+        .os,
+        Some(RunnerOs::Linux)
+    );
+    assert_eq!(
+        resolve_runner([Some("depot-windows-2025"), Some("cache-ubuntu")]).os,
+        Some(RunnerOs::Windows)
+    );
+}
+
+#[test]
+fn custom_labels_name_the_os_when_no_label_is_known() {
+    assert_eq!(
+        resolve_runner([Some("self-hosted"), Some("gpu-ubuntu22.04"), Some("ubuntu")]).os,
+        Some(RunnerOs::Linux)
+    );
+    assert_eq!(
+        resolve_runner([
+            Some("self-hosted"),
+            Some("wsl-ubuntu"),
+            Some("build-windows")
+        ])
+        .os,
+        None
     );
 }

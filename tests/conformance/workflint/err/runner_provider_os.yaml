@@ -24,3 +24,31 @@ jobs:
     steps:
       - run: echo
         shell: cmd
+  wsl:
+    # `windows` decides the system, so the `ubuntu` in a custom label does not cancel it.
+    runs-on: [self-hosted, windows, x64, wsl-ubuntu]
+    steps:
+      - run: echo
+        shell: sh
+  custom-windows-word:
+    # `linux` decides the system, so the `windows` in a custom label does not cancel it.
+    runs-on: [self-hosted, linux, my-windows-builder]
+    steps:
+      - run: echo
+        shell: cmd
+  namespace-extras:
+    # Namespace's extra labels are known and name no system.
+    runs-on:
+      - nscloud-ubuntu-24.04-amd64-4x8-with-cache
+      - nscloud-cache-tag-windows-build
+      - nscloud-cache-size-50gb
+      - nscloud-git-mirror-5gb
+      - nscloud-runner-tool-cache-20gb
+      - nscloud-cache-allow-commit-from-main
+      - nscloud-cache-exp-do-not-commit
+      - nscloud-container-image-cache
+      - nscloud-in-runner-builder
+      - nscloud-no-remote-builders
+    steps:
+      - run: echo
+        shell: cmd
