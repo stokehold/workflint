@@ -1,0 +1,28 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # GitHub accepts no expression key in a job's `defaults`, only in its
+    # `run`.
+    defaults:
+      ${{ insert }}: ${{ fromJSON(vars.DEFAULTS) }}
+    # `strategy` may not read `matrix`, and the expression must evaluate to
+    # a mapping.
+    strategy:
+      ${{ insert }}: ${{ matrix.strategy }}
+      fail-fast: false
+    concurrency:
+      ${{ insert }}: ${{ 'text' }}
+    container:
+      ${{ insert }}: not an expression
+    environment:
+      ${{ insert }}:
+        name: production
+      name: staging
+    services:
+      redis:
+        image: redis
+        credentials:
+          ${{ insert }}: ${{ fromJSON(secrets.CREDENTIALS }}
+    steps:
+      - run: echo

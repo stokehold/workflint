@@ -105,7 +105,7 @@ static JOB_KEYS: [KeySpec<JobBody<'static>>; 20] = [
     KeySpec {
         name: "defaults",
         parse: |p, b, e| {
-            b.job.defaults = p.parse_defaults(e.key, e.value);
+            b.job.defaults = p.parse_defaults(e.key, e.value, true);
             b.steps_only.push(e.key);
         },
     },
@@ -330,7 +330,7 @@ impl<'a> Parser<'a, '_> {
     /// A `!!str` scalar that is a single `${{ }}` expression is the labels
     /// as an expression. Any other scalar is one label, and a sequence is a
     /// list of labels. Anything else is a mapping with `labels`, which takes
-    /// the same three forms, and `group`.
+    /// the same three forms, `group`, and `${{ insert }}` keys.
     fn parse_runs_on(&mut self, entry: &MapEntry<'a>) -> Field<'a, Runner<'a>> {
         let key = entry.key.string;
         let node = entry.value;
@@ -338,7 +338,7 @@ impl<'a> Parser<'a, '_> {
         if let Some(expr) = self.may_parse_expression(node) {
             let runner = Runner {
                 labels: Value::Expression { key: None, expr },
-                group: Field::Absent,
+                ..Runner::default()
             };
             return Field::Valid {
                 key,
@@ -349,7 +349,7 @@ impl<'a> Parser<'a, '_> {
         if let NodeKind::Scalar(_) | NodeKind::Sequence(_) = node.kind {
             let runner = Runner {
                 labels: self.parse_labels(None, "runs-on", node),
-                group: Field::Absent,
+                ..Runner::default()
             };
             return Field::Valid {
                 key,
@@ -358,8 +358,7 @@ impl<'a> Parser<'a, '_> {
             };
         }
         let mut runner = Runner::default();
-        let entries = self.parse_mapping(Label::Section("runs-on"), node, false, true);
-        self.parse_keys(entries, "runs-on", &RUNS_ON_KEYS, &mut runner);
+        runner.inserts = self.parse_section_keys(node, "runs-on", &RUNS_ON_KEYS, &mut runner);
         mapping_field(entry.key, node, runner)
     }
 

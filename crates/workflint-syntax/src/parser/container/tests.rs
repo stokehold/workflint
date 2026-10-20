@@ -515,3 +515,78 @@ fn a_container_env_that_is_not_one_expression_is_reported() {
         ]
     );
 }
+
+#[test]
+fn a_container_with_an_insert_expression_and_no_image_is_not_reported() {
+    let body = "\
+container:
+  ${{ insert }}: ${{ fromJSON(vars.CONTAINER) }}
+services:
+  redis:
+    ${{ insert }}: ${{ fromJSON(vars.REDIS) }}
+";
+    parsed(&workflow(body), &[], |workflow| {
+        let container = container(workflow);
+        assert!(!container.image.is_present());
+        let inserts: Vec<_> = container.inserts.iter().map(|e| e.source.value()).collect();
+        assert_eq!(inserts, ["${{ fromJSON(vars.CONTAINER) }}"]);
+        let redis = &services(workflow).get("redis").unwrap().value;
+        assert_eq!(redis.inserts.len(), 1);
+    });
+}
+
+#[test]
+fn the_entries_of_an_inserted_mapping_join_the_container() {
+    let body = "\
+container:
+  ${{ insert }}:
+    image: node:24
+    ports: ['80']
+  options: --cpus 1
+";
+    parsed(&workflow(body), &[], |workflow| {
+        let container = container(workflow);
+        assert_eq!(string(&container.image), Some("node:24"));
+        assert_eq!(strings(&container.ports), ["80"]);
+        assert_eq!(string(&container.options), Some("--cpus 1"));
+        assert!(container.inserts.is_empty());
+    });
+}
+
+#[test]
+fn a_container_with_an_invalid_insert_value_still_needs_an_image() {
+    assert_eq!(
+        check(&workflow("container:\n  ${{ insert }}: [x]")),
+        [
+            r#"6:5: "image" is missing in "container" section [missing-required-key]"#,
+            r#"7:22: expecting a single ${{...}} expression or mapping value for "${{ insert }}" key in "container" section, but found sequence node [expected-single-expression]"#,
+        ]
+    );
+}
+
+#[test]
+fn credentials_with_an_insert_expression_may_lack_a_username_and_password() {
+    let body = "\
+container:
+  image: x
+  credentials:
+    username: ${{ github.actor }}
+    ${{ insert }}: ${{ fromJSON(secrets.PASSWORD) }}
+services:
+  redis:
+    image: x
+    credentials:
+      ${{ insert }}:
+        username: u
+        password: ${{ secrets.P }}
+";
+    parsed(&workflow(body), &[], |workflow| {
+        let credentials = credentials(container(workflow));
+        assert!(!credentials.password.is_present());
+        assert_eq!(credentials.inserts.len(), 1);
+        let redis = &services(workflow).get("redis").unwrap().value;
+        let redis = self::credentials(redis);
+        assert_eq!(string(&redis.username), Some("u"));
+        assert_eq!(string(&redis.password), Some("${{ secrets.P }}"));
+    });
+}

@@ -43,3 +43,4 @@ jobs:
 ## Differences from actionlint
 
 - [Complete key list for `workflow_dispatch` inputs](../differences.md#dispatch-input-key-list)
+- [`${{ insert }}` as a mapping key](../differences.md#insert-mapping-key)

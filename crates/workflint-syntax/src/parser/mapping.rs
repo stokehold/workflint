@@ -4,6 +4,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::sync::Arc;
 
 use workflint_diagnostics::Span;
 use workflint_diagnostics::quote::{quote, sorted_quotes};
@@ -350,6 +351,32 @@ impl<'a> Parser<'a, '_> {
                 None => self.unexpected_key(entry.key, section, keys.iter().map(|spec| spec.name)),
             }
         }
+    }
+
+    /// Walks the mapping `node` of `section`, whose keys are case-sensitive
+    /// and which must have entries, and parses each entry with `keys`, as
+    /// [`parse_keys`](Self::parse_keys) does. Returns the expressions under
+    /// the mapping's `${{ insert }}` keys.
+    ///
+    /// GitHub reads the value of an `${{ insert }}` key in these sections as
+    /// `any`, so it may be a mapping, whose entries are parsed as the
+    /// section's own.
+    pub(crate) fn parse_section_keys<S: Section>(
+        &mut self,
+        node: &'a Node,
+        section: &str,
+        keys: &[KeySpec<S>],
+        ast: &mut S::Ast<'a>,
+    ) -> Arc<[Expr<'a>]> {
+        let mapping = self.parse_mapping_with(
+            Label::Section(section),
+            node,
+            false,
+            true,
+            Inserts::MappingOrExpression,
+        );
+        self.parse_keys(mapping.entries, section, keys, ast);
+        mapping.inserts.into()
     }
 
     /// Reports `key` as a key that `section` does not define, as the

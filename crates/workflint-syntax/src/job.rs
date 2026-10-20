@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use crate::{
-    Concurrency, Defaults, Env, Field, JobUses, Keyed, Matrix, Permissions, Step, Str, Template,
-    Value,
+    Concurrency, Defaults, Env, Expr, Field, JobUses, Keyed, Matrix, Permissions, Step, Str,
+    Template, Value,
 };
 
 /// One job of `jobs`.
@@ -77,6 +77,10 @@ pub struct Runner<'a> {
     pub labels: Value<'a, Arc<[Option<Template<'a>>]>>,
     /// `group`.
     pub group: Field<'a, Template<'a>>,
+    /// The values of `${{ insert }}` keys written as one `${{ }}`
+    /// expression, in source order. GitHub merges the mapping that each one
+    /// evaluates to into the mapping form, so `labels` and `group` may come from it.
+    pub inserts: Arc<[Expr<'a>]>,
 }
 
 /// `environment` of a job.
@@ -89,6 +93,10 @@ pub struct Environment<'a> {
     pub url: Field<'a, Template<'a>>,
     /// `deployment`.
     pub deployment: Value<'a, bool>,
+    /// The values of `${{ insert }}` keys written as one `${{ }}`
+    /// expression, in source order. GitHub merges the mapping that each one
+    /// evaluates to into the mapping, so `name` may come from it.
+    pub inserts: Arc<[Expr<'a>]>,
 }
 
 /// `strategy` of a job.
@@ -103,6 +111,10 @@ pub struct Strategy<'a> {
     pub fail_fast: Value<'a, bool>,
     /// `max-parallel`.
     pub max_parallel: Value<'a, i64>,
+    /// The values of `${{ insert }}` keys written as one `${{ }}`
+    /// expression, in source order. GitHub merges the mapping that each one
+    /// evaluates to into the mapping, so `matrix` may come from it.
+    pub inserts: Arc<[Expr<'a>]>,
 }
 
 /// `container` of a job, or one service of `services`.
@@ -126,6 +138,10 @@ pub struct Container<'a> {
     pub command: Field<'a, Template<'a>>,
     /// `entrypoint`. Only a service may have it.
     pub entrypoint: Field<'a, Template<'a>>,
+    /// The values of `${{ insert }}` keys written as one `${{ }}`
+    /// expression, in source order. GitHub merges the mapping that each one
+    /// evaluates to into the mapping, so `image` may come from it.
+    pub inserts: Arc<[Expr<'a>]>,
 }
 
 /// `credentials` of a container.
@@ -135,6 +151,10 @@ pub struct Credentials<'a> {
     pub username: Field<'a, Template<'a>>,
     /// `password`.
     pub password: Field<'a, Template<'a>>,
+    /// The values of `${{ insert }}` keys written as one `${{ }}`
+    /// expression, in source order. GitHub merges the mapping that each one
+    /// evaluates to into the mapping, so `username` and `password` may come from it.
+    pub inserts: Arc<[Expr<'a>]>,
 }
 
 /// `services` of a job, keyed by service ID.

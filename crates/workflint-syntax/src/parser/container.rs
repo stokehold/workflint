@@ -169,8 +169,9 @@ impl<'a> Parser<'a, '_> {
     /// A scalar is the image. Otherwise `node` is a mapping, in whose
     /// messages the section is `services` for a `service` and `container`
     /// for a job's container. Without an `image` key it reports `"image" is
-    /// missing in %q section` at `key`, also when `node` is not a mapping.
-    /// An `image` with an invalid value counts as written.
+    /// missing in %q section` at `key`, also when `node` is not a mapping,
+    /// unless the mapping has an `${{ insert }}` expression, which may hold
+    /// the image. An `image` with an invalid value counts as written.
     fn parse_container(&mut self, service: bool, key: Key<'a>, node: &'a Node) -> Container<'a> {
         if let NodeKind::Scalar(_) = node.kind {
             return Container {
@@ -184,9 +185,8 @@ impl<'a> Parser<'a, '_> {
             ("container", &CONTAINER_KEYS)
         };
         let mut container = Container::default();
-        let entries = self.parse_mapping(Label::Section(section), node, false, true);
-        self.parse_keys(entries, section, keys, &mut container);
-        if !container.image.is_present() {
+        container.inserts = self.parse_section_keys(node, section, keys, &mut container);
+        if !container.image.is_present() && container.inserts.is_empty() {
             self.error(
                 &MISSING_REQUIRED_KEY,
                 key.span,
@@ -204,8 +204,9 @@ impl<'a> Parser<'a, '_> {
     /// `username` and `password`. Without either key it reports `both
     /// "username" and "password" must be specified in "credentials"
     /// section` at the section's key, also when the value is not a mapping,
-    /// and the credentials are invalid. The reference drops them. A key with
-    /// an invalid value counts as written.
+    /// and the credentials are invalid. The reference drops them. A mapping
+    /// with an `${{ insert }}` expression, which may hold the missing key,
+    /// is not reported. A key with an invalid value counts as written.
     fn parse_credentials(&mut self, entry: &MapEntry<'a>) -> Value<'a, Credentials<'a>> {
         let key = entry.key.string;
         let node = entry.value;
@@ -213,9 +214,10 @@ impl<'a> Parser<'a, '_> {
             return Value::Expression { key, expr };
         }
         let mut credentials = Credentials::default();
-        let entries = self.parse_mapping(Label::Section("credentials"), node, false, true);
-        self.parse_keys(entries, "credentials", &CREDENTIALS_KEYS, &mut credentials);
-        if !credentials.username.is_present() || !credentials.password.is_present() {
+        credentials.inserts =
+            self.parse_section_keys(node, "credentials", &CREDENTIALS_KEYS, &mut credentials);
+        let complete = credentials.username.is_present() && credentials.password.is_present();
+        if !complete && credentials.inserts.is_empty() {
             self.error(
                 &INCOMPLETE_CREDENTIALS,
                 entry.key.span,
