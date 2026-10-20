@@ -34,6 +34,7 @@ mod build;
 mod decode;
 mod document;
 mod dump;
+mod help;
 mod libyaml;
 mod resolve;
 pub mod rules;
