@@ -19,8 +19,9 @@ use workflint_yaml::{
 /// the linter reads a file: UTF-8, or UTF-16 after its byte order mark.
 ///
 /// Bytes that `decode` rejects give an error inside the input with a
-/// message. The text before a UTF-8 error is valid UTF-8, and a UTF-16 error
-/// is at a whole code unit. The checks then parse the input with invalid
+/// message. A UTF-8 error is at the first invalid sequence, or for an
+/// invalid trailing octet, at that octet inside the sequence, as go-yaml
+/// reports it. A UTF-16 error is at a whole code unit. The checks then parse the input with invalid
 /// UTF-8 replaced by U+FFFD, so every input reaches the parser.
 pub(crate) fn text(data: &[u8]) -> Cow<'_, str> {
     let error = match decode(data) {
@@ -36,11 +37,17 @@ pub(crate) fn text(data: &[u8]) -> Cow<'_, str> {
             "{error}: not at a UTF-16 code unit"
         );
     } else {
-        let before = data.get(..offset).unwrap();
-        assert!(
-            std::str::from_utf8(before).is_ok(),
-            "{error}: the text before it is not valid UTF-8"
-        );
+        let valid = std::str::from_utf8(data).err().map(|err| err.valid_up_to());
+        assert!(valid.is_some(), "{error}: the input is valid UTF-8");
+        let valid = valid.unwrap();
+        if error.problem() == "invalid trailing UTF-8 octet" {
+            assert!(
+                valid < offset && offset < valid + 4,
+                "{error}: not inside the sequence that starts at byte {valid}"
+            );
+        } else {
+            assert_eq!(offset, valid, "{error}: not at the first invalid sequence");
+        }
     }
     String::from_utf8_lossy(data)
 }
@@ -217,11 +224,16 @@ fn check_written(document: &Document, children: &[NodeId], written: &[NodeId], w
 }
 
 /// Checks that each duplicate key of the mapping `what` pairs two of its
-/// entries, the first one earlier, with scalar keys that compare equal.
+/// written entries, the first one earlier, whose resolved keys are scalars
+/// that compare equal.
 fn check_duplicate_keys(document: &Document, mapping: &workflint_yaml::Mapping, what: &str) {
     let entries = document.entries(mapping);
-    let key = |id: NodeId| {
-        let kind = document.node(id).map(|node| &node.kind);
+    let written = document.written_entries(mapping);
+    let key = |position: usize| {
+        let kind = entries
+            .get(position)
+            .and_then(|entry| document.node(entry.key))
+            .map(|node| &node.kind);
         let value = match kind {
             Some(NodeKind::Scalar(scalar)) => Some(scalar.value.clone()),
             _ => None,
@@ -231,14 +243,13 @@ fn check_duplicate_keys(document: &Document, mapping: &workflint_yaml::Mapping, 
     };
     for comparison in [KeyComparison::Exact, KeyComparison::CaseInsensitive] {
         for duplicate in document.duplicate_keys(mapping, comparison) {
-            let position = |entry| entries.iter().position(|&e| e == entry);
-            let first = position(duplicate.first);
-            let later = position(duplicate.duplicate);
+            let position = |entry| written.iter().position(|&e| e == entry);
+            let (first, later) = (position(duplicate.first), position(duplicate.duplicate));
             assert!(
                 first.is_some() && later.is_some() && first < later,
                 "{what}: {duplicate:?} is not two entries in order"
             );
-            let (a, b) = (key(duplicate.first.key), key(duplicate.duplicate.key));
+            let (a, b) = (key(first.unwrap()), key(later.unwrap()));
             let equal = match comparison {
                 KeyComparison::Exact => a == b,
                 KeyComparison::CaseInsensitive => simple_lowercase(&a) == simple_lowercase(&b),
