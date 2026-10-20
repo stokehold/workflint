@@ -160,6 +160,21 @@ fn an_exclude_key_that_is_no_row_lists_the_rows_sorted_and_lowercased() {
 }
 
 #[test]
+fn an_exclude_key_that_is_no_row_lists_only_the_rows_written_as_sequences() {
+    assert_eq!(
+        messages(&[
+            "os: [a]",
+            "node: ${{ fromJSON('[1]') }}",
+            "exclude:",
+            "  - foo: x",
+        ]),
+        [
+            r#""foo" in "exclude" section does not exist in matrix. available matrix configurations are "os""#
+        ]
+    );
+}
+
+#[test]
 fn exclude_keys_match_rows_without_case() {
     assert_eq!(
         messages(&["OS: [ubuntu-latest]", "exclude:", "  - os: ubuntu-latest"]),
