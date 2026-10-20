@@ -26,3 +26,8 @@ jobs:
     runs-on: [macos-latest, '${{ matrix.os }}-latest']
     steps:
       - run: echo
+  case:
+    # The predicate is unknown, so the label is the value or the default.
+    runs-on: ${{ case(github.repository == 'owner/repo', 'ubuntu-latest', 'ubuntu-latst') }}
+    steps:
+      - run: echo

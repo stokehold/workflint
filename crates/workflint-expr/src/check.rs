@@ -497,7 +497,7 @@ impl Checker<'_> {
             .iter()
             .find(|sig| sig.mismatch(&arg_tys).is_none())
         {
-            return self.check_resolved_call(expr, callee, function, sig, args);
+            return self.check_resolved_call(expr, callee, function, sig, args, &arg_tys);
         }
         for sig in &function.overloads {
             if let Some(mismatch) = sig.mismatch(&arg_tys) {
@@ -548,7 +548,7 @@ impl Checker<'_> {
     }
 
     /// The reference's `checkBuiltinFuncCall`: the checks of a call whose arguments `sig`
-    /// accepts. Returns the type of the call.
+    /// accepts, of the types `arg_tys`. Returns the type of the call.
     fn check_resolved_call(
         &mut self,
         expr: &Expr,
@@ -556,6 +556,7 @@ impl Checker<'_> {
         function: &Function,
         sig: &Signature,
         args: &[Expr],
+        arg_tys: &[Ty],
     ) -> Ty {
         self.check_special_function_availability(expr, callee);
         match function.key.as_str() {
@@ -565,16 +566,34 @@ impl Checker<'_> {
                     return ty;
                 }
             }
-            "case" if args.len().is_multiple_of(2) => {
-                let message = format!(
-                    "case() requires an odd number of arguments (pred/value pairs + default) but got {}",
-                    args.len()
-                );
-                self.error(expr, &CASE_ARGUMENT_COUNT, message);
-            }
+            "case" => self.check_case(expr, args, arg_tys),
             _ => {}
         }
         sig.ret.clone()
+    }
+
+    /// Reports each predicate of `case()` whose type is known and is not `bool`, which GitHub
+    /// rejects (`docs/differences.md#case-predicate-type`), and a call without a default. A
+    /// predicate is an argument at an even index that a value follows.
+    fn check_case(&mut self, expr: &Expr, args: &[Expr], arg_tys: &[Ty]) {
+        let predicates = args.iter().zip(arg_tys).enumerate().step_by(2);
+        for (index, (arg, ty)) in predicates.take(args.len() / 2) {
+            if !matches!(ty, Ty::Bool | Ty::Any) {
+                let message = format!(
+                    "case() predicate must evaluate to a boolean value but the {} argument has type {}",
+                    ordinal(index + 1),
+                    quote(&ty.to_string()),
+                );
+                self.error(arg, &WRONG_ARGUMENT_TYPE, message);
+            }
+        }
+        if args.len().is_multiple_of(2) {
+            let message = format!(
+                "case() requires an odd number of arguments (pred/value pairs + default) but got {}",
+                args.len()
+            );
+            self.error(expr, &CASE_ARGUMENT_COUNT, message);
+        }
     }
 
     /// The reference's `checkSpecialFunctionAvailability`. It runs only for a call whose

@@ -1,0 +1,13 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # A string predicate
+      - run: echo ${{ case(github.ref, 'a', 'b') }}
+      # A string literal
+      - run: echo ${{ case('x', 'a', 'b') }}
+      # The second predicate is a number. The default is not a predicate.
+      - run: echo ${{ case(github.ref == 'refs/heads/main', 'prod', 1, 'dev', 'test') }}
+      # OK: bool and any predicates
+      - run: echo ${{ case(github.ref == 'refs/heads/main', 'prod', fromJSON(github.event_name), 'dev', 'test') }}
