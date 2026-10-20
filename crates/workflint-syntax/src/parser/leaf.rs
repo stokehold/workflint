@@ -170,6 +170,16 @@ impl<'a> Parser<'a, '_> {
     }
 
     fn cached_template(&mut self, source: Str<'a>, condition: bool) -> Template<'a> {
+        let parse = |source| {
+            if condition {
+                Template::condition(source)
+            } else {
+                Template::new(source)
+            }
+        };
+        if !self.has_aliases {
+            return parse(source);
+        }
         let key = (address(source.node()), condition);
         if let Some(template) = self.templates.get(&key) {
             // The cached template may come from another alias path.
@@ -177,11 +187,7 @@ impl<'a> Parser<'a, '_> {
             template.source = source;
             return template;
         }
-        let template = if condition {
-            Template::condition(source)
-        } else {
-            Template::new(source)
-        };
+        let template = parse(source);
         self.templates.insert(key, template.clone());
         template
     }
@@ -189,6 +195,9 @@ impl<'a> Parser<'a, '_> {
     /// Parses `source` as a single expression, or returns it from the
     /// cache. Returns `None` if `source` is not a single expression.
     pub(super) fn expression(&mut self, source: Str<'a>) -> Option<Expr<'a>> {
+        if !self.has_aliases {
+            return Expr::new(source);
+        }
         let key = address(source.node());
         if let Some(expr) = self.expressions.get(&key) {
             let mut expr = expr.clone();

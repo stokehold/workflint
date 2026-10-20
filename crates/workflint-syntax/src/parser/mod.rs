@@ -96,6 +96,9 @@ pub(crate) struct Parser<'a, 'f> {
     file: &'f SourceFile,
     document: &'a Document,
     diagnostics: Vec<Diagnostic>,
+    /// Whether the document has a resolved alias, so that the walk can
+    /// reach a node more than once. Without one, the parser keeps no caches.
+    has_aliases: bool,
     /// The templates parsed so far, keyed by the address of their node and
     /// whether the node is an `if` condition. A scalar reached through
     /// several aliases is parsed once and its placeholders are shared, so
@@ -116,6 +119,15 @@ impl<'a, 'f> Parser<'a, 'f> {
             file,
             document,
             diagnostics: Vec::new(),
+            has_aliases: document.nodes().any(|(_, node)| {
+                matches!(
+                    node.kind,
+                    NodeKind::Alias(Alias {
+                        target: Some(_),
+                        ..
+                    })
+                )
+            }),
             templates: HashMap::new(),
             expressions: HashMap::new(),
             aliases: AliasTable::default(),
@@ -347,5 +359,29 @@ mod tests {
             ),
             0
         );
+    }
+
+    fn cached(text: &str) -> (usize, usize) {
+        let file = SourceFile::new(FileId::new(0), "test.yml", text).unwrap();
+        let document = workflint_yaml::parse(&file).document.unwrap();
+        let mut parser = Parser::new(&file, &document);
+        parser.workflow();
+        (parser.templates.len(), parser.expressions.len())
+    }
+
+    // Without an alias, the walk reaches each node once, so a cache would
+    // only hold a copy of every template until the parse ends (#240).
+    #[test]
+    fn a_document_without_aliases_caches_nothing() {
+        let text = "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    timeout-minutes: ${{ inputs.t }}\n    steps:\n      - run: echo ${{ github.sha }}\n";
+
+        assert_eq!(cached(text), (0, 0));
+    }
+
+    #[test]
+    fn a_document_with_an_alias_caches_its_templates() {
+        let text = "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - &s\n        run: echo ${{ github.sha }}\n      - *s\n";
+
+        assert_ne!(cached(text).0, 0);
     }
 }
