@@ -19,5 +19,15 @@ workflint-expr = { path = "../workflint-expr", version = "0.0.1" }
 workflint-syntax = { path = "../workflint-syntax", version = "0.0.1" }
 workflint-yaml = { path = "../workflint-yaml", version = "0.0.1" }
 
+[dev-dependencies]
+# divan's API, measured by CodSpeed in CI and by divan on `cargo bench` (ADR 0019).
+divan = { package = "codspeed-divan-compat", version = "5.0.3" }
+# Reads the largest corpus file from the vendored archive for the rules benchmark.
+zip = { version = "9.0.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+[[bench]]
+name = "rules"
+harness = false
+
 [lints]
 workspace = true
