@@ -20,7 +20,8 @@
 //! [`BRANDING_ICONS`], and [`DOCKER_REGISTRY_PREFIXES`] for action metadata.
 //! [`POPULAR_ACTIONS`] and [`popular_action`] for the inputs and outputs of popular actions,
 //! and [`OUTDATED_POPULAR_ACTION_SPECS`] and [`is_outdated_popular_action`] for those whose
-//! runner GitHub no longer has.
+//! runner GitHub no longer has. [`GITHUB_SCRIPT_ACTION`] and [`is_github_script`] name the
+//! action whose `script` input is a script and whose outputs may have any name.
 //!
 //! Every table is `static` data, so reading one allocates nothing. The crate reads no files,
 //! environment variables, or clocks: it is `no_std`.
@@ -37,6 +38,7 @@ mod docker_registries;
 mod event_filters;
 mod event_limits;
 mod functions;
+mod github_script;
 mod global_contexts;
 mod go_case;
 mod permissions;
@@ -61,6 +63,7 @@ pub use docker_registries::{DOCKER_REGISTRY_PREFIXES, is_on_docker_registry};
 pub use event_filters::{EventFilter, filter_events};
 pub use event_limits::{MAX_WORKFLOW_DISPATCH_INPUTS, MIN_SCHEDULE_INTERVAL_SECONDS};
 pub use functions::{BUILTIN_FUNCTIONS, Function, Signature, builtin_function};
+pub use github_script::{GITHUB_SCRIPT_ACTION, is_github_script};
 pub use global_contexts::{BUILT_IN_SECRETS, Context, GLOBAL_CONTEXTS, global_context};
 pub use permissions::{
     PERMISSION_SCOPES, PERMISSIONS_FOR_ALL_SCOPES, PermissionScope, permission_scope,

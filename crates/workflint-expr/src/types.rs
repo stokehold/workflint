@@ -253,7 +253,7 @@ impl ObjectTy {
         Self::from_parts(props, rest)
     }
 
-    fn empty(rest: Rest) -> Self {
+    pub(crate) fn empty(rest: Rest) -> Self {
         Self::from_parts(BTreeMap::new(), rest)
     }
 
@@ -263,6 +263,16 @@ impl ObjectTy {
             rest => rest,
         };
         Self { props, rest }
+    }
+
+    /// Adds the property `name` of type `ty`, or replaces its type.
+    pub(crate) fn insert(&mut self, name: String, ty: Ty) {
+        self.props.insert(name, ty);
+    }
+
+    /// Makes the object allow any property, of type `any`.
+    pub(crate) fn make_loose(&mut self) {
+        self.rest = Rest::Loose;
     }
 
     /// The known properties, sorted by name in byte order.

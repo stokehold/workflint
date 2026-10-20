@@ -910,6 +910,29 @@ jobs:
 }
 
 #[test]
+fn secrets_has_only_the_declared_secrets_when_the_other_trigger_is_an_unknown_event() {
+    let text = "\
+on:
+  workflow_call:
+    secrets:
+      tok:
+        required: true
+  unknown_event:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ secrets.other }}
+";
+    assert_eq!(
+        lint_expressions(text),
+        [
+            r#"test.yaml:11:23: property "other" is not defined in object type {actions_runner_debug: string; actions_step_debug: string; github_token: string; tok: string} [undefined-property]"#,
+        ]
+    );
+}
+
+#[test]
 fn secrets_accepts_any_name_when_workflow_call_declares_no_secrets() {
     let text = "\
 on: workflow_call

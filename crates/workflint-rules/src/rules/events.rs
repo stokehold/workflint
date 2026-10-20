@@ -231,10 +231,23 @@ fn check_cron(spec: &Template<'_>, cx: &mut Context<'_>) {
             &CRON_TOO_FREQUENT,
             spec.span(),
             format!(
-                "scheduled job runs too frequently. it runs once per {seconds} seconds. the shortest interval is once every 5 minutes"
+                "scheduled job runs too frequently. it runs once per {seconds} seconds. the shortest interval is {}",
+                shortest_interval(MIN_SCHEDULE_INTERVAL_SECONDS),
             ),
         );
     }
+}
+
+/// Describes an interval of `seconds`, such as `once every 5 minutes`, in minutes when it is a
+/// whole number of them.
+fn shortest_interval(seconds: u64) -> String {
+    let (count, unit) = if seconds.is_multiple_of(60) {
+        (seconds / 60, "minute")
+    } else {
+        (seconds, "second")
+    };
+    let plural = if count == 1 { "" } else { "s" };
+    format!("once every {count} {unit}{plural}")
 }
 
 /// The reference's `checkTimezone`. It rejects `UTC` and `Local` in any case before it looks
@@ -606,5 +619,27 @@ fn check_non_choice_input(input: &KeyedEntry<'_, WorkflowDispatchInput<'_>>, cx:
             | WorkflowDispatchInputType::Environment,
         )
         | None => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::shortest_interval;
+    use workflint_data::MIN_SCHEDULE_INTERVAL_SECONDS;
+
+    #[test]
+    fn the_shortest_interval_comes_from_the_data() {
+        assert_eq!(
+            shortest_interval(MIN_SCHEDULE_INTERVAL_SECONDS),
+            "once every 5 minutes"
+        );
+    }
+
+    #[test]
+    fn the_shortest_interval_is_in_minutes_when_it_is_a_whole_number_of_them() {
+        assert_eq!(shortest_interval(60), "once every 1 minute");
+        assert_eq!(shortest_interval(600), "once every 10 minutes");
+        assert_eq!(shortest_interval(90), "once every 90 seconds");
+        assert_eq!(shortest_interval(1), "once every 1 second");
     }
 }

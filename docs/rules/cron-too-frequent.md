@@ -6,7 +6,7 @@
 
 A `schedule` cron expression runs more often than every 5 minutes.
 
-The rule compares the first two runs after January 1, 1970, 00:00 UTC, as actionlint does, and prints the seconds between them. A schedule that never runs, such as `0 0 30 2 *` for February 30, has an interval of 0 seconds.
+The rule compares the first two runs after January 1, 1970, 00:00 UTC, and prints the seconds between them. It computes both runs in UTC on every host. actionlint computes them in the host's time zone, or in the zone of a `TZ=` prefix, so it can give a schedule whose runs are unevenly spaced a different interval. A schedule that never runs, such as `0 0 30 2 *` for February 30, has an interval of 0 seconds.
 
 ## Why
 

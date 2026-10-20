@@ -6,7 +6,7 @@
 
 A job's `uses:` is not `./path/to/workflow.yml` or `owner/repo/path/to/workflow.yml@ref`.
 
-A local reusable workflow is a path that starts with `./` and has no `@`. A workflow in another repository needs an owner, a repo, a path, and a ref after `@`, none of them empty. A value with a `${{ }}` expression is not checked here.
+A local reusable workflow is a path that starts with `./`, has at least one more character, and has no `@` after that character. `./@x` counts as a local path, as in actionlint, and [`reusable-workflow-not-found`](reusable-workflow-not-found.md) reports that its file could not be read. A workflow in another repository needs an owner, a repo, a path, and a ref after `@`, none of them empty. A value with a `${{ }}` expression is not checked here.
 
 ## Why
 

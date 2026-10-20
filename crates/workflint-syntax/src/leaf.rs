@@ -1,5 +1,6 @@
 //! The string leaves and the expression leaf of the AST.
 
+use std::cell::OnceCell;
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -119,18 +120,92 @@ impl<'a> Str<'a> {
     /// character before the trailing line feeds. The source of those line
     /// feeds ends on a later line, so an error at the end of a `|` or `>`
     /// block would otherwise point at the line after the block.
+    ///
+    /// Each call builds the source map again, which decodes the whole
+    /// scalar. A caller that maps many ranges of one string uses
+    /// [`spans`](Self::spans) instead.
     #[must_use]
     pub fn source_span(&self, file: &SourceFile, range: Range<usize>) -> Option<Span> {
         let map = self.source_map(file)?;
-        let value = self.value();
-        let range = if range.start >= value.len() && range.end <= range.start {
-            let end = value.trim_end_matches('\n').len();
-            end..end
-        } else {
-            range
-        };
-        Some(map.source_span(range))
+        Some(map_range(&map, self.value(), range))
     }
+
+    /// Returns a [`StrSpans`] that maps byte ranges of
+    /// [`value`](Self::value) to spans in `file` and builds the source map
+    /// once for all of them.
+    ///
+    /// ```
+    /// use workflint_diagnostics::{FileId, SourceFile};
+    /// use workflint_syntax::Str;
+    /// use workflint_yaml::parse;
+    ///
+    /// let file = SourceFile::new(FileId::new(0), "ci.yml", "\"a\\tb\\tc\"\n").unwrap();
+    /// let document = parse(&file).document.unwrap();
+    /// let source = Str::new(document.node(document.root().unwrap()).unwrap()).unwrap();
+    /// let spans = source.spans(&file);
+    /// for range in [0..1, 1..2, 4..5, 5..5] {
+    ///     assert_eq!(Some(spans.span(range.clone())), source.source_span(&file, range));
+    /// }
+    /// // The tab at byte 1 of the value is the escape `\t` in the file.
+    /// let tab = spans.span(1..2);
+    /// assert_eq!((tab.start, tab.end), (2, 4));
+    /// ```
+    #[must_use]
+    pub fn spans<'f>(&self, file: &'f SourceFile) -> StrSpans<'a, 'f> {
+        StrSpans {
+            source: *self,
+            file,
+            map: OnceCell::new(),
+        }
+    }
+}
+
+/// Maps byte ranges of the value of a [`Str`] to spans in its file, as
+/// [`Str::source_span`] does. It builds the source map the first time it
+/// maps a range and reuses it after that, so mapping the ranges of N
+/// diagnostics in one scalar decodes the scalar once instead of N times.
+#[derive(Debug)]
+pub struct StrSpans<'a, 'f> {
+    source: Str<'a>,
+    file: &'f SourceFile,
+    /// The source map, or `None` inside if `file` is not the file the
+    /// string was parsed from.
+    map: OnceCell<Option<SourceMap<'f>>>,
+}
+
+impl<'a> StrSpans<'a, '_> {
+    /// Returns the string whose ranges this maps.
+    #[must_use]
+    pub fn source(&self) -> Str<'a> {
+        self.source
+    }
+
+    /// Returns the span in the file of the byte range `range` of the
+    /// value, as [`Str::source_span`] does, or the span of the whole string
+    /// if the file is not the one the string was parsed from.
+    #[must_use]
+    pub fn span(&self, range: Range<usize>) -> Span {
+        let map = self
+            .map
+            .get_or_init(|| self.source.source_map(self.file))
+            .as_ref();
+        map.map_or_else(
+            || self.source.span(),
+            |map| map_range(map, self.source.value(), range),
+        )
+    }
+}
+
+/// Returns the span that `map` gives the byte range `range` of `value`.
+/// See [`Str::source_span`] for an empty range at the end of the value.
+fn map_range(map: &SourceMap<'_>, value: &str, range: Range<usize>) -> Span {
+    let range = if range.start >= value.len() && range.end <= range.start {
+        let end = value.trim_end_matches('\n').len();
+        end..end
+    } else {
+        range
+    };
+    map.source_span(range)
 }
 
 /// A string in a place where GitHub evaluates the `${{ }}` placeholders in

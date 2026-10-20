@@ -98,6 +98,26 @@ impl TypeEnv {
         self.steps = Some(Ty::Object(ty.into()));
     }
 
+    /// Adds the step `id`, which must be lower case, of type `ty` to `steps`, and makes `steps`
+    /// accept any step if `loose`. A loose `steps` stays loose. This is what the reference's
+    /// `UpdateSteps` does for one more step.
+    ///
+    /// The type changes in place unless a clone of the environment shares it, so adding the
+    /// steps of a job one at a time takes time linear in their number. Building a new type for
+    /// each step copied the steps before it.
+    pub fn add_step(&mut self, id: impl Into<String>, ty: Ty, loose: bool) {
+        let mut steps = match self.steps.take().or_else(|| global("steps").cloned()) {
+            Some(Ty::Object(steps)) => steps,
+            _ => Arc::new(ObjectTy::empty(Rest::Strict)),
+        };
+        let object = Arc::make_mut(&mut steps);
+        object.insert(id.into(), ty);
+        if loose {
+            object.make_loose();
+        }
+        self.steps = Some(Ty::Object(steps));
+    }
+
     /// Sets the type of `needs`. This is the reference's `UpdateNeeds`.
     pub fn set_needs(&mut self, ty: impl Into<Arc<ObjectTy>>) {
         self.needs = Some(Ty::Object(ty.into()));

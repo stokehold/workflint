@@ -2598,6 +2598,86 @@ mod suggestions {
         );
     }
 
+    fn helps_at(key: &str, input: &str) -> Vec<(&'static str, Option<String>)> {
+        let mut env = TypeEnv::new();
+        env.set_workflow_key(key);
+        helps_in(&env, input)
+    }
+
+    #[test]
+    fn context_not_available_at_the_workflow_key_is_not_suggested() {
+        assert_eq!(
+            helps_at("jobs.<job_id>.strategy", "matix"),
+            [(UNDEFINED_VARIABLE.id, None)]
+        );
+        assert_eq!(
+            helps_at("jobs.<job_id>.strategy", "gihub"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "github")]
+        );
+        assert_eq!(
+            helps_at("jobs.<job_id>.steps.run", "matix"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "matrix")]
+        );
+    }
+
+    #[test]
+    fn no_context_is_suggested_where_none_is_available() {
+        assert_eq!(helps_at("", "gihub"), [(UNDEFINED_VARIABLE.id, None)]);
+    }
+
+    #[test]
+    fn special_function_not_available_at_the_workflow_key_is_not_suggested() {
+        assert_eq!(
+            helps_at("jobs.<job_id>.steps.run", "always"),
+            [(UNDEFINED_VARIABLE.id, None)]
+        );
+        assert_eq!(
+            helps_at("jobs.<job_id>.steps.run", "alway()"),
+            [(UNDEFINED_FUNCTION.id, None)]
+        );
+        assert_eq!(
+            helps_at("jobs.<job_id>.steps.if", "always"),
+            [did_you_mean(&UNDEFINED_VARIABLE, "always()")]
+        );
+        assert_eq!(
+            helps_at("jobs.<job_id>.steps.if", "alway()"),
+            [did_you_mean(&UNDEFINED_FUNCTION, "always")]
+        );
+    }
+
+    #[test]
+    fn function_that_is_available_everywhere_is_suggested_anywhere() {
+        assert_eq!(
+            helps_at("", "fromJosn('{}')"),
+            [did_you_mean(&UNDEFINED_FUNCTION, "fromJSON")]
+        );
+    }
+
+    /// The repro of issue #223, scaled down: 2000 inputs whose names are 100 characters long,
+    /// and 100 reads of an input whose name is close to none of them. Before the search was
+    /// bounded, this took minutes in a debug build.
+    #[test]
+    fn suggestion_search_takes_bounded_time_with_many_long_names() {
+        let names: Vec<String> = (0..2000)
+            .map(|i| format!("{:a<100}", format!("k{i}")))
+            .collect();
+        let mut env = open_env();
+        env.add_inputs(ObjectTy::new(
+            names.iter().map(|name| (name.as_str(), Ty::String)),
+            Rest::Strict,
+        ));
+        let read = format!("inputs.{}", "z".repeat(100));
+        let input = vec![read; 100].join(" || ");
+        let start = std::time::Instant::now();
+        let helps = helps_in(&env, &input);
+        let elapsed = start.elapsed();
+        assert_eq!(helps, vec![(UNDEFINED_PROPERTY.id, None); 100]);
+        assert!(
+            elapsed < std::time::Duration::from_secs(5),
+            "the search took {elapsed:?}"
+        );
+    }
+
     #[test]
     fn other_errors_have_no_help() {
         assert_eq!(helps("1 == github"), [(INVALID_COMPARISON.id, None)]);
