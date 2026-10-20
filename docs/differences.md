@@ -603,17 +603,21 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### `}}` inside a string literal in `if:`
 
 - Upstream: the `if-cond` rule finds the end of `${{` with the first `}}` in the text, so `if: ${{ github.ref == '}}' }}` is reported as always true. It also counts every `${{` in the text, so `if: ${{ github.ref == '${{' }}` is reported as always true.
-- workflint: the expression lexer finds the end of each `${{ }}` and skips string literals. The rule uses the placeholders that the parser stored. When an expression does not parse, the rule falls back to the first `}}`, as upstream does.
+- workflint: the expression lexer finds the end of each `${{ }}` and skips string literals. The rule uses the placeholders that the parser stored. When the first expression does not parse, the rule falls back to the first `}}` and counts every `${{` in the text, as upstream does, so `if: "${{ github.ref == ${{ true }}"` is reported as always true next to the syntax error.
 - Why: upstream rejects a valid condition.
 - Upstream issue: none.
 - Milestone: M4.12.
-- Status: implemented. No fixture covers it. The `workflint-rules` test `closing_braces_inside_a_string_literal_do_not_end_the_expression` does.
+- Status: implemented. No fixture covers it. The `workflint-rules` tests `closing_braces_inside_a_string_literal_do_not_end_the_expression` and `two_placeholder_openings_in_a_condition_that_does_not_parse_are_always_true` do.
 
 <a id="if-cond-suggestion"></a>
 ### Always-true conditions suggest one `${{ }}`
 
 - Upstream: `if: ${{ success() }} || ${{ failure() }}` gets `if: condition "${{ success() }} || ${{ failure() }}" is always evaluated to true because extra characters are around ${{ }}`.
-- workflint: the message ends with `. did you mean "${{ success() || failure() }}"?`. The suggestion puts the text around the placeholders and the text inside them into one `${{ }}`. A placeholder gets parentheses when an operator next to it binds tighter than its own, so `${{ a || b }} && ${{ c }}` suggests `${{ (a || b) && c }}`. There is no suggestion when the text around the placeholders is only whitespace, when a placeholder or the joined text does not parse, or when the joined expression is constant, which the `constant-condition` rule would report.
+- workflint: the message ends with `. did you mean "${{ success() || failure() }}"?`. The suggestion puts the text around the placeholders and the text inside them into one `${{ }}`. A placeholder gets parentheses when an operator next to it binds tighter than its own, so `${{ a || b }} && ${{ c }}` suggests `${{ (a || b) && c }}`. There is no suggestion when:
+  - the text around the placeholders is only whitespace.
+  - a placeholder or the joined text does not parse.
+  - a placeholder is not a whole operand of the text around it. The rule parses that text with a name in place of each placeholder. Each name must be a variable of its own, not part of a string literal, a longer name, a property access, an index, or a call. So `github.ref == 'refs/heads/${{ env.BRANCH }}'`, `hashFiles('${{ env.ENV_FILE }}')`, `steps.${{ env.ID }}.outcome == 'success'`, `env-${{ github.ref }}`, `${{ github }}.ref` and `github[${{ env.KEY }}]` get none, because joining them would change what they test.
+  - the joined expression is constant, which the `constant-condition` rule would report.
 - Why: the joined expression is what the author meant in most cases, and upstream's message does not say how to fix the condition.
 - Upstream issue: #367.
 - Milestone: M4.12.
