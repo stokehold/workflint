@@ -43,9 +43,10 @@ pub struct Document {
     /// The entries as written, parallel to `entries`.
     pub(crate) written_entries: Vec<Entry>,
     pub(crate) comments: Vec<Comment>,
-    /// Indexes into `comments`, grouped by node. [`Node::comments`] is a
-    /// range of this list.
-    pub(crate) node_comments: Vec<u32>,
+    /// The attached comments as pairs of a node and an index into
+    /// `comments`, sorted by node and then by comment. Few nodes have
+    /// comments, so the list is kept here and not in each node.
+    pub(crate) node_comments: Vec<(NodeId, u32)>,
 }
 
 impl Document {
@@ -137,10 +138,13 @@ impl Document {
     /// [`written_items`](Self::written_items) and
     /// [`written_entries`](Self::written_entries) return the alias nodes.
     pub fn node_comments(&self, id: NodeId) -> impl Iterator<Item = &Comment> {
-        let range = self.node(id).map_or(0..0, |node| node.comments.clone());
-        slice(&self.node_comments, &range)
+        let first = self.node_comments.partition_point(|&(node, _)| node < id);
+        self.node_comments
+            .get(first..)
+            .unwrap_or_default()
             .iter()
-            .filter_map(|&i| self.comments.get(usize::try_from(i).ok()?))
+            .take_while(move |&&(node, _)| node == id)
+            .filter_map(|&(_, i)| self.comments.get(usize::try_from(i).ok()?))
     }
 
     /// Lists the entries of `mapping` whose scalar key equals the key of an
@@ -162,7 +166,7 @@ impl Document {
         mapping: &Mapping,
         comparison: KeyComparison,
     ) -> Vec<DuplicateKey> {
-        let mut first: BTreeMap<String, Entry> = BTreeMap::new();
+        let mut first: BTreeMap<Cow<'_, str>, Entry> = BTreeMap::new();
         let mut duplicates = Vec::new();
         let written = self.written_entries(mapping);
         for (resolved, &entry) in self.entries(mapping).iter().zip(written) {
@@ -173,12 +177,12 @@ impl Document {
             else {
                 continue;
             };
-            if key.value == "<<" {
+            if &*key.value == "<<" {
                 continue;
             }
             let key = match comparison {
-                KeyComparison::Exact => key.value.clone(),
-                KeyComparison::CaseInsensitive => simple_lowercase(&key.value).into_owned(),
+                KeyComparison::Exact => Cow::Borrowed(&*key.value),
+                KeyComparison::CaseInsensitive => simple_lowercase(&key.value),
             };
             match first.get(&key) {
                 Some(&first) => duplicates.push(DuplicateKey {
@@ -256,11 +260,11 @@ pub struct Node {
     /// it is the start of the content after the properties, and for a block
     /// scalar, where it is the start of the line after the header.
     pub content_start: u32,
-    /// The anchor, if the node has one. Aliases have none.
-    pub anchor: Option<Anchor>,
+    /// The anchor, if the node has one. Aliases have none. Few nodes have
+    /// one, so it is boxed to keep every node small.
+    pub anchor: Option<Box<Anchor>>,
     /// The kind of the node and its data.
     pub kind: NodeKind,
-    pub(crate) comments: Range<u32>,
 }
 
 impl Node {
@@ -293,17 +297,26 @@ pub enum NodeKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scalar {
     /// The decoded value: unquoted, unescaped, folded, and chomped.
-    pub value: String,
+    pub value: Box<str>,
     /// How the scalar is written.
     pub style: ScalarStyle,
     /// The explicit tag, or the tag that the YAML 1.2 core schema resolves
     /// for a plain scalar. Quoted and block scalars without a tag are
     /// `!!str`.
     pub tag: Tag,
-    /// The column of the innermost enclosing block collection, or -1 at the
-    /// top level. This is the scanner's indentation when it reads a block
-    /// scalar, which the content indentation depends on.
-    pub(crate) parent_indent: i64,
+    /// The column of the innermost enclosing block collection plus one, or 0
+    /// at the top level. Minus one, this is the scanner's indentation when
+    /// it reads a block scalar, which the content indentation depends on.
+    /// [`Scalar::parent_indent`] returns it.
+    pub(crate) parent_indent_plus_one: u32,
+}
+
+impl Scalar {
+    /// Returns the column of the innermost enclosing block collection, or
+    /// -1 at the top level.
+    pub(crate) fn parent_indent(&self) -> i64 {
+        i64::from(self.parent_indent_plus_one) - 1
+    }
 }
 
 /// The data of a sequence node.
@@ -330,7 +343,7 @@ pub struct Mapping {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Alias {
     /// The anchor name, without the `*`.
-    pub name: String,
+    pub name: Box<str>,
     /// The anchored node, or `None` if the alias is recursive.
     ///
     /// A resolved alias is replaced by this node in its parent's items or
@@ -403,8 +416,10 @@ pub enum Tag {
     Map,
     /// `!!seq`.
     Seq,
-    /// Any other tag, such as `!!binary` or `!custom`.
-    Other(Box<str>),
+    /// Any other tag, such as `!!binary` or `!custom`. The thin box keeps
+    /// a tag at two words, and so every node smaller, because other tags
+    /// are rare.
+    Other(Box<String>),
 }
 
 impl Tag {
@@ -508,4 +523,17 @@ pub struct Comment {
     /// A comment on an alias is attached to the alias node. See
     /// [`Document::node_comments`].
     pub node: Option<NodeId>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // A workflow of 100 KB has about 6,000 nodes, and one vector holds them
+    // all, so each byte of a node is about 6 KB of a large file's peak
+    // memory (#240).
+    #[test]
+    fn a_node_fits_in_64_bytes() {
+        assert!(size_of::<Node>() <= 64, "{}", size_of::<Node>());
+    }
 }

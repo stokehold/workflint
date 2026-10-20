@@ -300,7 +300,7 @@ mod tests {
             let entry = document
                 .entries(mapping)
                 .iter()
-                .find(|e| scalar(e.key) == *key);
+                .find(|e| &*scalar(e.key) == *key);
             node = entry.unwrap_or_else(|| panic!("no key {key}")).value;
         }
         scalar(node).lines().map(str::to_owned).collect()

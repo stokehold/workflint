@@ -19,8 +19,8 @@ pub(crate) fn explicit(tag: Option<&str>) -> Option<Tag> {
         Some("null") => Tag::Null,
         Some("map") => Tag::Map,
         Some("seq") => Tag::Seq,
-        Some(name) => Tag::Other(format!("!!{name}").into()),
-        None => Tag::Other(tag.into()),
+        Some(name) => Tag::Other(Box::new(format!("!!{name}"))),
+        None => Tag::Other(Box::new(tag.to_owned())),
     })
 }
 
@@ -138,15 +138,15 @@ mod tests {
         assert_eq!(explicit(Some("tag:yaml.org,2002:str")), Some(Tag::Str));
         assert_eq!(
             explicit(Some("tag:yaml.org,2002:binary")),
-            Some(Tag::Other("!!binary".into()))
+            Some(Tag::Other(Box::new("!!binary".to_owned())))
         );
         assert_eq!(
             explicit(Some("!custom")),
-            Some(Tag::Other("!custom".into()))
+            Some(Tag::Other(Box::new("!custom".to_owned())))
         );
         assert_eq!(
             explicit(Some("tag:example.com,2000:foo")),
-            Some(Tag::Other("tag:example.com,2000:foo".into()))
+            Some(Tag::Other(Box::new("tag:example.com,2000:foo".to_owned())))
         );
     }
 }

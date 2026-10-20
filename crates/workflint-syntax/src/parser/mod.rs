@@ -163,9 +163,8 @@ impl<'a, 'f> Parser<'a, 'f> {
             return self.path;
         };
         let target = self.node(target).map_or(span, |node| node.span);
-        self.aliases.path(self.path, written.index(), || {
-            (span, name.as_str().into(), target)
-        })
+        self.aliases
+            .path(self.path, written.index(), || (span, name.clone(), target))
     }
 
     /// Runs `f` with `path` as the current alias path.

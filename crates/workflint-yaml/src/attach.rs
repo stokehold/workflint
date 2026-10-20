@@ -79,18 +79,18 @@ fn next_code_lines(comments: &[Comment], places: &[CommentPlace]) -> Vec<u64> {
     next
 }
 
-/// Sets `Comment::node` for each comment and `Node::comments` for each node,
-/// and returns the comment indexes grouped by node.
+/// Sets `Comment::node` for each comment and returns the attached comments
+/// as `(node, comment index)` pairs, sorted by node and then by comment.
 ///
 /// `lines` and `roles` hold the 0-based start line and the role of each
 /// node, and `places` the place of each comment.
 pub(crate) fn attach(
-    nodes: &mut [Node],
+    nodes: &[Node],
     lines: &[u64],
     roles: &[Role],
     comments: &mut [Comment],
     places: &[CommentPlace],
-) -> Vec<u32> {
+) -> Vec<(NodeId, u32)> {
     let start = |i: u32| {
         usize::try_from(i)
             .ok()
@@ -123,7 +123,7 @@ pub(crate) fn attach(
     };
 
     let next_lines = next_code_lines(comments, places);
-    let mut pairs: Vec<(u32, u32)> = Vec::new();
+    let mut pairs: Vec<(NodeId, u32)> = Vec::new();
     for (((index, comment), place), next_line) in (0u32..)
         .zip(comments.iter_mut())
         .zip(places)
@@ -149,7 +149,7 @@ pub(crate) fn attach(
             }
         };
         comment.node = node.map(NodeId);
-        if let Some(node) = node {
+        if let Some(node) = comment.node {
             pairs.push((node, index));
         }
     }
@@ -157,18 +157,5 @@ pub(crate) fn attach(
     // Comments are in source order, and the sort is stable, so each node's
     // comments stay in source order.
     pairs.sort_by_key(|&(node, _)| node);
-    let mut node_comments = Vec::with_capacity(pairs.len());
-    for group in pairs.chunk_by(|a, b| a.0 == b.0) {
-        let first = u32::try_from(node_comments.len()).unwrap_or(u32::MAX);
-        node_comments.extend(group.iter().map(|&(_, comment)| comment));
-        let last = u32::try_from(node_comments.len()).unwrap_or(u32::MAX);
-        let node = group.first().map(|&(node, _)| node);
-        if let Some(node) = node
-            .and_then(|node| usize::try_from(node).ok())
-            .and_then(|node| nodes.get_mut(node))
-        {
-            node.comments = first..last;
-        }
-    }
-    node_comments
+    pairs
 }
