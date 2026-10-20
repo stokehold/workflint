@@ -204,3 +204,46 @@ fn no_suggestion_for_whitespace_text_or_a_constant() {
         plain("${{ false }} && ${{ false }}")
     );
 }
+
+/// Joining the text around a placeholder with the text inside it means something else when
+/// the placeholder sits in a string literal of the text around it, or is glued to a name, a
+/// property access, or an index, so these conditions get no suggestion.
+#[test]
+fn no_suggestion_when_joining_would_change_the_condition() {
+    let plain = |condition: &str| {
+        format!(
+            "test.yaml:7:13: if: condition {} is always evaluated to true because extra characters are around ${{{{ }}}} [if-always-true]",
+            workflint_diagnostics::quote::quote(condition)
+        )
+    };
+    let conditions = [
+        "github.ref == 'refs/heads/${{ env.BRANCH }}'",
+        "steps.${{ env.ID }}.outcome == 'success'",
+        "env-${{ github.ref }}",
+        "${{ success() }} && contains('${{ github.ref }}', 'release')",
+        "hashFiles('${{ env.ENV_FILE }}')",
+        "${{ github }}.ref == 'main'",
+        "${{ github.event }}['ref'] == 'main'",
+        "github[${{ env.KEY }}] == 'main'",
+    ];
+    let suggested: Vec<String> = conditions
+        .iter()
+        .map(|condition| step_message(&format!("\"{condition}\"")))
+        .filter(|message| {
+            !conditions
+                .iter()
+                .any(|condition| *message == plain(condition))
+        })
+        .collect();
+    assert_eq!(suggested, Vec::<String>::new());
+}
+
+/// The reference counts every `${{` in the text, so a condition with two `${{` whose
+/// expression does not parse is always true.
+#[test]
+fn two_placeholder_openings_in_a_condition_that_does_not_parse_are_always_true() {
+    assert_eq!(
+        step_message("\"${{ github.ref == ${{ true }}\""),
+        "test.yaml:7:13: if: condition \"${{ github.ref == ${{ true }}\" is always evaluated to true because extra characters are around ${{ }} [if-always-true]"
+    );
+}

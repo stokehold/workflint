@@ -3,10 +3,11 @@
 //! Ported from rhysd/actionlint at commit `011a6d1`: `rule_if_cond.go`.
 
 use std::fmt::Write as _;
+use std::ops::Range;
 
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Category, RuleMeta, Severity};
-use workflint_expr::{Expr, ExprKind, LogicalOp, parse_expression};
+use workflint_expr::{Expr, ExprKind, LogicalOp, Visit, parse_expression};
 use workflint_syntax::{Job, KeyedEntry, Placeholder, Step, Template};
 
 use crate::{Context, Rule};
@@ -72,7 +73,12 @@ fn check(condition: Option<&Template<'_>>, cx: &mut Context<'_>) {
         }
         return;
     }
-    if first.start > 0 || first_end(value, first) < value.len() || placeholders.len() > 1 {
+    // After a parse error the scan goes on past the character that the lexer rejects, which in
+    // `${{ a == ${{ b }}` is the `$` of the second `${{`, so the parser stores one placeholder.
+    // The reference counts every `${{` in the text.
+    let several =
+        placeholders.len() > 1 || (first.expr.is_err() && value.matches("${{").count() > 1);
+    if first.start > 0 || first_end(value, first) < value.len() || several {
         let suggestion = suggest(value, placeholders);
         report_always_true(condition, suggestion.as_deref(), cx);
         return;
@@ -136,11 +142,14 @@ fn report_constant(condition: &Template<'_>, text: &str, cx: &mut Context<'_>) {
 /// The suggestion joins the text around the placeholders with the text inside them. It wraps a
 /// placeholder in parentheses when an operator next to it binds tighter than the placeholder's
 /// own operator. It is offered only when the text around the placeholders is more than
-/// whitespace, every placeholder parses, the joined text parses as one expression, and that
-/// expression is not constant.
+/// whitespace, every placeholder is a whole operand of the text around it ([`whole_operands`]),
+/// every placeholder parses, the joined text parses as one expression, and that expression is
+/// not constant.
 fn suggest(value: &str, placeholders: &[Placeholder]) -> Option<String> {
     let mut joined = String::new();
     let mut outside = String::new();
+    let mut skeleton = String::new();
+    let mut sentinels = Vec::new();
     let mut pos = 0;
     for (index, placeholder) in placeholders.iter().enumerate() {
         let expr = placeholder.expr.as_ref().ok()?;
@@ -152,6 +161,10 @@ fn suggest(value: &str, placeholders: &[Placeholder]) -> Option<String> {
         };
         outside.push_str(before);
         joined.push_str(before);
+        skeleton.push_str(before);
+        let start = skeleton.len();
+        let _ = write!(skeleton, "_{index}");
+        sentinels.push(start..skeleton.len());
         let inner = inner_text(value, placeholder);
         let neighbour = operator_precedence(before.trim_end(), |text, op| text.ends_with(op)).max(
             operator_precedence(after.trim_start(), |text, op| text.starts_with(op)),
@@ -168,7 +181,8 @@ fn suggest(value: &str, placeholders: &[Placeholder]) -> Option<String> {
     let rest = value.get(pos..)?;
     outside.push_str(rest);
     joined.push_str(rest);
-    if outside.trim().is_empty() {
+    skeleton.push_str(rest);
+    if outside.trim().is_empty() || !whole_operands(&skeleton, &sentinels) {
         return None;
     }
     let joined = joined.trim();
@@ -176,6 +190,41 @@ fn suggest(value: &str, placeholders: &[Placeholder]) -> Option<String> {
     let (expr, end) = parse_expression(&text).ok()?;
     let complete = usize::try_from(end).is_ok_and(|end| end == text.len());
     (complete && !expr.is_constant()).then(|| format!("${{{{ {joined} }}}}"))
+}
+
+/// Returns whether `skeleton`, the text around the placeholders with a name in place of each,
+/// parses as one expression in which the name at each of `sentinels` is a whole operand.
+///
+/// A name is a whole operand when it is a variable of its own whose parent is no property
+/// access or index. A name inside a string literal, glued to other characters, or followed by
+/// `.`, `[` or `(` is not, so `'refs/heads/${{ env.BRANCH }}'`, `steps.${{ env.ID }}.outcome`
+/// and `env-${{ github.ref }}` get no suggestion: joining them would change what they test.
+fn whole_operands(skeleton: &str, sentinels: &[Range<usize>]) -> bool {
+    let text = format!("{skeleton}}}}}");
+    let Ok((expr, end)) = parse_expression(&text) else {
+        return false;
+    };
+    if usize::try_from(end).ok() != Some(text.len()) {
+        return false;
+    }
+    let mut found = 0;
+    expr.walk(&mut |node: &Expr, parent: Option<&Expr>, visit: Visit| {
+        if visit == Visit::Enter
+            && matches!(node.kind, ExprKind::Variable(_))
+            && sentinels.contains(&node.range())
+            && !parent.is_some_and(|parent| {
+                matches!(
+                    parent.kind,
+                    ExprKind::Property { .. }
+                        | ExprKind::ObjectFilter { .. }
+                        | ExprKind::Index { .. }
+                )
+            })
+        {
+            found += 1;
+        }
+    });
+    found == sentinels.len()
 }
 
 /// How tightly the operator at the top of `expr` binds: `||` is 1, `&&` is 2, a comparison is 3,
