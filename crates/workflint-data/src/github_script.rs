@@ -4,7 +4,7 @@
 //! `rule_expression.go`, line 295, where the `script` input is checked as a script for untrusted
 //! input, and line 348, where the step's outputs accept any name because the script can call
 //! `core.setOutput`. Until M7 replaces it with a generated file (ADR 0011), keep it equal to that
-//! code.
+//! code. The test `github_script_matches_the_reference_prefix_checks` compares them.
 //!
 //! <https://github.com/actions/github-script>
 
@@ -17,18 +17,4 @@ pub const GITHUB_SCRIPT_ACTION: &str = "actions/github-script";
 pub fn is_github_script(spec: &str) -> bool {
     spec.strip_prefix(GITHUB_SCRIPT_ACTION)
         .is_some_and(|rest| rest.starts_with('@'))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::is_github_script;
-
-    #[test]
-    fn github_script_matches_any_ref_case_sensitively() {
-        assert!(is_github_script("actions/github-script@v7"));
-        assert!(is_github_script("actions/github-script@"));
-        assert!(!is_github_script("actions/github-script"));
-        assert!(!is_github_script("actions/github-script/sub@v7"));
-        assert!(!is_github_script("Actions/GitHub-Script@v7"));
-    }
 }

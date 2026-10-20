@@ -36,6 +36,10 @@ const RULE_DEPRECATED_COMMANDS_GO: &str =
 const RULE_EVENTS_GO: &str =
     include_str!("../../../../tests/conformance/actionlint/rule_events.go");
 
+/// The reference's `rule_expression.go`.
+const RULE_EXPRESSION_GO: &str =
+    include_str!("../../../../tests/conformance/actionlint/rule_expression.go");
+
 /// The reference's `rule_permissions.go`.
 const RULE_PERMISSIONS_GO: &str =
     include_str!("../../../../tests/conformance/actionlint/rule_permissions.go");
@@ -924,6 +928,25 @@ pub(crate) fn docker_registry_prefixes() -> Vec<String> {
         }
         parser.expect(&Token::Punct('|'));
     }
+}
+
+/// The action prefixes that the reference's `rule_expression.go` compares a step's `uses:`
+/// with, in source order: the second argument of each `strings.HasPrefix` call that ends with
+/// `@`. The call with `./`, which finds local actions, is left out.
+pub(crate) fn uses_prefixes() -> Vec<String> {
+    let call = "strings.HasPrefix(";
+    let mut prefixes = Vec::new();
+    for (start, _) in RULE_EXPRESSION_GO.match_indices(call) {
+        let mut parser = Parser::after(&RULE_EXPRESSION_GO[start..], call);
+        while !parser.eat(&Token::Punct(',')) {
+            parser.next();
+        }
+        let prefix = parser.str();
+        if prefix.ends_with('@') {
+            prefixes.push(prefix.to_owned());
+        }
+    }
+    prefixes
 }
 
 /// The `runs.using` values that the reference's `checkLocalActionRuns` checks, without the
