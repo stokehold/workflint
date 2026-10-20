@@ -17,7 +17,7 @@ use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{
     Color, Diagnostic, FileId, SourceFile, Span, render_default, render_oneline, sort_and_dedup,
 };
-use workflint_linter::{LocalCache, find_project_root, path};
+use workflint_linter::{LocalCache, ProjectRoots, path};
 use workflint_rules::local::{LocalMetadata, NoProject};
 use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
@@ -59,11 +59,12 @@ fn main() -> ExitCode {
     // Files are linted one after another, so the first use of a local action or reusable
     // workflow in file order, then source position, reports its errors.
     let cwd = path::working_dir();
+    let mut roots = ProjectRoots::default();
     let mut caches = BTreeMap::new();
     let mut files = Vec::with_capacity(paths.len());
     for (index, path) in paths.iter().enumerate() {
         let path = Path::new(path);
-        let root = find_project_root(path, &cwd);
+        let root = roots.find(path, &cwd);
         let file_metadata = root.map(|root| {
             caches
                 .entry(root.clone())

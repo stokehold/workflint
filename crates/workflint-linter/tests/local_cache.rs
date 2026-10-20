@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use tempfile::TempDir;
 use workflint_diagnostics::quote::quote;
-use workflint_linter::{LocalCache, find_project_root};
+use workflint_linter::{LocalCache, ProjectRoots};
 use workflint_rules::local::{LocalAction, LocalMetadata, LocalMetadataError, Lookup};
 use workflint_syntax::{ReusableWorkflowMetadata, ReusableWorkflowSecret};
 
@@ -89,6 +89,10 @@ fn error<T: std::fmt::Debug>(lookup: Lookup<T>) -> LocalMetadataError {
     }
 }
 
+fn find_project_root(path: &Path, cwd: &Path) -> Option<PathBuf> {
+    ProjectRoots::default().find(path, cwd)
+}
+
 fn quoted(path: &Path) -> String {
     quote(&path.to_string_lossy())
 }
@@ -161,6 +165,50 @@ fn a_workflows_file_is_not_a_workflows_directory() {
         find_project_root(&root.join("sub/x.yaml"), Path::new("/")),
         Some(root)
     );
+}
+
+#[test]
+fn files_in_one_directory_share_the_first_answer() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = workflint_linter::path::clean(dir.path());
+    let cwd = Path::new("/");
+    let mut roots = ProjectRoots::default();
+    let before = roots.find(&root.join("a/x.yaml"), cwd);
+    assert!(
+        before
+            .as_ref()
+            .is_none_or(|found| !found.starts_with(&root))
+    );
+    // The directory becomes a project after the first lookup. The roots read the file system
+    // once per directory, so a later file in it gets the first answer.
+    fs::create_dir_all(root.join("a/.github/workflows")).unwrap();
+    fs::create_dir_all(root.join("a/.git")).unwrap();
+    assert_eq!(roots.find(&root.join("a/y.yaml"), cwd), before);
+    assert_eq!(
+        ProjectRoots::default().find(&root.join("a/y.yaml"), cwd),
+        Some(root.join("a"))
+    );
+}
+
+#[test]
+fn a_directory_shares_the_answer_of_its_ancestors() {
+    let project = Project::new();
+    let root = project.root();
+    let cwd = Path::new("/");
+    let mut roots = ProjectRoots::default();
+    assert_eq!(
+        roots.find(&root.join(".github/workflows/ci.yaml"), cwd),
+        Some(root.clone())
+    );
+    assert_eq!(
+        roots.find(&root.join("sub/dir/x.yaml"), cwd),
+        Some(root.clone())
+    );
+    // A nested project that appears later is not seen, because `sub` was answered from its
+    // parent.
+    project.write("sub/.git/HEAD", "");
+    project.write("sub/.github/workflows/x.yaml", "");
+    assert_eq!(roots.find(&root.join("sub/y.yaml"), cwd), Some(root));
 }
 
 // Local actions.
