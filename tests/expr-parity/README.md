@@ -59,4 +59,15 @@ It applies to every expression in every setup. A difference is explained when th
 
 The command fails on a difference that no record explains, and on a record of either kind that explains no difference.
 
+A `[[type]]` record covers a type that workflint prints differently wherever it appears, such as a context with an added property:
+
+```toml
+[[type]]
+anchor = "platform-data-updates"
+upstream = "{check_run_id: number; ...; status: string}"
+workflint = "{check_run_id: number; ...; status: string; workflow_file_path: string; ...}"
+```
+
+When no `[[difference]]` record explains a difference, the command replaces each `upstream` type of the `[[type]]` records in the reference's outcome with its `workflint` type. The difference is explained if the result equals workflint's outcome, or workflint's outcome without the errors of the `[[added_error]]` records. A `[[type]]` record that explains no difference fails the command too.
+
 `cases/differences.txt` holds an expression for each documented difference of the expression language that a setup can show, so that the documented outcome cannot change unnoticed.

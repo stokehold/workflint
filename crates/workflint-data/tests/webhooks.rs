@@ -1,5 +1,5 @@
 //! Checks the webhook events against the reference's `AllWebhookTypes` in the vendored
-//! `all_webhooks.go`.
+//! `all_webhooks.go`, plus the activity types that workflint adds.
 
 #![allow(clippy::panic)]
 
@@ -8,8 +8,12 @@ mod go_source;
 use go_source::all_webhook_types;
 use workflint_data::{ActivityTypes, WEBHOOK_EVENTS, webhook_event};
 
+/// The activity types that workflint adds after the reference's types of an event
+/// (`docs/differences.md#platform-data-updates`).
+const ADDED_ACTIVITY_TYPES: [(&str, &[&str]); 1] = [("issues", &["field_added", "field_removed"])];
+
 #[test]
-fn webhook_events_match_the_reference_table() {
+fn webhook_events_are_the_reference_table_and_the_added_activity_types() {
     let ours: Vec<(String, Option<Vec<String>>)> = WEBHOOK_EVENTS
         .iter()
         .map(|event| {
@@ -22,9 +26,15 @@ fn webhook_events_match_the_reference_table() {
             (event.name.to_owned(), types)
         })
         .collect();
-    let mut reference = all_webhook_types();
-    reference.sort_by(|(a, _), (b, _)| a.cmp(b));
-    assert_eq!(ours, reference);
+    let mut expected = all_webhook_types();
+    for (name, added) in ADDED_ACTIVITY_TYPES {
+        let Some((_, Some(types))) = expected.iter_mut().find(|(event, _)| event == name) else {
+            panic!("{name} has no listed activity types in the reference");
+        };
+        types.extend(added.iter().map(|t| (*t).to_owned()));
+    }
+    expected.sort_by(|(a, _), (b, _)| a.cmp(b));
+    assert_eq!(ours, expected);
 }
 
 #[test]

@@ -93,6 +93,7 @@ impl Setup {
                 .collect(),
             allow_list: AllowList {
                 entries: ALLOW_LIST.entries.clone(),
+                examples: ALLOW_LIST.examples.clone(),
             },
             installed: Tools::installed(),
         }
@@ -307,8 +308,9 @@ pub fn skip_summary() -> Result<String, String> {
 }
 
 /// Checks `allowed-differences.toml`: every anchor exists in
-/// `docs/differences.md`, every fixture exists, and every `upstream` line is
-/// in its fixture's `.out` file.
+/// `docs/differences.md`, every fixture exists, every `upstream` line is in
+/// its fixture's `.out` file, and the `upstream` line of every example is in
+/// the `Output` block of its section of `docs/checks.md`.
 ///
 /// # Errors
 ///
@@ -316,13 +318,28 @@ pub fn skip_summary() -> Result<String, String> {
 pub fn check_allow_list() -> Result<(), String> {
     let anchors = allow_list::anchors(&read("docs/differences.md"));
     ALLOW_LIST.validate(&anchors, &fixture::all_ids()?)?;
-    let problems: Vec<String> = fixture::all()?
+    let mut problems: Vec<String> = fixture::all()?
         .into_iter()
         .filter_map(|fixture| {
             let entries = ALLOW_LIST.entries_for(&fixture.id);
             allow_list::apply(&fixture.expected_lines(), &entries).err()
         })
         .collect();
+    let sections = checks_md::sections(&read("tests/conformance/actionlint/docs/checks.md"));
+    for example in &ALLOW_LIST.examples {
+        let lines = sections
+            .get(&example.section)
+            .and_then(|section| section.output.as_deref())
+            .map(|output| checks_md::comparable_lines(output, |code| Ok(code.to_owned())))
+            .transpose()?
+            .unwrap_or_default();
+        if !lines.contains(&example.upstream) {
+            problems.push(format!(
+                "the example for checks.md#{} with anchor {}: the Output block has no line {:?}",
+                example.section, example.anchor, example.upstream
+            ));
+        }
+    }
     if problems.is_empty() {
         Ok(())
     } else {
@@ -384,6 +401,13 @@ pub fn check_checks_md() -> Result<(), String> {
             .iter()
             .flat_map(|fixture| SETUP.allow_list.entries_for(fixture))
             .filter_map(|entry| Some((entry.upstream.as_deref()?, entry.workflint.as_deref()?)))
+            .chain(
+                SETUP
+                    .allow_list
+                    .examples_for(anchor)
+                    .into_iter()
+                    .map(|example| (example.upstream.as_str(), example.workflint.as_str())),
+            )
             .collect();
         let result = match sections.get(anchor) {
             Some(checks_md::Section {

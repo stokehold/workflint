@@ -76,14 +76,24 @@ const REFERENCE_CASES: &[Case] = &[
         "self-hosted all Linux runner labels",
         &["self-hosted", "linux", "ubuntu-24.04", "ubuntu-latest"],
     ),
-    ok(
-        "self-hosted all macOS runner labels",
-        &["self-hosted", "macOS", "macOS-latest", "macOS-15"],
-    ),
-    ok(
-        "self-hosted all Windows runner labels",
-        &["self-hosted", "windows", "windows-latest", "windows-2022"],
-    ),
+    Case {
+        what: "self-hosted all macOS runner labels",
+        labels: &["self-hosted", "macOS", "macOS-latest", "macOS-15"],
+        matrix: None,
+        known: &[],
+        // The reference accepts the labels. GitHub has moved the `-latest` label to a newer
+        // image (`docs/differences.md#platform-data-updates`).
+        errs: &[r#"label "macOS-15" conflicts with label "macOS-latest""#],
+    },
+    Case {
+        what: "self-hosted all Windows runner labels",
+        labels: &["self-hosted", "windows", "windows-latest", "windows-2022"],
+        matrix: None,
+        known: &[],
+        // The reference accepts the labels. GitHub has moved the `-latest` label to a newer
+        // image (`docs/differences.md#platform-data-updates`).
+        errs: &[r#"label "windows-2022" conflicts with label "windows-latest""#],
+    },
     ok(
         "self-hosted Linux runner in upper case",
         &["SELF-HOSTED", "LINUX"],
@@ -106,14 +116,24 @@ const REFERENCE_CASES: &[Case] = &[
         "multiple labels for GH-hosted Linux runner",
         &["ubuntu-latest", "ubuntu-24.04"],
     ),
-    ok(
-        "multiple labels for GH-hosted Windows runner",
-        &["windows-latest", "windows-2022"],
-    ),
-    ok(
-        "multiple labels for GH-hosted macOS runner",
-        &["macos-latest", "macos-15"],
-    ),
+    Case {
+        what: "multiple labels for GH-hosted Windows runner",
+        labels: &["windows-latest", "windows-2022"],
+        matrix: None,
+        known: &[],
+        // The reference accepts the labels. GitHub has moved the `-latest` label to a newer
+        // image (`docs/differences.md#platform-data-updates`).
+        errs: &[r#"label "windows-2022" conflicts with label "windows-latest""#],
+    },
+    Case {
+        what: "multiple labels for GH-hosted macOS runner",
+        labels: &["macos-latest", "macos-15"],
+        matrix: None,
+        known: &[],
+        // The reference accepts the labels. GitHub has moved the `-latest` label to a newer
+        // image (`docs/differences.md#platform-data-updates`).
+        errs: &[r#"label "macos-15" conflicts with label "macos-latest""#],
+    },
     Case {
         what: "user-defined labels",
         labels: &["self-hosted", "foo", "bar", "linux"],

@@ -25,6 +25,8 @@ struct File {
     difference: Vec<Record>,
     #[serde(default)]
     added_error: Vec<AddedError>,
+    #[serde(default, rename = "type")]
+    types: Vec<TypeRecord>,
 }
 
 /// A difference that `docs/differences.md` explains.
@@ -80,11 +82,35 @@ impl AddedError {
     }
 }
 
+/// A type that workflint prints differently in every outcome, because
+/// `docs/differences.md` explains a change to it, such as an added property of
+/// a context.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct TypeRecord {
+    /// An anchor in `docs/differences.md`, without the `#`.
+    pub(crate) anchor: String,
+    /// The type as the reference prints it.
+    pub(crate) upstream: String,
+    /// The type as workflint prints it.
+    pub(crate) workflint: String,
+}
+
+impl TypeRecord {
+    fn describe(&self) -> String {
+        format!(
+            "the type record for {:?} with anchor {}",
+            self.upstream, self.anchor
+        )
+    }
+}
+
 /// The records of `tests/expr-parity/allowed-differences.toml`.
 #[derive(Debug, Default)]
 pub(crate) struct AllowList {
     records: Vec<Record>,
     added_errors: Vec<AddedError>,
+    types: Vec<TypeRecord>,
 }
 
 impl AllowList {
@@ -94,7 +120,23 @@ impl AllowList {
         Ok(Self {
             records: file.difference,
             added_errors: file.added_error,
+            types: file.types,
         })
+    }
+
+    /// Rewrites each type of the type records in the reference's outcome
+    /// `upstream` as workflint prints it. Returns the rewritten outcome and the
+    /// indexes of the records that changed it.
+    fn rewrite_types(&self, upstream: &str) -> (String, Vec<usize>) {
+        let mut text = upstream.to_owned();
+        let mut applied = Vec::new();
+        for (index, record) in self.types.iter().enumerate() {
+            if text.contains(&record.upstream) {
+                text = text.replace(&record.upstream, &record.workflint);
+                applied.push(index);
+            }
+        }
+        (text, applied)
     }
 
     /// Fails unless every record names an anchor in `anchors` and only setups
@@ -126,12 +168,21 @@ impl AllowList {
                 bail!("{} has an empty message", added.describe());
             }
         }
+        for record in &self.types {
+            if !anchors.contains(&record.anchor) {
+                bail!(
+                    "anchor {:?} of {} does not exist in docs/differences.md",
+                    record.anchor,
+                    record.describe()
+                );
+            }
+        }
         Ok(())
     }
 
-    /// Returns the index of the first added error that `workflint` reports, if
-    /// the outcomes are equal without the errors of every added error.
-    fn added_error_explaining(&self, upstream: &Outcome, workflint: &Outcome) -> Option<usize> {
+    /// Returns `workflint` without the errors of every added error, and the
+    /// index of the first added error it reports, if it reports one.
+    fn without_added_errors(&self, workflint: &Outcome) -> Option<(Outcome, usize)> {
         let Outcome::Checked {
             ty,
             constant,
@@ -160,7 +211,7 @@ impl AllowList {
             constant: *constant,
             errors: kept,
         };
-        first.filter(|_| without_added == *upstream)
+        first.map(|index| (without_added, index))
     }
 }
 
@@ -210,6 +261,7 @@ pub(crate) fn compare(
     };
     let mut used = vec![false; allow_list.records.len()];
     let mut used_added = vec![false; allow_list.added_errors.len()];
+    let mut used_types = vec![false; allow_list.types.len()];
     for (case, upstream) in cases.iter().zip(upstream) {
         let setup = setups
             .get(case.setup)
@@ -228,17 +280,35 @@ pub(crate) fn compare(
                 &workflint_text,
             )
         });
+        // The reference's outcome with the types of the type records as
+        // workflint prints them, and workflint's outcome without its added
+        // errors, which explain the difference together when they are equal.
+        let (rewritten, applied) = allow_list.rewrite_types(&upstream_text);
+        let added = allow_list
+            .without_added_errors(&workflint)
+            .filter(|(without, _)| without.to_string() == rewritten);
         if let Some(index) = record {
             used[index] = true;
             *report
                 .allowed
                 .entry(allow_list.records[index].anchor.clone())
                 .or_default() += 1;
-        } else if let Some(index) = allow_list.added_error_explaining(&upstream, &workflint) {
+        } else if let Some((_, index)) = added {
             used_added[index] = true;
+            for &type_index in &applied {
+                used_types[type_index] = true;
+            }
             *report
                 .allowed
                 .entry(allow_list.added_errors[index].anchor.clone())
+                .or_default() += 1;
+        } else if let Some(&first) = applied.first().filter(|_| rewritten == workflint_text) {
+            for &type_index in &applied {
+                used_types[type_index] = true;
+            }
+            *report
+                .allowed
+                .entry(allow_list.types[first].anchor.clone())
                 .or_default() += 1;
         } else {
             report.unexplained.push(Difference {
@@ -262,6 +332,14 @@ pub(crate) fn compare(
                 .zip(used_added)
                 .filter(|(_, used)| !used)
                 .map(|(added, _)| added.describe()),
+        )
+        .chain(
+            allow_list
+                .types
+                .iter()
+                .zip(used_types)
+                .filter(|(_, used)| !used)
+                .map(|(record, _)| record.describe()),
         )
         .collect();
     Ok(report)
@@ -347,7 +425,8 @@ expressions = ["cases"]
         .unwrap()
     }
 
-    const EXPRESSIONS: [&str; 9] = [
+    const EXPRESSIONS: [&str; 10] = [
+        "matrix",
         "matrix.arch && foo",
         "matrix.os",
         "matrix.arch",
@@ -622,6 +701,90 @@ message = "only here: "
         assert!(format!("{error:#}").contains("empty message"), "{error:#}");
     }
 
+    /// Adds the property `extra` to the type `{os: string}` of `matrix`, in
+    /// the type and in the messages.
+    fn added_property(_: &str, mut outcome: Outcome) -> Outcome {
+        let add = |text: &str| text.replace("{os: string}", "{extra: string; os: string}");
+        if let Outcome::Checked { ty, errors, .. } = &mut outcome {
+            *ty = add(ty);
+            for error in errors {
+                error.text = add(&error.text);
+            }
+        }
+        outcome
+    }
+
+    #[test]
+    fn a_type_record_explains_every_outcome_that_prints_the_type() {
+        let allow_list = AllowList::parse(
+            r#"
+[[type]]
+anchor = "platform-data-updates"
+upstream = "{os: string}"
+workflint = "{extra: string; os: string}"
+"#,
+        )
+        .unwrap();
+        let report = compare_with(&allow_list, added_property);
+        // Only the first setup has a matrix. `matrix` prints it as its type,
+        // and `matrix.arch` and `matrix.arch && foo` in a message.
+        assert_eq!(report.allowed["platform-data-updates"], 3);
+        report.check().unwrap();
+    }
+
+    #[test]
+    fn an_added_error_and_a_type_record_explain_a_difference_together() {
+        let allow_list = AllowList::parse(&format!(
+            "{ADDED_ERROR}\n[[type]]\nanchor = \"platform-data-updates\"\n\
+             upstream = \"{{os: string}}\"\nworkflint = \"{{extra: string; os: string}}\"\n"
+        ))
+        .unwrap();
+        let report = compare_with(&allow_list, |expression, outcome| {
+            added_error(expression, added_property(expression, outcome))
+        });
+        assert!(report.check().is_ok(), "{}", report.render());
+        assert_eq!(
+            report.allowed["case-predicate-type"],
+            2 * (EXPRESSIONS.len() - 1),
+            "{}",
+            report.render()
+        );
+    }
+
+    #[test]
+    fn a_type_record_does_not_explain_other_changes() {
+        let allow_list = AllowList::parse(
+            r#"
+[[type]]
+anchor = "platform-data-updates"
+upstream = "{os: string}"
+workflint = "{extra: string; os: string}"
+"#,
+        )
+        .unwrap();
+        let report = compare_with(&allow_list, |expression, outcome| {
+            changed_type(expression, added_property(expression, outcome))
+        });
+        assert_eq!(report.unexplained.len(), 2, "{}", report.render());
+        assert!(report.unexplained.iter().all(|d| d.expression == "1 == 1"));
+    }
+
+    #[test]
+    fn a_type_record_that_applies_nowhere_is_stale() {
+        let allow_list = AllowList::parse(
+            r#"
+[[type]]
+anchor = "platform-data-updates"
+upstream = "{arch: string}"
+workflint = "{arch: string; extra: string}"
+"#,
+        )
+        .unwrap();
+        let report = compare_with(&allow_list, |_, outcome| outcome);
+        assert_eq!(report.stale.len(), 1);
+        assert!(report.check().is_err());
+    }
+
     #[test]
     fn records_must_name_known_anchors_and_setups() {
         let setups = setups();
@@ -645,6 +808,13 @@ message = "only here: "
             .unwrap_err();
         assert!(format!("{error:#}").contains("\"other\""), "{error:#}");
         assert!(AllowList::parse("[[difference]]\nanchor = \"a\"\n").is_err());
+        let error = AllowList::parse(
+            "[[type]]\nanchor = \"no-such-anchor\"\nupstream = \"a\"\nworkflint = \"b\"\n",
+        )
+        .unwrap()
+        .validate(&anchors, &setups)
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("no-such-anchor"), "{error:#}");
     }
 
     #[test]

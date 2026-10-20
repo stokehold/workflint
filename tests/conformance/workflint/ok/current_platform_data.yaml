@@ -1,0 +1,62 @@
+# Runner labels, permission scopes, activity types, and context properties that GitHub
+# documents and the reference does not know (docs/differences.md#platform-data-updates).
+on:
+  issues:
+    types: [field_added, field_removed]
+permissions:
+  code-quality: write
+  copilot-requests: write
+  vulnerability-alerts: read
+jobs:
+  ubuntu-26:
+    runs-on: [ubuntu-latest, ubuntu-26.04]
+    steps:
+      - run: echo "$ARTIFACTS $ARTIFACTS_LIST"
+        env:
+          ARTIFACTS: ${{ github.artifacts }}
+          ARTIFACTS_LIST: ${{ github.artifacts_list }}
+  ubuntu-24:
+    runs-on: [ubuntu-latest, ubuntu-24.04]
+    steps:
+      - run: echo
+  ubuntu-arm:
+    runs-on: [linux, ubuntu-26.04-arm]
+    steps:
+      - run: echo "$REF $SHA $REPO $FILE"
+        env:
+          REF: ${{ job.workflow_ref }}
+          SHA: ${{ job.workflow_sha }}
+          REPO: ${{ job.workflow_repository }}
+          FILE: ${{ job.workflow_file_path }}
+  windows:
+    runs-on: [windows-latest, windows-2025]
+    steps:
+      - run: echo
+  windows-vs2026:
+    runs-on: [windows-latest, windows-2025-vs2026]
+    steps:
+      - run: echo
+  windows-arm:
+    runs-on: [windows-11-arm, windows-11-vs2026-arm]
+    steps:
+      - run: echo
+  macos:
+    runs-on: [macos-latest, macos-26]
+    steps:
+      - run: echo
+  macos-xlarge-26:
+    runs-on: [macos-latest-xlarge, macos-26-xlarge]
+    steps:
+      - run: echo
+  macos-xlarge-15:
+    runs-on: [macos-latest-xlarge, macos-15-xlarge]
+    steps:
+      - run: echo
+  xcode:
+    runs-on: [macos, xcode-27]
+    steps:
+      - run: echo
+  xcode-xlarge:
+    runs-on: xcode-27-xlarge
+    steps:
+      - run: echo

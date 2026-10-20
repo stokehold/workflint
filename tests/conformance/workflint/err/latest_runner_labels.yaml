@@ -1,0 +1,23 @@
+# The `-latest` labels run on the images that GitHub maps them to today
+# (docs/differences.md#platform-data-updates).
+on: push
+permissions:
+  copilot-requests: read
+  vulnerability-alerts: write
+jobs:
+  windows:
+    runs-on: [windows-latest, windows-2022]
+    steps:
+      - run: echo
+  macos:
+    runs-on: [macos-latest, macos-15]
+    steps:
+      - run: echo
+  ubuntu:
+    runs-on: [ubuntu-26.04, ubuntu-24.04]
+    steps:
+      - run: echo
+  xcode:
+    runs-on: [xcode-27, macos-26]
+    steps:
+      - run: echo

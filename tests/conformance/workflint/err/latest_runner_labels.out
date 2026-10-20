@@ -1,0 +1,6 @@
+test.yaml:5:21: "read" is invalid as permission of scope "copilot-requests". available values are "write", "none" [permissions]
+test.yaml:6:25: "write" is invalid as permission of scope "vulnerability-alerts". available values are "read", "none" [permissions]
+test.yaml:9:31: label "windows-2022" conflicts with label "windows-latest" defined at line:9,col:15. note: to run your job on each workers, use matrix [runner-label]
+test.yaml:13:29: label "macos-15" conflicts with label "macos-latest" defined at line:13,col:15. note: to run your job on each workers, use matrix [runner-label]
+test.yaml:17:29: label "ubuntu-24.04" conflicts with label "ubuntu-26.04" defined at line:17,col:15. note: to run your job on each workers, use matrix [runner-label]
+test.yaml:21:25: label "macos-26" conflicts with label "xcode-27" defined at line:21,col:15. note: to run your job on each workers, use matrix [runner-label]
