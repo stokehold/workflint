@@ -70,12 +70,20 @@ impl fmt::Display for Input {
 
 const INPUTS: &[Input] = &[
     Input::Bench(
+        "minimal.yaml",
+        include_str!("../../../tests/conformance/actionlint/testdata/bench/minimal.yaml"),
+    ),
+    Input::Bench(
         "small.yaml",
         include_str!("../../../tests/conformance/actionlint/testdata/bench/small.yaml"),
     ),
     Input::Bench(
         "large.yaml",
         include_str!("../../../tests/conformance/actionlint/testdata/bench/large.yaml"),
+    ),
+    Input::Bench(
+        "many_scripts.yaml",
+        include_str!("../../../tests/conformance/actionlint/testdata/bench/many_scripts.yaml"),
     ),
     Input::Corpus(LARGEST_CORPUS_FILE),
 ];
