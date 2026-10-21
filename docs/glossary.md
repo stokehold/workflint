@@ -76,7 +76,9 @@ Use these words with these meanings in code, docs, and pull requests.
 | YAML node limit | The 50,000 YAML nodes, aliases expanded, that GitHub reads in a workflow before it fails with `Maximum YAML nodes exceeded`. Past it, the parser reports `too-many-yaml-nodes` and parses nothing else. |
 | ignore comment | A `# workflint: ignore[...]` YAML comment that suppresses diagnostics (ADR 0009). |
 | ignore pattern | A regular expression in Go's syntax, from `-ignore` or `paths.<glob>.ignore` in the config, that drops the diagnostics whose message it matches (`IgnorePattern`). |
-| project root | The directory that contains `.github/workflows` and a version control marker (ADR 0010). |
+| project | A repository that workflint lints files of, named by its project root. A file's project decides which local actions and local reusable workflows it can use and, from M5.2, which config applies. A file can have no project. |
+| project root | The nearest directory above a file that has `.github/workflows` and a version control marker: `.git`, `.jj`, or `.hg`. If no directory above the file has both, it is the nearest one with `.github` (ADR 0010). |
+| discovery | What a run without file arguments does: find the project of the working directory and list the files under its `.github/workflows` whose names end in `.yml` or `.yaml` (`Linter::discover`). |
 | driver | The `Linter` in `workflint-linter`, which lints the inputs of a run in parallel with one cache per project and returns each file's diagnostics in input order (ADR 0013). |
 | internal error | An `internal-error` diagnostic: the driver's report of a panic in the lint of one file, or of a cache that a panic left unusable. The run lints the other files and exits with code 3 (ADR 0007). |
 | external tool | shellcheck, ruff, or pyflakes, run as a subprocess (ADR 0012). |

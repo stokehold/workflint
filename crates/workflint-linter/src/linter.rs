@@ -6,8 +6,10 @@
 //! events are the lines of `-verbose`, and `DEBUG` events those of `-debug`.
 
 use std::any::Any;
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::{self, ErrorKind, Read};
 use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -22,6 +24,7 @@ use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
 use crate::cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
 use crate::config::{Config, ConfigError};
+use crate::discover::{self, DiscoveryError};
 use crate::ignore::IgnorePattern;
 use crate::path;
 use crate::project::ProjectRoots;
@@ -33,28 +36,60 @@ use crate::settings::{Flags, Settings};
 /// [`workflint_rules::check_file`].
 pub type Check = fn(&SourceFile, &dyn LocalMetadata, &RuleConfig) -> Vec<Diagnostic>;
 
-/// One input of a run.
-///
-/// Only files named on the command line exist so far. M5.1 adds discovered files and stdin.
+/// One input of a run: a file to read, or a workflow read from stdin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Input {
     path: PathBuf,
+    /// The text read from stdin, or `None` for a file.
+    stdin: Option<Vec<u8>>,
 }
+
+/// The name of a workflow read from stdin when `-stdin-filename` gives none. A workflow with
+/// this name has no project.
+pub const STDIN: &str = "<stdin>";
 
 impl Input {
     /// The file at `path`, relative to the working directory of the [`Linter`] if it is
     /// relative.
     #[must_use]
     pub fn file(path: impl Into<PathBuf>) -> Self {
-        Self { path: path.into() }
+        Self {
+            path: path.into(),
+            stdin: None,
+        }
     }
 
-    /// The path of the file, as given.
+    /// Reads a workflow from `reader`, stdin, to the end, and names it `name`, or [`STDIN`] if
+    /// `name` is empty (`linter.go:177`, `linter.go:474`).
+    ///
+    /// The diagnostics print `name` as given. If a file exists at `name`, the workflow gets the
+    /// project of that file, with its local actions and reusable workflows (`linter.go:487`).
+    ///
+    /// # Errors
+    ///
+    /// Fails if `reader` fails.
+    pub fn stdin(name: &str, mut reader: impl Read) -> Result<Self, StdinError> {
+        tracing::info!("Reading the input from stdin");
+        let mut text = Vec::new();
+        reader.read_to_end(&mut text).map_err(StdinError)?;
+        let name = if name.is_empty() { STDIN } else { name };
+        Ok(Self {
+            path: PathBuf::from(name),
+            stdin: Some(text),
+        })
+    }
+
+    /// The path of the file, or the name of the workflow read from stdin, as given.
     #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
 }
+
+/// Stdin could not be read. As in the reference, it stops the run.
+#[derive(Debug, thiserror::Error)]
+#[error("could not read stdin: {0}")]
+pub struct StdinError(io::Error);
 
 /// A linted file: its text and its sorted diagnostics.
 #[derive(Debug)]
@@ -151,6 +186,21 @@ impl Linter {
         }
     }
 
+    /// Returns the workflow files that a run without file arguments lints: the files under
+    /// `.github/workflows` of the project of the working directory whose names end in `.yml` or
+    /// `.yaml`, sorted by path (`linter.go:264-311`).
+    ///
+    /// # Errors
+    ///
+    /// Fails if the working directory has no project, if a directory under `.github/workflows`
+    /// cannot be read, or if no file is found.
+    pub fn discover(&self) -> Result<Vec<Input>, DiscoveryError> {
+        Ok(discover::workflow_files(&self.cwd)?
+            .into_iter()
+            .map(Input::file)
+            .collect())
+    }
+
     /// Returns the linter with `check` in place of [`workflint_rules::check_file`], which the
     /// tests of the driver use to make the lint of a file panic.
     #[must_use]
@@ -218,7 +268,11 @@ impl Linter {
         let mut settings = ProjectSettings::new(&self.flags);
         let mut files = Vec::with_capacity(inputs.len());
         for input in inputs {
-            let root = roots.find(&input.path, &self.cwd);
+            let root = if input.stdin.is_some() {
+                stdin_root(&mut roots, &input.path, &self.cwd)
+            } else {
+                roots.find(&input.path, &self.cwd)
+            };
             if let Some(root) = &root {
                 caches
                     .entry(root.clone())
@@ -227,7 +281,7 @@ impl Linter {
             let absolute = path::absolute(&self.cwd, &input.path);
             let relative = slash_path(root.as_deref().unwrap_or(&self.cwd), &absolute);
             files.push(File {
-                given: &input.path,
+                input,
                 settings: settings.of(root.as_deref())?,
                 absolute,
                 relative,
@@ -293,7 +347,7 @@ impl Linter {
         finish: &impl Fn(&File<'_>, SourceFile, Vec<Diagnostic>, Instant) -> T,
     ) -> Result<First<'c, T>, ReadError> {
         let started = Instant::now();
-        let (source, decode_error) = read(index, file.given, &self.cwd)?;
+        let (source, decode_error) = read(index, file.input, &self.cwd)?;
         let _span = tracing::info_span!(FILE_SPAN).entered();
         tracing::info!("Linting {}", source.path());
         if let Some(root) = &file.root {
@@ -454,8 +508,7 @@ fn commit(
 
 /// An input with its project root and settings.
 struct File<'i> {
-    /// The path as given.
-    given: &'i Path,
+    input: &'i Input,
     /// The path made absolute and cleaned.
     absolute: PathBuf,
     /// The path from the project root, or from the working directory for a file in no project,
@@ -604,21 +657,47 @@ fn internal_error(source: &SourceFile, message: String) -> Diagnostic {
     Diagnostic::new(&INTERNAL_ERROR, Span::new(source.id(), 0, 0), message)
 }
 
-/// Reads and decodes the file at `path`, relative to `cwd` if it is relative, and returns it
-/// with the YAML syntax error of bytes that do not decode.
+/// The project root of a workflow read from stdin and named `name`: that of the file at `name`,
+/// relative to `cwd` if it is relative, if one exists there (`linter.go:487`).
 ///
-/// The file is named by its path relative to `cwd` when there is one.
+/// As in the reference, a path that names a directory is searched from that directory, and an
+/// error other than a missing file still leads to a search.
+fn stdin_root(roots: &mut ProjectRoots, name: &Path, cwd: &Path) -> Option<PathBuf> {
+    if name == Path::new(STDIN) {
+        return None;
+    }
+    match fs::metadata(cwd.join(name)) {
+        Err(err) if err.kind() == ErrorKind::NotFound => None,
+        Ok(meta) if meta.is_dir() => roots.find_dir(name, cwd),
+        _ => roots.find(name, cwd),
+    }
+}
+
+/// Reads and decodes `input`, a file relative to `cwd` if it is relative, and returns it with
+/// the YAML syntax error of bytes that do not decode.
+///
+/// A file is named by its path relative to `cwd` when there is one, and a workflow read from
+/// stdin by its name as given.
 fn read(
     index: usize,
-    path: &Path,
+    input: &Input,
     cwd: &Path,
 ) -> Result<(SourceFile, Option<Diagnostic>), ReadError> {
+    let path = &input.path;
     let fail = |message: String| ReadError {
-        path: path.to_path_buf(),
+        path: path.clone(),
         message,
     };
-    let bytes = fs::read(cwd.join(path)).map_err(|err| fail(err.to_string()))?;
-    let display = path::display_path(cwd, path);
+    let (bytes, display) = match &input.stdin {
+        Some(text) => (
+            Cow::Borrowed(text.as_slice()),
+            Cow::Borrowed(path.as_path()),
+        ),
+        None => (
+            Cow::Owned(fs::read(cwd.join(path)).map_err(|err| fail(err.to_string()))?),
+            Cow::Owned(path::display_path(cwd, path)),
+        ),
+    };
     let display = display.to_string_lossy();
     let id = FileId::new(u32::try_from(index).map_err(|err| fail(err.to_string()))?);
     let (text, decode_error) = match workflint_yaml::decode(&bytes) {

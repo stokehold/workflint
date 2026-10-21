@@ -193,7 +193,7 @@ pub(crate) static FLAGS: [Flag; 18] = [
     Flag::string(
         "stdin-filename",
         Some("<stdin>"),
-        "File name when reading input from stdin. Not supported yet",
+        "File name when reading input from stdin",
         |options, value| options.stdin_filename = value,
     ),
     Flag::bool(
@@ -490,8 +490,8 @@ mod tests {
             "  -version\n    \tShow version and how this binary was installed\n",
             "  -ignore value\n    \t",
             "  -config-file string\n    \t",
-            "  -stdin-filename string\n    \tFile name when reading input from stdin. Not \
-             supported yet (default \"<stdin>\")\n",
+            "  -stdin-filename string\n    \tFile name when reading input from stdin \
+             (default \"<stdin>\")\n",
             "  -q\tSame as -quiet\n",
         ] {
             assert!(out.contains(expected), "{expected:?} not in\n{out}");

@@ -177,14 +177,131 @@ fn a_relative_path_is_found_from_the_working_directory() {
 #[test]
 fn a_file_outside_any_project_has_no_root() {
     let dir = tempfile::tempdir().unwrap();
-    fs::create_dir_all(dir.path().join(".github/workflows")).unwrap();
     let root = workflint_linter::path::clean(dir.path());
-    // Neither `dir` nor, presumably, any ancestor of the temporary directory is a project.
-    let found = find_project_root(&root.join(".github/workflows/ci.yaml"), Path::new("/"));
+    // Neither `dir` nor, presumably, any ancestor of the temporary directory is a project or
+    // has a `.github` directory.
+    let found = find_project_root(&root.join("a/ci.yaml"), Path::new("/"));
     assert!(
         found.as_ref().is_none_or(|found| !found.starts_with(&root)),
         "{found:?}"
     );
+}
+
+#[test]
+fn a_jj_directory_marks_a_project_root() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = workflint_linter::path::clean(dir.path());
+    fs::create_dir(root.join(".jj")).unwrap();
+    fs::create_dir_all(root.join(".github/workflows")).unwrap();
+    fs::create_dir_all(root.join("sub/.github/workflows")).unwrap();
+    assert_eq!(
+        find_project_root(&root.join("sub/.github/workflows/ci.yaml"), Path::new("/")),
+        Some(root)
+    );
+}
+
+#[test]
+fn an_hg_directory_marks_a_project_root() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = workflint_linter::path::clean(dir.path());
+    fs::create_dir(root.join(".hg")).unwrap();
+    fs::create_dir_all(root.join(".github/workflows")).unwrap();
+    fs::create_dir_all(root.join("sub/.github/workflows")).unwrap();
+    assert_eq!(
+        find_project_root(&root.join("sub/.github/workflows/ci.yaml"), Path::new("/")),
+        Some(root)
+    );
+}
+
+#[test]
+fn without_a_marker_the_nearest_ancestor_with_a_github_directory_is_the_root() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = workflint_linter::path::clean(dir.path());
+    fs::create_dir_all(root.join(".github/workflows")).unwrap();
+    fs::create_dir_all(root.join("sub/.github")).unwrap();
+    fs::create_dir_all(root.join("sub/dir")).unwrap();
+    let cwd = Path::new("/");
+    assert_eq!(
+        find_project_root(&root.join(".github/workflows/ci.yaml"), cwd),
+        Some(root.clone())
+    );
+    // The fallback needs only `.github`, not `.github/workflows`.
+    assert_eq!(
+        find_project_root(&root.join("sub/dir/x.yaml"), cwd),
+        Some(root.join("sub"))
+    );
+}
+
+#[test]
+fn a_marker_root_further_up_wins_over_a_nearer_github_directory() {
+    let project = Project::new();
+    project.write("sub/.github/actionlint.yaml", "");
+    let root = project.root();
+    assert_eq!(
+        find_project_root(&root.join("sub/x.yaml"), Path::new("/")),
+        Some(root)
+    );
+}
+
+#[test]
+fn a_nearer_github_directory_wins_over_the_fallback_root_of_a_searched_ancestor() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = workflint_linter::path::clean(dir.path());
+    fs::create_dir_all(root.join(".github")).unwrap();
+    fs::create_dir_all(root.join("a/b/.github")).unwrap();
+    let cwd = Path::new("/");
+    let mut roots = ProjectRoots::default();
+    assert_eq!(roots.find(&root.join("a/x.yaml"), cwd), Some(root.clone()));
+    assert_eq!(
+        roots.find(&root.join("a/b/c/y.yaml"), cwd),
+        Some(root.join("a/b"))
+    );
+    assert_eq!(roots.find(&root.join("a/z.yaml"), cwd), Some(root));
+}
+
+#[test]
+fn a_sibling_directory_with_a_shared_name_prefix_is_not_in_the_project() {
+    let dir = tempfile::tempdir().unwrap();
+    let parent = workflint_linter::path::clean(dir.path());
+    let repo = parent.join("repo");
+    fs::create_dir_all(repo.join(".git")).unwrap();
+    fs::create_dir_all(repo.join(".github/workflows")).unwrap();
+    let other = parent.join("repo-other");
+    fs::create_dir_all(other.join(".git")).unwrap();
+    fs::create_dir_all(other.join(".github/workflows")).unwrap();
+    fs::create_dir_all(parent.join("repo-plain")).unwrap();
+    let cwd = Path::new("/");
+    let mut roots = ProjectRoots::default();
+    assert_eq!(
+        roots.find(&repo.join(".github/workflows/ci.yaml"), cwd),
+        Some(repo.clone())
+    );
+    assert_eq!(
+        roots.find(&other.join(".github/workflows/ci.yaml"), cwd),
+        Some(other)
+    );
+    let plain = roots.find(&parent.join("repo-plain/ci.yaml"), cwd);
+    assert!(
+        plain
+            .as_ref()
+            .is_none_or(|found| !found.starts_with(&parent)),
+        "{plain:?}"
+    );
+}
+
+#[test]
+fn a_directory_can_be_its_own_project_root() {
+    let project = Project::new();
+    let root = project.root();
+    let mut roots = ProjectRoots::default();
+    assert_eq!(roots.find_dir(&root, Path::new("/")), Some(root.clone()));
+    assert_eq!(roots.find_dir(Path::new("."), &root), Some(root.clone()));
+    assert_eq!(
+        roots.find_dir(Path::new(".github"), &root),
+        Some(root.clone())
+    );
+    // The search for a file starts at its directory, so a file named like the root is not in it.
+    assert_ne!(find_project_root(&root, Path::new("/")), Some(root));
 }
 
 #[test]

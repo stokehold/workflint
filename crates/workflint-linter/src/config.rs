@@ -18,7 +18,7 @@ use workflint_syntax::{ConfigDocument, UnknownKey};
 
 use crate::doublestar;
 use crate::ignore::IgnorePattern;
-use crate::project;
+use crate::project::ProjectRoots;
 
 /// The file that `-init-config` writes: the reference's template.
 pub const DEFAULT_CONFIG: &str = "self-hosted-runner:
@@ -300,7 +300,7 @@ pub fn init_config(cwd: &Path) -> Result<PathBuf, ConfigError> {
         "Generating default {DEFAULT_FILE_NAME} in repository: {}",
         cwd.display()
     );
-    let Some(root) = project::root_of_dir(cwd) else {
+    let Some(root) = ProjectRoots::default().find_dir(cwd, cwd) else {
         return Err(ConfigError::new(
             "project is not found. check current project is initialized as Git repository and \
              \".github/workflows\" directory exists"

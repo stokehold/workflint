@@ -4,7 +4,7 @@ workflint reads actionlint's config file unchanged, and a config file of its own
 
 ## Where workflint looks
 
-Each file is linted with the config of its project. The project root is the nearest directory above the file that has a `.github/workflows` directory and a `.git` file or directory. workflint uses the first file it finds, in this order, and does not merge them:
+Each file is linted with the config of its project. The project root is the nearest directory above the file that has a `.github/workflows` directory and a `.git`, `.jj`, or `.hg` marker, or else the nearest directory with a `.github` directory ([differences.md](differences.md#project-root-detection)). workflint uses the first file it finds, in this order, and does not merge them:
 
 1. The file given by `-config-file PATH`, or by `--config PATH`, which is the same flag. It applies to every linted file, also to files outside any project, and the projects' own config files are not read.
 2. `.github/workflint.yaml`, then `.github/workflint.yml`, in the project root.

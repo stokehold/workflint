@@ -161,6 +161,20 @@ fn missing_file_prints_an_error_and_exits_with_3() {
 }
 
 #[test]
+fn a_directory_argument_prints_an_error_and_exits_with_3() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join("sub")).unwrap();
+    let run = workflint_in(dir.path(), &["-oneline", "sub"]);
+    assert_eq!(run.code, Some(3));
+    assert_eq!(run.stdout, "");
+    assert!(
+        run.stderr.starts_with("could not read \"sub\": "),
+        "{}",
+        run.stderr
+    );
+}
+
+#[test]
 fn missing_file_prints_no_diagnostics_of_other_files() {
     let run = runner(&["broken.yaml", "missing.yaml"]);
     assert_eq!(run.code, Some(3));
@@ -256,14 +270,6 @@ fn double_dash_ends_the_flags() {
 }
 
 #[test]
-fn no_files_is_a_usage_error() {
-    let run = workflint(&["-oneline"]);
-    assert_eq!(run.code, Some(2));
-    assert_eq!(run.stdout, "");
-    assert!(run.stderr.starts_with("no files given"), "{}", run.stderr);
-}
-
-#[test]
 fn an_absolute_path_is_printed_relative_to_the_working_directory() {
     let path = cli_dir().join("broken.yaml");
     let path = path.to_str().unwrap();
@@ -329,36 +335,11 @@ fn a_closed_output_pipe_exits_quietly_with_the_lint_result() {
 }
 
 #[test]
-fn a_lone_dash_is_a_usage_error_until_stdin_is_supported() {
-    let run = workflint(&["-oneline", "-"]);
-    assert_eq!(run.code, Some(2));
-    assert_eq!(run.stdout, "");
-    assert!(
-        run.stderr
-            .starts_with("this version of workflint cannot read stdin\n"),
-        "{}",
-        run.stderr
-    );
-}
-
-#[test]
 fn a_dash_among_other_files_is_a_file_name() {
     let run = workflint(&["-oneline", "valid.yaml", "-"]);
     assert_eq!(run.code, Some(3));
     assert!(
         run.stderr.starts_with("could not read \"-\": "),
-        "{}",
-        run.stderr
-    );
-}
-
-#[test]
-fn the_usage_says_stdin_is_not_supported_yet() {
-    let run = workflint(&["-bogus"]);
-    assert_eq!(run.code, Some(2));
-    assert!(
-        run.stderr
-            .contains("Reading a workflow from stdin\n  with `-` is not supported yet."),
         "{}",
         run.stderr
     );
@@ -384,6 +365,188 @@ fn project_with_broken_action(count: usize) -> tempfile::TempDir {
         .unwrap();
     }
     dir
+}
+
+/// Runs the binary with `args` in `dir`.
+fn workflint_in(dir: &Path, args: &[&str]) -> Run {
+    run(command(dir, args).output().unwrap())
+}
+
+/// Runs the binary with `args` in `dir`, with `input` on stdin.
+fn workflint_with_stdin(dir: &Path, args: &[&str], input: &str) -> Run {
+    use std::io::Write;
+
+    let mut child = command(dir, args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
+    run(child.wait_with_output().unwrap())
+}
+
+/// `path` with the separators of the platform, as workflint prints a path that it computes.
+fn native(path: &str) -> String {
+    path.replace('/', std::path::MAIN_SEPARATOR_STR)
+}
+
+/// The header lines of the diagnostics in `stdout` that say the local action is broken.
+fn broken_action_lines(stdout: &str) -> Vec<&str> {
+    stdout
+        .lines()
+        .filter(|line| line.contains("could not parse action metadata"))
+        .collect()
+}
+
+#[test]
+fn no_arguments_lint_the_workflows_of_the_project() {
+    let project = project_with_broken_action(2);
+    let run = workflint_in(project.path(), &["-oneline"]);
+    assert_eq!(run.code, Some(1));
+    assert_eq!(run.stderr, "");
+    let lines = broken_action_lines(&run.stdout);
+    assert_eq!(lines.len(), 1, "{}", run.stdout);
+    assert!(
+        lines[0].starts_with(&format!("{}:6:15: ", native(".github/workflows/w0.yaml"))),
+        "{}",
+        run.stdout
+    );
+}
+
+#[test]
+fn no_arguments_in_a_subdirectory_print_paths_from_it() {
+    let project = project_with_broken_action(1);
+    let sub = project.path().join("sub");
+    std::fs::create_dir(&sub).unwrap();
+    let run = workflint_in(&sub, &["-oneline"]);
+    assert_eq!(run.code, Some(1));
+    let lines = broken_action_lines(&run.stdout);
+    assert_eq!(lines.len(), 1, "{}", run.stdout);
+    assert!(
+        lines[0].starts_with(&format!(
+            "{}:6:15: ",
+            native("../.github/workflows/w0.yaml")
+        )),
+        "{}",
+        run.stdout
+    );
+}
+
+#[test]
+fn no_arguments_without_a_project_exit_with_3() {
+    let dir = tempfile::tempdir().unwrap();
+    let run = workflint_in(dir.path(), &["-oneline"]);
+    assert_eq!(run.code, Some(3));
+    assert_eq!(run.stdout, "");
+    assert!(
+        run.stderr
+            .starts_with("no project was found in any parent directories of \""),
+        "{}",
+        run.stderr
+    );
+    assert!(
+        run.stderr
+            .ends_with("\". check workflows directory is put correctly in your Git repository\n"),
+        "{}",
+        run.stderr
+    );
+}
+
+#[test]
+fn no_arguments_without_a_yaml_file_exit_with_3() {
+    let project = project_with_broken_action(0);
+    let run = workflint_in(project.path(), &["-oneline"]);
+    assert_eq!(run.code, Some(3));
+    assert_eq!(run.stdout, "");
+    assert!(
+        run.stderr.starts_with("no YAML file was found in \""),
+        "{}",
+        run.stderr
+    );
+}
+
+const NO_STEPS: &str = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n";
+
+#[test]
+fn a_lone_dash_reads_stdin_and_names_it_stdin() {
+    let run = workflint_with_stdin(&cli_dir(), &["-oneline", "-"], NO_STEPS);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(1),
+            stdout:
+                "<stdin>:3:3: \"steps\" section is missing in job \"test\" [missing-required-key]\n"
+                    .to_owned(),
+            stderr: String::new(),
+        }
+    );
+}
+
+#[test]
+fn stdin_filename_names_the_input_from_stdin() {
+    let run = workflint_with_stdin(
+        &cli_dir(),
+        &["-oneline", "-stdin-filename", "from/stdin.yaml", "-"],
+        NO_STEPS,
+    );
+    assert_eq!(run.code, Some(1));
+    assert_eq!(
+        run.stdout,
+        "from/stdin.yaml:3:3: \"steps\" section is missing in job \"test\" [missing-required-key]\n"
+    );
+}
+
+#[test]
+fn empty_stdin_is_an_empty_workflow_and_exits_with_1() {
+    let run = workflint_with_stdin(&cli_dir(), &["-oneline", "-"], "");
+    assert_eq!(run.code, Some(1));
+    assert_eq!(
+        run.stdout,
+        "<stdin>:1:1: workflow is empty [empty-workflow]\n"
+    );
+}
+
+#[test]
+fn stdin_filename_of_a_file_in_a_project_checks_its_local_actions() {
+    let project = project_with_broken_action(1);
+    let workflow =
+        std::fs::read_to_string(project.path().join(".github/workflows/w0.yaml")).unwrap();
+    let run = workflint_with_stdin(
+        project.path(),
+        &[
+            "-oneline",
+            "-stdin-filename",
+            ".github/workflows/w0.yaml",
+            "-",
+        ],
+        &workflow,
+    );
+    assert_eq!(run.code, Some(1));
+    let lines = broken_action_lines(&run.stdout);
+    assert_eq!(lines.len(), 1, "{}", run.stdout);
+    assert!(
+        lines[0].starts_with(".github/workflows/w0.yaml:6:15: "),
+        "{}",
+        run.stdout
+    );
+    // Without a file at the path, there is no project and no local action to check.
+    let run = workflint_with_stdin(
+        project.path(),
+        &[
+            "-oneline",
+            "-stdin-filename",
+            ".github/workflows/new.yaml",
+            "-",
+        ],
+        &workflow,
+    );
+    assert_eq!(run.code, Some(0), "{}", run.stdout);
 }
 
 /// Runs the binary on `files` in `dir` with `threads` threads.
@@ -1078,4 +1241,27 @@ fn run_quiet(dir: &Path, workflow: &str) -> Run {
     run(command(dir, &["-oneline", "-quiet", workflow])
         .output()
         .unwrap())
+}
+
+#[test]
+fn a_run_without_arguments_uses_the_config_of_the_discovered_project() {
+    let project = project();
+    // The binary names files by the path that `getcwd` gives.
+    let root = project.path().canonicalize().unwrap();
+    std::fs::write(root.join(".github/workflows/a.yaml"), CUSTOM_LABEL).unwrap();
+    std::fs::write(
+        root.join(".github/actionlint.yml"),
+        "self-hosted-runner:\n  labels: [g*]\npaths:\n  .github/workflows/*.yaml:\n    ignore: [nothing]\n",
+    )
+    .unwrap();
+    let sub = root.join(".github/workflows");
+    let run = run(command(&sub, &["-oneline"]).output().unwrap());
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: String::new(),
+            stderr: String::new(),
+        }
+    );
 }

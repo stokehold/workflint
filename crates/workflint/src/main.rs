@@ -1,7 +1,8 @@
 //! The `workflint` command-line tool.
 //!
-//! It parses the command line with [`flags`], lints the files given as arguments with
-//! [`Linter`], prints the diagnostics in the order of the arguments, and picks the exit code
+//! It parses the command line with [`flags`], picks the inputs: the files given as arguments, the
+//! workflow files of the project without arguments, or stdin for a lone `-`. It lints them with
+//! [`Linter`], prints the diagnostics in the order of the inputs, and picks the exit code
 //! (`docs/cli.md`). The conformance suite runs it with the command line in
 //! `tests/conformance/README.md`.
 
@@ -30,7 +31,8 @@ const EXIT_NO_PROBLEM: u8 = 0;
 const EXIT_PROBLEM_FOUND: u8 = 1;
 /// The command line is invalid.
 const EXIT_INVALID_OPTION: u8 = 2;
-/// A file or config file could not be read, a config file or an `-ignore` pattern is invalid,
+/// A file, stdin, or a config file could not be read, the workflow files of a run without
+/// arguments could not be found, a config file or an `-ignore` pattern is invalid,
 /// `-init-config` failed, the output could not be written, or the lint of a file hit a bug in
 /// workflint and reported an `internal-error` diagnostic.
 const EXIT_FAILURE: u8 = 3;
@@ -82,24 +84,6 @@ fn main() -> ExitCode {
             return ExitCode::from(EXIT_FAILURE);
         }
     };
-    match paths {
-        [] => {
-            eprint!(
-                "no files given: this version of workflint lints only the files it is given\n{}",
-                usage::text()
-            );
-            return ExitCode::from(EXIT_INVALID_OPTION);
-        }
-        // actionlint reads stdin when `-` is the only argument.
-        [only] if only == "-" => {
-            eprint!(
-                "this version of workflint cannot read stdin\n{}",
-                usage::text()
-            );
-            return ExitCode::from(EXIT_INVALID_OPTION);
-        }
-        _ => {}
-    }
     let stdout = io::stdout();
     let color = color::enabled(
         options.color,
@@ -108,11 +92,17 @@ fn main() -> ExitCode {
         stdout.is_terminal(),
     );
     let format = Format::new(&options, color);
-    let inputs: Vec<Input> = paths.iter().map(Input::file).collect();
     let mut linter = Linter::new(cwd).with_ignore(ignore);
     if let Some(config) = config_file {
         linter = linter.with_config_file(config);
     }
+    let inputs = match inputs(&linter, paths, &options.stdin_filename) {
+        Ok(inputs) => inputs,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(EXIT_FAILURE);
+        }
+    };
     let mut err = io::stderr();
     let outcome = if color {
         // Makes the escape sequences work on the consoles of older Windows versions.
@@ -156,6 +146,20 @@ fn config_file(options: &Options) -> Result<Option<Config>, String> {
     Config::read(std::path::Path::new(&options.config_file))
         .map(Some)
         .map_err(|err| err.to_string())
+}
+
+/// Returns the inputs of the run for the arguments `paths`, as actionlint picks them
+/// (`command.go:102-110`): the workflow files of the project without arguments, stdin named
+/// `stdin_filename` when `-` is the only argument, and else the files. The error is the message
+/// to print.
+fn inputs(linter: &Linter, paths: &[OsString], stdin_filename: &str) -> Result<Vec<Input>, String> {
+    match paths {
+        [] => linter.discover().map_err(|err| err.to_string()),
+        [only] if only == "-" => Input::stdin(stdin_filename, io::stdin().lock())
+            .map(|input| vec![input])
+            .map_err(|err| err.to_string()),
+        _ => Ok(paths.iter().map(Input::file).collect()),
+    }
 }
 
 /// Compiles the `-ignore` patterns. The error is the message to print.
