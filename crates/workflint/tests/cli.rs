@@ -606,7 +606,6 @@ fn flags_of_later_tasks_are_accepted_and_ignored() {
         "-init-config",
         "-stdin-filename",
         "name.yaml",
-        "-shellcheck=shellcheck",
         "-pyflakes",
         "pyflakes",
         "broken.yaml",
