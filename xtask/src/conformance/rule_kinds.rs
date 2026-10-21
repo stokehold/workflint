@@ -186,9 +186,11 @@ mod tests {
 
     #[test]
     fn a_rule_id_without_a_rule_takes_its_kind_from_the_table() {
-        let (rule, kind) = TABLE.iter().next().unwrap();
-        assert!(workflint_rules::registry::find(rule).is_none());
-        assert_eq!(actionlint_kind(rule), Some(kind.as_str()));
+        // The table is empty once every rule of the checklist exists.
+        for (rule, kind) in TABLE.iter() {
+            assert!(workflint_rules::registry::find(rule).is_none());
+            assert_eq!(actionlint_kind(rule), Some(kind.as_str()));
+        }
     }
 
     #[test]

@@ -202,6 +202,7 @@ impl Config {
             rules: RuleConfig {
                 runner_labels: document.runner_labels.unwrap_or_default(),
                 config_variables: document.config_variables,
+                python_linter: document.python_linter.unwrap_or_default(),
             },
             paths,
             shellcheck: document

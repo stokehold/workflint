@@ -6,4 +6,3 @@
 # of this file. The conformance test `rule_kinds::rule-kinds.toml` fails when a
 # checklist rule ID is in both the registry and this file, or in neither.
 
-pyflakes-issue = "pyflakes"

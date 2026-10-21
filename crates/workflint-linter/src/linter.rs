@@ -18,10 +18,10 @@ use std::time::Instant;
 use rayon::prelude::*;
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, Span, sort_and_dedup};
-use workflint_rules::RuleConfig;
 use workflint_rules::kind::{self, Kind};
 use workflint_rules::local::{LocalMetadata, NoProject};
 use workflint_rules::tools::ExternalTools;
+use workflint_rules::{PythonLinter, RuleConfig};
 use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
 use crate::cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
@@ -140,6 +140,24 @@ pub enum LintError {
     /// The config file of a project could not be read.
     #[error(transparent)]
     Config(#[from] ConfigError),
+    /// The settings of a project ask for an external tool that the run does not have.
+    #[error(transparent)]
+    MissingTool(#[from] MissingTool),
+}
+
+/// The Python linter that `python.linter` names is not installed. As for a tool that a flag
+/// names, it stops the run (ADR 0012).
+#[derive(Debug, thiserror::Error)]
+#[error(
+    "python.linter{} is {}, but {} was not found on PATH",
+    .config.as_ref().map(|path| format!(" in config file {}", quote(&path.to_string_lossy()))).unwrap_or_default(),
+    quote(.linter.name()),
+    .linter.name()
+)]
+pub struct MissingTool {
+    /// The config file that sets `python.linter`, if a config file sets it.
+    config: Option<PathBuf>,
+    linter: PythonLinter,
 }
 
 /// The name of the span that holds the log events of one file.
@@ -208,6 +226,18 @@ impl Linter {
     pub fn with_config_file(self, config: Config) -> Self {
         let mut flags = Flags::clone(&self.flags);
         flags.config_file = Some(Arc::new(config));
+        Self {
+            flags: Arc::new(flags),
+            ..self
+        }
+    }
+
+    /// Returns the linter with `linter` as the Python linter of every file, in place of the
+    /// `python.linter` of its config file, as `-pyflakes` picks it.
+    #[must_use]
+    pub fn with_python_linter(self, linter: PythonLinter) -> Self {
+        let mut flags = Flags::clone(&self.flags);
+        flags.python_linter = Some(linter);
         Self {
             flags: Arc::new(flags),
             ..self
@@ -286,7 +316,8 @@ impl Linter {
     /// # Errors
     ///
     /// Fails with the first input, in the order of `inputs`, whose project's config file cannot
-    /// be read, and then with the first input that cannot be read.
+    /// be read or asks for a Python linter that the [`Tools`] do not have, and then with the
+    /// first input that cannot be read.
     pub fn lint_with<T: Send>(
         &self,
         inputs: &[Input],
@@ -326,9 +357,11 @@ impl Linter {
             }
             let absolute = path::absolute(&self.cwd, &input.path);
             let relative = slash_path(root.as_deref().unwrap_or(&self.cwd), &absolute);
+            let file_settings = settings.of(root.as_deref())?;
+            self.check_tools(&file_settings)?;
             files.push(File {
                 input,
-                settings: settings.of(root.as_deref())?,
+                settings: file_settings,
                 absolute,
                 relative,
                 root,
@@ -402,6 +435,23 @@ impl Linter {
                 self.tools.prefetch(file.settings.shellcheck(), &scripts);
             }
         });
+    }
+
+    /// Fails if `settings` name a Python linter that the tools do not have.
+    fn check_tools(&self, settings: &Settings) -> Result<(), MissingTool> {
+        let linter = settings.rules().python_linter;
+        let named = matches!(linter, PythonLinter::Ruff | PythonLinter::Pyflakes);
+        if named && self.tools.python_tool(linter).is_none() {
+            // A linter that `-pyflakes` picks is not from the config file.
+            let config = settings
+                .config_path()
+                .filter(|_| self.flags.python_linter.is_none());
+            return Err(MissingTool {
+                config: config.map(Path::to_path_buf),
+                linter,
+            });
+        }
+        Ok(())
     }
 
     /// Reads and lints `file`, the input at `index`, with `cache`, the cache of its project.

@@ -173,12 +173,13 @@ jobs:
       - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: shellcheck@0.11.0,cargo-nextest@0.9.148
-      - name: Install pyflakes
+      - name: Install pyflakes and ruff
         run: |
           python3 -m venv "$RUNNER_TEMP/pyflakes"
           "$RUNNER_TEMP/pyflakes/bin/pip" install --no-deps --require-hashes -r tests/conformance/requirements.txt
           mkdir -p "$RUNNER_TEMP/tools"
           ln -s "$RUNNER_TEMP/pyflakes/bin/pyflakes" "$RUNNER_TEMP/tools/pyflakes"
+          ln -s "$RUNNER_TEMP/pyflakes/bin/ruff" "$RUNNER_TEMP/tools/ruff"
           echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
       # The report goes to the log, so that a difference between the two runs
       # can be read there.

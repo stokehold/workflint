@@ -1,6 +1,6 @@
 # Config file
 
-workflint reads actionlint's config file unchanged, and a config file of its own at `.github/workflint.yaml` (ADR 0010). This page lists where workflint looks for the file and every key that works today. The keys that workflint adds, `shellcheck` and `tool-timeout`, work in an actionlint config file too, and actionlint ignores them.
+workflint reads actionlint's config file unchanged, and a config file of its own at `.github/workflint.yaml` (ADR 0010). This page lists where workflint looks for the file and every key that works today. The keys that workflint adds, `python`, `shellcheck`, and `tool-timeout`, work in an actionlint config file too, and actionlint ignores them.
 
 ## Where workflint looks
 
@@ -37,6 +37,8 @@ paths:
   .github/workflows/release.yaml:
     ignore:
       - 'label "gpu" is unknown'
+python:
+  linter: ruff
 ```
 
 ### `self-hosted-runner.labels`
@@ -60,6 +62,23 @@ could not parse config file "/repo/.github/actionlint.yaml": yaml: unmarshal err
 ```
 
 A glob that matches no linted file does nothing, and workflint does not warn about it.
+
+### `python.linter`
+
+What checks the scripts of `shell: python` steps ([pyflakes-issue](rules/pyflakes-issue.md)). The value is one of these, and case counts:
+
+- `auto`, the default: ruff if `ruff` is on `PATH`, else pyflakes if `pyflakes` is on `PATH`. With neither, the first Python script of the run prints `warning: neither ruff nor pyflakes was found on PATH, so the scripts of shell: python steps are not checked. ...` to stderr, and the run goes on. A run without Python scripts prints nothing.
+- `ruff`: ruff restricted to the pyflakes rules, without any ruff config file. Its messages have ruff's rule code and wording, such as `1:7: F821 Undefined name `hello``.
+- `pyflakes`: pyflakes, as actionlint runs it.
+- `off`: nothing checks the scripts.
+
+A `ruff` or `pyflakes` that is not on `PATH` stops the run with exit code 3: `python.linter in config file "<path>" is "ruff", but ruff was not found on PATH`. The `-pyflakes` flag wins over the key: `-pyflakes=PATH` runs that pyflakes, and `-pyflakes=` checks nothing ([cli.md](cli.md#flags)). Any other value stops the run when the file is read:
+
+```text
+could not parse config file "/repo/.github/workflint.yaml": yaml: unmarshal errors:   line 2: "python.linter" must be "auto", "ruff", "pyflakes", or "off", but "black" was found at line:2,col:11
+```
+
+workflint reads `python` in actionlint config files too, without a warning.
 
 ### `shellcheck`
 
@@ -90,7 +109,7 @@ The cache is the directory `$XDG_CACHE_HOME/workflint/shellcheck`. When `XDG_CAC
 
 ### `tool-timeout`
 
-How many seconds an external tool process, such as shellcheck, may run. When the time passes, workflint kills the process and reports [shellcheck-failed](rules/shellcheck-failed.md) on its script. The value is a whole number greater than 0, and the default is 60. workflint checks up to 64 scripts in one shellcheck process. When such a process times out, workflint checks each of its scripts alone, so each script gets the whole timeout. A value that is not a whole number greater than 0 stops the run with exit code 3:
+How many seconds an external tool process, shellcheck, ruff, or pyflakes, may run. When the time passes, workflint kills the process and reports [shellcheck-failed](rules/shellcheck-failed.md) or [pyflakes-failed](rules/pyflakes-failed.md) on its script. The value is a whole number greater than 0, and the default is 60. workflint checks up to 64 scripts in one shellcheck process. When such a process times out, workflint checks each of its scripts alone, so each script gets the whole timeout. A value that is not a whole number greater than 0 stops the run with exit code 3:
 
 ```text
 could not parse config file "/repo/.github/workflint.yaml": yaml: unmarshal errors:   line 1: "tool-timeout" must be a whole number of seconds greater than 0, but "0" was found at line:1,col:15
@@ -107,10 +126,11 @@ could not parse config file "/repo/.github/workflint.yaml": yaml: unmarshal erro
 - [Unknown config keys are reported](differences.md#config-unknown-keys).
 - [Non-string `ignore` entries are rejected](differences.md#config-ignore-entries).
 - [Config error messages](differences.md#config-error-messages).
+- [ruff is used for Python scripts when installed](differences.md#python-linter-auto).
 - [shellcheck settings and its cache](differences.md#shellcheck-settings).
 
 ## Coming later
 
 - A user config file in `$XDG_CONFIG_HOME/workflint/config.yaml`, and `--no-config`, in M9.4.
 - `rules`, to turn rules off and set their severity, in M9.2, and a published JSON Schema with `workflint config schema` in M9.3.
-- `python` settings with pyflakes in M5.12, and `exclude` in M5.18.
+- `exclude` in M5.18.

@@ -1,14 +1,16 @@
 //! The interface through which rules have external tools check scripts (ADR 0012).
 //!
-//! Rules spawn no processes (ADR 0006). The `shellcheck` rule collects the scripts of a file and
-//! passes them to the [`ExternalTools`] that the [`Context`](crate::Context) holds. The linter
-//! implements it: it runs the tool on each script and returns the findings, and the rule maps
-//! them back into the workflow through the source map of the `run:` value. [`NoTools`] runs
-//! nothing, so the rule reports nothing.
+//! Rules spawn no processes (ADR 0006). The `shellcheck` and `pyflakes` rules collect the scripts
+//! of a file and pass them to the [`ExternalTools`] that the [`Context`](crate::Context) holds.
+//! The linter implements it: it runs the tool on each script and returns the findings, and the
+//! rule maps them back into the workflow through the source map of the `run:` value.
+//! [`NoTools`] runs nothing, so the rules report nothing.
 
 use std::cell::RefCell;
 use std::fmt;
 use std::sync::Arc;
+
+use crate::config::PythonLinter;
 
 /// The shell that shellcheck checks a script for, the value of its `--shell` argument.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -89,6 +91,61 @@ pub enum ShellcheckOutcome {
     Failed(String),
 }
 
+/// The program that checks Python scripts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PythonTool {
+    /// pyflakes.
+    Pyflakes,
+    /// ruff, restricted to the pyflakes rules.
+    Ruff,
+}
+
+impl PythonTool {
+    /// The name of the program.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Pyflakes => "pyflakes",
+            Self::Ruff => "ruff",
+        }
+    }
+}
+
+/// What a column of a [`PythonFinding`] counts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColumnUnit {
+    /// Bytes of UTF-8, as the column of a pyflakes message, which is Python's `col_offset`.
+    Bytes,
+    /// Code points, as the column of a syntax error of pyflakes and every column of ruff.
+    Chars,
+}
+
+/// One finding of the Python linter in a script. Lines and columns count from 1, in the script
+/// as the tool read it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PythonFinding {
+    /// The line.
+    pub line: i64,
+    /// The column, if the tool gives one.
+    pub column: Option<i64>,
+    /// The line and column just after the end of the finding, if the tool gives them.
+    pub end: Option<(i64, i64)>,
+    /// What the columns count.
+    pub unit: ColumnUnit,
+    /// The text that follows `pyflakes reported issue in this script: ` in the message.
+    pub text: String,
+}
+
+/// What the Python linter gave for one script.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PythonOutcome {
+    /// The linter ran and reported these findings.
+    Findings(Vec<PythonFinding>),
+    /// The linter did not run, did not finish, or printed output that workflint cannot read.
+    /// The message says what happened.
+    Failed(String),
+}
+
 /// The external tools that check the scripts of a workflow.
 pub trait ExternalTools: fmt::Debug {
     /// Whether shellcheck runs. When it does not, the `shellcheck` rule collects no script.
@@ -97,6 +154,14 @@ pub trait ExternalTools: fmt::Debug {
     /// Runs shellcheck on each of `scripts` and returns one outcome per script, in the order of
     /// `scripts`. Returns an empty list when shellcheck does not run.
     fn shellcheck(&self, scripts: &[ShellScript]) -> Vec<Arc<ShellcheckOutcome>>;
+
+    /// Runs the Python linter that `linter` picks on each of `scripts`, the text that the linter
+    /// reads on stdin, and returns one outcome per script, in the order of `scripts`. Returns
+    /// an empty list when no linter runs.
+    fn python(&self, linter: PythonLinter, scripts: &[String]) -> Vec<Arc<PythonOutcome>> {
+        let _ = (linter, scripts);
+        Vec::new()
+    }
 }
 
 /// Collects the scripts that the `shellcheck` rule passes, and returns no outcome, so the rule
@@ -115,7 +180,7 @@ impl ExternalTools for CollectScripts {
     }
 }
 
-/// No external tool: shellcheck does not run.
+/// No external tool: neither shellcheck nor a Python linter runs.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoTools;
 

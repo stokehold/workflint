@@ -1,5 +1,7 @@
 //! The part of the config that the rules read.
 
+pub use workflint_syntax::PythonLinter;
+
 /// The settings of the config file that change what the rules report. `workflint-linter`
 /// loads the config and fills this in. The default is what a run without a config file
 /// gives.
@@ -11,6 +13,9 @@ pub struct RuleConfig {
     /// `config-variables`: the configuration variables that `vars.NAME` may read, compared
     /// without regard to case. `None` turns the check off, and an empty list allows none.
     pub config_variables: Option<Vec<String>>,
+    /// `python.linter`, or the linter that `-pyflakes` picks: what checks the scripts of
+    /// `shell: python` steps. The `pyflakes` rule passes it to the external tools.
+    pub python_linter: PythonLinter,
 }
 
 impl RuleConfig {
@@ -18,5 +23,6 @@ impl RuleConfig {
     pub const DEFAULT: Self = Self {
         runner_labels: Vec::new(),
         config_variables: None,
+        python_linter: PythonLinter::Auto,
     };
 }

@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use workflint_rules::RuleConfig;
+use workflint_rules::{PythonLinter, RuleConfig};
 
 use crate::config::{Config, ConfigError, PathConfig};
 use crate::ignore::IgnorePattern;
@@ -20,6 +20,9 @@ pub struct Flags {
     pub config_file: Option<Arc<Config>>,
     /// `-shellcheck-cache`: every project uses the on-disk cache of shellcheck.
     pub shellcheck_cache: bool,
+    /// The Python linter that `-pyflakes` picks over `python.linter`: pyflakes when the flag
+    /// names it, `off` when the flag is empty, and `None` when the flag is not given.
+    pub python_linter: Option<PythonLinter>,
 }
 
 /// What the lint of one file runs with: the defaults, [`Settings::default`], then the config
@@ -79,9 +82,14 @@ impl Settings {
         }
     }
 
-    /// Applies the `-ignore` patterns of `flags`.
+    /// Applies the `-ignore` patterns and the Python linter of `flags`.
     fn with_flags(self, flags: &Flags) -> Self {
+        let mut rules = self.rules;
+        if let Some(linter) = flags.python_linter {
+            rules.python_linter = linter;
+        }
         Self {
+            rules,
             ignore: flags.ignore.clone(),
             ..self
         }

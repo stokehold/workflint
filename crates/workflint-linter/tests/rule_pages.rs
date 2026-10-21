@@ -260,20 +260,31 @@ fn parse_head(head: &[&str], page: &mut Page) -> Result<(), String> {
 /// The external tools that the examples of the page of `id` run with, or `None` when they need
 /// a tool that is not installed.
 ///
-/// The pages of the `shellcheck` kind run shellcheck: `shellcheck-issue` the real one from
-/// `PATH`, and `shellcheck-failed` a stand-in that exits with status 2, prints `failed` to
-/// stderr, and prints nothing to stdout. The other pages run no tool, so their examples give the
-/// same diagnostics whether shellcheck is installed or not.
+/// The pages of the `shellcheck` and `pyflakes` kinds run their tool: `shellcheck-issue` and
+/// `pyflakes-issue` the real one from `PATH`, and `shellcheck-failed` and `pyflakes-failed` a
+/// stand-in that exits with status 2, prints `failed` to stderr, and prints nothing to stdout.
+/// The other pages run no tool, so their examples give the same diagnostics whatever is
+/// installed.
 fn tools_for(id: &str) -> Option<Tools> {
-    let command = match id {
-        "shellcheck-issue" => ToolCommand::resolve("shellcheck").ok()?,
-        "shellcheck-failed" => {
-            ToolCommand::new(env!("CARGO_BIN_EXE_workflint-test-tool"), ["exit", "2", ""])
-        }
-        _ => return Some(Tools::none()),
-    };
-    let pool = ToolPool::new(NonZeroUsize::MIN).unwrap();
-    Some(Tools::none().with_shellcheck(command, Arc::new(pool), RunOptions::default()))
+    let stand_in =
+        || ToolCommand::new(env!("CARGO_BIN_EXE_workflint-test-tool"), ["exit", "2", ""]);
+    let pool = || Arc::new(ToolPool::new(NonZeroUsize::MIN).unwrap());
+    let tools = Tools::none();
+    Some(match id {
+        "shellcheck-issue" => tools.with_shellcheck(
+            ToolCommand::resolve("shellcheck").ok()?,
+            pool(),
+            RunOptions::default(),
+        ),
+        "shellcheck-failed" => tools.with_shellcheck(stand_in(), pool(), RunOptions::default()),
+        "pyflakes-issue" => tools.with_pyflakes(
+            ToolCommand::resolve("pyflakes").ok()?,
+            pool(),
+            RunOptions::default(),
+        ),
+        "pyflakes-failed" => tools.with_pyflakes(stand_in(), pool(), RunOptions::default()),
+        _ => tools,
+    })
 }
 
 /// The paths of the config files that an example may have, from the project root.
@@ -376,7 +387,7 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
     }
     let tools = tools_for(id);
     if tools.is_none() {
-        println!("{id}: skipped the examples, because shellcheck is not installed");
+        println!("{id}: skipped the examples, because their tool is not installed");
     }
     let tools = tools.as_ref();
     for (index, example) in page.failing.iter().enumerate() {

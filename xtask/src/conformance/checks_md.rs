@@ -91,10 +91,11 @@ pub fn comparable_lines(
 ///
 /// Each of `replacements`, an `upstream` line and the `workflint` line that
 /// replaces it, takes the place of the first error line of `expected` that
-/// equals its `upstream` line. The snippet lines under it stay. A
-/// replacement whose line is not in `expected` does nothing, because the
-/// allow-list records of a fixture may cover lines that the example leaves
-/// out.
+/// equals its `upstream` line. The snippet lines under it stay, unless the
+/// replacement moves the error to another line of `input`, the example's
+/// workflow: then the snippet shows that line. A replacement whose line is
+/// not in `expected` does nothing, because the allow-list records of a
+/// fixture may cover lines that the example leaves out.
 ///
 /// # Errors
 ///
@@ -103,11 +104,20 @@ pub fn compare(
     expected: &str,
     actual: &str,
     replacements: &[(&str, &str)],
+    input: &str,
     kind: impl Fn(&str) -> Result<String, String>,
 ) -> Result<(), String> {
     let mut want = comparable_lines(expected, |code| Ok(code.to_owned()))?;
     for (upstream, workflint) in replacements {
-        if let Some(line) = want.iter_mut().find(|line| line == upstream) {
+        let Some(index) = want.iter().position(|line| line == upstream) else {
+            continue;
+        };
+        if let (Ok(old), Ok(new)) = (parse_line(upstream), parse_line(workflint))
+            && old.line != new.line
+        {
+            move_snippet(&mut want, index + 1, new.line, input);
+        }
+        if let Some(line) = want.get_mut(index) {
             (*workflint).clone_into(line);
         }
     }
@@ -120,6 +130,31 @@ pub fn compare(
         want.join("\n"),
         have.join("\n")
     ))
+}
+
+/// Rewrites the snippet that starts at `want[start]`, the lines up to the
+/// next error line, to show line `line` of `input`: the bar line with a
+/// gutter as wide as the line number, and the numbered source line.
+fn move_snippet(want: &mut [String], start: usize, line: u32, input: &str) {
+    let source = usize::try_from(line)
+        .ok()
+        .and_then(|line| input.lines().nth(line.checked_sub(1)?))
+        .unwrap_or_default();
+    let gutter = " ".repeat(line.to_string().len());
+    for text in want.iter_mut().skip(start) {
+        if parse_line(text).is_ok() {
+            break;
+        }
+        let trimmed = text.trim_start();
+        if trimmed == "|" {
+            *text = format!("{gutter} |");
+        } else if trimmed
+            .split_once(" | ")
+            .is_some_and(|(number, _)| number.bytes().all(|byte| byte.is_ascii_digit()))
+        {
+            *text = format!("{line} | {source}");
+        }
+    }
 }
 
 #[cfg(test)]
@@ -208,20 +243,20 @@ Output:
     fn output_matches_with_rule_ids_mapped_and_indicators_left_out() {
         let expected = "test.yaml:1:1: bad [syntax-check]\n  |\n1 | on: push\n  | ^~~\n";
         let actual = "test.yaml:1:1: bad [some-rule]\n  |\n1 | on: push\n  | ^~~~~~~~\n";
-        assert_eq!(compare(expected, actual, &[], kind), Ok(()));
+        assert_eq!(compare(expected, actual, &[], "on: push\n", kind), Ok(()));
     }
 
     #[test]
     fn another_message_or_snippet_line_is_a_difference() {
         let expected = "test.yaml:1:1: bad [syntax-check]\n  |\n1 | on: push\n  | ^~~\n";
         let actual = "test.yaml:1:1: worse [some-rule]\n  |\n1 | on: push\n  | ^~~\n";
-        let error = compare(expected, actual, &[], kind).unwrap_err();
+        let error = compare(expected, actual, &[], "on: push\n", kind).unwrap_err();
         assert!(
             error.contains("test.yaml:1:1: worse [syntax-check]"),
             "{error}"
         );
         let moved = "test.yaml:1:1: bad [some-rule]\n  |\n1 | on: pull\n  | ^~~\n";
-        assert!(compare(expected, moved, &[], kind).is_err());
+        assert!(compare(expected, moved, &[], "on: push\n", kind).is_err());
     }
 
     #[test]
@@ -238,13 +273,31 @@ Output:
                 "test.yaml:9:9: x [syntax-check]",
             ),
         ];
-        assert_eq!(compare(expected, actual, &replacements, kind), Ok(()));
-        assert!(compare(expected, actual, &[], kind).is_err());
+        assert_eq!(
+            compare(expected, actual, &replacements, "on: push\n", kind),
+            Ok(())
+        );
+        assert!(compare(expected, actual, &[], "on: push\n", kind).is_err());
+    }
+
+    #[test]
+    fn a_replacement_on_another_line_shows_that_line_in_the_snippet() {
+        let input = "on: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: |\n          a\n          b\n          c\n          d\n";
+        let expected = "test.yaml:6:9: bad [syntax-check]\n  |\n6 |       - run: |\n  | ^~~\n";
+        let actual = "test.yaml:10:11: bad [some-rule]\n   |\n10 |           d\n   |           ^\n";
+        let replacements = [(
+            "test.yaml:6:9: bad [syntax-check]",
+            "test.yaml:10:11: bad [syntax-check]",
+        )];
+        assert_eq!(
+            compare(expected, actual, &replacements, input, kind),
+            Ok(())
+        );
     }
 
     #[test]
     fn an_unknown_rule_id_is_an_error() {
-        let error = compare("", "test.yaml:1:1: bad [other]\n", &[], kind).unwrap_err();
+        let error = compare("", "test.yaml:1:1: bad [other]\n", &[], "", kind).unwrap_err();
         assert_eq!(error, "no kind for other");
     }
 }

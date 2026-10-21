@@ -50,14 +50,14 @@ The rules are those of Go's `flag` package:
 | `-stdin-filename NAME` | Names the workflow read from stdin. The default is `<stdin>`. If a file exists at `NAME`, the workflow gets that file's project. |
 | `-shellcheck COMMAND` | The shellcheck that checks `run:` scripts ([shellcheck-issue](rules/shellcheck-issue.md)): a name to look up on `PATH`, a path, or a command line whose first word is one of these. The default is `shellcheck`, and an empty value turns shellcheck off. Without the flag, a missing `shellcheck` prints one warning to stderr and the run goes on. A shellcheck that the flag names but that is not found exits with code 3, and so does a missing shellcheck that a config file sets keys for ([config.md](config.md#shellcheck)). |
 | `-shellcheck-cache` | Keeps the findings of shellcheck in a cache on disk, so that a later run does not check the same script again. The config key `shellcheck.cache` does the same for one project. See [config.md](config.md#shellcheckcache). |
-| `-jobs N` | Runs at most `N` external tool processes, such as shellcheck, at once. The default is the number of CPUs. |
-| `-pyflakes COMMAND` | Accepted and ignored until M5.12 (#249) runs pyflakes. The default is `pyflakes`, and an empty value turns pyflakes off. |
+| `-jobs N` | Runs at most `N` external tool processes, such as shellcheck, pyflakes, and ruff, at once. The default is the number of CPUs. |
+| `-pyflakes COMMAND` | The pyflakes that checks the scripts of `shell: python` steps ([pyflakes-issue](rules/pyflakes-issue.md)), looked up as for `-shellcheck`. With a value, that pyflakes runs whatever the `python.linter` of the config file says, and a pyflakes that is not found exits with code 3. An empty value turns the Python check off. Without the flag, `python.linter` picks ruff or pyflakes ([config.md](config.md#pythonlinter)). |
 
 `check`, `--config`, `-quiet`, `-q`, `-silent`, `-summary`, `-jobs`, and `-shellcheck-cache` are workflint's own. [differences.md](differences.md#workflint-flags) lists them with the other differences.
 
 ## Output
 
-Errors go to stdout. Logs, warnings, the usage, the summary, and fatal messages such as `could not read "x.yaml": ...` go to stderr. A warning starts with `warning: `, such as the one about a missing shellcheck or about an unknown key in an actionlint config file ([config.md](config.md#unknown-keys)). `-quiet` and `-silent` hide warnings.
+Errors go to stdout. Logs, warnings, the usage, the summary, and fatal messages such as `could not read "x.yaml": ...` go to stderr. A warning starts with `warning: `, such as the one about a missing shellcheck, about a Python script that neither ruff nor pyflakes can check, or about an unknown key in an actionlint config file ([config.md](config.md#unknown-keys)). `-quiet` and `-silent` hide warnings.
 
 The default format prints the header line `path:line:col: message [rule-id]`, the source line, and a line with `^~~~` under the span. `-oneline` prints only the header line. The layout is actionlint's, except that the brackets hold workflint's rule ID instead of actionlint's kind ([differences.md](differences.md#rule-id-in-brackets)). The problem matcher in actionlint's `.github/actionlint-matcher.json` matches the header lines with and without color.
 

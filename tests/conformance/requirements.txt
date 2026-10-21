@@ -1,7 +1,14 @@
-# pyflakes for the conformance fixtures whose names contain "pyflakes". The
-# Linux legs of the CI test job and the oracle job install it with
-# `pip install --require-hashes -r tests/conformance/requirements.txt`.
-# The hashes are of the wheel and the source archive on PyPI.
+# pyflakes for the conformance fixtures whose names contain "pyflakes", and
+# ruff for the tests of python.linter. The Linux legs of the CI test job and
+# the oracle job install them with
+# `pip install --no-deps --require-hashes -r tests/conformance/requirements.txt`.
+# The hashes of pyflakes are of the wheel and the source archive on PyPI. The
+# hashes of ruff are of its wheels for Linux and macOS on x86_64 and arm64.
 pyflakes==4.0.3 \
     --hash=sha256:330ba92b8c1db2eb0b8f4068f6c58674e2649a99e334769aa50e3e9c5b11c23a \
     --hash=sha256:94762a3a5a343a79b28754f96c554bce057a592a4896907d73f0369fe824e053
+ruff==0.17.1 \
+    --hash=sha256:a6ef98e51de8ef38082f90653ceeb84944bd7673783eea13e1647c5b9b064189 \
+    --hash=sha256:872e03dd231744d6c5ec5c8af6be52b71323fc6ee096e4c8b34d9f844ee3b978 \
+    --hash=sha256:8eadb09a788010be29c895418bdfa513e4e1c65e64b94e5b19e4cd381f6cc7fb \
+    --hash=sha256:29b454f18ca3eeaf37fbf140841dcf27d36109e29dee9aae8acecb68c26c6f74
