@@ -78,6 +78,7 @@ jobs:
         crates/workflint-data/**
         crates/workflint-diagnostics/**
         crates/workflint-expr/**
+        crates/workflint-gotemplate/**
         crates/workflint-linter/**
         crates/workflint-rules/**
         crates/workflint-syntax/**

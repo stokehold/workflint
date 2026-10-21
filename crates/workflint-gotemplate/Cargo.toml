@@ -1,0 +1,27 @@
+[package]
+name = "workflint-gotemplate"
+description = "A subset of Go's text/template for workflint's -format flag. Internal crate with no stability promise."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+# Keep the tests out of the published package (ADR 0006).
+include = ["/src", "/README.md", "/LICENSE", "/NOTICE"]
+
+[dependencies]
+# Pinned to Unicode 15.0.0, the version Go uses, as in workflint-diagnostics. See `fmt::is_print`.
+unicode-general-category = "=0.6.0"
+
+[dev-dependencies]
+datatest-stable = "0.3.3"
+
+[[test]]
+name = "fuzz_regressions"
+harness = false
+
+[lints]
+workspace = true
