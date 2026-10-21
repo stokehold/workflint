@@ -5,7 +5,7 @@ use workflint_syntax::Workflow;
 
 use crate::local::{LocalMetadata, NoProject};
 use crate::tools::{ExternalTools, NoTools};
-use crate::{Context, Rule, create_rules};
+use crate::{Context, Rule, RuleConfig, create_rules};
 
 /// Calls the hooks of `rules` over `workflow`, each hook for every rule in the order of `rules`.
 ///
@@ -74,16 +74,28 @@ pub fn run_with_tools<'a>(
     local: &dyn LocalMetadata,
     tools: &dyn ExternalTools,
 ) -> Vec<Diagnostic> {
+    run_with_config(file, workflow, local, tools, &RuleConfig::default())
+}
+
+/// Does what [`run_with_tools`] does, with the settings of the config file in `config`.
+#[must_use]
+pub fn run_with_config<'a>(
+    file: &SourceFile,
+    workflow: &'a Workflow<'a>,
+    local: &dyn LocalMetadata,
+    tools: &dyn ExternalTools,
+    config: &RuleConfig,
+) -> Vec<Diagnostic> {
     let mut rules = create_rules();
-    let mut cx = Context::with_local_metadata(file, local).with_tools(tools);
+    let mut cx = Context::with_config(file, local, config).with_tools(tools);
     visit(workflow, &mut rules, &mut cx);
     cx.into_diagnostics()
 }
 
 /// Lints `file` without the file system: parses it with the YAML layer and, if that gives a
 /// document, with the workflow parser, then runs the rules on the workflow with the local
-/// metadata in `local` and the external tools in `tools`. Returns the diagnostics of all three,
-/// unsorted.
+/// metadata in `local`, the external tools in `tools`, and the settings of the config file in
+/// `config`. Returns the diagnostics of all three, unsorted.
 ///
 /// The binary and the tests of the rule pages both lint this way.
 #[must_use]
@@ -91,13 +103,20 @@ pub fn check_file(
     file: &SourceFile,
     local: &dyn LocalMetadata,
     tools: &dyn ExternalTools,
+    config: &RuleConfig,
 ) -> Vec<Diagnostic> {
     let parsed = workflint_yaml::parse(file);
     let mut diagnostics = parsed.diagnostics;
     if let Some(document) = &parsed.document {
         let syntax = workflint_syntax::parse(file, document);
         diagnostics.extend(syntax.diagnostics);
-        diagnostics.extend(run_with_tools(file, &syntax.workflow, local, tools));
+        diagnostics.extend(run_with_config(
+            file,
+            &syntax.workflow,
+            local,
+            tools,
+            config,
+        ));
     }
     diagnostics
 }

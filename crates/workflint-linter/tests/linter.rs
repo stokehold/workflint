@@ -4,12 +4,14 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tempfile::TempDir;
 use workflint_diagnostics::{Color, Diagnostic, SourceFile, render_oneline};
+use workflint_linter::config::Config;
 use workflint_linter::rules::INTERNAL_ERROR;
 use workflint_linter::{IgnorePattern, Input, Linted, Linter};
+use workflint_rules::RuleConfig;
 use workflint_rules::local::LocalMetadata;
 use workflint_rules::tools::ExternalTools;
 
@@ -34,11 +36,15 @@ fn project() -> TempDir {
     dir
 }
 
-/// Writes `contents` to `path` under `dir`, creating its directories.
-fn write(dir: &Path, path: &str, contents: &str) {
-    let path = dir.join(path);
+/// Writes `contents` to `path` under `dir`, creating its directories, and returns the path.
+fn write(dir: &Path, path: &str, contents: &str) -> PathBuf {
+    // Joined part by part, so that the path has the separators of the OS.
+    let path = path
+        .split('/')
+        .fold(dir.to_path_buf(), |path, part| path.join(part));
     fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(path, contents).unwrap();
+    fs::write(&path, contents).unwrap();
+    path
 }
 
 fn inputs(paths: &[String]) -> Vec<Input> {
@@ -164,13 +170,14 @@ fn check_or_panic(
     file: &SourceFile,
     local: &dyn LocalMetadata,
     tools: &dyn ExternalTools,
+    config: &RuleConfig,
 ) -> Vec<Diagnostic> {
     assert!(
         !file.path().ends_with("panics.yaml"),
         "a rule failed on {}",
         file.path()
     );
-    workflint_rules::check_file(file, local, tools)
+    workflint_rules::check_file(file, local, tools, config)
 }
 
 #[test]
@@ -307,4 +314,189 @@ fn an_ignore_pattern_never_drops_an_internal_error() {
         .with_ignore(vec![IgnorePattern::new("panicked").unwrap()]);
     let files = linter.lint(&inputs(&paths)).unwrap();
     assert!(files[0].has_internal_error());
+}
+
+/// A workflow that runs on the custom label `gpu` and reads the configuration variable `TARGET`.
+const CUSTOM_LABEL_AND_VAR: &str = "on: push\njobs:\n  test:\n    runs-on: gpu\n    steps:\n      - run: echo '${{ vars.TARGET }}'\n";
+
+/// The rule IDs of the diagnostics of each file, in order.
+fn rule_ids(files: &[Linted]) -> Vec<Vec<&'static str>> {
+    files
+        .iter()
+        .map(|linted| linted.diagnostics.iter().map(|d| d.rule.id).collect())
+        .collect()
+}
+
+#[test]
+fn the_config_of_the_project_reaches_the_rules() {
+    let dir = project();
+    write(dir.path(), ".github/workflows/a.yaml", CUSTOM_LABEL_AND_VAR);
+    let paths = [".github/workflows/a.yaml".to_owned()];
+    let linter = Linter::new(dir.path().to_path_buf());
+    assert_eq!(
+        rule_ids(&linter.lint(&inputs(&paths)).unwrap()),
+        [["unknown-runner-label"]]
+    );
+
+    write(
+        dir.path(),
+        ".github/actionlint.yaml",
+        "self-hosted-runner:\n  labels: [gpu]\nconfig-variables: [OTHER]\n",
+    );
+    assert_eq!(
+        rule_ids(&linter.lint(&inputs(&paths)).unwrap()),
+        [["undefined-config-variable"]]
+    );
+}
+
+#[test]
+fn each_project_uses_its_own_config() {
+    let dir = tempfile::tempdir().unwrap();
+    for name in ["one", "two"] {
+        fs::create_dir_all(dir.path().join(name).join(".git")).unwrap();
+        write(
+            &dir.path().join(name),
+            ".github/workflows/a.yaml",
+            CUSTOM_LABEL_AND_VAR,
+        );
+    }
+    write(
+        &dir.path().join("one"),
+        ".github/workflint.yaml",
+        "self-hosted-runner:\n  labels: [gpu]\n",
+    );
+    let paths = [
+        "two/.github/workflows/a.yaml".to_owned(),
+        "one/.github/workflows/a.yaml".to_owned(),
+    ];
+    let files = Linter::new(dir.path().to_path_buf())
+        .lint(&inputs(&paths))
+        .unwrap();
+    assert_eq!(rule_ids(&files), [vec!["unknown-runner-label"], Vec::new()]);
+}
+
+#[test]
+fn an_explicit_config_file_is_used_for_every_file_instead_of_the_project_config() {
+    let dir = project();
+    write(dir.path(), ".github/workflows/a.yaml", CUSTOM_LABEL_AND_VAR);
+    write(dir.path(), "outside/b.yaml", CUSTOM_LABEL_AND_VAR);
+    // A broken project config is not read when a config file is given.
+    write(
+        dir.path(),
+        ".github/actionlint.yaml",
+        "self-hosted-runner: 42\n",
+    );
+    let config = write(
+        dir.path(),
+        "lint.yaml",
+        "self-hosted-runner:\n  labels: [gpu]\nconfig-variables: []\n",
+    );
+    let paths = [
+        ".github/workflows/a.yaml".to_owned(),
+        "outside/b.yaml".to_owned(),
+    ];
+    let linter =
+        Linter::new(dir.path().to_path_buf()).with_config_file(Config::read(&config).unwrap());
+    assert_eq!(
+        rule_ids(&linter.lint(&inputs(&paths)).unwrap()),
+        [["undefined-config-variable"], ["undefined-config-variable"]]
+    );
+}
+
+#[test]
+fn a_broken_project_config_stops_the_run_with_the_first_error_in_input_order() {
+    let dir = tempfile::tempdir().unwrap();
+    for name in ["one", "two"] {
+        fs::create_dir_all(dir.path().join(name).join(".git")).unwrap();
+        write(&dir.path().join(name), ".github/workflows/a.yaml", VALID);
+        write(
+            &dir.path().join(name),
+            ".github/actionlint.yaml",
+            "self-hosted-runner: 42\n",
+        );
+    }
+    let paths = [
+        "two/.github/workflows/a.yaml".to_owned(),
+        "one/.github/workflows/a.yaml".to_owned(),
+    ];
+    let err = Linter::new(dir.path().to_path_buf())
+        .lint(&inputs(&paths))
+        .unwrap_err()
+        .to_string();
+    let config = dir
+        .path()
+        .join("two")
+        .join(".github")
+        .join("actionlint.yaml");
+    assert!(
+        err.starts_with(&format!(
+            "could not parse config file {:?}: ",
+            config.display().to_string()
+        )),
+        "{err}"
+    );
+}
+
+/// A workflow with an unknown event, a context that `env` does not allow, and an unknown runner
+/// label, as in the reference's `projects/paths_config`.
+const THREE_ERRORS: &str = "on: unknown\nenv:\n  FOO: ${{ env.FOO }}\njobs:\n  test:\n    runs-on: unknown\n    steps:\n      - run: echo\n";
+
+const PATHS_CONFIG: &str = "paths:
+  .github/workflows/**/*.yaml:
+    ignore:
+      - unknown Webhook event \".+\"
+  .github/workflows/*.yaml:
+    ignore:
+      - context \".+\" is not allowed here
+";
+
+#[test]
+fn paths_globs_match_the_path_from_the_project_root_in_any_working_directory() {
+    let dir = project();
+    write(dir.path(), ".github/actionlint.yaml", PATHS_CONFIG);
+    write(dir.path(), ".github/workflows/a.yaml", THREE_ERRORS);
+    write(dir.path(), ".github/workflows/nested/b.yaml", THREE_ERRORS);
+    let expected = [
+        vec!["unknown-runner-label"],
+        vec!["context-not-allowed", "unknown-runner-label"],
+    ];
+    let cases = [
+        (
+            dir.path().to_path_buf(),
+            [
+                ".github/workflows/a.yaml",
+                ".github/workflows/nested/b.yaml",
+            ],
+        ),
+        (
+            dir.path().join(".github/workflows/nested"),
+            ["../a.yaml", "b.yaml"],
+        ),
+        (
+            dir.path().join(".github"),
+            ["workflows/a.yaml", "workflows/nested/b.yaml"],
+        ),
+    ];
+    for (cwd, paths) in cases {
+        let paths = paths.map(str::to_owned);
+        let files = Linter::new(cwd.clone()).lint(&inputs(&paths)).unwrap();
+        assert_eq!(rule_ids(&files), expected, "from {}", cwd.display());
+    }
+}
+
+#[test]
+fn paths_globs_match_the_path_from_the_working_directory_outside_a_project() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "w/a.yaml", THREE_ERRORS);
+    let config = write(
+        dir.path(),
+        "lint.yaml",
+        "paths:\n  w/*.yaml:\n    ignore: ['.']\n",
+    );
+    let paths = ["w/a.yaml".to_owned()];
+    let files = Linter::new(dir.path().to_path_buf())
+        .with_config_file(Config::read(&config).unwrap())
+        .lint(&inputs(&paths))
+        .unwrap();
+    assert_eq!(rule_ids(&files), [Vec::<&str>::new()]);
 }

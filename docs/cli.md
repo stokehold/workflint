@@ -45,18 +45,18 @@ The rules are those of Go's `flag` package:
 | `-silent` | Prints only fatal messages. The exit code says whether errors were found. |
 | `-summary` | Prints one line with the number of errors by severity to stderr, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. |
 | `-format TEMPLATE` | Accepted and ignored until M5.8 (#251) prints errors with a Go template. |
-| `-config-file PATH` | Accepted and ignored until M5.2 (#247) reads the config. |
-| `-init-config` | Accepted and ignored until M5.2 (#247) writes a default config. |
+| `-config-file PATH`, `--config PATH` | Lints every file with the config file at `PATH`, in place of the config file of each project. A file that cannot be read or decoded exits with code 3. See [config.md](config.md). |
+| `-init-config` | Writes the default config file to `.github/workflint.yaml` in the project of the working directory and exits. The file arguments are ignored. See [config.md](config.md#creating-a-config-file). |
 | `-stdin-filename NAME` | Names the workflow read from stdin. The default is `<stdin>`. If a file exists at `NAME`, the workflow gets that file's project. |
 | `-shellcheck COMMAND` | The shellcheck that checks `run:` scripts ([shellcheck-issue](rules/shellcheck-issue.md)): a name to look up on `PATH`, a path, or a command line whose first word is one of these. The default is `shellcheck`, and an empty value turns shellcheck off. Without the flag, a missing `shellcheck` prints one warning to stderr and the run goes on. A shellcheck that the flag names but that is not found exits with code 3. |
 | `-jobs N` | Runs at most `N` external tool processes, such as shellcheck, at once. The default is the number of CPUs. |
 | `-pyflakes COMMAND` | Accepted and ignored until M5.12 (#249) runs pyflakes. The default is `pyflakes`, and an empty value turns pyflakes off. |
 
-`check`, `-quiet`, `-q`, `-silent`, `-summary`, and `-jobs` are workflint's own. [differences.md](differences.md#workflint-flags) lists them with the other differences.
+`check`, `--config`, `-quiet`, `-q`, `-silent`, `-summary`, and `-jobs` are workflint's own. [differences.md](differences.md#workflint-flags) lists them with the other differences.
 
 ## Output
 
-Errors go to stdout. Logs, the usage, the summary, the warning about a missing shellcheck, and fatal messages such as `could not read "x.yaml": ...` go to stderr. `-quiet` and `-silent` hide the warning.
+Errors go to stdout. Logs, warnings, the usage, the summary, and fatal messages such as `could not read "x.yaml": ...` go to stderr. A warning starts with `warning: `, such as the one about a missing shellcheck or about an unknown key in an actionlint config file ([config.md](config.md#unknown-keys)). `-quiet` and `-silent` hide warnings.
 
 The default format prints the header line `path:line:col: message [rule-id]`, the source line, and a line with `^~~~` under the span. `-oneline` prints only the header line. The layout is actionlint's, except that the brackets hold workflint's rule ID instead of actionlint's kind ([differences.md](differences.md#rule-id-in-brackets)). The problem matcher in actionlint's `.github/actionlint-matcher.json` matches the header lines with and without color.
 
@@ -66,10 +66,10 @@ Color is on when stdout is a terminal, `NO_COLOR` is unset or empty, and `TERM` 
 
 | Code | Meaning |
 |---|---|
-| 0 | No errors, also when `-ignore` dropped every error. `-h`, `-help`, and `-version` exit with 0 too. |
+| 0 | No errors, also when `-ignore` or the config dropped every error. `-h`, `-help`, `-version`, and a successful `-init-config` exit with 0 too. |
 | 1 | At least one error. |
 | 2 | The command line is invalid. |
-| 3 | A fatal error: a file or stdin cannot be read, a run without file arguments finds no project or no workflow file, an `-ignore` pattern is invalid, the shellcheck that `-shellcheck` names is not found, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
+| 3 | A fatal error: a file, stdin, or a config file cannot be read, a run without file arguments finds no project or no workflow file, a config file or an `-ignore` pattern is invalid, the shellcheck that `-shellcheck` names is not found, `-init-config` fails, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
 
 ## Version
 
@@ -103,7 +103,7 @@ verbose: Found total 2 errors in 1 ms for .github/workflows/release.yaml
 verbose: Found 2 errors in 2 files
 ```
 
-The files are linted in parallel. The lines of one file are written together when the file is done, so they never mix with the lines of another file, and the files come in the order they finish. `-debug` adds lines such as `[Linter] unused-anchor found 2 errors` for each rule that found errors, and one line for each error that `-ignore` dropped. A run that reads stdin starts with `verbose: Reading the input from stdin`. The times in the log vary from run to run, and the log is not part of the output that ADR 0013 keeps deterministic.
+The files are linted in parallel. The lines of one file are written together when the file is done, so they never mix with the lines of another file, and the files come in the order they finish. `-debug` adds the config file of each file, such as `[Linter] Config: /home/me/repo/.github/workflint.yaml` or `[Linter] No config was found`, lines such as `[Linter] unused-anchor found 2 errors` for each rule that found errors, and one line for each error that `-ignore` or the config dropped. A run that reads stdin starts with `verbose: Reading the input from stdin`. The times in the log vary from run to run, and the log is not part of the output that ADR 0013 keeps deterministic.
 
 ## Environment variables
 

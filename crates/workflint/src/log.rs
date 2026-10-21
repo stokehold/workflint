@@ -1,10 +1,12 @@
-//! The log of `-verbose` and `-debug` on stderr (ADR 0013).
+//! The warnings, and the log of `-verbose` and `-debug`, on stderr (ADR 0013).
 //!
 //! The driver logs through `tracing`, with each file's events in a [`FILE_SPAN`] span. This
 //! layer holds the lines of a file until its span closes and then writes them in one piece, so
 //! the lines of files linted in parallel never interleave. A line outside a file's span is
-//! written at once. Each line has the reference's prefix: `verbose: ` for `INFO` events, which
-//! `-verbose` shows, and `[Linter] ` for `DEBUG` events, which `-debug` adds.
+//! written at once. Each line has a prefix: `warning: ` for `WARN` events, such as an unknown
+//! key in an actionlint config file, which every run without `-quiet` or `-silent` shows, and
+//! the reference's `verbose: ` for `INFO` events, which `-verbose` shows, and `[Linter] ` for
+//! `DEBUG` events, which `-debug` adds.
 
 use std::fmt::{self, Write as _};
 use std::io::{self, Write};
@@ -12,6 +14,7 @@ use std::io::{self, Write};
 use tracing::field::{Field, Visit};
 use tracing::span::Id;
 use tracing::{Event, Level, Metadata, Subscriber};
+use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
 use tracing_subscriber::registry::LookupSpan;
 use workflint_linter::FILE_SPAN;
@@ -40,8 +43,15 @@ where
         *metadata.level() <= self.max && metadata.target().starts_with("workflint")
     }
 
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        Some(LevelFilter::from_level(self.max))
+    }
+
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        let mut line = String::from(if *event.metadata().level() <= Level::INFO {
+        let level = *event.metadata().level();
+        let mut line = String::from(if level <= Level::WARN {
+            "warning: "
+        } else if level <= Level::INFO {
             "verbose: "
         } else {
             "[Linter] "

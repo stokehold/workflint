@@ -41,6 +41,7 @@ pub(crate) fn text() -> String {
 Documents:
 
   - Command line: {docs}/cli.md
+  - Config file:  {docs}/config.md
   - Rules:        {docs}/rules/README.md
   - Differences:  {docs}/differences.md
 

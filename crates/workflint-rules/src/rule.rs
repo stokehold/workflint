@@ -3,6 +3,7 @@
 use workflint_diagnostics::{Diagnostic, RuleMeta, SourceFile, Span};
 use workflint_syntax::{AliasUses, Job, KeyedEntry, Step, Str, Workflow};
 
+use crate::config::RuleConfig;
 use crate::kind::Kind;
 use crate::local::{LocalMetadata, NoProject};
 use crate::tools::{ExternalTools, NoTools};
@@ -48,17 +49,19 @@ pub trait Rule<'a> {
     }
 }
 
+/// The settings of a run without a config file, which [`Context::new`] and
+/// [`Context::with_local_metadata`] use.
+static NO_CONFIG: RuleConfig = RuleConfig::DEFAULT;
+
 /// What the hooks of a rule get besides the node: the file being linted, the metadata of the
-/// project's local actions and local reusable workflows, the external tools that check scripts,
-/// the YAML aliases through which the parser reached each string of the workflow, and the list of
-/// diagnostics that the rules report.
-///
-/// The config (M5.2) becomes a field of this type, so the signature of the hooks stays the same
-/// when it arrives.
+/// project's local actions and local reusable workflows, the config, the external tools that
+/// check scripts, the YAML aliases through which the parser reached each string of the workflow,
+/// and the list of diagnostics that the rules report.
 #[derive(Debug)]
 pub struct Context<'f> {
     file: &'f SourceFile,
     local: &'f dyn LocalMetadata,
+    config: &'f RuleConfig,
     tools: &'f dyn ExternalTools,
     /// The alias paths of the workflow being visited, which [`visit`](crate::visit) sets.
     pub(crate) aliases: AliasUses,
@@ -74,12 +77,26 @@ impl<'f> Context<'f> {
     }
 
     /// Creates the context for linting `file`, whose project has the local actions and local
-    /// reusable workflows in `local`, with no diagnostics. No external tool runs.
+    /// reusable workflows in `local`, without a config file and with no diagnostics. No external
+    /// tool runs.
     #[must_use]
     pub fn with_local_metadata(file: &'f SourceFile, local: &'f dyn LocalMetadata) -> Self {
+        Self::with_config(file, local, &NO_CONFIG)
+    }
+
+    /// Creates the context for linting `file`, whose project has the local actions and local
+    /// reusable workflows in `local`, with the settings of the config file in `config` and
+    /// with no diagnostics.
+    #[must_use]
+    pub fn with_config(
+        file: &'f SourceFile,
+        local: &'f dyn LocalMetadata,
+        config: &'f RuleConfig,
+    ) -> Self {
         Self {
             file,
             local,
+            config,
             tools: &NoTools,
             aliases: AliasUses::default(),
             diagnostics: Vec::new(),
@@ -97,6 +114,12 @@ impl<'f> Context<'f> {
     #[must_use]
     pub fn local_metadata(&self) -> &'f dyn LocalMetadata {
         self.local
+    }
+
+    /// Returns the settings of the config file that the rules read.
+    #[must_use]
+    pub fn config(&self) -> &'f RuleConfig {
+        self.config
     }
 
     /// Returns the context with `tools` as the external tools that check scripts.

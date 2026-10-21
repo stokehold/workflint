@@ -62,6 +62,15 @@ go-yaml v4.0.0-rc.3
   internal/libyaml/scanner.go. xtask/goyaml-dump builds the unmodified
   library to compare the two parsers.
 
+doublestar v4.10.0
+  https://github.com/bmatcuk/doublestar
+  Copyright (c) 2014 Bob Matcuk
+  MIT license
+  The glob library of actionlint's config file. The glob matching and
+  validation in crates/workflint-linter/src/doublestar.rs are ported from
+  its match.go, validate.go, and utils.go, and its tests use the patterns
+  of its doublestar_test.go.
+
 YAML test suite
   https://github.com/yaml/yaml-test-suite
   Copyright (c) 2016-2020 Ingy döt Net

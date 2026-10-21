@@ -14,6 +14,7 @@ use std::sync::Arc;
 use workflint_diagnostics::{
     Category, Color, FileId, RuleMeta, Severity, SourceFile, render_oneline, sort_and_dedup,
 };
+use workflint_linter::config::{Config, ConfigKind};
 use workflint_linter::tool::{RunOptions, ToolCommand, ToolPool};
 use workflint_linter::{Tools, registry};
 use workflint_rules::local::MemoryProject;
@@ -275,9 +276,18 @@ fn tools_for(id: &str) -> Option<Tools> {
     Some(Tools::none().with_shellcheck(command, Arc::new(pool), RunOptions::default()))
 }
 
+/// The paths of the config files that an example may have, from the project root.
+const CONFIG_PATHS: [&str; 4] = [
+    ".github/workflint.yaml",
+    ".github/workflint.yml",
+    ".github/actionlint.yaml",
+    ".github/actionlint.yml",
+];
+
 /// Lints `workflow` as the binary does, with [`workflint_rules::check_file`] and `tools`. The
-/// workflow is `test.yaml` at the root of a project in memory that has `files`. Returns the
-/// diagnostics in the one-line format.
+/// workflow is `test.yaml` at the root of a project in memory that has `files`. A file at one of
+/// [`CONFIG_PATHS`] is the config file of the project. Returns the diagnostics in the one-line
+/// format.
 fn lint(workflow: &str, files: &[ProjectFile], tools: &Tools) -> Vec<String> {
     let project = files
         .iter()
@@ -285,8 +295,20 @@ fn lint(workflow: &str, files: &[ProjectFile], tools: &Tools) -> Vec<String> {
             project.with_file(path, text)
         })
         .linting(EXAMPLE_PATH);
+    let config = CONFIG_PATHS
+        .iter()
+        .find_map(|config| files.iter().find(|(path, _)| path == config))
+        .map(|(path, text)| {
+            let path = Path::new(path);
+            Config::parse(path, ConfigKind::of_path(path), text).unwrap()
+        });
+    let rules = config
+        .as_ref()
+        .map(Config::rules)
+        .cloned()
+        .unwrap_or_default();
     let file = SourceFile::new(FileId::new(0), EXAMPLE_PATH, workflow).unwrap();
-    let mut diagnostics = workflint_rules::check_file(&file, &project, tools);
+    let mut diagnostics = workflint_rules::check_file(&file, &project, tools, &rules);
     sort_and_dedup(&file, &mut diagnostics);
     let mut out = Vec::new();
     render_oneline(&mut out, &file, &diagnostics, Color::Off).unwrap();

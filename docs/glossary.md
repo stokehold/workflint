@@ -18,7 +18,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | composite action | An action whose metadata has `runs.using: composite` and a list of steps. |
 | reusable workflow | A workflow with an `on.workflow_call` trigger, called from a job's `uses:`. |
 | uses value | The `uses:` of a step, which names an action, or of a job, which names a reusable workflow. The parser classifies it as the reference's `action` and `workflow-call` rules read it: local, repository, containing an expression, or invalid, and for a step also a Docker image (`StepUses`, `JobUses`). |
-| typed decoding | Reading YAML into fixed types with the rules of go-yaml's `Unmarshal`, which the reference uses for local action metadata, the `on.workflow_call` section of local reusable workflows, and its config file. A bool also takes the YAML 1.1 forms such as `yes`, exact duplicate keys are errors, and unknown keys are ignored. `workflint-syntax` does it for the first two. |
+| typed decoding | Reading YAML into fixed types with the rules of go-yaml's `Unmarshal`, which the reference uses for local action metadata, the `on.workflow_call` section of local reusable workflows, and its config file. A bool also takes the YAML 1.1 forms such as `yes`, exact duplicate keys are errors, and unknown keys are ignored. `workflint-syntax` does it for all three. |
 | expression | The text inside `${{ }}`. |
 | context | A top-level expression variable such as `github`, `env`, `matrix`, or `steps`. |
 | object filter | `.*` in an expression, as in `labels.*.name`, which applies the rest of the expression to each element of an array or each value of an object (`ExprKind::ObjectFilter`). |

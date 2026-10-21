@@ -63,7 +63,7 @@ fn workflint(args: &[&str]) -> Run {
     run(command(&cli_dir(), args).output().unwrap())
 }
 
-/// The runner's flags, with external tools off and an unused config file.
+/// The runner's flags, with external tools off and the empty config file `config.yaml`.
 const RUNNER: [&str; 6] = [
     "-oneline",
     "-no-color",
@@ -361,11 +361,13 @@ fn a_dash_among_other_files_is_a_file_name() {
     );
 }
 
-/// A temporary project with a local action whose metadata does not parse, and `count`
-/// workflows that use it, `w0.yaml` to `w<count - 1>.yaml` in `.github/workflows/`.
+/// A temporary project with a local action whose metadata does not parse, `count` workflows
+/// that use it, `w0.yaml` to `w<count - 1>.yaml` in `.github/workflows/`, and the empty
+/// `config.yaml` of [`RUNNER`].
 fn project_with_broken_action(count: usize) -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir(dir.path().join(".git")).unwrap();
+    std::fs::write(dir.path().join("config.yaml"), "").unwrap();
     let action = dir.path().join(".github/actions/broken");
     std::fs::create_dir_all(&action).unwrap();
     std::fs::write(action.join("action.yml"), "outputs: x\n").unwrap();
@@ -625,6 +627,7 @@ fn the_usage_lists_every_flag_of_actionlint_and_workflint() {
     let usage = usage();
     for flag in [
         "-color",
+        "-config string",
         "-config-file string",
         "-debug",
         "-format string",
@@ -765,8 +768,6 @@ fn flags_of_later_tasks_are_accepted_and_ignored() {
         "-oneline",
         "-format",
         "{{json .}}",
-        "-config-file=config.yaml",
-        "-init-config",
         "-stdin-filename",
         "name.yaml",
         "-pyflakes",
@@ -1176,4 +1177,246 @@ fn jobs_must_be_a_positive_whole_number() {
             run.stderr
         );
     }
+}
+
+/// The path of `dir` that the binary gets from `getcwd` when it runs in `dir`: `dir` with
+/// symbolic links resolved, as on macOS, where the temporary directory is under a link, and
+/// without the `\\?\` prefix that `canonicalize` adds on Windows.
+fn working_dir_of(dir: &Path) -> PathBuf {
+    let canonical = dir.canonicalize().unwrap();
+    match canonical
+        .to_str()
+        .and_then(|path| path.strip_prefix(r"\\?\"))
+    {
+        Some(path) => PathBuf::from(path),
+        None => canonical,
+    }
+}
+
+/// A temporary project: a directory with `.git` and `.github/workflows`.
+fn project() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join(".git")).unwrap();
+    std::fs::create_dir_all(dir.path().join(".github/workflows")).unwrap();
+    dir
+}
+
+/// A workflow that runs on the custom label `gpu`.
+const CUSTOM_LABEL: &str =
+    "on: push\njobs:\n  test:\n    runs-on: gpu\n    steps:\n      - run: echo\n";
+
+#[test]
+fn init_config_writes_workflint_yaml_ignores_the_arguments_and_exits_with_0() {
+    let project = project();
+    let root = working_dir_of(project.path());
+    let sub = root.as_path().join("sub");
+    std::fs::create_dir(&sub).unwrap();
+    let run = run(command(&sub, &["-init-config", "missing.yaml"])
+        .output()
+        .unwrap());
+    let path = root.as_path().join(".github").join("workflint.yaml");
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: format!(
+                "Config file was generated at {:?}\n",
+                path.display().to_string()
+            ),
+            stderr: String::new(),
+        }
+    );
+    let written = std::fs::read_to_string(&path).unwrap();
+    assert!(written.contains("config-variables: null\n"), "{written}");
+}
+
+#[test]
+fn init_config_with_an_existing_config_exits_with_3() {
+    let project = project();
+    let root = working_dir_of(project.path());
+    let existing = root.as_path().join(".github").join("actionlint.yml");
+    std::fs::write(&existing, "").unwrap();
+    let run = run(command(root.as_path(), &["-init-config"]).output().unwrap());
+    assert_eq!(
+        run,
+        Run {
+            code: Some(3),
+            stdout: String::new(),
+            stderr: format!(
+                "config file already exists at {:?}\n",
+                existing.display().to_string()
+            ),
+        }
+    );
+    assert!(!root.as_path().join(".github/workflint.yaml").exists());
+}
+
+#[test]
+fn the_project_config_reaches_the_rules() {
+    let project = project();
+    let root = working_dir_of(project.path());
+    let workflow = ".github/workflows/a.yaml";
+    std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
+    let before = run(command(root.as_path(), &["-oneline", workflow])
+        .output()
+        .unwrap());
+    assert_eq!(before.code, Some(1), "{before:?}");
+    std::fs::write(
+        root.as_path().join(".github/workflint.yaml"),
+        "self-hosted-runner:\n  labels: [gpu]\n",
+    )
+    .unwrap();
+    let after = run(command(root.as_path(), &["-oneline", workflow])
+        .output()
+        .unwrap());
+    assert_eq!(
+        after,
+        Run {
+            code: Some(0),
+            stdout: String::new(),
+            stderr: String::new(),
+        }
+    );
+}
+
+#[test]
+fn config_file_and_config_name_the_config_to_use() {
+    let project = project();
+    let root = working_dir_of(project.path());
+    let workflow = ".github/workflows/a.yaml";
+    std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
+    std::fs::write(
+        root.as_path().join("lint.yaml"),
+        "self-hosted-runner:\n  labels: [gpu]\n",
+    )
+    .unwrap();
+    for flag in ["-config-file", "--config", "-config"] {
+        let run = run(command(root.as_path(), &[flag, "lint.yaml", workflow])
+            .output()
+            .unwrap());
+        assert_eq!(run.code, Some(0), "{flag}: {run:?}");
+    }
+}
+
+#[test]
+fn a_config_file_that_cannot_be_read_exits_with_3() {
+    let run = workflint(&["-config-file", "missing.yaml", "valid.yaml"]);
+    assert_eq!(run.code, Some(3));
+    assert_eq!(run.stdout, "");
+    assert!(
+        run.stderr
+            .starts_with("could not read config file \"missing.yaml\": "),
+        "{}",
+        run.stderr
+    );
+}
+
+#[test]
+fn a_broken_project_config_exits_with_3_before_any_output() {
+    let project = project();
+    let root = working_dir_of(project.path());
+    let workflow = ".github/workflows/a.yaml";
+    std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
+    let config = root.as_path().join(".github").join("actionlint.yaml");
+    std::fs::write(&config, "paths:\n  a:\n    ignore: ['(']\n").unwrap();
+    let run = run(command(root.as_path(), &["-oneline", workflow])
+        .output()
+        .unwrap());
+    assert_eq!(
+        run,
+        Run {
+            code: Some(3),
+            stdout: String::new(),
+            stderr: format!(
+                "could not parse config file {:?}: yaml: unmarshal errors:   line 3: invalid \
+                 regular expression \"(\" in \"ignore\" at line:3,col:14: error parsing regexp: \
+                 missing closing ): `(`\n",
+                config.display().to_string()
+            ),
+        }
+    );
+}
+
+#[test]
+fn an_unknown_key_in_a_workflint_config_exits_with_3() {
+    let project = project();
+    let root = working_dir_of(project.path());
+    let workflow = ".github/workflows/a.yaml";
+    std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
+    let config = root.as_path().join(".github").join("workflint.yaml");
+    std::fs::write(&config, "self-hosted-runners:\n  labels: [gpu]\n").unwrap();
+    let run = run(command(root.as_path(), &["-oneline", workflow])
+        .output()
+        .unwrap());
+    assert_eq!(
+        run,
+        Run {
+            code: Some(3),
+            stdout: String::new(),
+            stderr: format!(
+                "could not parse config file {:?}: unknown key \"self-hosted-runners\" at \
+                 line:1,col:1\n",
+                config.display().to_string()
+            ),
+        }
+    );
+}
+
+#[test]
+fn an_unknown_key_in_an_actionlint_config_prints_a_warning_and_the_run_goes_on() {
+    let project = project();
+    let root = working_dir_of(project.path());
+    let workflow = ".github/workflows/a.yaml";
+    std::fs::write(
+        root.as_path().join(workflow),
+        "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n",
+    )
+    .unwrap();
+    let config = root.as_path().join(".github").join("actionlint.yaml");
+    std::fs::write(&config, "self-hosted-runners:\n  labels: [gpu]\n").unwrap();
+    let run = run(command(root.as_path(), &["-oneline", workflow])
+        .output()
+        .unwrap());
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: String::new(),
+            stderr: format!(
+                "warning: config file {:?}: unknown key \"self-hosted-runners\" at line:1,col:1 \
+                 is ignored\n",
+                config.display().to_string()
+            ),
+        }
+    );
+    let quiet = run_quiet(root.as_path(), workflow);
+    assert_eq!(quiet.stderr, "");
+}
+
+fn run_quiet(dir: &Path, workflow: &str) -> Run {
+    run(command(dir, &["-oneline", "-quiet", workflow])
+        .output()
+        .unwrap())
+}
+
+#[test]
+fn a_run_without_arguments_uses_the_config_of_the_discovered_project() {
+    let project = project();
+    let root = working_dir_of(project.path());
+    std::fs::write(root.join(".github/workflows/a.yaml"), CUSTOM_LABEL).unwrap();
+    std::fs::write(
+        root.join(".github/actionlint.yml"),
+        "self-hosted-runner:\n  labels: [g*]\npaths:\n  .github/workflows/*.yaml:\n    ignore: [nothing]\n",
+    )
+    .unwrap();
+    let sub = root.join(".github/workflows");
+    let run = run(command(&sub, &["-oneline"]).output().unwrap());
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: String::new(),
+            stderr: String::new(),
+        }
+    );
 }

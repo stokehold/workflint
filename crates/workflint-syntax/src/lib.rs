@@ -108,6 +108,7 @@
 
 mod action_metadata;
 mod alias;
+mod config;
 mod event;
 mod expression;
 pub mod glob;
@@ -130,6 +131,7 @@ mod testing;
 
 pub use action_metadata::{ActionBranding, ActionInput, ActionMetadata, ActionOutput, ActionRuns};
 pub use alias::{AliasPath, AliasUses};
+pub use config::{ConfigDecodeError, ConfigDocument, KeyParent, PathEntry, UnknownKey};
 pub use event::{
     Event, ImageVersionEvent, RepositoryDispatchEvent, ScheduleEntry, ScheduleEvent, WebhookEvent,
     WorkflowCallEvent, WorkflowCallEventInput, WorkflowCallEventOutput, WorkflowCallEventSecret,

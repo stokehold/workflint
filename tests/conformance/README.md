@@ -59,7 +59,7 @@ workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <c
 
 - `-oneline` prints one line per error, the form that [Matching](#matching) parses.
 - `-no-color` keeps escape sequences out of the output whatever the environment, as `-color` or a terminal would add them. `NO_COLOR` and `TERM` do not matter with it.
-- workflint runs the shellcheck that `-shellcheck` names. It accepts `-pyflakes` and `-config-file`, and ignores them until pyflakes (M5.12, #249) and the config (M5.2, #247) use them.
+- workflint runs the shellcheck that `-shellcheck` names. It accepts `-pyflakes`, and ignores it until pyflakes (M5.12, #249) uses it. It reads the config file of `-config-file`, which replaces the config file of the project.
 - The runner passes none of `-ignore`, `-color`, `-verbose`, `-debug`, `-format`, `-summary`, `-quiet`, and `-silent`, so standard output holds only the errors and standard error stays empty.
 - `<config>` is `<temp>/project/actionlint.yaml` for a project that has one, and `<temp>/config.yaml` otherwise. Passing a config file means the CLI reads no config from the workflint repository or from the user's config directory.
 - `<files>` is `test.yaml`, or a project's workflow files as relative paths with `/` separators, such as `workflows/nested/piyo.yaml`, in the order of Go's `filepath.Walk`. actionlint's CLI does not accept a directory.

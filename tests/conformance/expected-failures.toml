@@ -14,6 +14,3 @@
 "err/pyflakes_step_shell" = "M5"
 "err/pyflakes_workflow_default_shell" = "M5"
 "examples/pyflakes_integration" = "M5"
-"projects/config_variables" = "M5"
-"projects/paths_config" = "M5"
-"projects/user_defined_runner_label" = "M5"
