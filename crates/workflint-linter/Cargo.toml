@@ -15,7 +15,10 @@ include = ["/src", "/README.md", "/LICENSE", "/NOTICE"]
 [dependencies]
 ctrlc = { version = "3.5.2", features = ["termination"] }
 rayon = "1.12.0"
+regex = "1.13.1"
+regex-syntax = "0.8.11"
 thiserror = "2.0.21"
+tracing = { version = "0.1.44", default-features = false, features = ["std"] }
 workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
 workflint-rules = { path = "../workflint-rules", version = "0.0.1" }
 workflint-syntax = { path = "../workflint-syntax", version = "0.0.1" }

@@ -18,6 +18,7 @@
 //! This is an internal crate with no stability promise.
 
 mod cache;
+mod ignore;
 mod linter;
 pub mod path;
 mod project;
@@ -26,5 +27,6 @@ pub mod rules;
 pub mod tool;
 
 pub use cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
-pub use linter::{Check, Input, Linted, Linter, ReadError, has_internal_error};
+pub use ignore::{IgnorePattern, PatternError};
+pub use linter::{Check, FILE_SPAN, Input, Linted, Linter, ReadError, has_internal_error};
 pub use project::ProjectRoots;
