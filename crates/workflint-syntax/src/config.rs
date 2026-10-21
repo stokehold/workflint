@@ -8,7 +8,7 @@ use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{LineCol, SourceFile};
 use workflint_yaml::{Entry, NodeId, NodeKind, Tag};
 
-use crate::typed::{DecodeError, Decoder, Source, UnmarshalError};
+use crate::typed::{DecodeError, Decoder, Fatal, Source, UnmarshalError};
 
 /// The keys of the config's root mapping.
 const ROOT_FIELDS: &[&str] = &[
@@ -192,32 +192,7 @@ impl<P> ConfigDocument<P> {
                                 d.string_slice(value, &mut config.config_variables)?;
                             }
                             3 => {
-                                let mut keys = ShellcheckKeys::default();
-                                let set = d.structure(
-                                    value,
-                                    "workflint.ShellcheckConfig",
-                                    SHELLCHECK_FIELDS,
-                                    &mut |d, field, value| {
-                                        match field {
-                                            0 => {
-                                                d.optional_string(value, &mut keys.rcfile)?;
-                                            }
-                                            1 => {
-                                                d.string_slice(value, &mut keys.args)?;
-                                            }
-                                            _ => {
-                                                let mut cache = false;
-                                                if d.bool(value, &mut cache)? {
-                                                    keys.cache = Some(cache);
-                                                }
-                                            }
-                                        }
-                                        Ok(())
-                                    },
-                                )?;
-                                if set {
-                                    config.shellcheck = Some(keys);
-                                }
+                                config.shellcheck = decode_shellcheck(d, value)?;
                             }
                             4 => {
                                 config.tool_timeout =
@@ -261,6 +236,34 @@ impl<P> ConfigDocument<P> {
         }
         Ok(config)
     }
+}
+
+/// Decodes `shellcheck`. Returns `None` for a null.
+fn decode_shellcheck(d: &mut Decoder<'_>, id: NodeId) -> Result<Option<ShellcheckKeys>, Fatal> {
+    let mut keys = ShellcheckKeys::default();
+    let set = d.structure(
+        id,
+        "workflint.ShellcheckConfig",
+        SHELLCHECK_FIELDS,
+        &mut |d, field, value| {
+            match field {
+                0 => {
+                    d.optional_string(value, &mut keys.rcfile)?;
+                }
+                1 => {
+                    d.string_slice(value, &mut keys.args)?;
+                }
+                _ => {
+                    let mut cache = false;
+                    if d.bool(value, &mut cache)? {
+                        keys.cache = Some(cache);
+                    }
+                }
+            }
+            Ok(())
+        },
+    )?;
+    Ok(set.then_some(keys))
 }
 
 /// Decodes a number of seconds greater than 0, the value of the key `key`.
