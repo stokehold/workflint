@@ -21,3 +21,6 @@
 
 # This fixture tests a byte order mark and CRLF line breaks, so it must reach the binary byte for byte.
 /tests/conformance/workflint/err/bom_crlf.yaml -text
+
+# The JSON output tests compare byte offsets, so the CLI test files must keep `\n` on Windows.
+/crates/workflint/tests/cli/** -text
