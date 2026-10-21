@@ -46,3 +46,4 @@ pub use linter::{
 pub use project::ProjectRoots;
 pub use settings::{Flags, Settings};
 pub use tools::{MAX_BATCH, ShellcheckOptions, Tools, default_cache_dir};
+pub use workflint_rules::kind::Kind;

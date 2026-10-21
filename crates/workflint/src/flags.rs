@@ -179,7 +179,8 @@ pub(crate) static FLAGS: [Flag; 20] = [
     Flag::string(
         "format",
         None,
-        "Custom template to format error messages in Go template syntax. Not supported yet",
+        "Custom template to format error messages in Go template syntax. The command-line \
+         documentation lists its fields and functions",
         |options, value| options.format = value,
     ),
     Flag::string(

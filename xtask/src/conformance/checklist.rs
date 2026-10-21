@@ -27,7 +27,7 @@ pub struct Item {
 }
 
 static FIXTURE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"`((?:workflint/)?(?:err|examples|ok|projects)/[^`]+)`")
+    Regex::new(r"`((?:workflint/)?(?:err|examples|ok|projects)/[^`]+|format/test\.[a-z]+)`")
         .expect("the pattern is valid")
 });
 

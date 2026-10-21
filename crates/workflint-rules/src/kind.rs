@@ -4,7 +4,7 @@
 //! parser. Each [`RuleMeta`](workflint_diagnostics::RuleMeta) maps its rule ID to one of these
 //! kinds. The descriptions are byte-identical to the `desc` field of the reference's `NewRule*`
 //! constructors and to `error.go:258` for `syntax-check`. The `allKinds` function of `-format`
-//! templates and the SARIF output (M5.7, M5.8) print them.
+//! templates returns them, and the SARIF output (M5.15, #253) will print them.
 
 /// An actionlint kind and its description.
 #[derive(Debug, PartialEq, Eq, Hash)]
