@@ -1030,6 +1030,20 @@ fn the_log_lines_of_different_files_never_interleave() {
     assert_eq!(blocks, names.len(), "{}", run.stderr);
 }
 
+/// The path of `dir` that the binary gets from `getcwd` when it runs in `dir`: `dir` with
+/// symbolic links resolved, as on macOS, where the temporary directory is under a link, and
+/// without the `\\?\` prefix that `canonicalize` adds on Windows.
+fn working_dir_of(dir: &Path) -> PathBuf {
+    let canonical = dir.canonicalize().unwrap();
+    match canonical
+        .to_str()
+        .and_then(|path| path.strip_prefix(r"\\?\"))
+    {
+        Some(path) => PathBuf::from(path),
+        None => canonical,
+    }
+}
+
 /// A temporary project: a directory with `.git` and `.github/workflows`.
 fn project() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
@@ -1045,8 +1059,7 @@ const CUSTOM_LABEL: &str =
 #[test]
 fn init_config_writes_workflint_yaml_ignores_the_arguments_and_exits_with_0() {
     let project = project();
-    // The binary names files by the path that `getcwd` gives.
-    let root = project.path().canonicalize().unwrap();
+    let root = working_dir_of(project.path());
     let sub = root.as_path().join("sub");
     std::fs::create_dir(&sub).unwrap();
     let run = run(command(&sub, &["-init-config", "missing.yaml"])
@@ -1071,8 +1084,7 @@ fn init_config_writes_workflint_yaml_ignores_the_arguments_and_exits_with_0() {
 #[test]
 fn init_config_with_an_existing_config_exits_with_3() {
     let project = project();
-    // The binary names files by the path that `getcwd` gives.
-    let root = project.path().canonicalize().unwrap();
+    let root = working_dir_of(project.path());
     let existing = root.as_path().join(".github").join("actionlint.yml");
     std::fs::write(&existing, "").unwrap();
     let run = run(command(root.as_path(), &["-init-config"]).output().unwrap());
@@ -1093,8 +1105,7 @@ fn init_config_with_an_existing_config_exits_with_3() {
 #[test]
 fn the_project_config_reaches_the_rules() {
     let project = project();
-    // The binary names files by the path that `getcwd` gives.
-    let root = project.path().canonicalize().unwrap();
+    let root = working_dir_of(project.path());
     let workflow = ".github/workflows/a.yaml";
     std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
     let before = run(command(root.as_path(), &["-oneline", workflow])
@@ -1122,8 +1133,7 @@ fn the_project_config_reaches_the_rules() {
 #[test]
 fn config_file_and_config_name_the_config_to_use() {
     let project = project();
-    // The binary names files by the path that `getcwd` gives.
-    let root = project.path().canonicalize().unwrap();
+    let root = working_dir_of(project.path());
     let workflow = ".github/workflows/a.yaml";
     std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
     std::fs::write(
@@ -1155,8 +1165,7 @@ fn a_config_file_that_cannot_be_read_exits_with_3() {
 #[test]
 fn a_broken_project_config_exits_with_3_before_any_output() {
     let project = project();
-    // The binary names files by the path that `getcwd` gives.
-    let root = project.path().canonicalize().unwrap();
+    let root = working_dir_of(project.path());
     let workflow = ".github/workflows/a.yaml";
     std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
     let config = root.as_path().join(".github/actionlint.yaml");
@@ -1182,8 +1191,7 @@ fn a_broken_project_config_exits_with_3_before_any_output() {
 #[test]
 fn an_unknown_key_in_a_workflint_config_exits_with_3() {
     let project = project();
-    // The binary names files by the path that `getcwd` gives.
-    let root = project.path().canonicalize().unwrap();
+    let root = working_dir_of(project.path());
     let workflow = ".github/workflows/a.yaml";
     std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
     let config = root.as_path().join(".github/workflint.yaml");
@@ -1208,8 +1216,7 @@ fn an_unknown_key_in_a_workflint_config_exits_with_3() {
 #[test]
 fn an_unknown_key_in_an_actionlint_config_prints_a_warning_and_the_run_goes_on() {
     let project = project();
-    // The binary names files by the path that `getcwd` gives.
-    let root = project.path().canonicalize().unwrap();
+    let root = working_dir_of(project.path());
     let workflow = ".github/workflows/a.yaml";
     std::fs::write(
         root.as_path().join(workflow),
@@ -1246,8 +1253,7 @@ fn run_quiet(dir: &Path, workflow: &str) -> Run {
 #[test]
 fn a_run_without_arguments_uses_the_config_of_the_discovered_project() {
     let project = project();
-    // The binary names files by the path that `getcwd` gives.
-    let root = project.path().canonicalize().unwrap();
+    let root = working_dir_of(project.path());
     std::fs::write(root.join(".github/workflows/a.yaml"), CUSTOM_LABEL).unwrap();
     std::fs::write(
         root.join(".github/actionlint.yml"),

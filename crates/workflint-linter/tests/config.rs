@@ -36,7 +36,10 @@ fn project() -> TempDir {
 }
 
 fn write(dir: &Path, path: &str, contents: &str) -> PathBuf {
-    let path = dir.join(path);
+    // Joined part by part, so that the path has the separators of the OS.
+    let path = path
+        .split('/')
+        .fold(dir.to_path_buf(), |path, part| path.join(part));
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(&path, contents).unwrap();
     path

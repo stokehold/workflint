@@ -37,7 +37,10 @@ fn project() -> TempDir {
 
 /// Writes `contents` to `path` under `dir`, creating its directories, and returns the path.
 fn write(dir: &Path, path: &str, contents: &str) -> PathBuf {
-    let path = dir.join(path);
+    // Joined part by part, so that the path has the separators of the OS.
+    let path = path
+        .split('/')
+        .fold(dir.to_path_buf(), |path, part| path.join(part));
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(&path, contents).unwrap();
     path
@@ -418,7 +421,11 @@ fn a_broken_project_config_stops_the_run_with_the_first_error_in_input_order() {
         .lint(&inputs(&paths))
         .unwrap_err()
         .to_string();
-    let config = dir.path().join("two/.github/actionlint.yaml");
+    let config = dir
+        .path()
+        .join("two")
+        .join(".github")
+        .join("actionlint.yaml");
     assert!(
         err.starts_with(&format!(
             "could not parse config file {:?}: ",
