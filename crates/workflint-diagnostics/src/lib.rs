@@ -17,7 +17,7 @@ mod source;
 mod span;
 
 pub use diagnostic::{Applicability, Diagnostic, Fix, Label, TextEdit, sort_and_dedup};
-pub use render::{Color, render_default, render_oneline};
+pub use render::{Color, Snippet, render_default, render_oneline, snippet};
 pub use rule::{Category, RuleMeta, Severity};
 pub use source::{FileId, LineCol, SourceFile, SourceTooLarge};
 pub use span::Span;

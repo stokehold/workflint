@@ -2,13 +2,14 @@
 //!
 //! It parses the command line with [`flags`], picks the inputs: the files given as arguments, the
 //! workflow files of the project without arguments, or stdin for a lone `-`. It lints them with
-//! [`Linter`], prints the diagnostics in the order of the inputs, and picks the exit code
-//! (`docs/cli.md`). The conformance suite runs it with the command line in
+//! [`Linter`], prints the diagnostics in the order of the inputs, or through the `-format`
+//! template of [`template`], and picks the exit code (`docs/cli.md`). The conformance suite runs it with the command line in
 //! `tests/conformance/README.md`.
 
 mod color;
 mod flags;
 mod log;
+mod template;
 mod usage;
 mod version;
 
@@ -21,11 +22,13 @@ use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{
     Color, Diagnostic, Severity, SourceFile, render_default, render_oneline,
 };
+use workflint_gotemplate::Value;
 use workflint_linter::config::{Config, init_config};
 use workflint_linter::tool::{RunOptions, ToolCommand, ToolPool};
 use workflint_linter::{IgnorePattern, Input, Linter, Tools, has_internal_error, path};
 
 use crate::flags::{Options, Parsed};
+use crate::template::{Formatter, PrintError};
 
 /// No file has a diagnostic.
 const EXIT_NO_PROBLEM: u8 = 0;
@@ -34,10 +37,10 @@ const EXIT_PROBLEM_FOUND: u8 = 1;
 /// The command line is invalid.
 const EXIT_INVALID_OPTION: u8 = 2;
 /// A file, stdin, or a config file could not be read, the workflow files of a run without
-/// arguments could not be found, a config file or an `-ignore` pattern is invalid, the shellcheck
-/// that `-shellcheck` names was not found, `-init-config` failed, the output could not be
-/// written, or the lint of a file hit a bug in workflint and reported an `internal-error`
-/// diagnostic.
+/// arguments could not be found, a config file, an `-ignore` pattern, or the `-format` template
+/// is invalid, the shellcheck that `-shellcheck` names was not found, `-init-config` failed, the
+/// template failed while it ran, the output could not be written, or the lint of a file hit a bug
+/// in workflint and reported an `internal-error` diagnostic.
 const EXIT_FAILURE: u8 = 3;
 
 fn main() -> ExitCode {
@@ -75,6 +78,14 @@ fn main() -> ExitCode {
             return ExitCode::from(EXIT_FAILURE);
         }
     };
+    // As in actionlint, an invalid template stops the run before `-init-config`.
+    let formatter = match formatter(&options) {
+        Ok(formatter) => formatter,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(EXIT_FAILURE);
+        }
+    };
     let cwd = path::working_dir();
     if options.init_config {
         // As in actionlint, the arguments and the config file are not read.
@@ -101,10 +112,13 @@ fn main() -> ExitCode {
         |name| std::env::var(name).ok(),
         stdout.is_terminal(),
     );
-    let format = Format::new(&options, color);
+    let format = Format::new(&options, color, formatter.as_ref());
     let mut linter = Linter::new(cwd).with_ignore(ignore).with_tools(tools);
     if let Some(config) = config_file {
         linter = linter.with_config_file(config);
+    }
+    if let Some(formatter) = &formatter {
+        formatter.set_kinds(linter.kinds());
     }
     let inputs = match inputs(&linter, paths, &options.stdin_filename) {
         Ok(inputs) => inputs,
@@ -146,6 +160,14 @@ fn init(cwd: &std::path::Path) -> ExitCode {
             ExitCode::from(EXIT_FAILURE)
         }
     }
+}
+
+/// Parses the template of `-format`, if it is given. The error is the message to print.
+fn formatter(options: &Options) -> Result<Option<Formatter>, String> {
+    if options.format.is_empty() {
+        return Ok(None);
+    }
+    Formatter::new(&options.format).map(Some)
 }
 
 /// Reads the config file of `-config-file`, if it is given. The error is the message to print.
@@ -285,11 +307,13 @@ impl Counts {
 /// `err`.
 ///
 /// As in actionlint, a file or a config file that cannot be read stops the run before anything
-/// is written.
+/// is written. A `-format` template runs once, over the diagnostics of every file. When it fails,
+/// its output up to the failing action is written, and the run exits with code 3
+/// (`docs/differences.md#template-execution-errors`).
 fn run(
     linter: &Linter,
     inputs: &[Input],
-    format: Format,
+    format: Format<'_>,
     out: &mut impl Write,
     err: &mut impl Write,
 ) -> Outcome {
@@ -309,19 +333,44 @@ fn run(
     let counts = files.iter().fold(Counts::default(), |total, rendered| {
         total.add(rendered.counts)
     });
-    let written = files
-        .iter()
-        .try_for_each(|rendered| match &rendered.output {
-            Ok(output) => out.write_all(output),
-            Err(err) => Err(io::Error::new(err.kind(), err.to_string())),
-        })
-        .and_then(|()| out.flush());
     let code = if files.iter().any(|rendered| rendered.internal_error) {
         EXIT_FAILURE
     } else if counts.total() > 0 {
         EXIT_PROBLEM_FOUND
     } else {
         EXIT_NO_PROBLEM
+    };
+    let written = match format {
+        Format::Template(formatter) => {
+            let fields = files
+                .into_iter()
+                .flat_map(|rendered| match rendered.output {
+                    Output::Fields(fields) => fields,
+                    Output::Text(_) => Vec::new(),
+                })
+                .collect();
+            let printed = formatter.print(out, fields);
+            let flushed = out.flush();
+            match printed {
+                Err(PrintError::Template(message)) => {
+                    let _ = writeln!(err, "{message}");
+                    return Outcome {
+                        code: EXIT_FAILURE,
+                        counts: Some(counts),
+                    };
+                }
+                Err(PrintError::Write(write_error)) => Err(write_error),
+                Ok(()) => flushed,
+            }
+        }
+        _ => files
+            .iter()
+            .try_for_each(|rendered| match &rendered.output {
+                Output::Text(Ok(output)) => out.write_all(output),
+                Output::Text(Err(err)) => Err(io::Error::new(err.kind(), err.to_string())),
+                Output::Fields(_) => Ok(()),
+            })
+            .and_then(|()| out.flush()),
     };
     let code = match written {
         // A reader that stops early, such as `head`, is not an error. actionlint dies of SIGPIPE
@@ -341,30 +390,44 @@ fn run(
 
 /// The output of one file.
 struct Rendered {
-    /// The rendered diagnostics, or the error of rendering them.
-    output: io::Result<Vec<u8>>,
+    /// What the file adds to the output.
+    output: Output,
     /// The number of diagnostics by severity.
     counts: Counts,
     /// Whether the file has an `internal-error` diagnostic.
     internal_error: bool,
 }
 
+/// What one file adds to the output.
+enum Output {
+    /// The rendered diagnostics, or the error of rendering them.
+    Text(io::Result<Vec<u8>>),
+    /// The template values of the diagnostics, for the `-format` template.
+    Fields(Vec<Value>),
+}
+
 /// The output format.
 #[derive(Clone, Copy)]
-enum Format {
+enum Format<'a> {
     /// The source snippet follows each header line.
     Default(Color),
     /// `-oneline`: the header line only.
     Oneline(Color),
+    /// `-format`: the template, without color.
+    Template(&'a Formatter),
     /// `-silent`: nothing.
     Silent,
 }
 
-impl Format {
-    fn new(options: &Options, color: bool) -> Self {
+impl<'a> Format<'a> {
+    /// The format of `options`. `-silent` wins over `-format`, which wins over `-oneline`, as in
+    /// actionlint (`linter.go:405`).
+    fn new(options: &Options, color: bool, formatter: Option<&'a Formatter>) -> Self {
         let color = if color { Color::On } else { Color::Off };
         if options.silent {
             Self::Silent
+        } else if let Some(formatter) = formatter {
+            Self::Template(formatter)
         } else if options.oneline {
             Self::Oneline(color)
         } else {
@@ -377,14 +440,21 @@ impl Format {
         let written = match self {
             Self::Default(color) => render_default(&mut output, file, diagnostics, color),
             Self::Oneline(color) => render_oneline(&mut output, file, diagnostics, color),
+            Self::Template(_) => {
+                return Rendered {
+                    output: Output::Fields(template::fields(file, diagnostics)),
+                    counts: Counts::of(diagnostics),
+                    internal_error: has_internal_error(diagnostics),
+                };
+            }
             Self::Silent => Ok(()),
         };
         Rendered {
             // The output waits for the other files, so it keeps no spare capacity.
-            output: written.map(|()| {
+            output: Output::Text(written.map(|()| {
                 output.shrink_to_fit();
                 output
-            }),
+            })),
             counts: Counts::of(diagnostics),
             internal_error: has_internal_error(diagnostics),
         }

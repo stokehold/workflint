@@ -8,7 +8,7 @@ The conformance suite runs every fixture in this directory through the `workflin
 cargo nextest run -p xtask --test conformance
 ```
 
-Each fixture is one test, named after its path, such as `actionlint::err/action_metadata_syntax_validation.yaml`. Three more tests check the data files described below, `parity_checklist::parity-checklist.md` and `checks_md::checks.md` check the boxes of `docs/parity-checklist.md`, and `skipped_fixtures::README.md` prints how many fixtures the runner skips and why. `.config/nextest.toml` shows its output at the end of every nextest run, and fails a conformance test that runs longer than 5 minutes.
+Each fixture is one test, named after its path, such as `actionlint::err/action_metadata_syntax_validation.yaml`. Each [format case](#format-cases) is one test too, such as `format::test.json`. Three more tests check the data files described below, `parity_checklist::parity-checklist.md` and `checks_md::checks.md` check the boxes of `docs/parity-checklist.md`, and `skipped_fixtures::README.md` prints how many fixtures the runner skips and why. `.config/nextest.toml` shows its output at the end of every nextest run, and fails a conformance test that runs longer than 5 minutes.
 
 The runner finds the reference's fixtures by listing `actionlint/testdata/`. It fails every test that reads them if a suite directory is missing or holds another number of fixtures than the reference has at its commit (`ACTIONLINT_FIXTURES` in `xtask/src/conformance/fixture.rs`), so a missing copy cannot pass with no tests.
 
@@ -60,7 +60,7 @@ workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <c
 - `-oneline` prints one line per error, the form that [Matching](#matching) parses.
 - `-no-color` keeps escape sequences out of the output whatever the environment, as `-color` or a terminal would add them. `NO_COLOR` and `TERM` do not matter with it.
 - workflint runs the shellcheck that `-shellcheck` names. It accepts `-pyflakes`, and ignores it until pyflakes (M5.12, #249) uses it. It reads the config file of `-config-file`, which replaces the config file of the project.
-- The runner passes none of `-ignore`, `-color`, `-verbose`, `-debug`, `-format`, `-summary`, `-quiet`, and `-silent`, so standard output holds only the errors and standard error stays empty.
+- The runner passes none of `-ignore`, `-color`, `-verbose`, `-debug`, `-format`, `-summary`, `-quiet`, and `-silent`, so standard output holds only the errors and standard error stays empty. Only the [format cases](#format-cases) pass `-format`.
 - `<config>` is `<temp>/project/actionlint.yaml` for a project that has one, and `<temp>/config.yaml` otherwise. Passing a config file means the CLI reads no config from the workflint repository or from the user's config directory.
 - `<files>` is `test.yaml`, or a project's workflow files as relative paths with `/` separators, such as `workflows/nested/piyo.yaml`, in the order of Go's `filepath.Walk`. actionlint's CLI does not accept a directory.
 - `-shellcheck=` and `-pyflakes=` take the tool's absolute path, or nothing to turn the tool off. As in the reference's tests:
@@ -88,6 +88,20 @@ The runner compares the output with the expected lines as `checkErrors` in the r
 
 `projects/local_action_invalid.out` has patterns that expect the relative path `testdata/projects/local_action_invalid/...`. The reference's Go test passes a relative project root, but a CLI that finds the project root prints an absolute path, so the reference binary fails those lines too. The reference run lists the fixture as a known failure (see below). `allowed-differences.toml` replaces those lines with patterns for the absolute paths that both binaries print (`docs/differences.md#local-action-paths`). The reference prints no line that their `upstream` patterns match, so `cargo xtask oracle` skips the fixture, as it skips every fixture in `REFERENCE_FAILURES`.
 
+## Format cases
+
+The reference's `testdata/format/` holds one workflow, `test.yaml`, and the output of four `-format` templates for it. The runner has one case for each output file. The templates are those of `linter_test.go`: `{{json .}}` for `test.json`, the JSON Lines recipe for `test.jsonl`, the Markdown recipe for `test.md`, and the template in `sarif_template.txt` for `test.sarif`. `xtask/src/conformance/format.rs` lists them.
+
+For each case, the runner copies the workflow to `<temp>/testdata/format/test.yaml`, writes an empty `<temp>/config.yaml`, and runs the binary in `<temp>`:
+
+```sh
+workflint -shellcheck= -pyflakes= -config-file <temp>/config.yaml -format <template> testdata/format/test.yaml
+```
+
+The binary must exit with code 1, print nothing to standard error, and print the same output with one thread and with the default thread count. The output must equal the content of the case's file, after the case's [allowed differences](#allowed-differences). The SARIF case compares JSON values, so the layout and the order of keys do not matter, and it leaves out `runs[0].tool.driver.version`, which is `(devel)` in `test.sarif`.
+
+The IDs of the cases are `format/test.json`, `format/test.jsonl`, `format/test.md`, and `format/test.sarif`. `docs/parity-checklist.md` and `allowed-differences.toml` use them, and `expected-failures.toml` cannot list them: every case must pass.
+
 ## Running the reference
 
 To check the runner itself, run the suite with the reference binary in place of workflint:
@@ -96,7 +110,7 @@ To check the runner itself, run the suite with the reference binary in place of 
 WORKFLINT_CONFORMANCE_REFERENCE=.reference/bin/actionlint cargo nextest run -p xtask --test conformance
 ```
 
-A relative path is relative to the repository root. In this mode the runner does not map kinds, because the reference prints kinds already. It reads neither `expected-failures.toml` nor `allowed-differences.toml`, and it skips workflint's own fixtures. The only expected failures are the ones in `REFERENCE_FAILURES` in `xtask/src/conformance/runner.rs`, each with its reason: today only `projects/local_action_invalid`. Every other fixture must pass, so a runner that passes or fails fixtures by mistake shows up. The `cargo xtask oracle` job in `.github/workflows/gate.yml` runs this check.
+A relative path is relative to the repository root. In this mode the runner does not map kinds, because the reference prints kinds already. It reads neither `expected-failures.toml` nor `allowed-differences.toml`, and it skips workflint's own fixtures. It runs the format cases, which the reference passes without allowed differences. The only expected failures are the ones in `REFERENCE_FAILURES` in `xtask/src/conformance/runner.rs`, each with its reason: today only `projects/local_action_invalid`. Every other fixture must pass, so a runner that passes or fails fixtures by mistake shows up. The `cargo xtask oracle` job in `.github/workflows/gate.yml` runs this check.
 
 ## Expected failures
 
@@ -142,12 +156,14 @@ workflint = "test.yaml:3:5: could not parse as YAML: ... [syntax-check]"
 | `upstream` | An expected line of the fixture's `.out` file, copied exactly, that workflint does not report. For a corpus file, a line of the reference's output for that file. |
 | `workflint` | The line workflint reports instead or in addition, in the same form as `.out` lines: with the actionlint kind in brackets, or a `/pattern/`. |
 
-An entry with both `upstream` and `workflint` replaces a line. With only `upstream` it removes one, and with only `workflint` it adds one. The runner inserts each `workflint` line before the first expected line that sorts after it by path, line, column and message. It sorts a pattern line by the position at its start, if it has one, and places the new line after pattern lines at the same position. A pattern line that replaces a line at its own position takes that line's place instead, because its order among the lines at that position is unknown.
+An entry with both `upstream` and `workflint` replaces a line. With only `upstream` it removes one, and with only `workflint` it adds one.
+
+An entry for a format case works on the lines of the case's expected output file. It needs `upstream`, a whole line of that file. With `workflint`, the runner replaces the first line equal to `upstream` with it, and without, removes that line. The records for `format/test.sarif` quote the lines of `test.sarif` as `jq` formatted them. The runner inserts each `workflint` line before the first expected line that sorts after it by path, line, column and message. It sorts a pattern line by the position at its start, if it has one, and places the new line after pattern lines at the same position. A pattern line that replaces a line at its own position takes that line's place instead, because its order among the lines at that position is unknown.
 
 The runner fails:
 
-- the test `allowed_differences::allowed-differences.toml` if an anchor is not in `docs/differences.md`, a fixture does not exist, a corpus file is not in the archive, an entry has neither `upstream` nor `workflint`, an `upstream` line is not in the fixture's `.out` file, a line of an entry for a corpus file does not start with that file's name and a position, an entry for every corpus file lacks a valid `/pattern/` or a `workflint`, or the `upstream` line of an `[[example]]` table is not in the `Output` block of its section.
-- a fixture that is not in `expected-failures.toml` if it also passes without one of its entries. Remove such an entry.
+- the test `allowed_differences::allowed-differences.toml` if an anchor is not in `docs/differences.md`, a fixture does not exist, a corpus file is not in the archive, an entry has neither `upstream` nor `workflint`, an `upstream` line is not in the fixture's `.out` file or the format case's output file, an entry for a format case has no `upstream`, a line of an entry for a corpus file does not start with that file's name and a position, an entry for every corpus file lacks a valid `/pattern/` or a `workflint`, or the `upstream` line of an `[[example]]` table is not in the `Output` block of its section.
+- a fixture that is not in `expected-failures.toml`, or a format case, if it also passes without one of its entries. Remove such an entry.
 
 Every entry needs a matching section in `docs/differences.md`. Write that section first, then the entry.
 

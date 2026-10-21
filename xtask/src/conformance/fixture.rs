@@ -292,13 +292,26 @@ fn find_on_path(program: &str) -> Option<PathBuf> {
 /// directory lives as long as this value.
 #[derive(Debug)]
 pub struct Invocation {
-    /// The temporary project, which has `.git` and `.github/workflows`
-    /// directories so that both workflint and the reference take it as the
-    /// project root.
+    /// The directory to run in. For a fixture, it is the temporary project,
+    /// which has `.git` and `.github/workflows` directories so that both
+    /// workflint and the reference take it as the project root.
     pub cwd: PathBuf,
     /// The command-line arguments for the binary.
     pub args: Vec<OsString>,
     _temp: TempDir,
+}
+
+impl Invocation {
+    /// Runs the binary with `args` in `cwd`, a directory in `temp`, which
+    /// lives as long as the invocation.
+    #[must_use]
+    pub fn new(temp: TempDir, cwd: PathBuf, args: Vec<OsString>) -> Self {
+        Self {
+            cwd,
+            args,
+            _temp: temp,
+        }
+    }
 }
 
 /// The `.yml` and `.yaml` files under `workflows/`, in the order of Go's

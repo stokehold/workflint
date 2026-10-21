@@ -19,6 +19,7 @@ use rayon::prelude::*;
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, Span, sort_and_dedup};
 use workflint_rules::RuleConfig;
+use workflint_rules::kind::{self, Kind};
 use workflint_rules::local::{LocalMetadata, NoProject};
 use workflint_rules::tools::ExternalTools;
 use workflint_yaml::rules::YAML_SYNTAX_ERROR;
@@ -214,6 +215,23 @@ impl Linter {
             .into_iter()
             .map(Input::file)
             .collect())
+    }
+
+    /// The actionlint kinds of the rules that this linter runs, sorted by name, as the
+    /// `allKinds` function of `-format` templates lists them (`error.go:275`): `syntax-check`,
+    /// the kinds of the rules that always run, and `shellcheck` when shellcheck runs.
+    #[must_use]
+    pub fn kinds(&self) -> Vec<&'static Kind> {
+        kind::ALL
+            .iter()
+            .copied()
+            .filter(|listed| match listed.name {
+                name if name == kind::SHELLCHECK.name => self.tools.has_shellcheck(),
+                // TODO(#249): list pyflakes when the linter runs it.
+                name if name == kind::PYFLAKES.name => false,
+                _ => true,
+            })
+            .collect()
     }
 
     /// Returns the linter with `check` in place of [`workflint_rules::check_file`], which the
@@ -770,6 +788,33 @@ mod tests {
 
     fn source() -> SourceFile {
         SourceFile::new(FileId::new(0), "a.yaml", "on: push\n").unwrap()
+    }
+
+    fn kind_names(linter: &Linter) -> Vec<&'static str> {
+        linter.kinds().iter().map(|kind| kind.name).collect()
+    }
+
+    #[test]
+    fn kinds_without_external_tools_leave_out_shellcheck_and_pyflakes() {
+        let names = kind_names(&Linter::new(PathBuf::from("/")));
+        assert_eq!(names.len(), kind::ALL.len() - 2);
+        assert!(names.contains(&"syntax-check"), "{names:?}");
+        assert!(!names.contains(&"shellcheck"), "{names:?}");
+        assert!(!names.contains(&"pyflakes"), "{names:?}");
+        assert!(names.is_sorted(), "{names:?}");
+    }
+
+    #[test]
+    fn kinds_list_shellcheck_when_shellcheck_runs() {
+        let pool = crate::tool::ToolPool::new(std::num::NonZeroUsize::MIN).unwrap();
+        let tools = Tools::none().with_shellcheck(
+            crate::tool::ToolCommand::new("shellcheck", Vec::<String>::new()),
+            Arc::new(pool),
+            crate::tool::RunOptions::default(),
+        );
+        let names = kind_names(&Linter::new(PathBuf::from("/")).with_tools(tools));
+        assert!(names.contains(&"shellcheck"), "{names:?}");
+        assert!(!names.contains(&"pyflakes"), "{names:?}");
     }
 
     #[test]
