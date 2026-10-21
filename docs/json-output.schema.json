@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "workflint JSON output, version 1",
+  "description": "What `workflint -format json` prints. Each line of `-format jsonl` is a `line`, defined below. docs/json-output.md describes the fields and the versioning rules. Consumers must ignore keys they do not know, because a later workflint may add keys without changing the version.",
+  "type": "object",
+  "required": ["version", "diagnostics"],
+  "properties": {
+    "version": { "$ref": "#/$defs/version" },
+    "diagnostics": {
+      "description": "Every diagnostic of the run, in the order of the default output: the files in the order of the arguments, or of their paths in a run without arguments, and the diagnostics of each file by position.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    }
+  },
+  "$defs": {
+    "version": {
+      "description": "The version of this schema. It changes only when a key is removed, renamed, or changes its meaning.",
+      "const": 1
+    },
+    "line": {
+      "description": "One line of `-format jsonl`: a diagnostic with the version of the schema.",
+      "allOf": [{ "$ref": "#/$defs/diagnostic" }],
+      "required": ["version"],
+      "properties": {
+        "version": { "$ref": "#/$defs/version" }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["rule", "kind", "severity", "message", "help", "path", "start", "end"],
+      "properties": {
+        "rule": {
+          "description": "The workflint rule ID, such as `undefined-property`.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "kind": {
+          "description": "The actionlint kind of the rule, such as `expression`.",
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": ["error", "warning", "info"]
+        },
+        "message": {
+          "description": "The message, as the default output prints it.",
+          "type": "string"
+        },
+        "help": {
+          "description": "A hint on how to fix the problem, or null.",
+          "type": ["string", "null"]
+        },
+        "path": {
+          "description": "The path of the file, as the default output prints it, or the name of the workflow read from stdin.",
+          "type": "string"
+        },
+        "start": {
+          "description": "The position of the first byte of the span.",
+          "$ref": "#/$defs/position"
+        },
+        "end": {
+          "description": "The position just after the last byte of the span. It equals `start` for an empty span.",
+          "$ref": "#/$defs/position"
+        }
+      }
+    },
+    "position": {
+      "type": "object",
+      "required": ["line", "column", "offset"],
+      "properties": {
+        "line": {
+          "description": "The 1-based line.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "description": "The 1-based column, counted in Unicode code points.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "offset": {
+          "description": "The 0-based offset in bytes from the start of the file.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

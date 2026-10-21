@@ -52,7 +52,7 @@ The rules are those of Go's `flag` package:
 | `-quiet`, `-q` | Prints only errors and fatal messages: no summary and no log. |
 | `-silent` | Prints only fatal messages. The exit code says whether errors were found. |
 | `-summary` | Prints one line with the number of errors by severity to stderr, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. |
-| `-format TEMPLATE` | Prints the errors through a Go template. See [Format templates](#format-templates). `-format sarif` prints them as SARIF instead ([sarif.md](sarif.md)). |
+| `-format TEMPLATE`, `-format NAME` | Prints the errors through a Go template, or in the format `json`, `jsonl`, or `sarif`. A value with `{{` is a template, and any other value names a format. See [Format templates](#format-templates), [JSON output](json-output.md), and [SARIF output](sarif.md). An unknown name exits with code 3. |
 | `-config-file PATH`, `--config PATH` | Lints every file with the config file at `PATH`, in place of the config file of each project. A file that cannot be read or decoded exits with code 3. See [config.md](config.md). |
 | `-init-config` | Writes the default config file to `.github/workflint.yaml` in the project of the working directory and exits. The file arguments are ignored. See [config.md](config.md#creating-a-config-file). |
 | `-stdin-filename NAME` | Names the workflow read from stdin. The default is `<stdin>`. If a file exists at `NAME`, the workflow gets that file's project. |
@@ -61,13 +61,15 @@ The rules are those of Go's `flag` package:
 | `-jobs N` | Runs at most `N` external tool processes, such as shellcheck, pyflakes, and ruff, at once. The default is the number of CPUs. |
 | `-pyflakes COMMAND` | The pyflakes that checks the scripts of `shell: python` steps ([pyflakes-issue](rules/pyflakes-issue.md)), looked up as for `-shellcheck`. With a value, that pyflakes runs whatever the `python.linter` of the config file says, and a pyflakes that is not found exits with code 3. An empty value turns the Python check off. Without the flag, `python.linter` picks ruff or pyflakes ([config.md](config.md#pythonlinter)). |
 
-`check`, `--config`, `-quiet`, `-q`, `-silent`, `-summary`, `-jobs`, and `-shellcheck-cache` are workflint's own. [differences.md](differences.md#workflint-flags) lists them with the other differences.
+`check`, `--config`, the format names of `-format`, `-quiet`, `-q`, `-silent`, `-summary`, `-jobs`, and `-shellcheck-cache` are workflint's own. [differences.md](differences.md#workflint-flags) lists them with the other differences.
 
 ## Output
 
 Errors go to stdout. Logs, warnings, the usage, the summary, and fatal messages such as `could not read "x.yaml": ...` go to stderr. A warning starts with `warning: `, such as the one about a missing shellcheck, about a Python script that neither ruff nor pyflakes can check, or about an unknown key in an actionlint config file ([config.md](config.md#unknown-keys)). `-quiet` and `-silent` hide warnings.
 
 The default format prints the header line `path:line:col: message [rule-id]`, the source line, and a line with `^~~~` under the span. `-oneline` prints only the header line. The layout is actionlint's, except that the brackets hold workflint's rule ID instead of actionlint's kind ([differences.md](differences.md#rule-id-in-brackets)). The problem matcher in actionlint's `.github/actionlint-matcher.json` matches the header lines with and without color.
+
+`-format json` and `-format jsonl` print the errors as JSON, with the rule ID, the severity, the help text, and byte offsets. [json-output.md](json-output.md) describes the format and its versioned schema.
 
 Color is on when stdout is a terminal, `NO_COLOR` is unset or empty, and `TERM` is not `dumb`. `-color` turns it on and `-no-color` turns it off, whatever the environment. On a Windows console that does not understand escape sequences, workflint sets the colors through the console's own calls, as actionlint does.
 
@@ -81,7 +83,7 @@ workflint -format '{{range $err := .}}{{json $err}}{{end}}'
 workflint -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}\n{{end}}'
 ```
 
-The template must contain `{{`, except for `sarif`, which names the [SARIF output](sarif.md). Before parsing, workflint replaces the escapes `\a`, `\b`, `\f`, `\n`, `\r`, `\t`, `\v`, and `\\` in the flag value with the characters they stand for, so `-format '{{range .}}{{.Message}}\n{{end}}'` prints one message per line. The template runs once, over the list of the errors of every file in the order of the output. The output has no color, and `-oneline` changes nothing.
+A value without `{{` is no template but the name of a format: `json` or `jsonl` for the [JSON output](json-output.md), or `sarif` for the [SARIF output](sarif.md). Any other name prints `unknown format "NAME": ...` with the list of names and exits with code 3 ([differences.md](differences.md#named-formats)). Before parsing, workflint replaces the escapes `\a`, `\b`, `\f`, `\n`, `\r`, `\t`, `\v`, and `\\` in the flag value with the characters they stand for, so `-format '{{range .}}{{.Message}}\n{{end}}'` prints one message per line. The template runs once, over the list of the errors of every file in the order of the output. The output has no color, and `-oneline` changes nothing.
 
 Each error has these fields:
 
@@ -118,7 +120,7 @@ A template that does not parse prints Go's error, such as `template "{{xxx}}" to
 | 0 | No errors, also when `-ignore` or the config dropped every error. `-h`, `-help`, `-version`, and a successful `-init-config` exit with 0 too. |
 | 1 | At least one error. |
 | 2 | The command line is invalid. |
-| 3 | A fatal error: a file, stdin, or a config file cannot be read, a run without file arguments finds no project or no workflow file, a directory argument has no workflow file, a glob argument matches none or is malformed, a config file, an `-ignore` pattern, or the `-format` template is invalid, the shellcheck that `-shellcheck` names is not found, `-init-config` fails, the `-format` template fails while it runs, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
+| 3 | A fatal error: a file, stdin, or a config file cannot be read, a run without file arguments finds no project or no workflow file, a directory argument has no workflow file, a glob argument matches none or is malformed, a config file, an `-ignore` pattern, or the `-format` template is invalid, `-format` names an unknown format, the shellcheck that `-shellcheck` names is not found, `-init-config` fails, the `-format` template fails while it runs, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
 
 ## Version
 

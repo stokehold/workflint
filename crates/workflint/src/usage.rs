@@ -36,9 +36,10 @@ pub(crate) fn text() -> String {
 
     $ workflint -
 
-  To print errors as JSON, use the -format flag. It formats error messages
-  with Go template syntax:
+  To print errors as JSON, pass json or jsonl to the -format flag. The
+  flag also takes a Go template, as in actionlint:
 
+    $ workflint -format json
     $ workflint -format '{{{{json .}}}}'
 
 Documents:

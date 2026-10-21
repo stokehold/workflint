@@ -1853,6 +1853,9 @@ fn format_keeps_unknown_escapes() {
     assert_eq!(run.stdout, r"2\x\q");
 }
 
+const UNKNOWN_FORMAT: &str = "unknown format \"hello\": -format takes a Go template with at \
+    least one {{ }} placeholder, or one of the format names json, jsonl, sarif\n";
+
 #[test]
 fn format_sarif_prints_one_log_for_every_file_and_exits_with_1() {
     let run = format("sarif", &["anchors.yaml", "valid.yaml"]);
@@ -1903,16 +1906,14 @@ fn silent_wins_over_format_sarif() {
 }
 
 #[test]
-fn a_format_without_braces_prints_the_reference_error_and_exits_with_3() {
+fn an_unknown_format_name_lists_the_known_names_and_exits_with_3() {
     let run = format("hello", &["anchors.yaml"]);
     assert_eq!(
         run,
         Run {
             code: Some(3),
             stdout: String::new(),
-            stderr: "template to format error messages must contain at least one {{ }} \
-                     placeholder: hello\n"
-                .to_owned(),
+            stderr: UNKNOWN_FORMAT.to_owned(),
         }
     );
 }
@@ -1940,7 +1941,7 @@ fn an_invalid_format_is_reported_before_init_config_runs() {
         .unwrap());
     assert_eq!(run.code, Some(3));
     assert!(
-        run.stderr.starts_with("template to format error messages"),
+        run.stderr.starts_with("unknown format \"x\""),
         "{}",
         run.stderr
     );
@@ -2173,4 +2174,66 @@ fn a_config_file_with_shellcheck_keys_and_no_shellcheck_exits_with_3() {
         (run.code, run.stderr),
         (Some(0), MISSING_SHELLCHECK.to_owned())
     );
+}
+
+/// What `-format json` prints for `broken.yaml` and `anchors.yaml`.
+const BROKEN_AND_ANCHORS_JSON: &str = "{\"version\":1,\"diagnostics\":[\
+    {\"rule\":\"yaml-syntax-error\",\"kind\":\"syntax-check\",\"severity\":\"error\",\
+    \"message\":\"could not parse as YAML: block sequence entries are not allowed in this context\",\
+    \"help\":null,\"path\":\"broken.yaml\",\
+    \"start\":{\"line\":5,\"column\":12,\"offset\":61},\"end\":{\"line\":5,\"column\":13,\"offset\":62}},\
+    {\"rule\":\"unused-anchor\",\"kind\":\"syntax-check\",\"severity\":\"error\",\
+    \"message\":\"anchor \\\"b\\\" is defined but not used\",\"help\":null,\"path\":\"anchors.yaml\",\
+    \"start\":{\"line\":3,\"column\":6,\"offset\":19},\"end\":{\"line\":3,\"column\":8,\"offset\":21}},\
+    {\"rule\":\"unused-anchor\",\"kind\":\"syntax-check\",\"severity\":\"error\",\
+    \"message\":\"anchor \\\"a\\\" is defined but not used\",\"help\":null,\"path\":\"anchors.yaml\",\
+    \"start\":{\"line\":4,\"column\":6,\"offset\":29},\"end\":{\"line\":4,\"column\":8,\"offset\":31}}]}\n";
+
+#[test]
+fn format_json_prints_one_document_over_every_file() {
+    for flag in ["-format", "--format"] {
+        let run = workflint(&[flag, "json", "broken.yaml", "anchors.yaml"]);
+        assert_eq!(
+            run,
+            Run {
+                code: Some(1),
+                stdout: BROKEN_AND_ANCHORS_JSON.to_owned(),
+                stderr: String::new(),
+            },
+            "{flag}"
+        );
+    }
+}
+
+#[test]
+fn format_jsonl_prints_one_line_per_diagnostic_in_the_order_of_json() {
+    let run = format("jsonl", &["broken.yaml", "anchors.yaml"]);
+    assert_eq!(run.code, Some(1));
+    let start = "{\"version\":1,\"diagnostics\":[";
+    let records = BROKEN_AND_ANCHORS_JSON
+        .strip_prefix(start)
+        .and_then(|rest| rest.strip_suffix("]}\n"))
+        .unwrap()
+        .replace("}},{", "}}\n{\"version\":1,");
+    assert_eq!(run.stdout, format!("{{\"version\":1,{}\n", &records[1..]));
+}
+
+#[test]
+fn json_formats_of_zero_diagnostics_exit_with_0() {
+    let run = format("json", &["valid.yaml"]);
+    assert_eq!(
+        (run.code, run.stdout.as_str()),
+        (Some(0), "{\"version\":1,\"diagnostics\":[]}\n")
+    );
+    let run = format("jsonl", &["valid.yaml"]);
+    assert_eq!((run.code, run.stdout.as_str()), (Some(0), ""));
+}
+
+#[test]
+fn json_formats_ignore_color_and_oneline_and_silent_wins() {
+    let plain = format("json", &["anchors.yaml"]);
+    let run = format("json", &["-color", "-oneline", "anchors.yaml"]);
+    assert_eq!(run, plain);
+    let run = format("jsonl", &["-silent", "anchors.yaml"]);
+    assert_eq!((run.code, run.stdout.as_str()), (Some(1), ""));
 }

@@ -48,7 +48,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: one consistent unit. ASCII-only files without tabs report the same columns as upstream. Their indicator differs only where the span is not the run up to the next space, for example a message about a quoted string that contains spaces.
 - Upstream issue: none.
 - Milestone: M1, M3.
-- Status: implemented in the default and `-oneline` output, and in `-format` templates since M5.8. The `Snippet` field holds the same indicator line as the default output, and `EndColumn` is the column of the last character that the indicator covers. The named formats follow in M5.
+- Status: implemented in the default and `-oneline` output, and in `-format` templates since M5.8. The `Snippet` field holds the same indicator line as the default output, and `EndColumn` is the column of the last character that the indicator covers. The `json` and `jsonl` formats use the same columns since M5.14 ([json-output.md](json-output.md)). SARIF follows in M5.
 - Fixtures: `format/test.json`, `format/test.jsonl`, `format/test.md`, and `format/test.sarif`. The spans of the two `unexpected-key` errors cover the key without its colon, so their indicators and end columns are one character shorter.
 
 <a id="positions-inside-scalars"></a>
@@ -1007,7 +1007,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### `-format sarif` prints SARIF
 
 - Upstream: `-format` takes only a template. `-format sarif` prints `template to format error messages must contain at least one {{ }} placeholder: sarif` and exits with code 3. SARIF output comes from the template in `testdata/format/sarif_template.txt`.
-- workflint: `-format sarif` prints a SARIF 2.1.0 log ([sarif.md](sarif.md)). It has a `rules` entry with a help link for every rule ID, regions with an end line and end column in UTF-16 code units, the labels of each error as related locations, and fingerprints without line numbers. Any other value without `{{` prints the upstream error, and templates, including the upstream SARIF template, work as upstream.
+- workflint: `-format sarif` prints a SARIF 2.1.0 log ([sarif.md](sarif.md)). It has a `rules` entry with a help link for every rule ID, regions with an end line and end column in UTF-16 code units, the labels of each error as related locations, and fingerprints without line numbers. Any other value without `{{` is another format name or an error ([named-formats](#named-formats)), and templates, including the upstream SARIF template, work as upstream.
 - Why: the upstream template has one rule per kind, a region that ends on its start line, and no fingerprints, so code scanning can lose track of an alert when lines above it move (ADR 0007).
 - Upstream issue: none.
 - Milestone: M5.15.
@@ -1051,6 +1051,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: workflint is built by Cargo, not by Go. Go's names keep the third line the same as the names of the release archives (ADR 0014).
 - Upstream issue: none.
 - Milestone: M5.6.
+- Status: implemented.
+
+<a id="named-formats"></a>
+### `-format` names the `json`, `jsonl`, and `sarif` formats
+
+- Upstream: a `-format` value without `{{` prints `template to format error messages must contain at least one {{ }} placeholder: <value>` and exits with code 3.
+- workflint: a value without `{{` names a format. `json` prints one JSON document and `jsonl` one JSON object per line, in the versioned schema of [json-output.md](json-output.md), with the rule ID, the severity, the help text, and byte offsets. `sarif` prints SARIF ([format-sarif](#format-sarif)). Any other value prints `unknown format "<value>": -format takes a Go template with at least one {{ }} placeholder, or one of the format names json, jsonl, sarif` and exits with code 3, as upstream does.
+- Why: tools can read workflint's output without writing a template. Upstream rejects every such value, so no command line that works with actionlint changes meaning (ADR 0003).
+- Upstream issue: none.
+- Milestone: M5.14.
 - Status: implemented.
 
 <a id="workflint-flags"></a>
