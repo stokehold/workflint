@@ -399,8 +399,13 @@ fn the_tool_timeout_of_the_config_file_kills_shellcheck() {
     assert_eq!(
         lint_in(root.path(), &["a.yaml"], &linter),
         [format!(
-            ".github/workflows/a.yaml:6:9: {DID_NOT_RUN}shellcheck did not finish in 1 seconds \
-             and was killed [shellcheck-failed]\n"
+            "{}:6:9: {DID_NOT_RUN}shellcheck did not finish in 1 seconds and was killed \
+             [shellcheck-failed]\n",
+            // The path is printed with the separators of the OS.
+            Path::new(".github")
+                .join("workflows")
+                .join("a.yaml")
+                .display()
         )]
     );
 }
