@@ -182,17 +182,152 @@ fn missing_file_prints_an_error_and_exits_with_3() {
     );
 }
 
+/// A temporary project with `.git` and the workflows `names`, each with one error.
+fn project_with_workflows(names: &[&str]) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join(".git")).unwrap();
+    for name in names {
+        write_file(
+            dir.path(),
+            &format!(".github/workflows/{name}"),
+            "on: push\n",
+        );
+    }
+    dir
+}
+
+/// Writes `contents` to `path` under `dir`, creating its directories.
+fn write_file(dir: &Path, path: &str, contents: &str) {
+    let path = dir.join(path);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, contents).unwrap();
+}
+
+/// The files that the one-line diagnostics in `stdout` name, in order, each once.
+fn linted_files(stdout: &str) -> Vec<String> {
+    let mut files: Vec<String> = Vec::new();
+    for line in stdout.lines() {
+        let file = line.split(':').next().unwrap().replace('\\', "/");
+        if files.last() != Some(&file) {
+            files.push(file);
+        }
+    }
+    files
+}
+
 #[test]
-fn a_directory_argument_prints_an_error_and_exits_with_3() {
+fn a_directory_argument_lints_the_yaml_files_under_it_sorted_by_path() {
+    let project = project_with_workflows(&["b.yml", "a.yaml", "sub/c.yaml", "README.md"]);
+    let run = workflint_in(project.path(), &["-oneline", ".github"]);
+    assert_eq!(run.code, Some(1), "{}", run.stderr);
+    assert_eq!(
+        linted_files(&run.stdout),
+        [
+            ".github/workflows/a.yaml",
+            ".github/workflows/b.yml",
+            ".github/workflows/sub/c.yaml",
+        ]
+    );
+}
+
+#[test]
+fn a_directory_argument_without_a_yaml_file_exits_with_3() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir(dir.path().join("sub")).unwrap();
     let run = workflint_in(dir.path(), &["-oneline", "sub"]);
     assert_eq!(run.code, Some(3));
     assert_eq!(run.stdout, "");
-    assert!(
-        run.stderr.starts_with("could not read \"sub\": "),
-        "{}",
-        run.stderr
+    assert_eq!(run.stderr, "no YAML file was found in \"sub\"\n");
+}
+
+#[test]
+fn a_quoted_glob_is_expanded_by_workflint() {
+    let project = project_with_workflows(&["b.yml", "a.yaml", "sub/c.yaml"]);
+    // `Command` passes the argument as is, as a shell does with a quoted glob.
+    let run = workflint_in(project.path(), &["-oneline", ".github/workflows/*.y*ml"]);
+    assert_eq!(run.code, Some(1), "{}", run.stderr);
+    assert_eq!(
+        linted_files(&run.stdout),
+        [".github/workflows/a.yaml", ".github/workflows/b.yml"]
+    );
+    let run = workflint_in(project.path(), &["-oneline", "**/c.yaml"]);
+    assert_eq!(linted_files(&run.stdout), [".github/workflows/sub/c.yaml"]);
+}
+
+#[test]
+fn a_glob_that_matches_nothing_exits_with_3() {
+    let project = project_with_workflows(&["a.yaml"]);
+    let run = workflint_in(project.path(), &["-oneline", "*.yml"]);
+    assert_eq!(run.code, Some(3));
+    assert_eq!(run.stdout, "");
+    assert_eq!(run.stderr, "no YAML file matches the glob \"*.yml\"\n");
+}
+
+#[test]
+fn a_file_that_gitignore_excludes_is_skipped_by_discovery_and_linted_when_given() {
+    let project = project_with_workflows(&["ci.yaml", "generated.yaml"]);
+    write_file(project.path(), ".gitignore", "generated.yaml\n");
+    let run = workflint_in(project.path(), &["-oneline"]);
+    assert_eq!(run.code, Some(1), "{}", run.stderr);
+    assert_eq!(linted_files(&run.stdout), [".github/workflows/ci.yaml"]);
+    let run = workflint_in(project.path(), &["-oneline", ".github/workflows"]);
+    assert_eq!(linted_files(&run.stdout), [".github/workflows/ci.yaml"]);
+
+    let generated = native(".github/workflows/generated.yaml");
+    let run = workflint_in(project.path(), &["-oneline", &generated]);
+    assert_eq!(run.code, Some(1), "{}", run.stderr);
+    assert_eq!(
+        linted_files(&run.stdout),
+        [".github/workflows/generated.yaml"]
+    );
+}
+
+#[test]
+fn the_global_gitignore_of_the_user_is_not_read() {
+    let project = project_with_workflows(&["ci.yaml"]);
+    let home = tempfile::tempdir().unwrap();
+    write_file(home.path(), "git/ignore", "*.yaml\n");
+    write_file(
+        home.path(),
+        ".gitconfig",
+        "[core]\n\texcludesFile = ~/git/ignore\n",
+    );
+    let run = run(command(project.path(), &["-oneline"])
+        .env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path())
+        .output()
+        .unwrap());
+    assert_eq!(run.code, Some(1), "{}", run.stderr);
+    assert_eq!(linted_files(&run.stdout), [".github/workflows/ci.yaml"]);
+}
+
+#[test]
+fn an_exclude_glob_drops_files_from_discovery_directories_and_globs() {
+    let project = project_with_workflows(&["ci.yaml", "agent.lock.yml"]);
+    write_file(
+        project.path(),
+        ".github/workflint.yaml",
+        "exclude:\n  - '.github/workflows/*.lock.yml'\n",
+    );
+    for args in [
+        &["-oneline"][..],
+        &["-oneline", ".github/workflows"],
+        &["-oneline", ".github/workflows/*"],
+    ] {
+        let run = workflint_in(project.path(), args);
+        assert_eq!(run.code, Some(1), "{args:?}: {}", run.stderr);
+        assert_eq!(
+            linted_files(&run.stdout),
+            [".github/workflows/ci.yaml"],
+            "{args:?}"
+        );
+    }
+    // A file given by name is linted.
+    let lock = native(".github/workflows/agent.lock.yml");
+    let run = workflint_in(project.path(), &["-oneline", &lock]);
+    assert_eq!(
+        linted_files(&run.stdout),
+        [".github/workflows/agent.lock.yml"]
     );
 }
 

@@ -8,6 +8,7 @@
 use std::any::Any;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::io::{self, ErrorKind, Read};
 use std::panic::{self, AssertUnwindSafe};
@@ -26,7 +27,7 @@ use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
 use crate::cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
 use crate::config::{Config, ConfigError};
-use crate::discover::{self, DiscoveryError};
+use crate::discover::{DiscoveryError, Finder};
 use crate::ignore::IgnorePattern;
 use crate::path;
 use crate::project::ProjectRoots;
@@ -246,17 +247,39 @@ impl Linter {
 
     /// Returns the workflow files that a run without file arguments lints: the files under
     /// `.github/workflows` of the project of the working directory whose names end in `.yml` or
-    /// `.yaml`, sorted by path (`linter.go:264-311`).
+    /// `.yaml`, sorted by path (`linter.go:264-311`), without those that `.gitignore` or the
+    /// `exclude` globs of the project's config file name (ADR 0036).
     ///
     /// # Errors
     ///
     /// Fails if the working directory has no project, if a directory under `.github/workflows`
-    /// cannot be read, or if no file is found.
+    /// or the project's config file cannot be read, or if no file is found.
     pub fn discover(&self) -> Result<Vec<Input>, DiscoveryError> {
-        Ok(discover::workflow_files(&self.cwd)?
+        Ok(Finder::new(&self.cwd, self.flags.config_file.as_deref())
+            .workflow_files()?
             .into_iter()
             .map(Input::file)
             .collect())
+    }
+
+    /// Returns the inputs of the file arguments `args`, in their order (ADR 0036). A directory
+    /// gives the files under it whose names end in `.yml` or `.yaml`, sorted by path. An
+    /// argument that does not exist and has `*`, `?`, `[`, or `{` is a glob in the syntax of
+    /// `paths`, matched from the working directory, and gives the files with such names that it
+    /// matches, sorted by path. Both skip the files that `.gitignore` or the `exclude` globs of
+    /// their project's config file name. Any other argument is a file, linted as given.
+    ///
+    /// # Errors
+    ///
+    /// Fails if a directory or a config file cannot be read, if a directory has no such file,
+    /// or if a glob is malformed or matches no such file.
+    pub fn expand<P: AsRef<OsStr>>(&self, args: &[P]) -> Result<Vec<Input>, DiscoveryError> {
+        let mut finder = Finder::new(&self.cwd, self.flags.config_file.as_deref());
+        let mut inputs = Vec::with_capacity(args.len());
+        for arg in args {
+            inputs.extend(finder.expand(arg.as_ref())?.into_iter().map(Input::file));
+        }
+        Ok(inputs)
     }
 
     /// The actionlint kinds of the rules that this linter runs, sorted by name, as the
@@ -356,7 +379,7 @@ impl Linter {
                     .or_insert_with(|| LocalCache::new(root.clone()));
             }
             let absolute = path::absolute(&self.cwd, &input.path);
-            let relative = slash_path(root.as_deref().unwrap_or(&self.cwd), &absolute);
+            let relative = path::slash_path(root.as_deref().unwrap_or(&self.cwd), &absolute);
             let file_settings = settings.of(root.as_deref())?;
             self.check_tools(&file_settings)?;
             files.push(File {
@@ -696,17 +719,6 @@ fn warn(config: &Config) {
     for warning in config.warnings() {
         tracing::warn!("{warning}");
     }
-}
-
-/// Returns `path` relative to `base`, both absolute and cleaned, with `/` separators. A path
-/// outside `base` starts with `..`.
-fn slash_path(base: &Path, path: &Path) -> String {
-    let relative = path::relative(base, path).unwrap_or_else(|| path.to_path_buf());
-    let parts: Vec<_> = relative
-        .components()
-        .map(|part| part.as_os_str().to_string_lossy())
-        .collect();
-    parts.join("/")
 }
 
 /// A file after its first lint.

@@ -2,7 +2,7 @@
 //! for `-init-config`.
 //!
 //! A config file is decoded as the reference decodes `.github/actionlint.yaml`, with go-yaml's
-//! error texts ([`ConfigDocument`]). Its `paths` globs are checked when it is read, and its
+//! error texts ([`ConfigDocument`]). Its `paths` and `exclude` globs are checked when it is read, and its
 //! `ignore` patterns are compiled then. A key that the reference does not read is a warning in
 //! an actionlint config file and an error in a workflint config file.
 
@@ -147,6 +147,8 @@ pub struct Config {
     paths: Vec<PathConfig>,
     shellcheck: ShellcheckConfig,
     tool_timeout: Option<Duration>,
+    /// The globs of `exclude`, validated.
+    exclude: Vec<String>,
     warnings: Vec<ConfigWarning>,
 }
 
@@ -155,7 +157,8 @@ impl Config {
     ///
     /// # Errors
     ///
-    /// Fails if `text` does not decode, a glob of `paths` or an `ignore` pattern is invalid, or
+    /// Fails if `text` does not decode, a glob of `paths` or `exclude` or an `ignore` pattern is
+    /// invalid, or
     /// a workflint config file has an unknown key. The message starts with
     /// `could not parse config file "<path>": `.
     pub fn parse(path: &Path, kind: ConfigKind, text: &str) -> Result<Self, ConfigError> {
@@ -182,6 +185,13 @@ impl Config {
                 glob: entry.glob,
                 ignore: entry.ignore,
             });
+        }
+        let exclude = document.exclude.unwrap_or_default();
+        if let Some(glob) = exclude.iter().find(|glob| !doublestar::validate(glob)) {
+            return Err(fail(&format!(
+                "invalid glob pattern {} in \"exclude\"",
+                quote(glob)
+            )));
         }
         let mut warnings = Vec::new();
         for key in document.unknown_keys {
@@ -215,6 +225,7 @@ impl Config {
                 })
                 .unwrap_or_default(),
             tool_timeout: document.tool_timeout.map(Duration::from_secs),
+            exclude,
             warnings,
         })
     }
@@ -339,6 +350,15 @@ impl Config {
     pub fn is_ignored(&self, path: &str, message: &str) -> bool {
         self.paths_for(path)
             .any(|entry| entry.ignore.iter().any(|pattern| pattern.is_match(message)))
+    }
+
+    /// Whether a glob of `exclude` matches `path`, the path of a file from the project root
+    /// with `/` separators, so that discovery, directory arguments, and globs skip the file.
+    #[must_use]
+    pub fn is_excluded(&self, path: &str) -> bool {
+        self.exclude
+            .iter()
+            .any(|glob| doublestar::is_match(glob, path))
     }
 
     /// The `paths` entries whose glob matches `path`, in order.
