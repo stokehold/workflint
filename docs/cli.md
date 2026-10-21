@@ -35,7 +35,7 @@ The rules are those of Go's `flag` package:
 | Flag | What it does |
 |---|---|
 | `-ignore PATTERN` | Drops the errors whose message the regular expression matches. The pattern is unanchored and sees only the message, not the path or the rule ID. Give the flag again for more patterns. The pattern has Go's syntax, so `\d`, `\w`, `\s`, and `\b` match ASCII only. An invalid pattern prints Go's error and exits with code 3. |
-| `-oneline` | Prints one line per error, without the source snippet. |
+| `-oneline` | Prints one line per error, without the source snippet. It has no effect with `-format`. |
 | `-color` | Prints color even when stdout is not a terminal, `NO_COLOR` is set, or `TERM` is `dumb`. |
 | `-no-color` | Prints no color. It wins over `-color`. |
 | `-verbose` | Writes log lines that start with `verbose: ` to stderr. |
@@ -44,7 +44,7 @@ The rules are those of Go's `flag` package:
 | `-quiet`, `-q` | Prints only errors and fatal messages: no summary and no log. |
 | `-silent` | Prints only fatal messages. The exit code says whether errors were found. |
 | `-summary` | Prints one line with the number of errors by severity to stderr, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. |
-| `-format TEMPLATE` | Accepted and ignored until M5.8 (#251) prints errors with a Go template. |
+| `-format TEMPLATE` | Prints the errors through a Go template. See [Format templates](#format-templates). |
 | `-config-file PATH`, `--config PATH` | Lints every file with the config file at `PATH`, in place of the config file of each project. A file that cannot be read or decoded exits with code 3. See [config.md](config.md). |
 | `-init-config` | Writes the default config file to `.github/workflint.yaml` in the project of the working directory and exits. The file arguments are ignored. See [config.md](config.md#creating-a-config-file). |
 | `-stdin-filename NAME` | Names the workflow read from stdin. The default is `<stdin>`. If a file exists at `NAME`, the workflow gets that file's project. |
@@ -62,6 +62,46 @@ The default format prints the header line `path:line:col: message [rule-id]`, th
 
 Color is on when stdout is a terminal, `NO_COLOR` is unset or empty, and `TERM` is not `dumb`. `-color` turns it on and `-no-color` turns it off, whatever the environment. On a Windows console that does not understand escape sequences, workflint sets the colors through the console's own calls, as actionlint does.
 
+## Format templates
+
+`-format` takes a template in the syntax of Go's `text/template` package and prints the errors through it, as actionlint does. Templates written for actionlint work unchanged:
+
+```sh
+workflint -format '{{json .}}'
+workflint -format '{{range $err := .}}{{json $err}}{{end}}'
+workflint -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}\n{{end}}'
+```
+
+The template must contain `{{`. Before parsing, workflint replaces the escapes `\a`, `\b`, `\f`, `\n`, `\r`, `\t`, `\v`, and `\\` in the flag value with the characters they stand for, so `-format '{{range .}}{{.Message}}\n{{end}}'` prints one message per line. The template runs once, over the list of the errors of every file in the order of the output. The output has no color, and `-oneline` changes nothing.
+
+Each error has these fields:
+
+| Field | Value |
+|---|---|
+| `Message` | The message. |
+| `Filepath` | The path of the file, as the default format prints it, or the name of the workflow read from stdin. |
+| `Line`, `Column` | The 1-based line and column of the start of the error. The column counts Unicode code points. |
+| `Kind` | The actionlint kind of the rule, such as `expression` or `syntax-check`. |
+| `Rule` | The workflint rule ID, such as `undefined-property`, which the default format prints in brackets. |
+| `Snippet` | The source line, a line break, and the `^~~~` line of the default format. It is empty when the line does not exist. |
+| `EndColumn` | The column of the last character under the `^~~~`, counted as `Column` is, or `Column` when there is no snippet. |
+
+`Rule` is workflint's own, and `Snippet` and `EndColumn` cover the whole span of the error ([differences.md](differences.md#column-units)). The other fields have actionlint's values ([differences.md](differences.md#rule-id-in-brackets)).
+
+The template can call Go's built-in functions and these:
+
+| Function | Result |
+|---|---|
+| `json VALUE` | `VALUE` as JSON, as Go's `encoding/json` writes it: `<`, `>`, and `&` escaped, and a line break at the end. An error has actionlint's seven keys `message`, `filepath`, `line`, `column`, `kind`, `snippet`, and `end_column`, without `filepath` and `snippet` when they are empty. No errors give `[]`. |
+| `replace S OLD NEW ...` | `S` with each `OLD` replaced by the `NEW` after it, as Go's `strings.NewReplacer`. |
+| `toPascalCase S` | `S` split at each character that is not an ASCII letter or digit, with each part capitalized, as in `foo-bar` to `FooBar`. |
+| `getVersion` | The version, as the first line of `-version` prints it. |
+| `allKinds` | The kinds of the rules that the run uses, sorted by name, each with `Name` and `Description`. `shellcheck` is in the list only when shellcheck runs ([differences.md](differences.md#all-kinds-of-the-run)). |
+
+The SARIF template of actionlint, `testdata/format/sarif_template.txt`, builds its `rules` from `allKinds` and its `results` from the fields.
+
+A template that does not parse prints Go's error, such as `template "{{xxx}}" to format error messages could not be parsed: template: error formatter:1: function "xxx" not defined`, and exits with code 3 before any file is read. A template that fails while it runs, such as `{{.Foo}}`, prints its output up to the failing action, then the error to stderr, and exits with code 3 ([differences.md](differences.md#template-execution-errors)). Otherwise the exit code says whether errors were found, as with the other formats. `-silent` prints nothing, but still checks that the template parses. [differences.md](differences.md#format-template-subset) lists where the template language differs from Go's.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -69,7 +109,7 @@ Color is on when stdout is a terminal, `NO_COLOR` is unset or empty, and `TERM` 
 | 0 | No errors, also when `-ignore` or the config dropped every error. `-h`, `-help`, `-version`, and a successful `-init-config` exit with 0 too. |
 | 1 | At least one error. |
 | 2 | The command line is invalid. |
-| 3 | A fatal error: a file, stdin, or a config file cannot be read, a run without file arguments finds no project or no workflow file, a config file or an `-ignore` pattern is invalid, the shellcheck that `-shellcheck` names is not found, `-init-config` fails, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
+| 3 | A fatal error: a file, stdin, or a config file cannot be read, a run without file arguments finds no project or no workflow file, a config file, an `-ignore` pattern, or the `-format` template is invalid, the shellcheck that `-shellcheck` names is not found, `-init-config` fails, the `-format` template fails while it runs, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
 
 ## Version
 

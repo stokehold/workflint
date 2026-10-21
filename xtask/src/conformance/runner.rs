@@ -15,6 +15,7 @@ use super::allow_list::{self, AllowList};
 use super::binary::{self, Threads};
 use super::expected_failures::{self, ExpectedFailures};
 use super::fixture::{self, Fixture, Tools};
+use super::format::{self, Case};
 use super::verdict::{Listing, Verdict, judge};
 use super::{checklist, checks_md, corpus, rule_kinds};
 use super::{conformance_dir, output, repository_root};
@@ -251,6 +252,47 @@ impl Setup {
         })
     }
 
+    /// Lints the workflow of the format case `case` with its template, and
+    /// compares the output with the case's file, after the allow-list
+    /// entries of the case. The binary must exit with code 1 and print
+    /// nothing to standard error, and its output must not depend on the
+    /// thread count.
+    ///
+    /// # Errors
+    ///
+    /// Returns the reason the case fails, also when it passes without one
+    /// of its entries.
+    pub fn run_format(&self, case: &Case) -> Result<(), String> {
+        let invocation = case.prepare()?;
+        let stdout = binary::run_with_threads(self.program.path(), &invocation, Threads::One)?;
+        let parallel =
+            binary::run_with_threads(self.program.path(), &invocation, Threads::Default)?;
+        if parallel != stdout {
+            return Err(thread_difference(&stdout, &parallel));
+        }
+        let upstream = case.expected_output()?;
+        let entries = self.allow_list.entries_for(case.id);
+        case.compare(&format::apply(&upstream, &entries)?, &stdout)?;
+        for (index, entry) in entries.iter().enumerate() {
+            let others: Vec<_> = entries
+                .iter()
+                .enumerate()
+                .filter(|(other, _)| *other != index)
+                .map(|(_, entry)| *entry)
+                .collect();
+            if case
+                .compare(&format::apply(&upstream, &others)?, &stdout)
+                .is_ok()
+            {
+                return Err(format!(
+                    "{} is unused: the case passes without it. Remove the entry.",
+                    entry.describe()
+                ));
+            }
+        }
+        Ok(())
+    }
+
     /// How many of `fixtures` the runner skips and why, with one line per
     /// skipped fixture.
     #[must_use]
@@ -321,6 +363,30 @@ pub fn run_fixture(fixture: &Fixture) -> Result<Outcome, String> {
     SETUP.run(fixture)
 }
 
+/// Runs the format case whose expected output is the file `path` with the
+/// binary that [`Setup::from_environment`] picks. See [`Setup::run_format`].
+///
+/// # Errors
+///
+/// Returns the reason the case fails.
+///
+/// # Panics
+///
+/// Panics if `path` is not the file of a case, or if the binary does not
+/// build or a data file is missing or invalid.
+pub fn run_format_case(path: &Path) -> Result<(), String> {
+    let case = format::case(path)
+        .unwrap_or_else(|| panic!("{} is not the output of a format case", path.display()));
+    SETUP.run_format(case)
+}
+
+/// The IDs of every fixture of both origins and of every format case.
+fn all_ids() -> Result<BTreeSet<String>, String> {
+    let mut ids = fixture::all_ids()?;
+    ids.extend(format::CASES.iter().map(|case| case.id.to_owned()));
+    Ok(ids)
+}
+
 /// How many fixtures the runner skips and why. See [`Setup::skip_summary`].
 ///
 /// # Errors
@@ -342,7 +408,7 @@ pub fn skip_summary() -> Result<String, String> {
 pub fn check_allow_list() -> Result<(), String> {
     let anchors = allow_list::anchors(&read("docs/differences.md"));
     let corpus = corpus::file_names(&corpus::archive())?;
-    ALLOW_LIST.validate(&anchors, &fixture::all_ids()?, &corpus)?;
+    ALLOW_LIST.validate(&anchors, &all_ids()?, &corpus)?;
     let mut problems: Vec<String> = fixture::all()?
         .into_iter()
         .filter_map(|fixture| {
@@ -350,6 +416,15 @@ pub fn check_allow_list() -> Result<(), String> {
             allow_list::apply(&fixture.expected_lines(), &entries).err()
         })
         .collect();
+    for case in &format::CASES {
+        let entries = ALLOW_LIST.entries_for(case.id);
+        if let Err(problem) = case
+            .expected_output()
+            .and_then(|expected| format::apply(&expected, &entries))
+        {
+            problems.push(problem);
+        }
+    }
     let sections = checks_md::sections(&read("tests/conformance/actionlint/docs/checks.md"));
     for example in &ALLOW_LIST.examples {
         let lines = sections
@@ -478,7 +553,7 @@ pub fn check_parity_checklist() -> Result<(), String> {
         .keys()
         .map(String::as_str)
         .collect();
-    checklist::check_items(&items, &fixture::all_ids()?, &failing, &closed()?)
+    checklist::check_items(&items, &all_ids()?, &failing, &closed()?)
 }
 
 /// Checks that every rule ID of the "Rule ID (kind)" column of

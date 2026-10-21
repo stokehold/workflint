@@ -15,6 +15,7 @@ pub mod checks_md;
 pub mod corpus;
 pub mod expected_failures;
 pub mod fixture;
+pub mod format;
 pub mod matcher;
 pub mod output;
 pub mod rule_kinds;

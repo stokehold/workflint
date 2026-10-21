@@ -770,14 +770,7 @@ fn an_invalid_ignore_pattern_prints_the_go_error_and_exits_with_3() {
 
 #[test]
 fn flags_of_later_tasks_are_accepted_and_ignored() {
-    let run = workflint(&[
-        "-oneline",
-        "-format",
-        "{{json .}}",
-        "-stdin-filename",
-        "name.yaml",
-        "broken.yaml",
-    ]);
+    let run = workflint(&["-oneline", "-stdin-filename", "name.yaml", "broken.yaml"]);
     assert_eq!(
         run,
         Run {
@@ -1615,5 +1608,302 @@ fn a_run_without_arguments_uses_the_config_of_the_discovered_project() {
             stdout: String::new(),
             stderr: String::new(),
         }
+    );
+}
+
+/// Runs the binary with `-format template` and then `args`.
+fn format(template: &str, args: &[&str]) -> Run {
+    let args: Vec<&str> = ["-format", template].iter().chain(args).copied().collect();
+    workflint(&args)
+}
+
+/// What `{{json .}}` prints for `anchors.yaml`.
+const ANCHORS_JSON: &str = "[{\"message\":\"anchor \\\"b\\\" is defined but not used\",\
+    \"filepath\":\"anchors.yaml\",\"line\":3,\"column\":6,\"kind\":\"syntax-check\",\
+    \"snippet\":\"  B: \\u0026b 1\\n     ^~\",\"end_column\":7},\
+    {\"message\":\"anchor \\\"a\\\" is defined but not used\",\"filepath\":\"anchors.yaml\",\
+    \"line\":4,\"column\":6,\"kind\":\"syntax-check\",\"snippet\":\"  A: \\u0026a 2\\n     ^~\",\
+    \"end_column\":7}]\n";
+
+#[test]
+fn json_of_every_diagnostic_has_the_seven_keys_of_the_reference() {
+    let run = format("{{json .}}", &["anchors.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(1),
+            stdout: ANCHORS_JSON.to_owned(),
+            stderr: String::new(),
+        }
+    );
+}
+
+#[test]
+fn json_of_zero_diagnostics_prints_an_empty_list_and_exits_with_0() {
+    let run = format("{{json .}}", &["valid.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: "[]\n".to_owned(),
+            stderr: String::new(),
+        }
+    );
+}
+
+#[test]
+fn format_fields_hold_the_kind_the_rule_id_and_the_span() {
+    let run = format(
+        "{{range .}}{{.Filepath}}:{{.Line}}:{{.Column}}-{{.EndColumn}} {{.Kind}} {{.Rule}}: \
+         {{.Message}}\n{{.Snippet}}\n{{end}}",
+        &["anchors.yaml"],
+    );
+    assert_eq!(run.code, Some(1));
+    assert_eq!(
+        run.stdout,
+        "anchors.yaml:3:6-7 syntax-check unused-anchor: anchor \"b\" is defined but not used
+  B: &b 1
+     ^~
+anchors.yaml:4:6-7 syntax-check unused-anchor: anchor \"a\" is defined but not used
+  A: &a 2
+     ^~
+"
+    );
+}
+
+#[test]
+fn format_runs_once_over_the_diagnostics_of_every_file() {
+    let run = format(
+        "{{len .}}{{range .}} {{.Filepath}}{{end}}",
+        &["broken.yaml", "anchors.yaml"],
+    );
+    assert_eq!(run.code, Some(1));
+    assert_eq!(run.stdout, "3 broken.yaml anchors.yaml anchors.yaml");
+}
+
+#[test]
+fn format_reads_stdin() {
+    let output = command(
+        &cli_dir(),
+        &["-format", "{{range .}}{{.Filepath}}:{{.Line}}{{end}}", "-"],
+    )
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .and_then(|mut child| {
+        if let Some(mut stdin) = child.stdin.take() {
+            std::io::Write::write_all(&mut stdin, b"on: push\njobs:\n  test:\n    steps: -\n")?;
+        }
+        child.wait_with_output()
+    })
+    .unwrap();
+    let run = run(output);
+    assert_eq!(run.code, Some(1), "{}", run.stderr);
+    assert_eq!(run.stdout, "<stdin>:4");
+}
+
+#[test]
+fn format_unescapes_backslash_escapes_before_parsing() {
+    let run = format(
+        r"{{range .}}{{.Line}}\t{{.Column}}\n{{end}}\\n\a\b\f\r\v",
+        &["anchors.yaml"],
+    );
+    assert_eq!(run.stdout, "3\t6\n4\t6\n\\n\x07\x08\x0c\r\x0b");
+}
+
+#[test]
+fn format_keeps_unknown_escapes() {
+    let run = format(r"{{len .}}\x\q", &["anchors.yaml"]);
+    assert_eq!(run.stdout, r"2\x\q");
+}
+
+#[test]
+fn a_format_without_braces_prints_the_reference_error_and_exits_with_3() {
+    let run = format("hello", &["anchors.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(3),
+            stdout: String::new(),
+            stderr: "template to format error messages must contain at least one {{ }} \
+                     placeholder: hello\n"
+                .to_owned(),
+        }
+    );
+}
+
+#[test]
+fn a_format_that_does_not_parse_prints_the_go_error_and_exits_with_3() {
+    let run = format(r"{{xxx}}\n", &["anchors.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(3),
+            stdout: String::new(),
+            stderr: "template \"{{xxx}}\\\\n\" to format error messages could not be parsed: \
+                     template: error formatter:1: function \"xxx\" not defined\n"
+                .to_owned(),
+        }
+    );
+}
+
+#[test]
+fn an_invalid_format_is_reported_before_init_config_runs() {
+    let dir = tempfile::tempdir().unwrap();
+    let run = run(command(dir.path(), &["-init-config", "-format", "x"])
+        .output()
+        .unwrap());
+    assert_eq!(run.code, Some(3));
+    assert!(
+        run.stderr.starts_with("template to format error messages"),
+        "{}",
+        run.stderr
+    );
+    assert!(!dir.path().join(".github").exists());
+}
+
+const EXECUTION_ERROR: &str = "could not format error messages: template: error formatter:1:3: \
+    executing \"error formatter\" at <.Foo>: can't evaluate field Foo in type \
+    []*actionlint.ErrorTemplateFields\n";
+
+#[test]
+fn a_template_execution_error_exits_with_3_for_one_file_and_for_many() {
+    for files in [&["anchors.yaml"][..], &["anchors.yaml", "valid.yaml"]] {
+        let run = format("x{{.Foo}}", files);
+        assert_eq!(
+            run,
+            Run {
+                code: Some(3),
+                stdout: "x".to_owned(),
+                stderr: EXECUTION_ERROR.to_owned(),
+            },
+            "{files:?}"
+        );
+    }
+}
+
+#[test]
+fn a_template_execution_error_exits_with_3_for_stdin() {
+    let output = command(&cli_dir(), &["-format", "x{{.Foo}}", "-"])
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let run = run(output);
+    assert_eq!(run.code, Some(3));
+    assert_eq!(run.stderr, EXECUTION_ERROR);
+}
+
+#[test]
+fn a_template_execution_error_exits_with_3_without_diagnostics() {
+    let run = format("{{index . 0}}", &["valid.yaml"]);
+    assert_eq!(run.code, Some(3));
+    assert_eq!(
+        run.stderr,
+        "could not format error messages: template: error formatter:1:2: executing \
+         \"error formatter\" at <index . 0>: error calling index: reflect: slice index out of \
+         range\n"
+    );
+}
+
+#[test]
+fn oneline_has_no_effect_with_format() {
+    let template = "{{range .}}{{.Snippet}}{{end}}";
+    let with = format(template, &["-oneline", "anchors.yaml"]);
+    assert_eq!(with, format(template, &["anchors.yaml"]));
+    assert_eq!(with.stdout, "  B: &b 1\n     ^~  A: &a 2\n     ^~");
+}
+
+#[test]
+fn format_prints_no_color() {
+    let run = format("{{range .}}{{.Message}}{{end}}", &["-color", "broken.yaml"]);
+    assert_eq!(
+        run.stdout,
+        "could not parse as YAML: block sequence entries are not allowed in this context"
+    );
+}
+
+#[test]
+fn silent_prints_nothing_with_format() {
+    let run = format("{{json .}}", &["-silent", "anchors.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(1),
+            stdout: String::new(),
+            stderr: String::new(),
+        }
+    );
+}
+
+#[test]
+fn all_kinds_lists_the_kinds_of_the_rules_that_run() {
+    let template = "{{range allKinds}}{{.Name}}: {{.Description}}\n{{end}}";
+    let run = format(template, &["valid.yaml"]);
+    assert_eq!(run.code, Some(0));
+    let names: Vec<&str> = run
+        .stdout
+        .lines()
+        .map(|line| line.split(':').next().unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "action",
+            "credentials",
+            "deprecated-commands",
+            "env-var",
+            "events",
+            "expression",
+            "glob",
+            "id",
+            "if-cond",
+            "job-needs",
+            "matrix",
+            "permissions",
+            "runner-label",
+            "shell-name",
+            "syntax-check",
+            "workflow-call",
+        ]
+    );
+    assert!(
+        run.stdout
+            .contains("syntax-check: Checks for GitHub Actions workflow syntax\n"),
+        "{}",
+        run.stdout
+    );
+}
+
+#[test]
+fn all_kinds_lists_shellcheck_when_it_runs() {
+    // Any executable will do as shellcheck, because `broken.yaml` has no script to check.
+    let shellcheck = format!("-shellcheck={}", env!("CARGO_BIN_EXE_workflint"));
+    let run = format(
+        "{{range allKinds}}{{.Name}} {{end}}",
+        &[&shellcheck, "broken.yaml"],
+    );
+    assert_eq!(run.code, Some(1), "{}", run.stderr);
+    assert!(run.stdout.contains(" shellcheck "), "{}", run.stdout);
+}
+
+#[test]
+fn get_version_prints_the_first_line_of_version() {
+    let run = format("{{getVersion}}", &["valid.yaml"]);
+    assert_eq!(run.stdout, env!("CARGO_PKG_VERSION"));
+}
+
+#[test]
+fn the_github_annotation_recipe_escapes_snippet_line_breaks() {
+    // The recipe of the reference's docs/usage.md, which the shell passes with `\\n` intact.
+    let run = format(
+        r#"{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}"#,
+        &["anchors.yaml"],
+    );
+    assert_eq!(
+        run.stdout,
+        "::error file=anchors.yaml,line=3,col=6::anchor \"b\" is defined but not used%0A```%0A  \
+         B: &b 1%0A     ^~%0A```\n::error file=anchors.yaml,line=4,col=6::anchor \"a\" is defined \
+         but not used%0A```%0A  A: &a 2%0A     ^~%0A```\n"
     );
 }

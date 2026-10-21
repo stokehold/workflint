@@ -482,3 +482,57 @@ anchor = "platform-data-updates"
 fixture = "realworld/*"
 upstream = '/available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-24\.04", "ubuntu-24\.04-arm", "ubuntu-22\.04", "ubuntu-22\.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows"\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
 workflint = 'available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.json"
+upstream = '[{"message":"unexpected key \"branch\" for \"push\" section. expected one of \"branches\", \"branches-ignore\", \"paths\", \"paths-ignore\", \"tags\", \"tags-ignore\", \"types\", \"workflows\"","filepath":"testdata/format/test.yaml","line":3,"column":5,"kind":"syntax-check","snippet":"    branch: main\n    ^~~~~~~","end_column":11},{"message":"property \"msg\" is not defined in object type {}","filepath":"testdata/format/test.yaml","line":9,"column":23,"kind":"expression","snippet":"      - run: echo ${{ matrix.msg }}\n                      ^~~~~~~~~~","end_column":32},{"message":"unexpected key \"with\" for step to run shell command. expected one of \"continue-on-error\", \"env\", \"id\", \"if\", \"name\", \"run\", \"shell\", \"timeout-minutes\", \"working-directory\"","filepath":"testdata/format/test.yaml","line":10,"column":9,"kind":"syntax-check","snippet":"        with:\n        ^~~~~","end_column":13}]'
+workflint = '[{"message":"unexpected key \"branch\" for \"push\" section. expected one of \"branches\", \"branches-ignore\", \"paths\", \"paths-ignore\", \"tags\", \"tags-ignore\", \"types\", \"workflows\"","filepath":"testdata/format/test.yaml","line":3,"column":5,"kind":"syntax-check","snippet":"    branch: main\n    ^~~~~~","end_column":10},{"message":"property \"msg\" is not defined in object type {}","filepath":"testdata/format/test.yaml","line":9,"column":23,"kind":"expression","snippet":"      - run: echo ${{ matrix.msg }}\n                      ^~~~~~~~~~","end_column":32},{"message":"unexpected key \"with\" for step to run shell command. expected one of \"continue-on-error\", \"env\", \"id\", \"if\", \"name\", \"run\", \"shell\", \"timeout-minutes\", \"working-directory\"","filepath":"testdata/format/test.yaml","line":10,"column":9,"kind":"syntax-check","snippet":"        with:\n        ^~~~","end_column":12}]'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.jsonl"
+upstream = '{"message":"unexpected key \"branch\" for \"push\" section. expected one of \"branches\", \"branches-ignore\", \"paths\", \"paths-ignore\", \"tags\", \"tags-ignore\", \"types\", \"workflows\"","filepath":"testdata/format/test.yaml","line":3,"column":5,"kind":"syntax-check","snippet":"    branch: main\n    ^~~~~~~","end_column":11}'
+workflint = '{"message":"unexpected key \"branch\" for \"push\" section. expected one of \"branches\", \"branches-ignore\", \"paths\", \"paths-ignore\", \"tags\", \"tags-ignore\", \"types\", \"workflows\"","filepath":"testdata/format/test.yaml","line":3,"column":5,"kind":"syntax-check","snippet":"    branch: main\n    ^~~~~~","end_column":10}'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.jsonl"
+upstream = '{"message":"unexpected key \"with\" for step to run shell command. expected one of \"continue-on-error\", \"env\", \"id\", \"if\", \"name\", \"run\", \"shell\", \"timeout-minutes\", \"working-directory\"","filepath":"testdata/format/test.yaml","line":10,"column":9,"kind":"syntax-check","snippet":"        with:\n        ^~~~~","end_column":13}'
+workflint = '{"message":"unexpected key \"with\" for step to run shell command. expected one of \"continue-on-error\", \"env\", \"id\", \"if\", \"name\", \"run\", \"shell\", \"timeout-minutes\", \"working-directory\"","filepath":"testdata/format/test.yaml","line":10,"column":9,"kind":"syntax-check","snippet":"        with:\n        ^~~~","end_column":12}'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.md"
+upstream = '    ^~~~~~~'
+workflint = '    ^~~~~~'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.md"
+upstream = '        ^~~~~'
+workflint = '        ^~~~'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.sarif"
+upstream = '                  "endColumn": 11,'
+workflint = '                  "endColumn": 10,'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.sarif"
+upstream = '                    "text": "    branch: main\n    ^~~~~~~"'
+workflint = '                    "text": "    branch: main\n    ^~~~~~"'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.sarif"
+upstream = '                  "endColumn": 13,'
+workflint = '                  "endColumn": 12,'
+
+[[difference]]
+anchor = "column-units"
+fixture = "format/test.sarif"
+upstream = '                    "text": "        with:\n        ^~~~~"'
+workflint = '                    "text": "        with:\n        ^~~~"'

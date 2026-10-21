@@ -71,6 +71,12 @@ fn workflint(path: &Path) -> datatest_stable::Result<()> {
     lint(Origin::Workflint, path)
 }
 
+/// A case of the reference's `testdata/format/`, named after its expected
+/// output.
+fn format(path: &Path) -> datatest_stable::Result<()> {
+    check(runner::run_format_case(path))
+}
+
 fn allowed_differences(_: &Path) -> datatest_stable::Result<()> {
     check(runner::check_allow_list())
 }
@@ -100,6 +106,7 @@ fn skipped_fixtures(_: &Path) -> datatest_stable::Result<()> {
 datatest_stable::harness! {
     { test = actionlint, root = "../tests/conformance/actionlint/testdata", pattern = r"^((err|examples|ok)/[^/]+\.ya?ml|projects/[^/]+\.out)$" },
     { test = workflint, root = "../tests/conformance/workflint", pattern = r"^((err|examples|ok)/[^/]+\.ya?ml|projects/[^/]+\.out)$" },
+    { test = format, root = "../tests/conformance/actionlint/testdata/format", pattern = r"^test\.(json|jsonl|md|sarif)$" },
     { test = allowed_differences, root = "../tests/conformance", pattern = r"^allowed-differences\.toml$" },
     { test = expected_failures, root = "../tests/conformance", pattern = r"^expected-failures\.toml$" },
     { test = rule_kinds, root = "../tests/conformance", pattern = r"^rule-kinds\.toml$" },

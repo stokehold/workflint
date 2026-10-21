@@ -1092,6 +1092,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "workflint-diagnostics",
+ "workflint-gotemplate",
  "workflint-linter",
  "workflint-rules",
 ]

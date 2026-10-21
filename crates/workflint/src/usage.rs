@@ -36,8 +36,6 @@ pub(crate) fn text() -> String {
 
     $ workflint -format '{{{{json .}}}}'
 
-  This version does not support the -format flag yet.
-
 Documents:
 
   - Command line: {docs}/cli.md

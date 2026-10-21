@@ -114,27 +114,56 @@ fn write_header<W: Write + ?Sized>(
     )
 }
 
-/// Writes the gray `|` line, the numbered source line, and the indicator line.
-///
-/// Nothing is written when the line does not exist. As with actionlint's line reader, a file
-/// has no lines when it is empty, and the empty line after a final line break does not exist.
+/// Writes the gray `|` line, the numbered source line, and the indicator line, when the
+/// diagnostic has a [`snippet`].
 fn write_snippet<W: Write + ?Sized>(
     out: &mut W,
     file: &SourceFile,
     diagnostic: &Diagnostic,
     color: Color,
 ) -> io::Result<()> {
+    let Some(snippet) = snippet(file, diagnostic) else {
+        return Ok(());
+    };
+    let gutter = format!("{} | ", file.line_col(diagnostic.span.start).line);
+    let indent = " ".repeat(gutter.len().saturating_sub(2));
+    paint(out, color, GRAY, format_args!("{indent}|\n"))?;
+    paint(out, color, GRAY, &gutter)?;
+    writeln!(out, "{}", snippet.line)?;
+    paint(out, color, GRAY, format_args!("{indent}| "))?;
+    paint(out, color, GREEN, &snippet.indicator)?;
+    writeln!(out)
+}
+
+/// The source line of a diagnostic and the indicator under its span, as the default format
+/// prints them. The `Snippet` and `EndColumn` fields of `-format` templates come from it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Snippet<'a> {
+    /// The line that the span starts on, without its line break.
+    pub line: &'a str,
+    /// `^` under the first character of the span and `~` under the rest of it, up to the end
+    /// of the line.
+    pub indicator: String,
+    /// The 1-based column, in Unicode code points, of the last character that the indicator
+    /// covers. Tabs at the end of the span do not count. It is the diagnostic's column when the
+    /// indicator is a lone `^` over nothing visible.
+    pub end_column: usize,
+}
+
+/// Returns the [`Snippet`] of `diagnostic`, or `None` when its line does not exist. As with
+/// actionlint's line reader, a file has no lines when it is empty, and the empty line after a
+/// final line break does not exist.
+///
+/// The span must be in `file`.
+#[must_use]
+pub fn snippet<'a>(file: &'a SourceFile, diagnostic: &Diagnostic) -> Option<Snippet<'a>> {
     let text = file.text();
-    let line = file.line_col(diagnostic.span.start).line;
-    let Some(range) = file.line_range(line) else {
-        return Ok(());
-    };
+    let pos = file.line_col(diagnostic.span.start);
+    let range = file.line_range(pos.line)?;
     if range.start >= text.len() {
-        return Ok(());
+        return None;
     }
-    let Some(source) = text.get(range.clone()) else {
-        return Ok(());
-    };
+    let source = text.get(range.clone())?;
     // Offsets into `source`, clamped to the line and moved to character boundaries.
     let to_line = |offset: u32| {
         let offset = usize::try_from(offset).unwrap_or(usize::MAX);
@@ -142,19 +171,17 @@ fn write_snippet<W: Write + ?Sized>(
     };
     let start = source.floor_char_boundary(to_line(diagnostic.span.start));
     let end = source.ceil_char_boundary(to_line(diagnostic.span.end));
-
-    let gutter = format!("{line} | ");
-    let indent = " ".repeat(gutter.len().saturating_sub(2));
-    paint(out, color, GRAY, format_args!("{indent}|\n"))?;
-    paint(out, color, GRAY, &gutter)?;
-    writeln!(out, "{source}")?;
-    paint(out, color, GRAY, format_args!("{indent}| "))?;
-    paint(out, color, GREEN, indicator(source, start, end))?;
-    writeln!(out)
+    let (indicator, covered) = indicator(source, start, end);
+    Some(Snippet {
+        line: source,
+        indicator,
+        end_column: pos.column + covered.chars().count().saturating_sub(1),
+    })
 }
 
 /// Builds the indicator for the byte range `start..end` of `line`: `^` under the first
-/// character, then `~` under the rest of the range.
+/// character, then `~` under the rest of the range. Also returns the text that the indicator
+/// covers, which is empty when it is a lone `^` over nothing visible.
 ///
 /// The text before `start` becomes spaces, as many as its display width, and every tab in it
 /// stays a tab, so the `^` lines up with the source line in any terminal. An empty range, or one
@@ -164,7 +191,7 @@ fn write_snippet<W: Write + ?Sized>(
 /// A tab at the start of the range is copied before the `^`, so the `^` sits under the first
 /// character after it. Tabs at the end of the range are dropped. `docs/differences.md#column-units`
 /// describes both.
-fn indicator(line: &str, start: usize, end: usize) -> String {
+fn indicator(line: &str, start: usize, end: usize) -> (String, &str) {
     let (before, rest) = line.split_at_checked(start).unwrap_or((line, ""));
     let underlined = if end > start {
         rest.get(..end - start).unwrap_or(rest)
@@ -192,12 +219,13 @@ fn indicator(line: &str, start: usize, end: usize) -> String {
     }
     if caret_written {
         indicator.truncate(indicator.trim_end_matches('\t').len());
+        (indicator, underlined.trim_end_matches('\t'))
     } else {
         // The range is empty or has no visible character. Point at its start.
         indicator.truncate(prefix_len);
         indicator.push('^');
+        (indicator, "")
     }
-    indicator
 }
 
 /// Splits `text` at control characters. Each item is the run of text before a control character
@@ -218,11 +246,82 @@ fn runs(text: &str) -> impl Iterator<Item = (&str, bool)> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
+    use crate::{Category, FileId, RuleMeta, Severity, Span};
+
+    static RULE: RuleMeta = RuleMeta {
+        id: "a-rule",
+        description: "",
+        kind: "syntax-check",
+        category: Category::Correctness,
+        default_severity: Severity::Error,
+        docs_url: "https://example.com",
+    };
+
+    /// The snippet of a diagnostic on the first `token` in `text`.
+    fn snippet_of(text: &str, token: &str) -> Option<(String, String, usize)> {
+        let file = SourceFile::new(FileId::new(0), "test.yaml", text).unwrap();
+        let start = u32::try_from(text.find(token).unwrap()).unwrap();
+        let end = start + u32::try_from(token.len()).unwrap();
+        let diagnostic = Diagnostic::new(&RULE, Span::new(FileId::new(0), start, end), "m");
+        snippet(&file, &diagnostic).map(|snippet| {
+            (
+                snippet.line.to_owned(),
+                snippet.indicator,
+                snippet.end_column,
+            )
+        })
+    }
+
+    #[test]
+    fn snippet_end_column_is_the_column_of_the_last_underlined_character() {
+        assert_eq!(
+            snippet_of("on: push\n    branch: main\n", "branch"),
+            Some(("    branch: main".to_owned(), "    ^~~~~~".to_owned(), 10))
+        );
+    }
+
+    #[test]
+    fn snippet_end_column_counts_code_points_not_cells() {
+        // Each CJK character takes two cells and is one code point.
+        let (_, indicator, end_column) = snippet_of("k: 日本語 x\n", "日本語").unwrap();
+        assert_eq!(indicator, "   ^~~~~~");
+        assert_eq!(end_column, 6);
+    }
+
+    #[test]
+    fn snippet_end_column_leaves_out_tabs_at_the_end_of_the_span() {
+        assert_eq!(snippet_of("k: ab\t\n", "ab\t").map(|s| s.2), Some(5));
+    }
+
+    #[test]
+    fn snippet_end_column_of_an_empty_span_ends_the_non_blank_run() {
+        let text = "k: foo bar\n";
+        let file = SourceFile::new(FileId::new(0), "test.yaml", text).unwrap();
+        let diagnostic = Diagnostic::new(&RULE, Span::new(FileId::new(0), 3, 3), "m");
+        let snippet = snippet(&file, &diagnostic).unwrap();
+        assert_eq!(snippet.indicator, "   ^~~");
+        assert_eq!(snippet.end_column, 6);
+    }
+
+    #[test]
+    fn snippet_end_column_is_the_column_for_a_caret_over_nothing_visible() {
+        assert_eq!(snippet_of("k:\t\t\n", "\t\t").map(|s| s.2), Some(3));
+    }
+
+    #[test]
+    fn a_span_past_the_last_line_has_no_snippet() {
+        let text = "on: push\n";
+        let file = SourceFile::new(FileId::new(0), "test.yaml", text).unwrap();
+        let diagnostic = Diagnostic::new(&RULE, Span::new(FileId::new(0), 9, 9), "m");
+        assert_eq!(snippet(&file, &diagnostic), None);
+    }
 
     fn at(line: &str, token: &str) -> String {
         let start = line.find(token).unwrap_or(0);
-        indicator(line, start, start + token.len())
+        indicator(line, start, start + token.len()).0
     }
 
     #[test]
@@ -307,9 +406,9 @@ mod tests {
 
     #[test]
     fn indicator_for_an_empty_range_follows_the_non_blank_run() {
-        assert_eq!(indicator("foo bar", 0, 0), "^~~");
-        assert_eq!(indicator("foo\tbar", 4, 4), "   \t^~~");
-        assert_eq!(indicator("foo bar", 3, 3), "   ^");
-        assert_eq!(indicator("foo", 3, 3), "   ^");
+        assert_eq!(indicator("foo bar", 0, 0).0, "^~~");
+        assert_eq!(indicator("foo\tbar", 4, 4).0, "   \t^~~");
+        assert_eq!(indicator("foo bar", 3, 3).0, "   ^");
+        assert_eq!(indicator("foo", 3, 3).0, "   ^");
     }
 }
