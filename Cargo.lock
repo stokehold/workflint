@@ -1059,6 +1059,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "workflint-gotemplate"
+version = "0.0.1"
+dependencies = [
+ "datatest-stable",
+ "unicode-general-category",
+]
+
+[[package]]
 name = "workflint-linter"
 version = "0.0.1"
 dependencies = [

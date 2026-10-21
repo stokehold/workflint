@@ -28,6 +28,7 @@ Rules that another crate reports are an exception to "rules live in `workflint-r
 
 - `xtask/` is the package behind `cargo xtask`, the developer commands. `cargo xtask --help` lists them. Its `conformance` test target is the conformance suite, `xtask/goyaml-dump/` is the Go program that `cargo xtask yaml-parity` builds to dump go-yaml's tree, and `xtask/expr-check/` is the Go program that `cargo xtask expr-parity` builds around the reference's expression checker. It is never published (ADR 0006).
 - `xtask/go-quote-hash/` is a Go program that hashes the output of Go's `strconv.Quote` and `strconv.QuoteRune` for every Unicode scalar value. The tests of `workflint_diagnostics::quote` compare their own output with these hashes.
+- `xtask/go-template-golden/` is a Go program that runs templates with Go's `text/template` and writes the expected output and errors that the tests of `workflint-gotemplate` compare with.
 - `fuzz/` holds the cargo-fuzz targets. It is a Cargo workspace of its own, with its own `Cargo.lock` and a pinned nightly toolchain, because `cargo fuzz` needs nightly (ADR 0025). It is never published.
 
 ## How a run works
@@ -60,6 +61,7 @@ Rules that another crate reports are an exception to "rules live in `workflint-r
 | `registry`, `kind` | rules | `registry::rules` lists the `RuleMeta` of every rule with an actionlint kind, sorted by rule ID, including the parse-stage and checker rules of other crates, and `registry::find` looks one up by ID. The conformance tooling reads it. `kind::ALL` has the reference's description of each actionlint kind. |
 | `LocalMetadata`, `Lookup`, `MemoryProject` | rules | The interface through which rules look up a local action or local reusable workflow by `uses:` value. A `Lookup` is nothing, the metadata with whether this is the first lookup of the value in the run, or the reference's error text, which only the first lookup gets. A rule can also register the linted workflow's `on.workflow_call`, or record an invalid `./` reference so that it is never read. `NoProject` finds nothing, and `MemoryProject` holds files in memory for the tests of rules and rule pages. |
 | `ProjectRoots`, `LocalCache` | linter | The project root of a file, as the reference finds it, and the per-project cache that implements `LocalMetadata` for each linted file through `LocalCache::for_file`. Each directory's root and each cache entry is computed once per run. `LocalCache::commit` replays a file's uses of the cache in file order and returns the state to lint it again with when the earlier files change its answers. |
+| `Template`, `Value`, `Functions` | gotemplate | A parsed Go template, the data it runs on, and the caller's functions by name. Parsing checks that every function exists. Values carry Go type names, which errors print. The engine depends on no other workflint crate, and only the binary uses it (ADR 0006). |
 | `Linter`, `Input`, `Linted` | linter | The parallel driver. `Linter::lint` and `Linter::lint_with` take the inputs of a run, lint them with one `LocalCache` per project, and return each file's sorted diagnostics in input order. A panic in the lint of a file becomes an `internal-error` diagnostic on it. `Linter::with_check` replaces the rules, so that tests can make a lint panic. M5.1 adds discovered files and stdin to `Input`. |
 | `registry`, `rules` | linter | `registry::rules` lists every rule: those of `workflint_rules::registry` and those that the driver reports, which `rules` defines, so far only `internal-error` (ADR 0034). The binary, the config, and the rule pages test read it. |
 | `Config` | linter | Loaded config, from M5.2. |
@@ -84,6 +86,7 @@ Rules that another crate reports are an exception to "rules live in `workflint-r
 | Expression parity | `cargo xtask expr-parity` | `workflint-expr` against the reference's expression checker on about 14,000 expressions in several setups: parse errors, types, the constant flag, and each error with its position. |
 | Oracle diff | `cargo xtask oracle` | workflint against the reference binary on fixtures and the 1,503-file corpus. |
 | Rule examples | `docs/rules/*.md` | Every documented example runs as a test. |
+| Go template parity | `crates/workflint-gotemplate/tests/golden.rs` | `workflint-gotemplate` against Go's `text/template` on the `-format` recipes and on each part of the language: output and errors. |
 | Fuzzing | `fuzz/` | Parsers and the full lint of one file, the `lint` target, must never panic (ADR 0018). |
 | Benchmarks | `cargo xtask bench`, `divan` | Performance targets (ADR 0019). |
 

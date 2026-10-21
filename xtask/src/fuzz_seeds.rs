@@ -13,7 +13,8 @@
 //! of `workflint-expr`. The target that reads a JSON literal gets the value of
 //! each `fromJSON('…')` string literal in `expressions.txt` and in the YAML
 //! files of the vendored test data, and the JSON fuzz regression inputs of
-//! `workflint-expr`.
+//! `workflint-expr`. The target that reads a Go template gets the reference's
+//! SARIF template and the fuzz regression inputs of `workflint-gotemplate`.
 
 use std::fs::{self, File};
 use std::io::Read as _;
@@ -41,6 +42,10 @@ pub(crate) const EXPRESSION_TARGETS: &[&str] = &["expr_check", "expr_lex", "expr
 /// The fuzz targets in `fuzz/fuzz_targets/` that read the text of a JSON
 /// literal. Each gets every JSON seed.
 pub(crate) const JSON_TARGETS: &[&str] = &["expr_json"];
+
+/// The fuzz targets in `fuzz/fuzz_targets/` that read a Go template. Each
+/// gets every template seed.
+pub(crate) const TEMPLATE_TARGETS: &[&str] = &["gotemplate_parse"];
 
 /// The vendored reference test data, relative to the repository root.
 const FIXTURES: &str = "tests/conformance/actionlint/testdata";
@@ -77,6 +82,13 @@ const EXPRESSION_REGRESSIONS: &str = "crates/workflint-expr/tests/fuzz-regressio
 /// root.
 const JSON_REGRESSIONS: &str = "crates/workflint-expr/tests/json-fuzz-regressions";
 
+/// The reference's SARIF template for `-format`, relative to [`FIXTURES`].
+const SARIF_TEMPLATE: &str = "format/sarif_template.txt";
+
+/// The fuzz regression inputs of the template target, relative to the
+/// repository root.
+const TEMPLATE_REGRESSIONS: &str = "crates/workflint-gotemplate/tests/fuzz-regressions";
+
 /// The corpus directories, relative to the repository root. `cargo fuzz run
 /// <target>` reads `fuzz/corpus/<target>/` by default.
 const CORPUS: &str = "fuzz/corpus";
@@ -89,16 +101,18 @@ struct Seed {
 }
 
 /// Collects the seeds under `root` and writes them into the corpus directory
-/// of every target in [`TARGETS`], [`EXPRESSION_TARGETS`], and
-/// [`JSON_TARGETS`].
+/// of every target in [`TARGETS`], [`EXPRESSION_TARGETS`], [`JSON_TARGETS`],
+/// and [`TEMPLATE_TARGETS`].
 pub(crate) fn run(root: &Path) -> Result<()> {
     let seeds = collect(root)?;
     let expressions = collect_expressions(root)?;
     let json = collect_json(root)?;
+    let templates = collect_templates(root)?;
     for (targets, seeds) in [
         (TARGETS, &seeds),
         (EXPRESSION_TARGETS, &expressions),
         (JSON_TARGETS, &json),
+        (TEMPLATE_TARGETS, &templates),
     ] {
         for target in targets {
             let dir = root.join(CORPUS).join(target);
@@ -215,6 +229,27 @@ fn collect_json(root: &Path) -> Result<Vec<Seed>> {
         seeds.push(seed_from_file(
             "regression",
             &root.join(JSON_REGRESSIONS),
+            &path,
+        )?);
+    }
+    check_unique(&seeds)?;
+    Ok(seeds)
+}
+
+/// Reads the template seeds from the sources under `root`, in a fixed order:
+/// the reference's SARIF template and the template fuzz regression inputs.
+/// Fails if a source is missing or two seeds would get the same file name.
+fn collect_templates(root: &Path) -> Result<Vec<Seed>> {
+    let fixtures = root.join(FIXTURES);
+    let mut seeds = vec![seed_from_file(
+        "fixture",
+        &fixtures,
+        &fixtures.join(SARIF_TEMPLATE),
+    )?];
+    for path in files_under(&root.join(TEMPLATE_REGRESSIONS))? {
+        seeds.push(seed_from_file(
+            "regression",
+            &root.join(TEMPLATE_REGRESSIONS),
             &path,
         )?);
     }
@@ -441,6 +476,12 @@ mod tests {
         put(root, EXPRESSIONS, "a.b\n!c\nfromJSON('null')\n");
         put(root, &format!("{EXPRESSION_REGRESSIONS}/empty"), "");
         put(root, &format!("{JSON_REGRESSIONS}/trailing-comma"), "[1,]");
+        put(
+            root,
+            &format!("{FIXTURES}/{SARIF_TEMPLATE}"),
+            "{{range $ := .}}{{end}}",
+        );
+        put(root, &format!("{TEMPLATE_REGRESSIONS}/empty"), "");
         dir
     }
 
@@ -558,6 +599,24 @@ mod tests {
         );
     }
 
+    #[test]
+    fn every_template_target_gets_the_sarif_template_and_the_template_regressions() {
+        let dir = repository();
+        run(dir.path()).unwrap();
+        let expected: Vec<(String, String)> = [
+            (
+                "fixture-format-sarif_template.txt",
+                "{{range $ := .}}{{end}}",
+            ),
+            ("regression-empty", ""),
+        ]
+        .map(|(name, contents)| (name.to_owned(), contents.to_owned()))
+        .to_vec();
+        for target in TEMPLATE_TARGETS {
+            assert_eq!(corpus(dir.path(), target), expected, "{target}");
+        }
+    }
+
     /// Every fuzz target in `fuzz/Cargo.toml` gets seeds and runs in the
     /// nightly matrix of `.github/workflows/fuzz.yml`, and no other target
     /// does.
@@ -576,6 +635,7 @@ mod tests {
             .iter()
             .chain(EXPRESSION_TARGETS)
             .chain(JSON_TARGETS)
+            .chain(TEMPLATE_TARGETS)
             .copied()
             .collect();
         targets.sort_unstable();
