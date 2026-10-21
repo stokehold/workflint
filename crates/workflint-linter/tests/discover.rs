@@ -313,8 +313,9 @@ fn a_directory_argument_lists_its_yaml_files_sorted_by_path_from_the_argument() 
             ".github/workflows/b.yml",
         ]
     );
+    // The paths start with the argument as given, so it has the separators of the platform.
     let files = linter
-        .lint(&linter.expand(&[".github/workflows/a"]).unwrap())
+        .lint(&linter.expand(&[native(".github/workflows/a")]).unwrap())
         .unwrap();
     assert_eq!(names(&files), [native(".github/workflows/a/b.yaml")]);
 }
