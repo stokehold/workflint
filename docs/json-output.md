@@ -7,7 +7,7 @@ workflint -format json
 workflint --format jsonl .github/workflows/ci.yaml
 ```
 
-The schema is [json-output.schema.json](json-output.schema.json), in JSON Schema draft 2020-12. A test validates workflint's output against it.
+The schema is [schemas/json-output.schema.json](../schemas/json-output.schema.json), in JSON Schema draft 2020-12. A test validates workflint's output against it.
 
 ## `json`
 

@@ -2,7 +2,7 @@
 //!
 //! Both print [`JsonRecord`]s, which [`json_records`] builds from the diagnostics of a file.
 //! `json` prints one document, `{"version":1,"diagnostics":[...]}`, and `jsonl` prints one
-//! record per line, each with the `version` key first. `docs/json-output.schema.json` is the
+//! record per line, each with the `version` key first. `schemas/json-output.schema.json` is the
 //! schema, and `docs/json-output.md` describes it. The output is compact, and every line ends
 //! with a line break.
 

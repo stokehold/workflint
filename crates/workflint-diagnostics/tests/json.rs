@@ -1,5 +1,5 @@
 //! Tests for the `json` and `jsonl` renderers. Each output is also checked against the schema in
-//! `docs/json-output.schema.json`.
+//! `schemas/json-output.schema.json`.
 
 #![allow(clippy::unwrap_used)]
 
@@ -88,7 +88,7 @@ fn jsonl(records: &[JsonRecord]) -> String {
 /// document, or `/$defs/line` for a line of `jsonl`.
 fn schema(pointer: &str) -> (boon::Schemas, boon::SchemaIndex) {
     let schema: serde_json::Value =
-        serde_json::from_str(include_str!("../../../docs/json-output.schema.json")).unwrap();
+        serde_json::from_str(include_str!("../../../schemas/json-output.schema.json")).unwrap();
     let mut compiler = boon::Compiler::new();
     compiler
         .add_resource("json-output.schema.json", schema)
