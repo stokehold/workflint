@@ -1854,6 +1854,55 @@ fn format_keeps_unknown_escapes() {
 }
 
 #[test]
+fn format_sarif_prints_one_log_for_every_file_and_exits_with_1() {
+    let run = format("sarif", &["anchors.yaml", "valid.yaml"]);
+    assert_eq!((run.code, run.stderr.as_str()), (Some(1), ""));
+    let sarif: serde_json::Value = serde_json::from_str(&run.stdout).unwrap();
+    assert_eq!(sarif["version"], "2.1.0");
+    let run0 = &sarif["runs"][0];
+    let driver = &run0["tool"]["driver"];
+    assert_eq!(driver["name"], "workflint");
+    assert_eq!(driver["version"], env!("CARGO_PKG_VERSION"));
+    let rules = driver["rules"].as_array().unwrap();
+    assert_eq!(rules.len(), workflint_linter::registry::rules().len());
+    let results = run0["results"].as_array().unwrap();
+    let summary: Vec<(&serde_json::Value, &serde_json::Value, &serde_json::Value)> = results
+        .iter()
+        .map(|result| {
+            let location = &result["locations"][0]["physicalLocation"];
+            (
+                &result["ruleId"],
+                &location["artifactLocation"]["uri"],
+                &location["region"]["startLine"],
+            )
+        })
+        .collect();
+    assert_eq!(
+        summary,
+        [
+            (&"unused-anchor".into(), &"anchors.yaml".into(), &3.into()),
+            (&"unused-anchor".into(), &"anchors.yaml".into(), &4.into()),
+        ]
+    );
+    let index = usize::try_from(results[0]["ruleIndex"].as_u64().unwrap()).unwrap();
+    assert_eq!(rules[index]["id"], "unused-anchor");
+}
+
+#[test]
+fn format_sarif_without_problems_prints_no_results_and_exits_with_0() {
+    let run = format("sarif", &["valid.yaml"]);
+    assert_eq!((run.code, run.stderr.as_str()), (Some(0), ""));
+    let sarif: serde_json::Value = serde_json::from_str(&run.stdout).unwrap();
+    assert_eq!(sarif["runs"][0]["results"], serde_json::json!([]));
+}
+
+#[test]
+fn silent_wins_over_format_sarif() {
+    let run = format("sarif", &["-silent", "anchors.yaml"]);
+    assert_eq!((run.code, run.stdout.as_str()), (Some(1), ""));
+}
+
+#[test]
 fn a_format_without_braces_prints_the_reference_error_and_exits_with_3() {
     let run = format("hello", &["anchors.yaml"]);
     assert_eq!(

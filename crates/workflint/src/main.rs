@@ -3,12 +3,14 @@
 //! It parses the command line with [`flags`], picks the inputs: the files, directories, and
 //! globs given as arguments, the workflow files of the project without arguments, or stdin for
 //! a lone `-`. It lints them with [`Linter`], prints the diagnostics in the order of the inputs,
-//! or through the `-format` template of [`template`], and picks the exit code (`docs/cli.md`).
-//! The conformance suite runs it with the command line in `tests/conformance/README.md`.
+//! through the `-format` template of [`template`], or as SARIF with `-format sarif`, and picks
+//! the exit code (`docs/cli.md`). The conformance suite runs it with the command line in
+//! `tests/conformance/README.md`.
 
 mod color;
 mod flags;
 mod log;
+mod sarif;
 mod template;
 mod usage;
 mod version;
@@ -26,7 +28,7 @@ use workflint_gotemplate::Value;
 use workflint_linter::config::{Config, init_config};
 use workflint_linter::tool::{ResolveError, RunOptions, ToolCommand, ToolPool};
 use workflint_linter::{
-    IgnorePattern, Input, Linter, PythonLinter, Tools, has_internal_error, path,
+    IgnorePattern, Input, Linter, PythonLinter, Tools, has_internal_error, path, registry,
 };
 
 use crate::flags::{Options, Parsed};
@@ -162,9 +164,20 @@ fn init(cwd: &std::path::Path) -> ExitCode {
     }
 }
 
-/// Parses the template of `-format`, if it is given. The error is the message to print.
+/// The `-format` value that picks SARIF output instead of a template.
+const SARIF: &str = "sarif";
+
+/// The tool that SARIF output names.
+const SARIF_TOOL: sarif::Tool<'static> = sarif::Tool {
+    name: "workflint",
+    version: version::VERSION,
+    information_uri: "https://github.com/stokehold/workflint",
+};
+
+/// Parses the template of `-format`, if it is given and is not the name of a format. The error
+/// is the message to print.
 fn formatter(options: &Options) -> Result<Option<Formatter>, String> {
-    if options.format.is_empty() {
+    if options.format.is_empty() || options.format == SARIF {
         return Ok(None);
     }
     Formatter::new(&options.format).map(Some)
@@ -423,12 +436,22 @@ fn run(
         EXIT_NO_PROBLEM
     };
     let written = match format {
+        Format::Sarif => {
+            let results: Vec<sarif::Results> = files
+                .into_iter()
+                .filter_map(|rendered| match rendered.output {
+                    Output::Sarif(results) => Some(results),
+                    Output::Text(_) | Output::Fields(_) => None,
+                })
+                .collect();
+            sarif::write(out, &SARIF_TOOL, registry::rules(), &results).and_then(|()| out.flush())
+        }
         Format::Template(formatter) => {
             let fields = files
                 .into_iter()
                 .flat_map(|rendered| match rendered.output {
                     Output::Fields(fields) => fields,
-                    Output::Text(_) => Vec::new(),
+                    Output::Text(_) | Output::Sarif(_) => Vec::new(),
                 })
                 .collect();
             let printed = formatter.print(out, fields);
@@ -450,7 +473,7 @@ fn run(
             .try_for_each(|rendered| match &rendered.output {
                 Output::Text(Ok(output)) => out.write_all(output),
                 Output::Text(Err(err)) => Err(io::Error::new(err.kind(), err.to_string())),
-                Output::Fields(_) => Ok(()),
+                Output::Fields(_) | Output::Sarif(_) => Ok(()),
             })
             .and_then(|()| out.flush()),
     };
@@ -486,6 +509,8 @@ enum Output {
     Text(io::Result<Vec<u8>>),
     /// The template values of the diagnostics, for the `-format` template.
     Fields(Vec<Value>),
+    /// The SARIF results of the diagnostics, for `-format sarif`.
+    Sarif(sarif::Results),
 }
 
 /// The output format.
@@ -497,6 +522,8 @@ enum Format<'a> {
     Oneline(Color),
     /// `-format`: the template, without color.
     Template(&'a Formatter),
+    /// `-format sarif`: one SARIF log for every file.
+    Sarif,
     /// `-silent`: nothing.
     Silent,
 }
@@ -508,6 +535,8 @@ impl<'a> Format<'a> {
         let color = if color { Color::On } else { Color::Off };
         if options.silent {
             Self::Silent
+        } else if options.format == SARIF {
+            Self::Sarif
         } else if let Some(formatter) = formatter {
             Self::Template(formatter)
         } else if options.oneline {
@@ -525,6 +554,13 @@ impl<'a> Format<'a> {
             Self::Template(_) => {
                 return Rendered {
                     output: Output::Fields(template::fields(file, diagnostics)),
+                    counts: Counts::of(diagnostics),
+                    internal_error: has_internal_error(diagnostics),
+                };
+            }
+            Self::Sarif => {
+                return Rendered {
+                    output: Output::Sarif(sarif::Results::of(file, diagnostics)),
                     counts: Counts::of(diagnostics),
                     internal_error: has_internal_error(diagnostics),
                 };

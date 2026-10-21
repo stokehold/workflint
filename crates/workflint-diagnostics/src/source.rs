@@ -20,7 +20,8 @@ impl FileId {
     }
 }
 
-/// A 1-based line and a 1-based column counted in Unicode code points.
+/// A 1-based line and a 1-based column counted in Unicode code points, or in UTF-16 code units
+/// when [`SourceFile::line_col_utf16`] returns it.
 ///
 /// The derived order compares the line first, then the column. `Display` prints the
 /// `line:N,col:M` form that actionlint's messages use when they mention another position.
@@ -50,6 +51,9 @@ pub struct SourceFile {
     /// counted, so that it takes time independent of the line length. Built
     /// when the first such column is counted.
     long_lines: OnceLock<LongLines>,
+    /// Whether the text has a character outside the Basic Multilingual Plane. Computed when the
+    /// first UTF-16 column is counted.
+    astral: OnceLock<bool>,
 }
 
 /// How [`SourceFile::line_col`] counts the column of an offset more than
@@ -101,6 +105,7 @@ impl SourceFile {
             text,
             line_starts,
             long_lines: OnceLock::new(),
+            astral: OnceLock::new(),
         })
     }
 
@@ -131,6 +136,49 @@ impl SourceFile {
     /// of a `\r\n` as the `\r`, because both bytes are one line break.
     #[must_use]
     pub fn line_col(&self, offset: u32) -> LineCol {
+        let (line, start, offset) = self.locate(offset);
+        let column = if offset - start <= CHAR_COUNT_STEP {
+            self.text
+                .get(start..offset)
+                .map_or(0, |s| s.chars().count())
+        } else {
+            self.long_column(start, offset)
+        };
+        LineCol {
+            line,
+            column: column + 1,
+        }
+    }
+
+    /// Converts a byte offset into a line and a column counted in UTF-16 code units, which SARIF
+    /// uses.
+    ///
+    /// The column counts two units for a character outside the Basic Multilingual Plane, such as
+    /// an emoji, and one for any other character. Lines and offsets are treated as in
+    /// [`line_col`](Self::line_col).
+    #[must_use]
+    pub fn line_col_utf16(&self, offset: u32) -> LineCol {
+        // Only a four-byte character takes two units, so without one the columns are the same.
+        if !*self
+            .astral
+            .get_or_init(|| self.text.bytes().any(|b| b >= 0xf0))
+        {
+            return self.line_col(offset);
+        }
+        let (line, start, offset) = self.locate(offset);
+        let column: usize = self
+            .text
+            .get(start..offset)
+            .map_or(0, |s| s.chars().map(char::len_utf16).sum());
+        LineCol {
+            line,
+            column: column + 1,
+        }
+    }
+
+    /// The 1-based line of `offset`, the byte offset where its columns start, and `offset`
+    /// moved as [`line_col`](Self::line_col) describes.
+    fn locate(&self, offset: u32) -> (usize, usize, usize) {
         let offset = usize::try_from(offset).unwrap_or(usize::MAX);
         let mut offset = self.text.floor_char_boundary(offset.min(self.text.len()));
         if offset > 0 && self.text.get(offset - 1..=offset) == Some("\r\n") {
@@ -146,17 +194,7 @@ impl SourceFile {
         if start == 0 && self.text.starts_with(BOM) && offset >= BOM.len_utf8() {
             start = BOM.len_utf8();
         }
-        let column = if offset - start <= CHAR_COUNT_STEP {
-            self.text
-                .get(start..offset)
-                .map_or(0, |s| s.chars().count())
-        } else {
-            self.long_column(start, offset)
-        };
-        LineCol {
-            line,
-            column: column + 1,
-        }
+        (line, start, offset)
     }
 
     /// The number of characters from `start`, the start of a line, to
@@ -437,6 +475,42 @@ mod tests {
         let f = file("a\n");
         assert_eq!(f.line_range(0), None);
         assert_eq!(f.line_range(3), None);
+    }
+
+    fn utf16(text: &str, offset: usize) -> (usize, usize) {
+        let pos = file(text).line_col_utf16(u32::try_from(offset).unwrap());
+        (pos.line, pos.column)
+    }
+
+    #[test]
+    fn utf16_columns_count_two_units_for_a_character_outside_the_bmp() {
+        let text = "a\n😀é日x";
+        let x = text.find('x').unwrap();
+        assert_eq!(line_col(text, x), (2, 4));
+        assert_eq!(utf16(text, x), (2, 5));
+    }
+
+    #[test]
+    fn utf16_columns_equal_code_point_columns_without_four_byte_characters() {
+        let text = "é日\r\nab\u{2028}c";
+        for offset in 0..=text.len() {
+            assert_eq!(
+                utf16(text, offset),
+                line_col(text, offset),
+                "offset {offset}"
+            );
+        }
+    }
+
+    #[test]
+    fn utf16_columns_skip_a_byte_order_mark_and_treat_offsets_as_line_col_does() {
+        let text = "\u{feff}😀a\r\nb";
+        let a = text.find('a').unwrap();
+        assert_eq!(utf16(text, a), (1, 3));
+        // Inside the emoji, on the `\n` of `\r\n`, and past the end.
+        assert_eq!(utf16(text, a - 1), (1, 1));
+        assert_eq!(utf16(text, a + 2), (1, 4));
+        assert_eq!(utf16(text, text.len() + 5), (2, 2));
     }
 
     #[test]
