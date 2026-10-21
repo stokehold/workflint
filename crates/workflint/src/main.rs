@@ -106,6 +106,9 @@ fn main() -> ExitCode {
     if let Some(config) = config_file {
         linter = linter.with_config_file(config);
     }
+    if options.shellcheck_cache {
+        linter = linter.with_shellcheck_cache();
+    }
     let inputs = match inputs(&linter, paths, &options.stdin_filename) {
         Ok(inputs) => inputs,
         Err(message) => {
@@ -221,7 +224,14 @@ fn tools(options: &Options, quiet: bool) -> Result<Tools, String> {
         None => ToolPool::with_available_parallelism(),
     }
     .map_err(|err| format!("could not run shellcheck: {err}"))?;
-    Ok(Tools::none().with_shellcheck(command, Arc::new(pool), RunOptions::default()))
+    let tools = Tools::none().with_shellcheck(command, Arc::new(pool), RunOptions::default());
+    Ok(match workflint_linter::default_cache_dir() {
+        Some(dir) => tools.with_cache_dir(dir),
+        None => {
+            tracing::debug!("No cache directory was found, so the shellcheck cache is not used");
+            tools
+        }
+    })
 }
 
 /// The result of a run.

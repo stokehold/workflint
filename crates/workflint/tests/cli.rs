@@ -1420,3 +1420,54 @@ fn a_run_without_arguments_uses_the_config_of_the_discovered_project() {
         }
     );
 }
+
+/// A stand-in for shellcheck in `dir`: a shell script that prints `version: 0.11.0` for
+/// `--version`, and otherwise adds a line to `dir/runs` and prints one finding.
+#[cfg(unix)]
+fn counting_shellcheck(dir: &Path) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+    let path = dir.join("shellcheck");
+    let runs = dir.join("runs");
+    std::fs::write(
+        &path,
+        format!(
+            "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 'version: 0.11.0'; exit 0; fi\n\
+             cat > /dev/null\necho run >> '{}'\n\
+             printf '[{{\"line\":2,\"column\":6,\"level\":\"info\",\"code\":2086,\"message\":\"Double quote.\"}}]'\n",
+            runs.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    path
+}
+
+#[cfg(unix)]
+#[test]
+fn shellcheck_cache_keeps_the_findings_under_xdg_cache_home() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.yaml"), UNQUOTED).unwrap();
+    let shellcheck = counting_shellcheck(dir.path());
+    let flag = format!("-shellcheck={}", shellcheck.display());
+    let cache = dir.path().join("cache");
+    let lint = || {
+        let mut command = command(
+            dir.path(),
+            &[flag.as_str(), "-shellcheck-cache", "-oneline", "a.yaml"],
+        );
+        command.env("XDG_CACHE_HOME", &cache);
+        run(command.output().unwrap())
+    };
+    let first = lint();
+    assert_eq!(first.code, Some(1), "{}", first.stderr);
+    assert_eq!(
+        first.stdout,
+        "a.yaml:6:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote \
+         [shellcheck-issue]\n"
+    );
+    assert_eq!(lint(), first);
+    let runs = std::fs::read_to_string(dir.path().join("runs")).unwrap();
+    assert_eq!(runs, "run\n");
+    let entries = std::fs::read_dir(cache.join("workflint").join("shellcheck")).unwrap();
+    assert_eq!(entries.count(), 1);
+}

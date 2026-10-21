@@ -1,4 +1,5 @@
-//! The config file, decoded as the reference decodes `.github/actionlint.yaml`.
+//! The config file, decoded as the reference decodes `.github/actionlint.yaml`, with the keys
+//! that workflint adds.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -10,13 +11,22 @@ use workflint_yaml::{Entry, NodeId, NodeKind, Tag};
 use crate::typed::{DecodeError, Decoder, Source, UnmarshalError};
 
 /// The keys of the config's root mapping.
-const ROOT_FIELDS: &[&str] = &["self-hosted-runner", "config-variables", "paths"];
+const ROOT_FIELDS: &[&str] = &[
+    "self-hosted-runner",
+    "config-variables",
+    "paths",
+    "shellcheck",
+    "tool-timeout",
+];
+
+/// The keys of `shellcheck`.
+const SHELLCHECK_FIELDS: &[&str] = &["rcfile", "args", "cache"];
 
 /// The Go type of `self-hosted-runner`, an anonymous struct, as go-yaml names it.
 const SELF_HOSTED_RUNNER_TYPE: &str = r#"struct { Labels []string "yaml:\"labels\"" }"#;
 
-/// A config file, decoded into the reference's `Config` struct. `P` is a compiled pattern of
-/// `paths.<glob>.ignore`.
+/// A config file, decoded into the reference's `Config` struct and workflint's keys. `P` is a
+/// compiled pattern of `paths.<glob>.ignore`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigDocument<P> {
     /// `self-hosted-runner.labels`. `None` if the key is missing or null.
@@ -26,7 +36,11 @@ pub struct ConfigDocument<P> {
     /// The entries of `paths`, in the order go-yaml sets them: as written, then the entries
     /// that `<<` keys merge in.
     pub paths: Vec<PathEntry<P>>,
-    /// The keys that the reference ignores, in the order they are written. A key that a `<<`
+    /// `shellcheck`.
+    pub shellcheck: ShellcheckKeys,
+    /// `tool-timeout`, in seconds. `None` if the key is missing or null.
+    pub tool_timeout: Option<u64>,
+    /// The keys that neither the reference nor workflint reads, in the order they are written. A key that a `<<`
     /// key merges in more than once is listed once.
     pub unknown_keys: Vec<UnknownKey>,
 }
@@ -40,7 +54,18 @@ pub struct PathEntry<P> {
     pub ignore: Vec<P>,
 }
 
-/// A key of the config file that the reference does not read.
+/// The keys of `shellcheck`. A missing or null key is `None`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ShellcheckKeys {
+    /// `rcfile`, as written.
+    pub rcfile: Option<String>,
+    /// `args`.
+    pub args: Option<Vec<String>>,
+    /// `cache`.
+    pub cache: Option<bool>,
+}
+
+/// A key of the config file that neither the reference nor workflint reads.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnknownKey {
     /// The text of the key.
@@ -58,6 +83,8 @@ pub enum KeyParent {
     Root,
     /// `self-hosted-runner`.
     SelfHostedRunner,
+    /// `shellcheck`.
+    Shellcheck,
     /// The value of the `paths` entry with this glob.
     Path(String),
 }
@@ -69,6 +96,7 @@ impl fmt::Display for UnknownKey {
         match &self.parent {
             KeyParent::Root => {}
             KeyParent::SelfHostedRunner => f.write_str(" in \"self-hosted-runner\"")?,
+            KeyParent::Shellcheck => f.write_str(" in \"shellcheck\"")?,
             KeyParent::Path(glob) => write!(f, " in \"paths\" entry {}", quote(glob))?,
         }
         write!(f, " at {}", self.position)
@@ -138,6 +166,8 @@ impl<P> ConfigDocument<P> {
                 runner_labels: None,
                 config_variables: None,
                 paths: Vec::new(),
+                shellcheck: ShellcheckKeys::default(),
+                tool_timeout: None,
                 unknown_keys: Vec::new(),
             };
             if let Some(root) = root {
@@ -160,6 +190,35 @@ impl<P> ConfigDocument<P> {
                             }
                             1 => {
                                 d.string_slice(value, &mut config.config_variables)?;
+                            }
+                            3 => {
+                                let keys = &mut config.shellcheck;
+                                d.structure(
+                                    value,
+                                    "workflint.ShellcheckConfig",
+                                    SHELLCHECK_FIELDS,
+                                    &mut |d, field, value| {
+                                        match field {
+                                            0 => {
+                                                d.optional_string(value, &mut keys.rcfile)?;
+                                            }
+                                            1 => {
+                                                d.string_slice(value, &mut keys.args)?;
+                                            }
+                                            _ => {
+                                                let mut cache = false;
+                                                if d.bool(value, &mut cache)? {
+                                                    keys.cache = Some(cache);
+                                                }
+                                            }
+                                        }
+                                        Ok(())
+                                    },
+                                )?;
+                            }
+                            4 => {
+                                config.tool_timeout =
+                                    d.custom(value, |d, id| decode_seconds(d, id, "tool-timeout"))?;
                             }
                             _ => {
                                 d.string_map(
@@ -199,6 +258,34 @@ impl<P> ConfigDocument<P> {
         }
         Ok(config)
     }
+}
+
+/// Decodes a number of seconds greater than 0, the value of the key `key`.
+fn decode_seconds(d: &mut Decoder<'_>, id: NodeId, key: &str) -> Result<u64, DecodeError> {
+    let source = d.source();
+    let item = source.resolve_alias(id);
+    let at = source.position(item);
+    let found = match source.node(item).map(|node| &node.kind) {
+        Some(NodeKind::Scalar(scalar)) => {
+            if scalar.tag == Tag::Int
+                && let Ok(seconds) = scalar.value.parse::<u64>()
+                && seconds > 0
+            {
+                return Ok(seconds);
+            }
+            quote(&scalar.value)
+        }
+        Some(NodeKind::Sequence(_)) => "a sequence".to_owned(),
+        Some(NodeKind::Mapping(_)) => "a mapping".to_owned(),
+        Some(NodeKind::Alias(_)) | None => "an alias".to_owned(),
+    };
+    Err(DecodeError::Type(vec![UnmarshalError {
+        line: at.line,
+        message: format!(
+            "{} must be a whole number of seconds greater than 0, but {found} was found at {at}",
+            quote(key)
+        ),
+    }]))
 }
 
 /// Decodes `ignore` as the reference's `IgnorePatterns.UnmarshalYAML` does, except that an entry
@@ -279,7 +366,14 @@ fn unknown_keys(source: &Source<'_>, root: NodeId) -> Vec<UnknownKey> {
                     }
                 }
             }
-            "config-variables" => {}
+            "config-variables" | "tool-timeout" => {}
+            "shellcheck" => {
+                for inner in entries(source, entry.value) {
+                    if !SHELLCHECK_FIELDS.contains(&key_text(source, inner.key)) {
+                        add(inner.key, KeyParent::Shellcheck);
+                    }
+                }
+            }
             "paths" => {
                 for path in entries(source, entry.value) {
                     let glob = key_text(source, path.key);

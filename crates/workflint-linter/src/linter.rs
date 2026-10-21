@@ -189,6 +189,18 @@ impl Linter {
         }
     }
 
+    /// Returns the linter with `-shellcheck-cache`: every project uses the on-disk cache of
+    /// shellcheck, also when its config file does not turn it on.
+    #[must_use]
+    pub fn with_shellcheck_cache(self) -> Self {
+        let mut flags = Flags::clone(&self.flags);
+        flags.shellcheck_cache = true;
+        Self {
+            flags: Arc::new(flags),
+            ..self
+        }
+    }
+
     /// Returns the linter with `config` from `-config-file`, which every file of a run uses in
     /// place of the config file of its project.
     #[must_use]
@@ -280,7 +292,7 @@ impl Linter {
         };
         let mut roots = ProjectRoots::default();
         let mut caches = BTreeMap::new();
-        let mut settings = ProjectSettings::new(&self.flags);
+        let mut settings = ProjectSettings::new(&self.flags, &self.cwd);
         let mut files = Vec::with_capacity(inputs.len());
         for input in inputs {
             let root = if input.stdin.is_some() {
@@ -304,6 +316,7 @@ impl Linter {
             });
         }
         let cache_of = |file: &File<'_>| file.root.as_ref().and_then(|root| caches.get(root));
+        self.prefetch(&files);
 
         let first: Vec<Result<First<'_, T>, ReadError>> = files
             .par_iter()
@@ -353,6 +366,25 @@ impl Linter {
             .collect())
     }
 
+    /// Queues the scripts of every file in `files` for shellcheck before any file is linted, so
+    /// that the scripts of many files run in few shellcheck processes. A file that cannot be
+    /// read, or whose scripts cannot be listed, is skipped here: its lint reports the problem.
+    fn prefetch(&self, files: &[File<'_>]) {
+        if files.len() < 2 || !self.tools.has_shellcheck() {
+            return;
+        }
+        files.par_iter().enumerate().for_each(|(index, file)| {
+            let Ok((source, None)) = read(index, file.input, &self.cwd) else {
+                return;
+            };
+            if let Ok(scripts) =
+                panic::catch_unwind(AssertUnwindSafe(|| workflint_rules::shell_scripts(&source)))
+            {
+                self.tools.prefetch(file.settings.shellcheck(), &scripts);
+            }
+        });
+    }
+
     /// Reads and lints `file`, the input at `index`, with `cache`, the cache of its project.
     fn first<'c, T>(
         &self,
@@ -376,13 +408,13 @@ impl Linter {
         if let Some(diagnostic) = decode_error {
             return Ok(First::Done(finish(file, source, vec![diagnostic], started)));
         }
-        let config = file.settings.rules();
+        let settings = &file.settings;
         let Some(cache) = cache else {
-            let diagnostics = self.check(&source, &NoProject, config);
+            let diagnostics = self.check(&source, &NoProject, settings);
             return Ok(First::Done(finish(file, source, diagnostics, started)));
         };
         let local = cache.for_file(&file.absolute);
-        let mut diagnostics = self.check(&source, &local, config);
+        let mut diagnostics = self.check(&source, &local, settings);
         let record = local.into_record();
         if record.is_poisoned() {
             diagnostics.push(poisoned(&source));
@@ -414,7 +446,7 @@ impl Linter {
                     "Linting {} again, because the files before it changed what it reads",
                     source.path()
                 );
-                let mut diagnostics = self.check(&source, &local, file.settings.rules());
+                let mut diagnostics = self.check(&source, &local, &file.settings);
                 if local.into_record().is_poisoned() {
                     diagnostics.push(poisoned(&source));
                     sort_and_dedup(&source, &mut diagnostics);
@@ -429,19 +461,20 @@ impl Linter {
         }
     }
 
-    /// Lints `source` with the project's local metadata in `local` and the settings of the
-    /// config file in `config`, and returns the sorted diagnostics, or one [`INTERNAL_ERROR`]
-    /// diagnostic if the lint panics.
+    /// Lints `source` with the project's local metadata in `local` and the project's
+    /// `settings`, and returns the sorted diagnostics, or one [`INTERNAL_ERROR`] diagnostic if
+    /// the lint panics.
     fn check(
         &self,
         source: &SourceFile,
         local: &dyn LocalMetadata,
-        config: &RuleConfig,
+        settings: &Settings,
     ) -> Vec<Diagnostic> {
+        let tools = self.tools.for_project(settings.shellcheck());
         // The view of the cache may hold a half-done lookup after a panic. The file's record
         // still lists only the lookups that finished, so the replay stays right.
         let checked = panic::catch_unwind(AssertUnwindSafe(|| {
-            let mut diagnostics = (self.check)(source, local, self.tools.as_ref(), config);
+            let mut diagnostics = (self.check)(source, local, &tools, settings.rules());
             sort_and_dedup(source, &mut diagnostics);
             diagnostics
         }));
@@ -536,53 +569,46 @@ struct File<'i> {
 /// The settings of each project of a run, each made once.
 struct ProjectSettings<'f> {
     flags: &'f Flags,
-    /// The settings of every file when `-config-file` is given.
-    explicit: Option<Arc<Settings>>,
-    /// The settings of a file in no project.
-    default: Arc<Settings>,
-    /// The settings of each project root found so far.
-    projects: BTreeMap<PathBuf, Arc<Settings>>,
+    cwd: &'f Path,
+    /// The settings of each project root found so far, and under `None` those of the files in
+    /// no project.
+    projects: BTreeMap<Option<PathBuf>, Arc<Settings>>,
 }
 
 impl<'f> ProjectSettings<'f> {
-    fn new(flags: &'f Flags) -> Self {
-        let explicit = flags.config_file.as_deref().map(|config| {
+    fn new(flags: &'f Flags, cwd: &'f Path) -> Self {
+        if let Some(config) = &flags.config_file {
             warn(config);
-            Arc::new(Settings::default().with_config(config).with_flags(flags))
-        });
+        }
         Self {
             flags,
-            explicit,
-            default: Arc::new(Settings::default().with_flags(flags)),
+            cwd,
             projects: BTreeMap::new(),
         }
     }
 
-    /// Returns the settings of a file in the project at `root`, reading the project's config
-    /// file the first time.
+    /// Returns the settings of a file in the project at `root`, or in no project, reading the
+    /// project's config file the first time. The config file of `-config-file` takes the place
+    /// of every project's.
     fn of(&mut self, root: Option<&Path>) -> Result<Arc<Settings>, ConfigError> {
-        if let Some(explicit) = &self.explicit {
-            return Ok(Arc::clone(explicit));
-        }
-        let Some(root) = root else {
-            return Ok(Arc::clone(&self.default));
-        };
-        if let Some(settings) = self.projects.get(root) {
+        let key = root.map(Path::to_path_buf);
+        if let Some(settings) = self.projects.get(&key) {
             return Ok(Arc::clone(settings));
         }
-        let settings = match Config::find(root)? {
-            Some(config) => {
-                warn(&config);
-                Arc::new(
-                    Settings::default()
-                        .with_config(&config)
-                        .with_flags(self.flags),
-                )
+        let found;
+        let config = match (&self.flags.config_file, root) {
+            (Some(config), _) => Some(config.as_ref()),
+            (None, Some(root)) => {
+                found = Config::find(root)?;
+                if let Some(config) = &found {
+                    warn(config);
+                }
+                found.as_ref()
             }
-            None => Arc::clone(&self.default),
+            (None, None) => None,
         };
-        self.projects
-            .insert(root.to_path_buf(), Arc::clone(&settings));
+        let settings = Arc::new(Settings::new(config, root.unwrap_or(self.cwd), self.flags)?);
+        self.projects.insert(key, Arc::clone(&settings));
         Ok(settings)
     }
 }

@@ -12,7 +12,8 @@
 //! the lint of one file becomes an [`internal-error`](rules::INTERNAL_ERROR) diagnostic on that
 //! file. The [`registry`] lists every rule, with the rules of [`rules`] that the driver reports.
 //! [`tool`] runs external tools such as shellcheck with a timeout and a limit on processes, and
-//! [`Tools`] runs shellcheck on the scripts that the rules collect, once per script and run.
+//! [`Tools`] runs shellcheck on the scripts that the rules collect, once per script and run,
+//! several scripts per process, with an opt-in cache on disk.
 //!
 //! [`Linter::discover`] returns the workflow files of a run without file arguments, and
 //! [`Input::stdin`] reads a workflow from stdin. [`config`] finds, reads, and writes the config
@@ -44,4 +45,4 @@ pub use linter::{
 };
 pub use project::ProjectRoots;
 pub use settings::{Flags, Settings};
-pub use tools::Tools;
+pub use tools::{MAX_BATCH, ShellcheckOptions, Tools, default_cache_dir};

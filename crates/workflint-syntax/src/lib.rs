@@ -131,7 +131,9 @@ mod testing;
 
 pub use action_metadata::{ActionBranding, ActionInput, ActionMetadata, ActionOutput, ActionRuns};
 pub use alias::{AliasPath, AliasUses};
-pub use config::{ConfigDecodeError, ConfigDocument, KeyParent, PathEntry, UnknownKey};
+pub use config::{
+    ConfigDecodeError, ConfigDocument, KeyParent, PathEntry, ShellcheckKeys, UnknownKey,
+};
 pub use event::{
     Event, ImageVersionEvent, RepositoryDispatchEvent, ScheduleEntry, ScheduleEvent, WebhookEvent,
     WorkflowCallEvent, WorkflowCallEventInput, WorkflowCallEventOutput, WorkflowCallEventSecret,

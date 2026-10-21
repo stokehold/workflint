@@ -6,6 +6,7 @@
 //! them back into the workflow through the source map of the `run:` value. [`NoTools`] runs
 //! nothing, so the rule reports nothing.
 
+use std::cell::RefCell;
 use std::fmt;
 use std::sync::Arc;
 
@@ -28,14 +29,14 @@ impl ScriptShell {
         }
     }
 
-    /// The arguments of shellcheck for a script of this shell, the reference's
-    /// (`rule_shellcheck.go:193`). The script comes on stdin. The shellcheck rules that `-e`
-    /// turns off report scripts that work once `${{ }}` is replaced by `_`, or that read the
-    /// variables of `env:` (`rule_shellcheck.go:176`).
+    /// The arguments of shellcheck for a script of this shell that the reference passes between
+    /// `--norc` and the script (`rule_shellcheck.go:193`). The shellcheck rules that `-e` turns
+    /// off report scripts that work once `${{ }}` is replaced by `_`, or that read the variables
+    /// of `env:` (`rule_shellcheck.go:176`). The linter puts `--norc` or `--rcfile` before them,
+    /// and the arguments of the config file and the script after them.
     #[must_use]
-    pub const fn shellcheck_args(self) -> [&'static str; 9] {
+    pub const fn shellcheck_args(self) -> [&'static str; 7] {
         [
-            "--norc",
             "-f",
             "json",
             "-x",
@@ -43,7 +44,6 @@ impl ScriptShell {
             self.name(),
             "-e",
             "SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043",
-            "-",
         ]
     }
 }
@@ -97,6 +97,22 @@ pub trait ExternalTools: fmt::Debug {
     /// Runs shellcheck on each of `scripts` and returns one outcome per script, in the order of
     /// `scripts`. Returns an empty list when shellcheck does not run.
     fn shellcheck(&self, scripts: &[ShellScript]) -> Vec<Arc<ShellcheckOutcome>>;
+}
+
+/// Collects the scripts that the `shellcheck` rule passes, and returns no outcome, so the rule
+/// reports nothing.
+#[derive(Debug, Default)]
+pub(crate) struct CollectScripts(pub(crate) RefCell<Vec<ShellScript>>);
+
+impl ExternalTools for CollectScripts {
+    fn has_shellcheck(&self) -> bool {
+        true
+    }
+
+    fn shellcheck(&self, scripts: &[ShellScript]) -> Vec<Arc<ShellcheckOutcome>> {
+        self.0.borrow_mut().extend_from_slice(scripts);
+        Vec::new()
+    }
 }
 
 /// No external tool: shellcheck does not run.
