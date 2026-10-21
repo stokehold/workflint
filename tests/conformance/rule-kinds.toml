@@ -7,4 +7,3 @@
 # checklist rule ID is in both the registry and this file, or in neither.
 
 pyflakes-issue = "pyflakes"
-shellcheck-issue = "shellcheck"

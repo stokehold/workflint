@@ -13,6 +13,8 @@
 //!   holds, and deletes its file. The largest count is how many ran at once.
 //! - `pool DIR N`: runs `N` copies of `pidfile DIR` at once through a `ToolPool` and waits for them.
 //! - `kill-self`: sends itself SIGKILL with the `kill` command (Unix only).
+//! - `record DIR ARG...`: writes the arguments after `DIR`, one per line, then a line `--`, then
+//!   stdin, to a new file in `DIR`, and prints `[]`, shellcheck's output for no findings.
 
 #![allow(clippy::unwrap_used, clippy::panic)]
 
@@ -58,6 +60,7 @@ fn main() {
         }
         Some("overlap") => overlap(Path::new(rest[0])),
         Some("pool") => pool(Path::new(rest[0]), rest[1].parse().unwrap()),
+        Some("record") => record(Path::new(rest[0]), &rest[1..]),
         Some("kill-self") => {
             process::Command::new("kill")
                 .args(["-KILL", &process::id().to_string()])
@@ -78,6 +81,18 @@ fn echo() {
         io::stdout().write_all(chunk).unwrap();
         io::stderr().write_all(chunk).unwrap();
     }
+}
+
+fn record(dir: &Path, args: &[&str]) {
+    let mut text = String::new();
+    for arg in args {
+        text.push_str(arg);
+        text.push('\n');
+    }
+    text.push_str("--\n");
+    io::stdin().read_to_string(&mut text).unwrap();
+    fs::write(dir.join(process::id().to_string()), text).unwrap();
+    print!("[]");
 }
 
 fn overlap(dir: &Path) {

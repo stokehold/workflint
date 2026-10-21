@@ -7,6 +7,7 @@
 
 use std::ffi::OsString;
 use std::fmt::Write as _;
+use std::num::NonZeroUsize;
 
 use workflint_diagnostics::quote::quote;
 
@@ -20,11 +21,14 @@ pub(crate) struct Options {
     pub(crate) format: String,
     pub(crate) ignore: Vec<String>,
     pub(crate) init_config: bool,
+    /// `-jobs`, or `None` for one tool process per CPU.
+    pub(crate) jobs: Option<NonZeroUsize>,
     pub(crate) no_color: bool,
     pub(crate) oneline: bool,
     pub(crate) pyflakes: String,
     pub(crate) quiet: bool,
-    pub(crate) shellcheck: String,
+    /// `-shellcheck`, or `None` when the flag is not given and shellcheck runs if it is found.
+    pub(crate) shellcheck: Option<String>,
     pub(crate) silent: bool,
     pub(crate) stdin_filename: String,
     pub(crate) summary: bool,
@@ -51,11 +55,12 @@ impl Default for Options {
             format: String::new(),
             ignore: Vec::new(),
             init_config: false,
+            jobs: None,
             no_color: false,
             oneline: false,
             pyflakes: default_of("pyflakes"),
             quiet: false,
-            shellcheck: default_of("shellcheck"),
+            shellcheck: None,
             silent: false,
             stdin_filename: default_of("stdin-filename"),
             summary: false,
@@ -72,6 +77,8 @@ enum Setter {
     Bool(fn(&mut Options, bool)),
     /// A flag with a value, after `=` or as the next argument.
     String(fn(&mut Options, String)),
+    /// A flag with a positive whole number, after `=` or as the next argument.
+    Count(fn(&mut Options, NonZeroUsize)),
 }
 
 /// One flag.
@@ -113,6 +120,21 @@ impl Flag {
         }
     }
 
+    /// A flag with a positive whole number. Go's help names its value `int`.
+    const fn count(
+        name: &'static str,
+        usage: &'static str,
+        set: fn(&mut Options, NonZeroUsize),
+    ) -> Self {
+        Self {
+            name,
+            value_name: "int",
+            default: None,
+            usage,
+            set: Setter::Count(set),
+        }
+    }
+
     /// A flag that may be given more than once. Go's help names its value `value`.
     const fn list(name: &'static str, usage: &'static str, set: fn(&mut Options, String)) -> Self {
         Self {
@@ -126,7 +148,7 @@ impl Flag {
 }
 
 /// Every flag: actionlint's, and then workflint's own.
-pub(crate) static FLAGS: [Flag; 18] = [
+pub(crate) static FLAGS: [Flag; 19] = [
     Flag::list(
         "ignore",
         "Regular expression in Go syntax. Errors whose message it matches are not reported. \
@@ -137,8 +159,8 @@ pub(crate) static FLAGS: [Flag; 18] = [
         "shellcheck",
         Some("shellcheck"),
         "Command name or file path of \"shellcheck\" external command. If empty, shellcheck \
-         integration will be disabled. Not supported yet",
-        |options, value| options.shellcheck = value,
+         integration will be disabled",
+        |options, value| options.shellcheck = Some(value),
     ),
     Flag::string(
         "pyflakes",
@@ -215,6 +237,12 @@ pub(crate) static FLAGS: [Flag; 18] = [
         "Print the number of errors by severity to stderr",
         |options, on| options.summary = on,
     ),
+    Flag::count(
+        "jobs",
+        "Maximum number of external tool processes, such as shellcheck, that run at once. The \
+         default is the number of CPUs",
+        |options, jobs| options.jobs = Some(jobs),
+    ),
 ];
 
 /// The command line, parsed.
@@ -279,21 +307,43 @@ pub(crate) fn parse(args: &[OsString]) -> Result<Parsed<'_>, String> {
                 };
                 set(&mut options, on);
             }
-            Setter::String(set) => {
-                let value = if let Some(value) = value {
-                    value.to_owned()
-                } else {
-                    let Some((value, tail)) = rest.split_first() else {
-                        return Err(format!("flag needs an argument: -{name}"));
-                    };
-                    rest = tail;
-                    value.to_string_lossy().into_owned()
-                };
-                set(&mut options, value);
+            Setter::String(set) => set(&mut options, take_value(name, value, &mut rest)?),
+            Setter::Count(set) => {
+                let value = take_value(name, value, &mut rest)?;
+                set(&mut options, parse_count(name, &value)?);
             }
         }
     }
     Ok(Parsed::Run(options, rest))
+}
+
+/// The value of the flag `name`: `value`, the text after `=`, or else the next argument, which
+/// it takes off `rest`.
+fn take_value(name: &str, value: Option<&str>, rest: &mut &[OsString]) -> Result<String, String> {
+    if let Some(value) = value {
+        return Ok(value.to_owned());
+    }
+    let Some((value, tail)) = rest.split_first() else {
+        return Err(format!("flag needs an argument: -{name}"));
+    };
+    *rest = tail;
+    Ok(value.to_string_lossy().into_owned())
+}
+
+/// Parses the value of the count flag `name`. The error has the form of Go's for an invalid
+/// flag value.
+fn parse_count(name: &str, value: &str) -> Result<NonZeroUsize, String> {
+    let reason = match value.parse::<usize>() {
+        Ok(count) => match NonZeroUsize::new(count) {
+            Some(count) => return Ok(count),
+            None => "must be at least 1",
+        },
+        Err(_) => "parse error",
+    };
+    Err(format!(
+        "invalid value {} for flag -{name}: {reason}",
+        quote(value)
+    ))
 }
 
 /// Parses a boolean flag value as Go's `strconv.ParseBool` does.
@@ -415,6 +465,7 @@ mod tests {
             "-format={{.}}",
             "-ignore=i",
             "-init-config",
+            "-jobs=3",
             "-no-color",
             "-oneline",
             "-pyflakes=p",
@@ -435,11 +486,12 @@ mod tests {
                 format: "{{.}}".to_owned(),
                 ignore: vec!["i".to_owned()],
                 init_config: true,
+                jobs: NonZeroUsize::new(3),
                 no_color: true,
                 oneline: true,
                 pyflakes: "p".to_owned(),
                 quiet: true,
-                shellcheck: "s".to_owned(),
+                shellcheck: Some("s".to_owned()),
                 silent: true,
                 stdin_filename: "n".to_owned(),
                 summary: true,
@@ -453,9 +505,43 @@ mod tests {
     #[test]
     fn string_flags_default_to_the_reference_values() {
         let defaults = Options::default();
-        assert_eq!(defaults.shellcheck, "shellcheck");
         assert_eq!(defaults.pyflakes, "pyflakes");
         assert_eq!(defaults.stdin_filename, "<stdin>");
+        let shellcheck = FLAGS.iter().find(|flag| flag.name == "shellcheck");
+        assert_eq!(shellcheck.and_then(|flag| flag.default), Some("shellcheck"));
+    }
+
+    #[test]
+    fn shellcheck_is_none_unless_given_and_may_be_empty() {
+        assert_eq!(options(&[]).shellcheck, None);
+        assert_eq!(options(&["-shellcheck="]).shellcheck, Some(String::new()));
+        assert_eq!(
+            options(&["-shellcheck", "shellcheck"]).shellcheck,
+            Some("shellcheck".to_owned())
+        );
+    }
+
+    #[test]
+    fn jobs_takes_a_positive_whole_number() {
+        assert_eq!(options(&["-jobs", "2"]).jobs, NonZeroUsize::new(2));
+        assert_eq!(options(&["--jobs=16"]).jobs, NonZeroUsize::new(16));
+        for (value, reason) in [
+            ("0", "must be at least 1"),
+            ("x", "parse error"),
+            ("-1", "parse error"),
+            ("", "parse error"),
+        ] {
+            assert_eq!(
+                parse_run(&[&format!("-jobs={value}")]),
+                Err(format!(
+                    "invalid value \"{value}\" for flag -jobs: {reason}"
+                ))
+            );
+        }
+        assert_eq!(
+            parse_run(&["-jobs"]),
+            Err("flag needs an argument: -jobs".to_owned())
+        );
     }
 
     #[test]
@@ -493,6 +579,7 @@ mod tests {
             "  -stdin-filename string\n    \tFile name when reading input from stdin \
              (default \"<stdin>\")\n",
             "  -q\tSame as -quiet\n",
+            "  -jobs int\n    \t",
         ] {
             assert!(out.contains(expected), "{expected:?} not in\n{out}");
         }

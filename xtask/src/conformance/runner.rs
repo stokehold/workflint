@@ -199,28 +199,42 @@ impl Setup {
         .map(Outcome::Judged)
     }
 
-    /// Lints `input` as `test.yaml` in the default output format, as the
-    /// reference did for the `Output` blocks of `docs/checks.md`, and
-    /// compares the output with `output`, after `replacements`. See
-    /// [`checks_md::compare`].
+    /// Lints `input`, the example of the section `anchor`, as `test.yaml`
+    /// in the default output format, as the reference did for the `Output`
+    /// blocks of `docs/checks.md`, and compares the output with `output`,
+    /// after `replacements`. See [`checks_md::compare`].
+    ///
+    /// The example is an `err` fixture named after the anchor, so the
+    /// section of a tool, such as `check-shellcheck-integ`, runs that tool.
+    /// Such a section is skipped, with a message, when the tool is not
+    /// installed.
     ///
     /// # Errors
     ///
     /// Returns the reason the comparison fails.
     pub fn check_example(
         &self,
+        anchor: &str,
         input: &str,
         output: &str,
         replacements: &[(&str, &str)],
     ) -> Result<(), String> {
         let temp = tempfile::tempdir().map_err(|error| format!("creating a directory: {error}"))?;
         let suite = temp.path().join("err");
-        let path = suite.join("example.yaml");
+        let path = suite.join(format!("{anchor}.yaml"));
         fs::create_dir(&suite)
             .and_then(|()| fs::write(&path, input))
             .map_err(|error| format!("writing {}: {error}", path.display()))?;
-        let mut invocation = Fixture::new(fixture::Origin::Workflint, &path)
-            .prepare(&Tools::default())
+        let fixture = Fixture::new(fixture::Origin::Workflint, &path);
+        let tools = match fixture.tools(&self.installed) {
+            Ok(tools) => tools,
+            Err(skipped) => {
+                println!("checks.md#{anchor}: {skipped}");
+                return Ok(());
+            }
+        };
+        let mut invocation = fixture
+            .prepare(&tools)
             .map_err(|error| format!("preparing {}: {error}", path.display()))?;
         invocation.args.retain(|arg| arg != "-oneline");
         let stdout = binary::run(self.program.path(), &invocation)?;
@@ -425,7 +439,7 @@ pub fn check_checks_md() -> Result<(), String> {
                 input: Some(input),
                 output: Some(output),
                 ..
-            }) => SETUP.check_example(input, output, &replacements),
+            }) => SETUP.check_example(anchor, input, output, &replacements),
             // Upstream writes this block by hand, so no binary prints it.
             // The row's fixtures, which `check_parity_checklist` requires to
             // pass, check the section instead.

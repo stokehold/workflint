@@ -7,13 +7,16 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use workflint_diagnostics::{
     Category, Color, FileId, RuleMeta, Severity, SourceFile, render_oneline, sort_and_dedup,
 };
 use workflint_linter::config::{Config, ConfigKind};
-use workflint_linter::registry;
+use workflint_linter::tool::{RunOptions, ToolCommand, ToolPool};
+use workflint_linter::{Tools, registry};
 use workflint_rules::local::MemoryProject;
 
 /// The prefix of every `docs_url`. The page name follows it.
@@ -254,6 +257,25 @@ fn parse_head(head: &[&str], page: &mut Page) -> Result<(), String> {
     Ok(())
 }
 
+/// The external tools that the examples of the page of `id` run with, or `None` when they need
+/// a tool that is not installed.
+///
+/// The pages of the `shellcheck` kind run shellcheck: `shellcheck-issue` the real one from
+/// `PATH`, and `shellcheck-failed` a stand-in that exits with status 2, prints `failed` to
+/// stderr, and prints nothing to stdout. The other pages run no tool, so their examples give the
+/// same diagnostics whether shellcheck is installed or not.
+fn tools_for(id: &str) -> Option<Tools> {
+    let command = match id {
+        "shellcheck-issue" => ToolCommand::resolve("shellcheck").ok()?,
+        "shellcheck-failed" => {
+            ToolCommand::new(env!("CARGO_BIN_EXE_workflint-test-tool"), ["exit", "2", ""])
+        }
+        _ => return Some(Tools::none()),
+    };
+    let pool = ToolPool::new(NonZeroUsize::MIN).unwrap();
+    Some(Tools::none().with_shellcheck(command, Arc::new(pool), RunOptions::default()))
+}
+
 /// The paths of the config files that an example may have, from the project root.
 const CONFIG_PATHS: [&str; 4] = [
     ".github/workflint.yaml",
@@ -262,11 +284,11 @@ const CONFIG_PATHS: [&str; 4] = [
     ".github/actionlint.yml",
 ];
 
-/// Lints `workflow` as the binary does, with [`workflint_rules::check_file`]. The workflow is
-/// `test.yaml` at the root of a project in memory that has `files`. A file at one of
+/// Lints `workflow` as the binary does, with [`workflint_rules::check_file`] and `tools`. The
+/// workflow is `test.yaml` at the root of a project in memory that has `files`. A file at one of
 /// [`CONFIG_PATHS`] is the config file of the project. Returns the diagnostics in the one-line
 /// format.
-fn lint(workflow: &str, files: &[ProjectFile]) -> Vec<String> {
+fn lint(workflow: &str, files: &[ProjectFile], tools: &Tools) -> Vec<String> {
     let project = files
         .iter()
         .fold(MemoryProject::new(), |project, (path, text)| {
@@ -286,7 +308,7 @@ fn lint(workflow: &str, files: &[ProjectFile]) -> Vec<String> {
         .cloned()
         .unwrap_or_default();
     let file = SourceFile::new(FileId::new(0), EXAMPLE_PATH, workflow).unwrap();
-    let mut diagnostics = workflint_rules::check_file(&file, &project, &rules);
+    let mut diagnostics = workflint_rules::check_file(&file, &project, tools, &rules);
     sort_and_dedup(&file, &mut diagnostics);
     let mut out = Vec::new();
     render_oneline(&mut out, &file, &diagnostics, Color::Off).unwrap();
@@ -352,9 +374,15 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
     if page.passing.is_empty() {
         problem("no passing example".to_owned());
     }
+    let tools = tools_for(id);
+    if tools.is_none() {
+        println!("{id}: skipped the examples, because shellcheck is not installed");
+    }
+    let tools = tools.as_ref();
     for (index, example) in page.failing.iter().enumerate() {
+        let Some(tools) = tools else { break };
         let n = index + 1;
-        let actual = lint(&example.workflow, &example.files);
+        let actual = lint(&example.workflow, &example.files, tools);
         if actual != example.expected {
             problem(format!(
                 "failing example {n} gives\n{}\nbut the page lists\n{}",
@@ -376,7 +404,8 @@ fn check_page(id: &str, text: &str, rule: Option<&RuleMeta>) -> Vec<String> {
         }
     }
     for (index, example) in page.passing.iter().enumerate() {
-        let actual = lint(&example.workflow, &example.files);
+        let Some(tools) = tools else { break };
+        let actual = lint(&example.workflow, &example.files, tools);
         if !actual.is_empty() {
             problem(format!(
                 "passing example {} gives\n{}",

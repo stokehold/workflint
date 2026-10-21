@@ -13,6 +13,7 @@ use workflint_linter::rules::INTERNAL_ERROR;
 use workflint_linter::{IgnorePattern, Input, Linted, Linter};
 use workflint_rules::RuleConfig;
 use workflint_rules::local::LocalMetadata;
+use workflint_rules::tools::ExternalTools;
 
 const VALID: &str =
     "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n";
@@ -168,6 +169,7 @@ fn a_broken_reusable_workflow_is_reported_in_the_first_caller_by_path() {
 fn check_or_panic(
     file: &SourceFile,
     local: &dyn LocalMetadata,
+    tools: &dyn ExternalTools,
     config: &RuleConfig,
 ) -> Vec<Diagnostic> {
     assert!(
@@ -175,7 +177,7 @@ fn check_or_panic(
         "a rule failed on {}",
         file.path()
     );
-    workflint_rules::check_file(file, local, config)
+    workflint_rules::check_file(file, local, tools, config)
 }
 
 #[test]

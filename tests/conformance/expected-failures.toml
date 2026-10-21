@@ -13,6 +13,4 @@
 "err/pyflakes_job_default_shell" = "M5"
 "err/pyflakes_step_shell" = "M5"
 "err/pyflakes_workflow_default_shell" = "M5"
-"err/shellcheck_default_shell_detection" = "M5"
 "examples/pyflakes_integration" = "M5"
-"examples/shellcheck_integration" = "M5"
