@@ -83,8 +83,8 @@ fn files_come_back_in_input_order_named_by_their_path_from_the_working_directory
     let linter = Linter::new(dir.path().to_path_buf());
     let files = linter.lint(&inputs(&paths)).unwrap();
     let names: Vec<&str> = files.iter().map(|linted| linted.file.path()).collect();
-    let sub_c = Path::new("sub").join("c.yaml");
-    assert_eq!(names, [sub_c.to_str().unwrap(), "b.yaml", "a.yaml"]);
+    // A relative path is printed as given, with `/` also on Windows.
+    assert_eq!(names, ["sub/c.yaml", "b.yaml", "a.yaml"]);
     let counts: Vec<usize> = files
         .iter()
         .map(|linted| linted.diagnostics.len())
@@ -210,11 +210,7 @@ fn a_panic_in_one_file_is_an_internal_error_on_that_file_and_the_others_are_lint
         assert_eq!(panicked.diagnostics.len(), 1, "{output:#?}");
         let diagnostic = &panicked.diagnostics[0];
         assert_eq!(diagnostic.rule.id, INTERNAL_ERROR.id);
-        let panics = Path::new(".github")
-            .join("workflows")
-            .join("panics.yaml")
-            .display()
-            .to_string();
+        let panics = ".github/workflows/panics.yaml";
         assert_eq!(
             output[1],
             format!(
