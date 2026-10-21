@@ -1,11 +1,17 @@
 //! The parallel driver: lints the inputs of a run with the caches of their projects and returns
 //! each file's diagnostics in input order (ADR 0013).
+//!
+//! The driver logs through `tracing`. Each file's events are in a span named [`FILE_SPAN`], so
+//! that a subscriber can hold them until the file is done and print them together. `INFO`
+//! events are the lines of `-verbose`, and `DEBUG` events those of `-debug`.
 
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::fs;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Instant;
 
 use rayon::prelude::*;
 use workflint_diagnostics::quote::quote;
@@ -14,6 +20,7 @@ use workflint_rules::local::{LocalMetadata, NoProject};
 use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
 use crate::cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
+use crate::ignore::IgnorePattern;
 use crate::path;
 use crate::project::ProjectRoots;
 use crate::rules::INTERNAL_ERROR;
@@ -81,11 +88,15 @@ pub struct ReadError {
     message: String,
 }
 
+/// The name of the span that holds the log events of one file.
+pub const FILE_SPAN: &str = "file";
+
 /// Lints the inputs of a run in parallel, with one [`LocalCache`] per project.
 #[derive(Debug, Clone)]
 pub struct Linter {
     cwd: PathBuf,
     check: Check,
+    ignore: Arc<[IgnorePattern]>,
 }
 
 impl Linter {
@@ -96,6 +107,17 @@ impl Linter {
         Self {
             cwd,
             check: workflint_rules::check_file,
+            ignore: Arc::new([]),
+        }
+    }
+
+    /// Returns the linter with `patterns` from `-ignore`: it drops every diagnostic whose
+    /// message one of them matches, except an [`INTERNAL_ERROR`], which reports a bug.
+    #[must_use]
+    pub fn with_ignore(self, patterns: Vec<IgnorePattern>) -> Self {
+        Self {
+            ignore: patterns.into(),
+            ..self
         }
     }
 
@@ -138,6 +160,19 @@ impl Linter {
         inputs: &[Input],
         finish: impl Fn(SourceFile, Vec<Diagnostic>) -> T + Sync,
     ) -> Result<Vec<T>, ReadError> {
+        if inputs.len() > 1 {
+            tracing::info!("Linting {} files", inputs.len());
+        }
+        let finish = |source: SourceFile, mut diagnostics: Vec<Diagnostic>, started: Instant| {
+            self.ignore(&mut diagnostics);
+            tracing::info!(
+                "Found total {} errors in {} ms for {}",
+                diagnostics.len(),
+                started.elapsed().as_millis(),
+                source.path()
+            );
+            finish(source, diagnostics)
+        };
         let mut roots = ProjectRoots::default();
         let mut caches = BTreeMap::new();
         let files: Vec<File> = inputs
@@ -161,33 +196,7 @@ impl Linter {
         let first: Vec<Result<First<'_, T>, ReadError>> = files
             .par_iter()
             .enumerate()
-            .map(|(index, file)| {
-                let (source, decode_error) = read(index, file.given, &self.cwd)?;
-                if let Some(diagnostic) = decode_error {
-                    return Ok(First::Done(finish(source, vec![diagnostic])));
-                }
-                let Some(cache) = cache_of(file) else {
-                    let diagnostics = self.check(&source, &NoProject);
-                    return Ok(First::Done(finish(source, diagnostics)));
-                };
-                let local = cache.for_file(&file.absolute);
-                let mut diagnostics = self.check(&source, &local);
-                let record = local.into_record();
-                if record.is_poisoned() {
-                    diagnostics.push(poisoned(&source));
-                    sort_and_dedup(&source, &mut diagnostics);
-                }
-                Ok(if record.is_empty() {
-                    First::Done(finish(source, diagnostics))
-                } else {
-                    First::Pending {
-                        source,
-                        diagnostics,
-                        cache,
-                        record,
-                    }
-                })
-            })
+            .map(|(index, file)| self.first(index, file, cache_of(file), &finish))
             .collect();
         let mut first = first.into_iter().collect::<Result<Vec<_>, _>>()?;
 
@@ -228,19 +237,78 @@ impl Linter {
         Ok(again
             .into_par_iter()
             .flatten()
-            .map(|again| match again {
-                Again::Lint(source, local) => {
-                    let mut diagnostics = self.check(&source, &local);
-                    if local.into_record().is_poisoned() {
-                        diagnostics.push(poisoned(&source));
-                        sort_and_dedup(&source, &mut diagnostics);
-                    }
-                    finish(source, diagnostics)
-                }
-                Again::Finish(source, diagnostics) => finish(source, diagnostics),
-                Again::Done(done) => done,
-            })
+            .map(|again| self.again(again, &finish))
             .collect())
+    }
+
+    /// Reads and lints `file`, the input at `index`, with `cache`, the cache of its project.
+    fn first<'c, T>(
+        &self,
+        index: usize,
+        file: &File<'_>,
+        cache: Option<&'c LocalCache>,
+        finish: &impl Fn(SourceFile, Vec<Diagnostic>, Instant) -> T,
+    ) -> Result<First<'c, T>, ReadError> {
+        let started = Instant::now();
+        let (source, decode_error) = read(index, file.given, &self.cwd)?;
+        let _span = tracing::info_span!(FILE_SPAN).entered();
+        tracing::info!("Linting {}", source.path());
+        if let Some(root) = &file.root {
+            tracing::info!("Using project at {}", root.display());
+        }
+        if let Some(diagnostic) = decode_error {
+            return Ok(First::Done(finish(source, vec![diagnostic], started)));
+        }
+        let Some(cache) = cache else {
+            let diagnostics = self.check(&source, &NoProject);
+            return Ok(First::Done(finish(source, diagnostics, started)));
+        };
+        let local = cache.for_file(&file.absolute);
+        let mut diagnostics = self.check(&source, &local);
+        let record = local.into_record();
+        if record.is_poisoned() {
+            diagnostics.push(poisoned(&source));
+            sort_and_dedup(&source, &mut diagnostics);
+        }
+        Ok(if record.is_empty() {
+            First::Done(finish(source, diagnostics, started))
+        } else {
+            First::Pending {
+                source,
+                diagnostics,
+                cache,
+                record,
+            }
+        })
+    }
+
+    /// Does what is left of a file after the uses of the caches are replayed.
+    fn again<T>(
+        &self,
+        again: Again<'_, T>,
+        finish: &impl Fn(SourceFile, Vec<Diagnostic>, Instant) -> T,
+    ) -> T {
+        let started = Instant::now();
+        match again {
+            Again::Lint(source, local) => {
+                let _span = tracing::info_span!(FILE_SPAN).entered();
+                tracing::info!(
+                    "Linting {} again, because the files before it changed what it reads",
+                    source.path()
+                );
+                let mut diagnostics = self.check(&source, &local);
+                if local.into_record().is_poisoned() {
+                    diagnostics.push(poisoned(&source));
+                    sort_and_dedup(&source, &mut diagnostics);
+                }
+                finish(source, diagnostics, started)
+            }
+            Again::Finish(source, diagnostics) => {
+                let _span = tracing::info_span!(FILE_SPAN).entered();
+                finish(source, diagnostics, started)
+            }
+            Again::Done(done) => done,
+        }
     }
 
     /// Lints `source` with the project's local metadata in `local` and returns the sorted
@@ -253,7 +321,48 @@ impl Linter {
             sort_and_dedup(source, &mut diagnostics);
             diagnostics
         }));
-        checked.unwrap_or_else(|payload| vec![panicked(source, payload.as_ref())])
+        let diagnostics =
+            checked.unwrap_or_else(|payload| vec![panicked(source, payload.as_ref())]);
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            let mut counts = BTreeMap::new();
+            for diagnostic in &diagnostics {
+                *counts.entry(diagnostic.rule.id).or_insert(0_usize) += 1;
+            }
+            for (rule, count) in counts {
+                tracing::debug!("{rule} found {count} errors");
+            }
+        }
+        diagnostics
+    }
+
+    /// Drops the diagnostics that an ignore pattern matches, as the reference's `filterErrors`
+    /// does, and logs each one.
+    fn ignore(&self, diagnostics: &mut Vec<Diagnostic>) {
+        if self.ignore.is_empty() {
+            return;
+        }
+        let before = diagnostics.len();
+        diagnostics.retain(|diagnostic| {
+            let ignored = diagnostic.rule.id != INTERNAL_ERROR.id
+                && self
+                    .ignore
+                    .iter()
+                    .any(|pattern| pattern.is_match(&diagnostic.message));
+            if ignored {
+                tracing::debug!(
+                    "Error {} is ignored due to -ignore command line option",
+                    quote(&diagnostic.message)
+                );
+            }
+            !ignored
+        });
+        if diagnostics.len() != before {
+            tracing::info!(
+                "Filtered {} error(s) due to \"-ignore\" command line option and \"ignore\" \
+                 configuration",
+                before - diagnostics.len()
+            );
+        }
     }
 }
 

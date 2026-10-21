@@ -43,7 +43,7 @@ Add a fixture under `workflint/` when a checklist row says "none" in its fixture
 
 ## Command line
 
-This is the command line the runner uses. The reference binary accepts it, and so does `workflint` from M2.0. From M2.0 the binary lints the files it is given: it reports the diagnostics of the YAML layer, and each later task adds its own. M5.6 replaces it with the full CLI.
+This is the command line the runner uses. The reference binary and `workflint` both accept it. Since M5.6 `workflint` accepts every flag of the reference in the syntax of Go's `flag` package, and a few of its own (`docs/cli.md`).
 
 For each fixture, the runner creates a temporary directory and builds a project in `<temp>/project`:
 
@@ -57,6 +57,10 @@ It writes an empty file to `<temp>/config.yaml`. Then it runs the binary in `<te
 workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <config> <files>...
 ```
 
+- `-oneline` prints one line per error, the form that [Matching](#matching) parses.
+- `-no-color` keeps escape sequences out of the output whatever the environment, as `-color` or a terminal would add them. `NO_COLOR` and `TERM` do not matter with it.
+- workflint accepts `-shellcheck`, `-pyflakes`, and `-config-file`, and ignores them until shellcheck (M5.5, #248), pyflakes (M5.12, #249), and the config (M5.2, #247) use them.
+- The runner passes none of `-ignore`, `-color`, `-verbose`, `-debug`, `-format`, `-summary`, `-quiet`, and `-silent`, so standard output holds only the errors and standard error stays empty.
 - `<config>` is `<temp>/project/actionlint.yaml` for a project that has one, and `<temp>/config.yaml` otherwise. Passing a config file means the CLI reads no config from the workflint repository or from the user's config directory.
 - `<files>` is `test.yaml`, or a project's workflow files as relative paths with `/` separators, such as `workflows/nested/piyo.yaml`, in the order of Go's `filepath.Walk`. actionlint's CLI does not accept a directory.
 - `-shellcheck=` and `-pyflakes=` take the tool's absolute path, or nothing to turn the tool off. As in the reference's tests:

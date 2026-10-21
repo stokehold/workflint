@@ -9,7 +9,7 @@ use std::path::Path;
 use tempfile::TempDir;
 use workflint_diagnostics::{Color, Diagnostic, SourceFile, render_oneline};
 use workflint_linter::rules::INTERNAL_ERROR;
-use workflint_linter::{Input, Linted, Linter};
+use workflint_linter::{IgnorePattern, Input, Linted, Linter};
 use workflint_rules::local::LocalMetadata;
 
 const VALID: &str =
@@ -254,4 +254,52 @@ fn bytes_that_do_not_decode_are_a_yaml_syntax_error_at_the_end_of_the_decoded_te
             "bad.yaml:1:9: could not parse as YAML: invalid leading UTF-8 octet [yaml-syntax-error]\n"
         ]
     );
+}
+
+/// A workflow with two diagnostics of the `unused-anchor` rule.
+const TWO_ANCHORS: &str = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: &a echo\n      - run: &b echo\n";
+
+#[test]
+fn an_ignore_pattern_drops_the_diagnostics_whose_message_it_matches() {
+    let dir = project();
+    write(dir.path(), "a.yaml", TWO_ANCHORS);
+    let paths = ["a.yaml".to_owned()];
+    let linter = Linter::new(dir.path().to_path_buf());
+    let all = oneline(&linter.lint(&inputs(&paths)).unwrap());
+    assert_eq!(all[0].lines().count(), 2, "{}", all[0]);
+
+    let ignore = vec![IgnorePattern::new("anchor \"a\"").unwrap()];
+    let filtered = oneline(&linter.with_ignore(ignore).lint(&inputs(&paths)).unwrap());
+    assert_eq!(
+        filtered,
+        [all[0]
+            .lines()
+            .filter(|line| !line.contains("anchor \"a\""))
+            .flat_map(|line| [line, "\n"])
+            .collect::<String>()]
+    );
+}
+
+#[test]
+fn an_ignore_pattern_that_matches_every_message_leaves_no_diagnostic() {
+    let dir = project();
+    write(dir.path(), "a.yaml", TWO_ANCHORS);
+    write(dir.path(), "b.yaml", NO_STEPS);
+    let paths = ["a.yaml".to_owned(), "b.yaml".to_owned()];
+    let linter =
+        Linter::new(dir.path().to_path_buf()).with_ignore(vec![IgnorePattern::new("").unwrap()]);
+    let files = linter.lint(&inputs(&paths)).unwrap();
+    assert!(files.iter().all(|linted| linted.diagnostics.is_empty()));
+}
+
+#[test]
+fn an_ignore_pattern_never_drops_an_internal_error() {
+    let dir = project();
+    write(dir.path(), "panics.yaml", VALID);
+    let paths = ["panics.yaml".to_owned()];
+    let linter = Linter::new(dir.path().to_path_buf())
+        .with_check(check_or_panic)
+        .with_ignore(vec![IgnorePattern::new("panicked").unwrap()]);
+    let files = linter.lint(&inputs(&paths)).unwrap();
+    assert!(files[0].has_internal_error());
 }

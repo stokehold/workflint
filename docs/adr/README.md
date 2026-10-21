@@ -16,7 +16,7 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0010](0010-configuration.md) | Configuration | accepted | |
 | [0011](0011-platform-data.md) | GitHub platform data | accepted | [0028](0028-revisions-after-the-m1-m3-review.md), [0033](0033-platform-data-updates-before-m7.md) |
 | [0012](0012-external-tools.md) | External tools | accepted | |
-| [0013](0013-concurrency-and-determinism.md) | Concurrency and determinism | accepted | |
+| [0013](0013-concurrency-and-determinism.md) | Concurrency and determinism | accepted | [0035](0035-command-line-parser-and-environment.md) |
 | [0014](0014-distribution-and-releases.md) | Distribution and release pipeline | accepted | |
 | [0015](0015-github-action.md) | Official GitHub Action | accepted | [0021](0021-supply-chain-and-ci-security.md) |
 | [0016](0016-agent-driven-development.md) | Agent-driven development process | accepted | [0020](0020-task-tracking-in-github-issues.md), [0028](0028-revisions-after-the-m1-m3-review.md), [0029](0029-rule-modules-and-descriptions.md) |
@@ -38,3 +38,4 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0032](0032-diagnostic-help-text.md) | Diagnostic help text | accepted | |
 | [0033](0033-platform-data-updates-before-m7.md) | Platform data updates before M7 | accepted | |
 | [0034](0034-rules-of-the-driver.md) | Rules of the driver | accepted | |
+| [0035](0035-command-line-parser-and-environment.md) | Command-line parser and environment | accepted | |
