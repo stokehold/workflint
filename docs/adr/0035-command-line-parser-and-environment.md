@@ -15,7 +15,7 @@ ADR 0013 names `NO_COLOR`, `XDG_*`, and `GITHUB_ACTIONS` as the only environment
 Parser:
 
 - The binary keeps its own Go-style parser. One table, `FLAGS` in `crates/workflint/src/flags.rs`, declares each flag: its name, its help text, its default, and the field of `Options` that it sets. The parser, the flag list of `-help`, and the defaults all come from that table. A task that adds a flag adds one entry and one field.
-- No argument-parsing crate is added. Shell completions and the man page (M5.19, #256) are generated from the same table.
+- No argument-parsing crate is added. For shell completions and the man page (M5.19, #256), the binary writes a spec in the format of the `usage` project (usage.jdx.dev) from the same table, and its `usage-cli` tool generates the completion scripts and the man page from that spec. The binary does not depend on the `usage` crates.
 
 Environment:
 
@@ -33,12 +33,14 @@ Color:
 
 ## Consequences
 
-The parser stays small and matches Go exactly, including its error messages. The help text and the completions of M5.19 need code of their own, and the table keeps them in step with the parser.
+The parser stays small and matches Go exactly, including its error messages. The help text and the spec for M5.19 need code of their own, and the table keeps them in step with the parser. Building the completions and the man page needs `usage-cli`, a tool outside the Rust build.
 
 Two runs on the same input print the same stdout. The stderr of `-verbose` and `-debug` may differ between runs.
 
 ## Alternatives considered
 
 - clap with an argument normaliser. Rejected, because the hand-written parser already matches Go, and clap's help and errors would need overriding to print Go's.
+- usage-rs, the `usage` project's derive framework. Rejected for the same reasons as clap: its documentation shows no single-dash long flags, and its errors follow clap's wording. Its faster parse saves microseconds per run.
+- Generating the completion scripts and the man page with code of our own. Rejected, because `usage-cli` already writes them for four shells from one spec.
 - `lexopt`. Rejected, because the parser loop is the part that `lexopt` would replace, and it is already written and tested.
 - Writing log lines straight to stderr, one write per line. Rejected, because ADR 0013 asks for each file's lines together.
