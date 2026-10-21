@@ -70,8 +70,8 @@ impl std::error::Error for MetadataError {}
 /// One error that does not stop decoding, go-yaml's `UnmarshalError`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct UnmarshalError {
-    line: usize,
-    message: String,
+    pub(crate) line: usize,
+    pub(crate) message: String,
 }
 
 impl fmt::Display for UnmarshalError {
@@ -213,6 +213,11 @@ impl<'a> Source<'a> {
         let mut decoder = Decoder::new(self);
         let result = decode(&mut decoder, node);
         decoder.finish(result)
+    }
+
+    /// Returns the root node, or `None` for a file with no document.
+    pub(crate) fn root(&self) -> Option<NodeId> {
+        self.document.root()
     }
 
     pub(crate) fn node(&self, id: NodeId) -> Option<&Node> {
@@ -773,12 +778,45 @@ impl<'s> Decoder<'s> {
         fields: &[&str],
         decode: &mut dyn FnMut(&mut Self, usize, NodeId) -> Result<(), Fatal>,
     ) -> Result<bool, Fatal> {
+        self.mapping_into(
+            id,
+            go_type,
+            &mut Target::Struct {
+                go_type,
+                fields,
+                decode,
+            },
+        )
+    }
+
+    /// Decodes `id` into a map with string keys, such as
+    /// `map[string]PathConfig`. `decode` decodes the value under each key,
+    /// in the order go-yaml sets them: the entries as written, then those
+    /// that `<<` keys merge in and that do not override a key already set.
+    /// `go_type` names the map in messages. A null leaves the map nil.
+    pub(crate) fn string_map(
+        &mut self,
+        id: NodeId,
+        go_type: &str,
+        decode: &mut dyn FnMut(&mut Self, String, NodeId) -> Result<(), Fatal>,
+    ) -> Result<bool, Fatal> {
+        self.mapping_into(id, go_type, &mut Target::Map { decode })
+    }
+
+    /// Decodes `id` into the struct or map `target`, whose Go type is
+    /// `go_type`.
+    fn mapping_into(
+        &mut self,
+        id: NodeId,
+        go_type: &str,
+        target: &mut Target<'_, 's>,
+    ) -> Result<bool, Fatal> {
         self.unmarshal(id, |d, id, node| match &node.kind {
             NodeKind::Mapping(_) => {
                 if !d.unique_keys(id) {
                     return Ok(false);
                 }
-                d.struct_mappings(id, go_type, fields, decode)?;
+                d.struct_mappings(id, target)?;
                 Ok(true)
             }
             NodeKind::Scalar(scalar) => d.scalar_mismatch(id, scalar, go_type),
@@ -789,21 +827,52 @@ impl<'s> Decoder<'s> {
         })
     }
 
-    /// Decodes the mapping `id` into a struct, and then each mapping that
-    /// its `<<` keys merge into the same struct, as go-yaml's
-    /// `mappingStruct` and `merge` do. go-yaml recurses for each nested
-    /// `<<`. This loops over a stack of the work left instead, so that
-    /// merges nested as deep as the YAML layer allows (ADR 0022) cannot
-    /// overflow the stack.
-    fn struct_mappings(
+    /// Decodes `id` into a `[]string`: a sequence sets `out` to its items
+    /// that decode into a string, and null sets it to `None`, Go's nil
+    /// slice. Returns whether `out` was set.
+    pub(crate) fn string_slice(
         &mut self,
         id: NodeId,
-        go_type: &str,
-        fields: &[&str],
-        decode: &mut dyn FnMut(&mut Self, usize, NodeId) -> Result<(), Fatal>,
-    ) -> Result<(), Fatal> {
+        out: &mut Option<Vec<String>>,
+    ) -> Result<bool, Fatal> {
+        self.unmarshal(id, |d, id, node| match &node.kind {
+            NodeKind::Sequence(_) => {
+                let mut items = Vec::new();
+                for &item in d.source.written(id) {
+                    let mut text = String::new();
+                    // go-yaml drops an item that does not decode, such as
+                    // a null or a mapping.
+                    if d.string(item, &mut text)? {
+                        items.push(text);
+                    }
+                }
+                *out = Some(items);
+                Ok(true)
+            }
+            NodeKind::Scalar(scalar) => {
+                if resolve(scalar)? == Resolved::Null {
+                    *out = None;
+                    return Ok(true);
+                }
+                d.type_error(id, "[]string");
+                Ok(false)
+            }
+            _ => {
+                d.collection_mismatch(id, node, "[]string");
+                Ok(false)
+            }
+        })
+    }
+
+    /// Decodes the mapping `id` into the struct or map `target`, and then
+    /// each mapping that its `<<` keys merge into the same target, as
+    /// go-yaml's `mappingStruct`, `mapping`, and `merge` do. go-yaml recurses
+    /// for each nested `<<`. This loops over a stack of the work left
+    /// instead, so that merges nested as deep as the YAML layer allows
+    /// (ADR 0022) cannot overflow the stack.
+    fn struct_mappings(&mut self, id: NodeId, target: &mut Target<'_, 's>) -> Result<(), Fatal> {
         let mut work = Vec::new();
-        self.struct_entries(id, go_type, fields, decode, &mut work)?;
+        self.struct_entries(id, target, &mut work)?;
         while let Some(next) = work.pop() {
             match next {
                 StructWork::Merge { parent, value } => {
@@ -822,7 +891,7 @@ impl<'s> Decoder<'s> {
                     let (item, _, aliases) = self.enter_node(item)?;
                     work.push(StructWork::LeaveAliases(aliases));
                     if self.unique_keys(item) {
-                        self.struct_entries(item, go_type, fields, decode, &mut work)?;
+                        self.struct_entries(item, target, &mut work)?;
                     }
                 }
                 StructWork::LeaveAliases(count) => self.leave_aliases(count),
@@ -836,20 +905,22 @@ impl<'s> Decoder<'s> {
         Ok(())
     }
 
-    /// Decodes the entries of the mapping `id` into a struct, as go-yaml's
-    /// `mappingStruct` does, and pushes the merge of its `<<` key, if it has
-    /// one, to `work`.
+    /// Decodes the entries of the mapping `id` into `target`, as go-yaml's
+    /// `mappingStruct` or `mapping` does, and pushes the merge of its `<<`
+    /// key, if it has one, to `work`.
     fn struct_entries(
         &mut self,
         id: NodeId,
-        go_type: &str,
-        fields: &[&str],
-        decode: &mut dyn FnMut(&mut Self, usize, NodeId) -> Result<(), Fatal>,
+        target: &mut Target<'_, 's>,
         work: &mut Vec<StructWork>,
     ) -> Result<(), Fatal> {
         let mut merged = self.merged.take();
         let mut merge = None;
-        let mut done = vec![false; fields.len()];
+        // The fields set by this mapping, for a struct.
+        let mut done = match target {
+            Target::Struct { fields, .. } => vec![false; fields.len()],
+            Target::Map { .. } => Vec::new(),
+        };
         let source = self.source;
         for entry in source.written_entries(id) {
             if source.is_merge_key(entry.key) {
@@ -865,20 +936,29 @@ impl<'s> Decoder<'s> {
             {
                 continue;
             }
-            let Some(field) = fields.iter().position(|field| *field == name) else {
-                continue;
-            };
-            if let Some(done) = done.get_mut(field) {
-                if *done {
-                    self.error(
-                        entry.key,
-                        format!("field {name} already set in type {go_type}"),
-                    );
-                    continue;
+            match target {
+                Target::Struct {
+                    go_type,
+                    fields,
+                    decode,
+                } => {
+                    let Some(field) = fields.iter().position(|field| *field == name) else {
+                        continue;
+                    };
+                    if let Some(done) = done.get_mut(field) {
+                        if *done {
+                            self.error(
+                                entry.key,
+                                format!("field {name} already set in type {go_type}"),
+                            );
+                            continue;
+                        }
+                        *done = true;
+                    }
+                    decode(self, field, entry.value)?;
                 }
-                *done = true;
+                Target::Map { decode } => decode(self, name, entry.value)?,
             }
-            decode(self, field, entry.value)?;
         }
         self.merged = merged;
         if let Some(value) = merge {
@@ -911,6 +991,21 @@ impl<'s> Decoder<'s> {
             _ => Err(want_map()),
         }
     }
+}
+
+/// What [`Decoder::struct_mappings`] decodes a mapping into.
+enum Target<'t, 's> {
+    /// A struct with the fields `fields`, named by their YAML keys.
+    /// `decode` decodes the value of the field with the given index.
+    Struct {
+        go_type: &'t str,
+        fields: &'t [&'t str],
+        decode: &'t mut dyn FnMut(&mut Decoder<'s>, usize, NodeId) -> Result<(), Fatal>,
+    },
+    /// A map with string keys. `decode` decodes the value under a key.
+    Map {
+        decode: &'t mut dyn FnMut(&mut Decoder<'s>, String, NodeId) -> Result<(), Fatal>,
+    },
 }
 
 /// The work left in [`Decoder::struct_mappings`], last first.

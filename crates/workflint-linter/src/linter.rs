@@ -16,18 +16,22 @@ use std::time::Instant;
 use rayon::prelude::*;
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, Span, sort_and_dedup};
+use workflint_rules::RuleConfig;
 use workflint_rules::local::{LocalMetadata, NoProject};
 use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
 use crate::cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
+use crate::config::{Config, ConfigError};
 use crate::ignore::IgnorePattern;
 use crate::path;
 use crate::project::ProjectRoots;
 use crate::rules::INTERNAL_ERROR;
+use crate::settings::{Flags, Settings};
 
-/// What lints one file: parses it, runs the rules with the project's local metadata, and
-/// returns the diagnostics. [`Linter::new`] uses [`workflint_rules::check_file`].
-pub type Check = fn(&SourceFile, &dyn LocalMetadata) -> Vec<Diagnostic>;
+/// What lints one file: parses it, runs the rules with the project's local metadata and the
+/// settings of the config file, and returns the diagnostics. [`Linter::new`] uses
+/// [`workflint_rules::check_file`].
+pub type Check = fn(&SourceFile, &dyn LocalMetadata, &RuleConfig) -> Vec<Diagnostic>;
 
 /// One input of a run.
 ///
@@ -88,15 +92,27 @@ pub struct ReadError {
     message: String,
 }
 
+/// An error that stops the run before anything is printed.
+#[derive(Debug, thiserror::Error)]
+pub enum LintError {
+    /// A file of the run could not be read.
+    #[error(transparent)]
+    Read(#[from] ReadError),
+    /// The config file of a project could not be read.
+    #[error(transparent)]
+    Config(#[from] ConfigError),
+}
+
 /// The name of the span that holds the log events of one file.
 pub const FILE_SPAN: &str = "file";
 
-/// Lints the inputs of a run in parallel, with one [`LocalCache`] per project.
+/// Lints the inputs of a run in parallel, with one [`LocalCache`] and one config file per
+/// project.
 #[derive(Debug, Clone)]
 pub struct Linter {
     cwd: PathBuf,
     check: Check,
-    ignore: Arc<[IgnorePattern]>,
+    flags: Arc<Flags>,
 }
 
 impl Linter {
@@ -107,7 +123,7 @@ impl Linter {
         Self {
             cwd,
             check: workflint_rules::check_file,
-            ignore: Arc::new([]),
+            flags: Arc::default(),
         }
     }
 
@@ -115,8 +131,22 @@ impl Linter {
     /// message one of them matches, except an [`INTERNAL_ERROR`], which reports a bug.
     #[must_use]
     pub fn with_ignore(self, patterns: Vec<IgnorePattern>) -> Self {
+        let mut flags = Flags::clone(&self.flags);
+        flags.ignore = patterns;
         Self {
-            ignore: patterns.into(),
+            flags: Arc::new(flags),
+            ..self
+        }
+    }
+
+    /// Returns the linter with `config` from `-config-file`, which every file of a run uses in
+    /// place of the config file of its project.
+    #[must_use]
+    pub fn with_config_file(self, config: Config) -> Self {
+        let mut flags = Flags::clone(&self.flags);
+        flags.config_file = Some(Arc::new(config));
+        Self {
+            flags: Arc::new(flags),
             ..self
         }
     }
@@ -132,8 +162,8 @@ impl Linter {
     ///
     /// # Errors
     ///
-    /// Fails with the first input, in the order of `inputs`, that cannot be read.
-    pub fn lint(&self, inputs: &[Input]) -> Result<Vec<Linted>, ReadError> {
+    /// Fails as [`lint_with`](Self::lint_with) does.
+    pub fn lint(&self, inputs: &[Input]) -> Result<Vec<Linted>, LintError> {
         self.lint_with(inputs, |file, diagnostics| Linted { file, diagnostics })
     }
 
@@ -152,19 +182,29 @@ impl Linter {
     /// A panic in the lint of a file becomes one [`INTERNAL_ERROR`] diagnostic on that file,
     /// and the other files are linted as usual.
     ///
+    /// Each file is linted with the [`Settings`] of its project: the defaults, then the config
+    /// file that [`Config::find`] finds in the project root, or the one of
+    /// [`with_config_file`](Self::with_config_file), then the flags. A project's config file is
+    /// read once per run. The globs of `paths` match the path of the file from its project
+    /// root, or from the working directory for a file in no project.
+    ///
     /// # Errors
     ///
-    /// Fails with the first input, in the order of `inputs`, that cannot be read.
+    /// Fails with the first input, in the order of `inputs`, whose project's config file cannot
+    /// be read, and then with the first input that cannot be read.
     pub fn lint_with<T: Send>(
         &self,
         inputs: &[Input],
         finish: impl Fn(SourceFile, Vec<Diagnostic>) -> T + Sync,
-    ) -> Result<Vec<T>, ReadError> {
+    ) -> Result<Vec<T>, LintError> {
         if inputs.len() > 1 {
             tracing::info!("Linting {} files", inputs.len());
         }
-        let finish = |source: SourceFile, mut diagnostics: Vec<Diagnostic>, started: Instant| {
-            self.ignore(&mut diagnostics);
+        let finish = |file: &File<'_>,
+                      source: SourceFile,
+                      mut diagnostics: Vec<Diagnostic>,
+                      started: Instant| {
+            Self::ignore(file, &mut diagnostics);
             tracing::info!(
                 "Found total {} errors in {} ms for {}",
                 diagnostics.len(),
@@ -175,22 +215,25 @@ impl Linter {
         };
         let mut roots = ProjectRoots::default();
         let mut caches = BTreeMap::new();
-        let files: Vec<File> = inputs
-            .iter()
-            .map(|input| {
-                let root = roots.find(&input.path, &self.cwd);
-                if let Some(root) = &root {
-                    caches
-                        .entry(root.clone())
-                        .or_insert_with(|| LocalCache::new(root.clone()));
-                }
-                File {
-                    given: &input.path,
-                    absolute: path::absolute(&self.cwd, &input.path),
-                    root,
-                }
-            })
-            .collect();
+        let mut settings = ProjectSettings::new(&self.flags);
+        let mut files = Vec::with_capacity(inputs.len());
+        for input in inputs {
+            let root = roots.find(&input.path, &self.cwd);
+            if let Some(root) = &root {
+                caches
+                    .entry(root.clone())
+                    .or_insert_with(|| LocalCache::new(root.clone()));
+            }
+            let absolute = path::absolute(&self.cwd, &input.path);
+            let relative = slash_path(root.as_deref().unwrap_or(&self.cwd), &absolute);
+            files.push(File {
+                given: &input.path,
+                settings: settings.of(root.as_deref())?,
+                absolute,
+                relative,
+                root,
+            });
+        }
         let cache_of = |file: &File<'_>| file.root.as_ref().and_then(|root| caches.get(root));
 
         let first: Vec<Result<First<'_, T>, ReadError>> = files
@@ -204,7 +247,7 @@ impl Linter {
         // file given twice keeps the order of `inputs`.
         let mut by_path: Vec<(usize, &File<'_>)> = files.iter().enumerate().collect();
         by_path.sort_by_key(|(_, file)| file.absolute.as_path());
-        let mut again: Vec<Option<Again<'_, T>>> = first.iter().map(|_| None).collect();
+        let mut again: Vec<Option<Again<'_, '_, T>>> = first.iter().map(|_| None).collect();
         for (index, file) in by_path {
             let Some(slot) = first.get_mut(index) else {
                 continue;
@@ -217,13 +260,13 @@ impl Linter {
                     record,
                 } => match commit(cache, record, &source) {
                     Ok(Some(prior)) => {
-                        Again::Lint(source, cache.for_file_after(&file.absolute, prior))
+                        Again::Lint(file, source, cache.for_file_after(&file.absolute, prior))
                     }
-                    Ok(None) => Again::Finish(source, diagnostics),
+                    Ok(None) => Again::Finish(file, source, diagnostics),
                     Err(diagnostic) => {
                         diagnostics.push(diagnostic);
                         sort_and_dedup(&source, &mut diagnostics);
-                        Again::Finish(source, diagnostics)
+                        Again::Finish(file, source, diagnostics)
                     }
                 },
                 First::Done(done) => Again::Done(done),
@@ -247,7 +290,7 @@ impl Linter {
         index: usize,
         file: &File<'_>,
         cache: Option<&'c LocalCache>,
-        finish: &impl Fn(SourceFile, Vec<Diagnostic>, Instant) -> T,
+        finish: &impl Fn(&File<'_>, SourceFile, Vec<Diagnostic>, Instant) -> T,
     ) -> Result<First<'c, T>, ReadError> {
         let started = Instant::now();
         let (source, decode_error) = read(index, file.given, &self.cwd)?;
@@ -256,22 +299,28 @@ impl Linter {
         if let Some(root) = &file.root {
             tracing::info!("Using project at {}", root.display());
         }
-        if let Some(diagnostic) = decode_error {
-            return Ok(First::Done(finish(source, vec![diagnostic], started)));
+        if let Some(path) = file.settings.config_path() {
+            tracing::debug!("Config: {}", path.display());
+        } else {
+            tracing::debug!("No config was found");
         }
+        if let Some(diagnostic) = decode_error {
+            return Ok(First::Done(finish(file, source, vec![diagnostic], started)));
+        }
+        let config = file.settings.rules();
         let Some(cache) = cache else {
-            let diagnostics = self.check(&source, &NoProject);
-            return Ok(First::Done(finish(source, diagnostics, started)));
+            let diagnostics = self.check(&source, &NoProject, config);
+            return Ok(First::Done(finish(file, source, diagnostics, started)));
         };
         let local = cache.for_file(&file.absolute);
-        let mut diagnostics = self.check(&source, &local);
+        let mut diagnostics = self.check(&source, &local, config);
         let record = local.into_record();
         if record.is_poisoned() {
             diagnostics.push(poisoned(&source));
             sort_and_dedup(&source, &mut diagnostics);
         }
         Ok(if record.is_empty() {
-            First::Done(finish(source, diagnostics, started))
+            First::Done(finish(file, source, diagnostics, started))
         } else {
             First::Pending {
                 source,
@@ -285,39 +334,45 @@ impl Linter {
     /// Does what is left of a file after the uses of the caches are replayed.
     fn again<T>(
         &self,
-        again: Again<'_, T>,
-        finish: &impl Fn(SourceFile, Vec<Diagnostic>, Instant) -> T,
+        again: Again<'_, '_, T>,
+        finish: &impl Fn(&File<'_>, SourceFile, Vec<Diagnostic>, Instant) -> T,
     ) -> T {
         let started = Instant::now();
         match again {
-            Again::Lint(source, local) => {
+            Again::Lint(file, source, local) => {
                 let _span = tracing::info_span!(FILE_SPAN).entered();
                 tracing::info!(
                     "Linting {} again, because the files before it changed what it reads",
                     source.path()
                 );
-                let mut diagnostics = self.check(&source, &local);
+                let mut diagnostics = self.check(&source, &local, file.settings.rules());
                 if local.into_record().is_poisoned() {
                     diagnostics.push(poisoned(&source));
                     sort_and_dedup(&source, &mut diagnostics);
                 }
-                finish(source, diagnostics, started)
+                finish(file, source, diagnostics, started)
             }
-            Again::Finish(source, diagnostics) => {
+            Again::Finish(file, source, diagnostics) => {
                 let _span = tracing::info_span!(FILE_SPAN).entered();
-                finish(source, diagnostics, started)
+                finish(file, source, diagnostics, started)
             }
             Again::Done(done) => done,
         }
     }
 
-    /// Lints `source` with the project's local metadata in `local` and returns the sorted
-    /// diagnostics, or one [`INTERNAL_ERROR`] diagnostic if the lint panics.
-    fn check(&self, source: &SourceFile, local: &dyn LocalMetadata) -> Vec<Diagnostic> {
+    /// Lints `source` with the project's local metadata in `local` and the settings of the
+    /// config file in `config`, and returns the sorted diagnostics, or one [`INTERNAL_ERROR`]
+    /// diagnostic if the lint panics.
+    fn check(
+        &self,
+        source: &SourceFile,
+        local: &dyn LocalMetadata,
+        config: &RuleConfig,
+    ) -> Vec<Diagnostic> {
         // The view of the cache may hold a half-done lookup after a panic. The file's record
         // still lists only the lookups that finished, so the replay stays right.
         let checked = panic::catch_unwind(AssertUnwindSafe(|| {
-            let mut diagnostics = (self.check)(source, local);
+            let mut diagnostics = (self.check)(source, local, config);
             sort_and_dedup(source, &mut diagnostics);
             diagnostics
         }));
@@ -335,26 +390,43 @@ impl Linter {
         diagnostics
     }
 
-    /// Drops the diagnostics that an ignore pattern matches, as the reference's `filterErrors`
-    /// does, and logs each one.
-    fn ignore(&self, diagnostics: &mut Vec<Diagnostic>) {
-        if self.ignore.is_empty() {
+    /// Drops the diagnostics of `file` that a pattern of `-ignore` or of a matching `paths`
+    /// entry of the config matches, as the reference's `filterErrors` does, and logs each one.
+    /// An [`INTERNAL_ERROR`] is never dropped.
+    fn ignore(file: &File<'_>, diagnostics: &mut Vec<Diagnostic>) {
+        let ignores = file.settings.ignores_for(&file.relative);
+        if ignores.is_empty() {
             return;
         }
         let before = diagnostics.len();
         diagnostics.retain(|diagnostic| {
-            let ignored = diagnostic.rule.id != INTERNAL_ERROR.id
-                && self
-                    .ignore
-                    .iter()
-                    .any(|pattern| pattern.is_match(&diagnostic.message));
-            if ignored {
+            if diagnostic.rule.id == INTERNAL_ERROR.id {
+                return true;
+            }
+            let message = &diagnostic.message;
+            if ignores
+                .flags
+                .iter()
+                .any(|pattern| pattern.is_match(message))
+            {
                 tracing::debug!(
                     "Error {} is ignored due to -ignore command line option",
-                    quote(&diagnostic.message)
+                    quote(message)
                 );
+                return false;
             }
-            !ignored
+            if ignores
+                .paths
+                .iter()
+                .any(|pattern| pattern.is_match(message))
+            {
+                tracing::debug!(
+                    "Error {} is ignored due to the \"ignore\" config in the config file",
+                    quote(message)
+                );
+                return false;
+            }
+            true
         });
         if diagnostics.len() != before {
             tracing::info!(
@@ -380,13 +452,89 @@ fn commit(
     }
 }
 
-/// An input with its project root.
+/// An input with its project root and settings.
 struct File<'i> {
     /// The path as given.
     given: &'i Path,
     /// The path made absolute and cleaned.
     absolute: PathBuf,
+    /// The path from the project root, or from the working directory for a file in no project,
+    /// with `/` separators. The globs of `paths` match it.
+    relative: String,
     root: Option<PathBuf>,
+    settings: Arc<Settings>,
+}
+
+/// The settings of each project of a run, each made once.
+struct ProjectSettings<'f> {
+    flags: &'f Flags,
+    /// The settings of every file when `-config-file` is given.
+    explicit: Option<Arc<Settings>>,
+    /// The settings of a file in no project.
+    default: Arc<Settings>,
+    /// The settings of each project root found so far.
+    projects: BTreeMap<PathBuf, Arc<Settings>>,
+}
+
+impl<'f> ProjectSettings<'f> {
+    fn new(flags: &'f Flags) -> Self {
+        let explicit = flags.config_file.as_deref().map(|config| {
+            warn(config);
+            Arc::new(Settings::default().with_config(config).with_flags(flags))
+        });
+        Self {
+            flags,
+            explicit,
+            default: Arc::new(Settings::default().with_flags(flags)),
+            projects: BTreeMap::new(),
+        }
+    }
+
+    /// Returns the settings of a file in the project at `root`, reading the project's config
+    /// file the first time.
+    fn of(&mut self, root: Option<&Path>) -> Result<Arc<Settings>, ConfigError> {
+        if let Some(explicit) = &self.explicit {
+            return Ok(Arc::clone(explicit));
+        }
+        let Some(root) = root else {
+            return Ok(Arc::clone(&self.default));
+        };
+        if let Some(settings) = self.projects.get(root) {
+            return Ok(Arc::clone(settings));
+        }
+        let settings = match Config::find(root)? {
+            Some(config) => {
+                warn(&config);
+                Arc::new(
+                    Settings::default()
+                        .with_config(&config)
+                        .with_flags(self.flags),
+                )
+            }
+            None => Arc::clone(&self.default),
+        };
+        self.projects
+            .insert(root.to_path_buf(), Arc::clone(&settings));
+        Ok(settings)
+    }
+}
+
+/// Logs the warnings of `config`.
+fn warn(config: &Config) {
+    for warning in config.warnings() {
+        tracing::warn!("{warning}");
+    }
+}
+
+/// Returns `path` relative to `base`, both absolute and cleaned, with `/` separators. A path
+/// outside `base` starts with `..`.
+fn slash_path(base: &Path, path: &Path) -> String {
+    let relative = path::relative(base, path).unwrap_or_else(|| path.to_path_buf());
+    let parts: Vec<_> = relative
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy())
+        .collect();
+    parts.join("/")
 }
 
 /// A file after its first lint.
@@ -406,11 +554,11 @@ enum First<'c, T> {
 }
 
 /// What is left to do for a file after the uses of the caches are replayed.
-enum Again<'c, T> {
+enum Again<'f, 'c, T> {
     /// Lint the file again with this view of its cache.
-    Lint(SourceFile, FileMetadata<'c>),
+    Lint(&'f File<'f>, SourceFile, FileMetadata<'c>),
     /// Finish the file with the diagnostics of the first lint.
-    Finish(SourceFile, Vec<Diagnostic>),
+    Finish(&'f File<'f>, SourceFile, Vec<Diagnostic>),
     Done(T),
 }
 

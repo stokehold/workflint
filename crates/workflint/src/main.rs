@@ -19,6 +19,7 @@ use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{
     Color, Diagnostic, Severity, SourceFile, render_default, render_oneline,
 };
+use workflint_linter::config::{Config, init_config};
 use workflint_linter::{IgnorePattern, Input, Linter, has_internal_error, path};
 
 use crate::flags::{Options, Parsed};
@@ -29,8 +30,9 @@ const EXIT_NO_PROBLEM: u8 = 0;
 const EXIT_PROBLEM_FOUND: u8 = 1;
 /// The command line is invalid.
 const EXIT_INVALID_OPTION: u8 = 2;
-/// A file could not be read, an `-ignore` pattern is invalid, the output could not be written,
-/// or the lint of a file hit a bug in workflint and reported an `internal-error` diagnostic.
+/// A file or config file could not be read, a config file or an `-ignore` pattern is invalid,
+/// `-init-config` failed, the output could not be written, or the lint of a file hit a bug in
+/// workflint and reported an `internal-error` diagnostic.
 const EXIT_FAILURE: u8 = 3;
 
 fn main() -> ExitCode {
@@ -51,8 +53,30 @@ fn main() -> ExitCode {
         print!("{}", version::lines(installed_from.as_deref()));
         return ExitCode::from(EXIT_NO_PROBLEM);
     }
+    let quiet = options.quiet || options.silent;
+    if !quiet {
+        log::init(if options.debug {
+            tracing::Level::DEBUG
+        } else if options.verbose {
+            tracing::Level::INFO
+        } else {
+            tracing::Level::WARN
+        });
+    }
     let ignore = match ignore_patterns(&options) {
         Ok(ignore) => ignore,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(EXIT_FAILURE);
+        }
+    };
+    let cwd = path::working_dir();
+    if options.init_config {
+        // As in actionlint, the arguments and the config file are not read.
+        return init(&cwd);
+    }
+    let config_file = match config_file(&options) {
+        Ok(config_file) => config_file,
         Err(message) => {
             eprintln!("{message}");
             return ExitCode::from(EXIT_FAILURE);
@@ -76,14 +100,6 @@ fn main() -> ExitCode {
         }
         _ => {}
     }
-    let quiet = options.quiet || options.silent;
-    if !quiet && (options.verbose || options.debug) {
-        log::init(if options.debug {
-            tracing::Level::DEBUG
-        } else {
-            tracing::Level::INFO
-        });
-    }
     let stdout = io::stdout();
     let color = color::enabled(
         options.color,
@@ -93,7 +109,10 @@ fn main() -> ExitCode {
     );
     let format = Format::new(&options, color);
     let inputs: Vec<Input> = paths.iter().map(Input::file).collect();
-    let linter = Linter::new(path::working_dir()).with_ignore(ignore);
+    let mut linter = Linter::new(cwd).with_ignore(ignore);
+    if let Some(config) = config_file {
+        linter = linter.with_config_file(config);
+    }
     let mut err = io::stderr();
     let outcome = if color {
         // Makes the escape sequences work on the consoles of older Windows versions.
@@ -110,6 +129,33 @@ fn main() -> ExitCode {
         }
     }
     ExitCode::from(outcome.code)
+}
+
+/// Runs `-init-config` in the working directory `cwd`.
+fn init(cwd: &std::path::Path) -> ExitCode {
+    match init_config(cwd) {
+        Ok(path) => {
+            println!(
+                "Config file was generated at {}",
+                quote(&path.to_string_lossy())
+            );
+            ExitCode::from(EXIT_NO_PROBLEM)
+        }
+        Err(err) => {
+            eprintln!("{err}");
+            ExitCode::from(EXIT_FAILURE)
+        }
+    }
+}
+
+/// Reads the config file of `-config-file`, if it is given. The error is the message to print.
+fn config_file(options: &Options) -> Result<Option<Config>, String> {
+    if options.config_file.is_empty() {
+        return Ok(None);
+    }
+    Config::read(std::path::Path::new(&options.config_file))
+        .map(Some)
+        .map_err(|err| err.to_string())
 }
 
 /// Compiles the `-ignore` patterns. The error is the message to print.
@@ -188,7 +234,8 @@ impl Counts {
 /// `inputs`, and returns the exit code and the number of diagnostics. Fatal messages go to
 /// `err`.
 ///
-/// As in actionlint, a file that cannot be read stops the run before anything is written.
+/// As in actionlint, a file or a config file that cannot be read stops the run before anything
+/// is written.
 fn run(
     linter: &Linter,
     inputs: &[Input],
@@ -200,9 +247,9 @@ fn run(
         format.render(&file, &diagnostics)
     }) {
         Ok(files) => files,
-        Err(read_error) => {
+        Err(lint_error) => {
             // Nothing is left to report a failed write of the message to.
-            let _ = writeln!(err, "{read_error}");
+            let _ = writeln!(err, "{lint_error}");
             return Outcome {
                 code: EXIT_FAILURE,
                 counts: None,
@@ -304,9 +351,10 @@ mod tests {
     fn check_or_panic(
         file: &SourceFile,
         local: &dyn workflint_rules::local::LocalMetadata,
+        config: &workflint_rules::RuleConfig,
     ) -> Vec<Diagnostic> {
         assert!(!file.path().ends_with("panics.yaml"), "a rule failed");
-        workflint_rules::check_file(file, local)
+        workflint_rules::check_file(file, local, config)
     }
 
     /// Runs `linter` on `paths` in `dir` with one-line output, and returns the exit code and

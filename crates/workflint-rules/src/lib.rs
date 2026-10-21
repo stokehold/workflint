@@ -7,10 +7,11 @@
 //! including the rules that `workflint-yaml`, `workflint-syntax`, and `workflint-expr` report
 //! (ADR 0024, ADR 0028). [`kind`] has the description of each actionlint kind. Rules look up the
 //! project's local actions and local reusable workflows through [`local::LocalMetadata`], which
-//! the [`Context`] holds.
+//! the [`Context`] holds, and the settings of the config file through [`RuleConfig`].
 //!
 //! This is an internal crate with no stability promise.
 
+mod config;
 pub mod kind;
 pub mod local;
 mod path_match;
@@ -20,6 +21,7 @@ mod rules;
 mod runner;
 mod visitor;
 
+pub use config::RuleConfig;
 pub use rule::{Context, Rule};
 pub use rules::{CREATION_ORDER, create_rules};
-pub use visitor::{check_file, run, run_in_project, visit};
+pub use visitor::{check_file, run, run_in_project, run_with_config, visit};

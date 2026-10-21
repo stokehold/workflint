@@ -152,8 +152,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
         "job-needs" => Some(Box::new(job_needs::JobNeeds::default())),
         "matrix" => Some(Box::new(matrix::Matrix)),
         "permissions" => Some(Box::new(permissions::Permissions)),
-        // M5.2 passes the labels of the config's `self-hosted-runner.labels`.
-        "runner-label" => Some(Box::new(runner_label::RunnerLabel::new(Vec::new()))),
+        "runner-label" => Some(Box::new(runner_label::RunnerLabel)),
         "shell-name" => Some(Box::new(shell_name::ShellName::new())),
         "workflow-call" => Some(Box::new(workflow_call::WorkflowCall)),
         _ => None,

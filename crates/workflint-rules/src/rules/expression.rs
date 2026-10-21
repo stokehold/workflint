@@ -121,10 +121,15 @@ impl<'a> Rule<'a> for Expression<'a> {
 
     fn workflow_pre(&mut self, workflow: &'a Workflow<'a>, cx: &mut Context<'_>) {
         // The events add their inputs to the contexts of the workflow, in the order of `on`.
-        self.workflow = TypeEnv::new();
+        // Every expression checks `vars.NAME` against the config's `config-variables`.
+        let mut base = TypeEnv::new();
+        if let Some(names) = &cx.config().config_variables {
+            base.set_config_vars(names.iter().map(String::as_str));
+        }
+        self.workflow = base.clone();
         self.jobs = workflow.jobs.value();
         // `name` and `defaults` see the contexts from before the events add theirs.
-        let before_events = TypeEnv::new();
+        let before_events = base;
         let none = Checker::new(&before_events, "");
         none.string(cx, &workflow.name);
         for event in workflow

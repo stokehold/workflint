@@ -16,6 +16,3 @@
 "err/shellcheck_default_shell_detection" = "M5"
 "examples/pyflakes_integration" = "M5"
 "examples/shellcheck_integration" = "M5"
-"projects/config_variables" = "M5"
-"projects/paths_config" = "M5"
-"projects/user_defined_runner_label" = "M5"

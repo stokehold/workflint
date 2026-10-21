@@ -54,3 +54,11 @@ fn is_project_root(dir: &Path) -> bool {
     fs::metadata(dir.join(".github").join("workflows")).is_ok_and(|meta| meta.is_dir())
         && fs::metadata(dir.join(".git")).is_ok()
 }
+
+/// Returns the project root of the directory `dir`, an absolute path: the nearest of `dir` and
+/// its ancestors that has a `.github/workflows` directory and a `.git` file or directory.
+pub(crate) fn root_of_dir(dir: &Path) -> Option<PathBuf> {
+    dir.ancestors()
+        .find(|dir| is_project_root(dir))
+        .map(Path::to_path_buf)
+}

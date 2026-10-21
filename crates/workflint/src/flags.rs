@@ -126,7 +126,7 @@ impl Flag {
 }
 
 /// Every flag: actionlint's, and then workflint's own.
-pub(crate) static FLAGS: [Flag; 17] = [
+pub(crate) static FLAGS: [Flag; 18] = [
     Flag::list(
         "ignore",
         "Regular expression in Go syntax. Errors whose message it matches are not reported. \
@@ -161,12 +161,12 @@ pub(crate) static FLAGS: [Flag; 17] = [
     Flag::string(
         "config-file",
         None,
-        "File path to config file. Not supported yet",
+        "File path to config file. It replaces the config file of each project",
         |options, value| options.config_file = value,
     ),
     Flag::bool(
         "init-config",
-        "Generate default config file in current project. Not supported yet",
+        "Generate default config file at .github/workflint.yaml in current project",
         |options, on| options.init_config = on,
     ),
     Flag::bool("no-color", "Disable colorful output", |options, on| {
@@ -202,6 +202,9 @@ pub(crate) static FLAGS: [Flag; 17] = [
         |options, on| options.quiet = on,
     ),
     Flag::bool("q", "Same as -quiet", |options, on| options.quiet = on),
+    Flag::string("config", None, "Same as -config-file", |options, value| {
+        options.config_file = value
+    }),
     Flag::bool(
         "silent",
         "Print only fatal messages. The exit code tells whether errors were found",

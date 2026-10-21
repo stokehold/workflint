@@ -56,12 +56,9 @@ pub(crate) static INVALID_RUNNER_LABEL_PATTERN: RuleMeta = RuleMeta {
     docs_url: "https://github.com/stokehold/workflint/blob/main/docs/rules/invalid-runner-label-pattern.md",
 };
 
-/// The reference's `RuleRunnerLabel`. It checks `runs-on` of each job.
-pub(crate) struct RunnerLabel {
-    /// The label patterns of the config's `self-hosted-runner.labels`, each a Go `path.Match`
-    /// pattern. The linter passes none until M5.2 loads the config.
-    known: Vec<String>,
-}
+/// The reference's `RuleRunnerLabel`. It checks `runs-on` of each job. The label patterns of
+/// the config's `self-hosted-runner.labels` come from [`Context::config`].
+pub(crate) struct RunnerLabel;
 
 /// A label to check: its text and where to report it. A label from a matrix is reported at the
 /// matrix value, and a value of an evaluated label at the label.
@@ -80,21 +77,17 @@ struct Seen<'a> {
 }
 
 impl RunnerLabel {
-    /// Creates the rule with the configured label patterns.
-    pub(crate) fn new(known: Vec<String>) -> Self {
-        Self { known }
-    }
-
     /// Checks one label, as the reference's `verifyRunnerLabel` does, and returns its images, or
     /// `None` for a label without images, such as `self-hosted` or a custom label.
-    fn verify(&self, label: &Label<'_>, cx: &mut Context<'_>) -> Option<RunnerOsCompat> {
+    fn verify(label: &Label<'_>, cx: &mut Context<'_>) -> Option<RunnerOsCompat> {
         if let Some(os) = runner_label_os_compat(&label.value) {
             return Some(os);
         }
         if is_self_hosted_other_label(&label.value) {
             return None;
         }
-        for pattern in &self.known {
+        let known = &cx.config().runner_labels;
+        for pattern in known {
             match path_match(pattern, &label.value) {
                 Ok(true) => return None,
                 Ok(false) => {}
@@ -116,7 +109,7 @@ impl RunnerLabel {
         if runner_provider(&label.value).is_some() {
             return None;
         }
-        let known: Vec<&str> = self.known.iter().map(String::as_str).collect();
+        let known: Vec<&str> = known.iter().map(String::as_str).collect();
         cx.report(
             &UNKNOWN_RUNNER_LABEL,
             label.span,
@@ -137,7 +130,6 @@ impl RunnerLabel {
     /// Checks the only label of a job, which cannot conflict, as the reference's `checkLabel`
     /// does.
     fn check_label<'a>(
-        &self,
         label: &'a Template<'a>,
         matrix: Option<&'a Matrix<'a>>,
         cx: &mut Context<'_>,
@@ -145,11 +137,11 @@ impl RunnerLabel {
         if contains_expression(label.value()) {
             let labels = expression_labels(&plain(label), label.placeholders(), matrix);
             for label in labels {
-                self.verify(&label, cx);
+                Self::verify(&label, cx);
             }
             return;
         }
-        self.verify(&plain(label), cx);
+        Self::verify(&plain(label), cx);
     }
 
     /// Checks a label and whether it conflicts with the labels before it, as the reference's
@@ -157,7 +149,6 @@ impl RunnerLabel {
     /// the labels before it, and then each is added to them, so the values do not conflict
     /// with each other.
     fn check_label_and_conflict<'a>(
-        &self,
         label: Label<'a>,
         placeholders: &[Placeholder],
         matrix: Option<&'a Matrix<'a>>,
@@ -166,7 +157,7 @@ impl RunnerLabel {
     ) {
         if contains_expression(&label.value) {
             let labels = expression_labels(&label, placeholders, matrix);
-            let compats: Vec<_> = labels.iter().map(|label| self.verify(label, cx)).collect();
+            let compats: Vec<_> = labels.iter().map(|label| Self::verify(label, cx)).collect();
             let compats: Vec<_> = compats
                 .into_iter()
                 .zip(&labels)
@@ -179,7 +170,7 @@ impl RunnerLabel {
             }
             return;
         }
-        if let Some(os) = self.verify(&label, cx)
+        if let Some(os) = Self::verify(&label, cx)
             && seen.check_conflict(os, &label, cx)
         {
             seen.add(os, label);
@@ -239,7 +230,7 @@ impl<'a> Rule<'a> for RunnerLabel {
                 span: expr.span(),
             };
             let placeholders = std::slice::from_ref(expr.placeholder());
-            self.check_label_and_conflict(label, placeholders, matrix, &mut seen, cx);
+            Self::check_label_and_conflict(label, placeholders, matrix, &mut seen, cx);
             return;
         }
         let Some(labels) = runner.labels.literal() else {
@@ -249,13 +240,13 @@ impl<'a> Rule<'a> for RunnerLabel {
         // the slots of invalid labels, which are then skipped.
         if let [only] = &labels[..] {
             if let Some(label) = only {
-                self.check_label(label, matrix, cx);
+                Self::check_label(label, matrix, cx);
             }
             return;
         }
         for label in labels.iter().flatten() {
             let placeholders = label.placeholders();
-            self.check_label_and_conflict(plain(label), placeholders, matrix, &mut seen, cx);
+            Self::check_label_and_conflict(plain(label), placeholders, matrix, &mut seen, cx);
         }
     }
 }

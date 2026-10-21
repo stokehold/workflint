@@ -3,7 +3,8 @@
 use workflint_diagnostics::{Color, FileId, SourceFile, render_oneline};
 
 use super::RunnerLabel;
-use crate::{Context, Rule, visit};
+use crate::local::NoProject;
+use crate::{Context, Rule, RuleConfig, visit};
 
 /// Lints `text` with only the `runner-label` rule, configured with the label patterns `known`,
 /// and returns its diagnostics in the one-line format.
@@ -11,9 +12,12 @@ fn lint(text: &str, known: &[&str]) -> Vec<String> {
     let file = SourceFile::new(FileId::new(0), "test.yaml", text).unwrap();
     let document = workflint_yaml::parse(&file).document.unwrap();
     let parsed = workflint_syntax::parse(&file, &document);
-    let rule = RunnerLabel::new(known.iter().map(|label| (*label).to_owned()).collect());
-    let mut rules: Vec<Box<dyn Rule<'_>>> = vec![Box::new(rule)];
-    let mut cx = Context::new(&file);
+    let config = RuleConfig {
+        runner_labels: known.iter().map(|label| (*label).to_owned()).collect(),
+        ..RuleConfig::DEFAULT
+    };
+    let mut rules: Vec<Box<dyn Rule<'_>>> = vec![Box::new(RunnerLabel)];
+    let mut cx = Context::with_config(&file, &NoProject, &config);
     visit(&parsed.workflow, &mut rules, &mut cx);
     let mut out = Vec::new();
     render_oneline(&mut out, &file, &cx.into_diagnostics(), Color::Off).unwrap();

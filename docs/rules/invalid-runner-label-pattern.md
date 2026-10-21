@@ -12,9 +12,25 @@ The patterns of the config's `self-hosted-runner.labels` use Go's `path.Match` s
 
 A malformed pattern matches no label, so the labels it was meant to allow would all be unknown.
 
-## Unreachable
+## Failing example
 
-The rule never reports yet. workflint does not load the config until M5.2, so there are no configured patterns. The rule's unit tests pass patterns to it directly.
+```yaml file=.github/actionlint.yaml
+self-hosted-runner:
+  labels: ['gpu-[']
+```
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: gpu-a100
+    steps:
+      - run: echo
+```
+
+```text
+test.yaml:4:14: label pattern "gpu-[" is an invalid glob. kindly check list of labels in actionlint.yaml config file: syntax error in pattern [invalid-runner-label-pattern]
+```
 
 ## Passing example
 

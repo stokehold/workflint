@@ -13,20 +13,29 @@
 //! file. The [`registry`] lists every rule, with the rules of [`rules`] that the driver reports.
 //! [`tool`] runs external tools such as shellcheck with a timeout and a limit on processes.
 //!
-//! M5 adds file discovery and the config.
+//! [`config`] finds, reads, and writes the config file of a project, and [`Settings`] are what
+//! a file is linted with: the defaults, then the config file, then the [`Flags`].
+//!
+//! M5 adds file discovery.
 //!
 //! This is an internal crate with no stability promise.
 
 mod cache;
+pub mod config;
+mod doublestar;
 mod ignore;
 mod linter;
 pub mod path;
 mod project;
 pub mod registry;
 pub mod rules;
+mod settings;
 pub mod tool;
 
 pub use cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
 pub use ignore::{IgnorePattern, PatternError};
-pub use linter::{Check, FILE_SPAN, Input, Linted, Linter, ReadError, has_internal_error};
+pub use linter::{
+    Check, FILE_SPAN, Input, LintError, Linted, Linter, ReadError, has_internal_error,
+};
 pub use project::ProjectRoots;
+pub use settings::{Flags, Settings};
