@@ -216,6 +216,280 @@ fn discovery_lists_a_symbolic_link_to_a_file_and_does_not_follow_one_to_a_direct
     assert_eq!(names(&files), [native(".github/workflows/file.yaml")]);
 }
 
+#[test]
+fn discovery_skips_the_files_that_gitignore_excludes() {
+    let dir = project();
+    for name in ["ci.yaml", "generated.yaml", "sub/nested.yaml", "kept.yaml"] {
+        write(dir.path(), &format!(".github/workflows/{name}"), VALID);
+    }
+    write(dir.path(), ".gitignore", "generated.yaml\n");
+    write(dir.path(), ".github/workflows/.gitignore", "sub/\n");
+    write(dir.path(), ".git/info/exclude", "kept.yaml\n");
+    let linter = Linter::new(root(&dir));
+    let files = linter.lint(&linter.discover().unwrap()).unwrap();
+    assert_eq!(names(&files), [native(".github/workflows/ci.yaml")]);
+}
+
+#[test]
+fn discovery_skips_the_files_that_config_exclude_names() {
+    let dir = project();
+    write(dir.path(), ".github/workflows/ci.yaml", VALID);
+    write(dir.path(), ".github/workflows/ci.lock.yml", VALID);
+    write(
+        dir.path(),
+        ".github/workflint.yaml",
+        "exclude: ['.github/workflows/*.lock.yml']\n",
+    );
+    // The globs match from the project root, also when the run starts in a subdirectory.
+    fs::create_dir(dir.path().join("sub")).unwrap();
+    let linter = Linter::new(root(&dir).join("sub"));
+    let files = linter.lint(&linter.discover().unwrap()).unwrap();
+    assert_eq!(names(&files), [native("../.github/workflows/ci.yaml")]);
+}
+
+#[test]
+fn discovery_that_excludes_every_file_finds_no_yaml_file() {
+    let dir = project();
+    write(dir.path(), ".github/workflows/ci.yaml", VALID);
+    write(dir.path(), ".gitignore", "*.yaml\n");
+    let err = Linter::new(root(&dir)).discover().unwrap_err();
+    let workflows = root(&dir).join(".github").join("workflows");
+    assert_eq!(
+        err.to_string(),
+        format!(
+            "no YAML file was found in {}",
+            quote(&workflows.to_string_lossy())
+        )
+    );
+}
+
+#[test]
+fn a_broken_config_file_stops_discovery() {
+    let dir = project();
+    write(dir.path(), ".github/workflows/ci.yaml", VALID);
+    write(dir.path(), ".github/workflint.yaml", "exclude: ['{']\n");
+    let err = Linter::new(root(&dir)).discover().unwrap_err();
+    assert!(
+        err.to_string()
+            .ends_with(r#"workflint.yaml": invalid glob pattern "{" in "exclude""#),
+        "{err}"
+    );
+}
+
+// Arguments.
+
+/// The paths of the inputs of the arguments `args`, with `/` separators.
+fn expanded(linter: &Linter, args: &[&str]) -> Vec<String> {
+    linter
+        .expand(args)
+        .unwrap()
+        .iter()
+        .map(|input| input.path().to_string_lossy().replace('\\', "/"))
+        .collect()
+}
+
+#[test]
+fn a_directory_argument_lists_its_yaml_files_sorted_by_path_from_the_argument() {
+    let dir = project();
+    for name in [
+        "b.yml",
+        "a/b.yaml",
+        "a.yaml",
+        ".hidden/e.yaml",
+        "c.YAML",
+        "d.txt",
+    ] {
+        write(dir.path(), &format!(".github/workflows/{name}"), VALID);
+    }
+    write(dir.path(), ".github/other.yaml", VALID);
+    let linter = Linter::new(root(&dir));
+    assert_eq!(
+        expanded(&linter, &[".github"]),
+        [
+            ".github/other.yaml",
+            ".github/workflows/.hidden/e.yaml",
+            ".github/workflows/a.yaml",
+            ".github/workflows/a/b.yaml",
+            ".github/workflows/b.yml",
+        ]
+    );
+    let files = linter
+        .lint(&linter.expand(&[".github/workflows/a"]).unwrap())
+        .unwrap();
+    assert_eq!(names(&files), [native(".github/workflows/a/b.yaml")]);
+}
+
+#[test]
+fn the_working_directory_as_an_argument_lists_paths_without_a_dot() {
+    let dir = project();
+    write(dir.path(), ".github/workflows/ci.yaml", VALID);
+    write(dir.path(), "docs/example.yml", VALID);
+    // The version control directory is never walked.
+    write(dir.path(), ".git/hooks/x.yaml", VALID);
+    let linter = Linter::new(root(&dir));
+    assert_eq!(
+        expanded(&linter, &["."]),
+        [".github/workflows/ci.yaml", "docs/example.yml"]
+    );
+}
+
+#[test]
+fn arguments_keep_their_order_and_each_directory_is_sorted() {
+    let dir = project();
+    for name in ["z/b.yaml", "z/a.yaml", "a/c.yaml", "one.yaml"] {
+        write(dir.path(), name, VALID);
+    }
+    let linter = Linter::new(root(&dir));
+    assert_eq!(
+        expanded(&linter, &["z", "one.yaml", "a", "z/a.yaml"]),
+        ["z/a.yaml", "z/b.yaml", "one.yaml", "a/c.yaml", "z/a.yaml"]
+    );
+}
+
+#[test]
+fn a_directory_argument_skips_files_that_gitignore_or_exclude_name() {
+    let dir = project();
+    for name in ["ci.yaml", "ci.lock.yml", "generated/x.yaml"] {
+        write(dir.path(), &format!(".github/workflows/{name}"), VALID);
+    }
+    write(dir.path(), ".gitignore", "generated/\n");
+    write(
+        dir.path(),
+        ".github/actionlint.yaml",
+        "exclude: ['**/*.lock.yml']\n",
+    );
+    let linter = Linter::new(root(&dir).join(".github"));
+    assert_eq!(expanded(&linter, &["workflows"]), ["workflows/ci.yaml"]);
+}
+
+#[test]
+fn an_explicit_file_is_linted_when_gitignore_or_exclude_names_it() {
+    let dir = project();
+    write(dir.path(), ".github/workflows/generated.yaml", VALID);
+    write(dir.path(), ".github/workflows/ci.lock.yml", VALID);
+    write(dir.path(), ".gitignore", "generated.yaml\n");
+    write(
+        dir.path(),
+        ".github/workflint.yaml",
+        "exclude: ['**/*.lock.yml']\n",
+    );
+    let linter = Linter::new(root(&dir));
+    let args = [
+        ".github/workflows/generated.yaml",
+        ".github/workflows/ci.lock.yml",
+    ];
+    assert_eq!(expanded(&linter, &args), args);
+}
+
+#[test]
+fn exclude_of_the_config_file_flag_applies_to_every_project() {
+    let dir = project();
+    write(dir.path(), ".github/workflows/ci.yaml", VALID);
+    write(dir.path(), ".github/workflows/ci.lock.yml", VALID);
+    write(dir.path(), "outside/x.lock.yml", VALID);
+    write(dir.path(), "outside/y.yml", VALID);
+    let config = workflint_linter::config::Config::parse(
+        Path::new("c.yaml"),
+        workflint_linter::config::ConfigKind::Workflint,
+        "exclude: ['**/*.lock.yml']\n",
+    )
+    .unwrap();
+    let linter = Linter::new(root(&dir)).with_config_file(config);
+    assert_eq!(
+        expanded(&linter, &[".github", "outside"]),
+        [".github/workflows/ci.yaml", "outside/y.yml"]
+    );
+}
+
+#[test]
+fn a_glob_argument_lists_the_yaml_files_it_matches_sorted_by_path() {
+    let dir = project();
+    for name in ["b.yml", "a.yaml", "sub/c.yaml", "d.txt", "e.lock.yml"] {
+        write(dir.path(), &format!(".github/workflows/{name}"), VALID);
+    }
+    write(
+        dir.path(),
+        ".github/workflint.yaml",
+        "exclude: ['**/*.lock.yml']\n",
+    );
+    let linter = Linter::new(root(&dir));
+    assert_eq!(
+        expanded(&linter, &[".github/workflows/*"]),
+        [".github/workflows/a.yaml", ".github/workflows/b.yml"]
+    );
+    assert_eq!(
+        expanded(&linter, &["**/*.{yaml,txt}"]),
+        [
+            ".github/workflint.yaml",
+            ".github/workflows/a.yaml",
+            ".github/workflows/sub/c.yaml",
+        ]
+    );
+    let absolute = format!(
+        "{}/.github/*/*.yml",
+        root(&dir).to_string_lossy().replace('\\', "/")
+    );
+    let files = linter.lint(&linter.expand(&[absolute]).unwrap()).unwrap();
+    assert_eq!(names(&files), [native(".github/workflows/b.yml")]);
+}
+
+#[test]
+fn a_glob_argument_skips_files_that_gitignore_names() {
+    let dir = project();
+    write(dir.path(), "a/x.yaml", VALID);
+    write(dir.path(), "b/x.yaml", VALID);
+    write(dir.path(), ".gitignore", "/b\n");
+    let linter = Linter::new(root(&dir));
+    assert_eq!(expanded(&linter, &["*/x.yaml"]), ["a/x.yaml"]);
+}
+
+#[test]
+fn an_existing_file_whose_name_looks_like_a_glob_is_a_file() {
+    let dir = project();
+    write(dir.path(), "[ci].yaml", VALID);
+    write(dir.path(), "c.yaml", VALID);
+    let linter = Linter::new(root(&dir));
+    assert_eq!(expanded(&linter, &["[ci].yaml"]), ["[ci].yaml"]);
+}
+
+#[test]
+fn a_glob_that_matches_no_yaml_file_or_is_invalid_is_an_error() {
+    let dir = project();
+    write(dir.path(), "a.txt", VALID);
+    let linter = Linter::new(root(&dir));
+    for (glob, message) in [
+        ("*.txt", r#"no YAML file matches the glob "*.txt""#),
+        (
+            "missing/*.yaml",
+            r#"no YAML file matches the glob "missing/*.yaml""#,
+        ),
+        ("a.{yaml", r#"invalid glob pattern "a.{yaml""#),
+    ] {
+        assert_eq!(linter.expand(&[glob]).unwrap_err().to_string(), message);
+    }
+}
+
+#[test]
+fn a_directory_argument_without_a_yaml_file_is_an_error() {
+    let dir = project();
+    write(dir.path(), "docs/README.md", "");
+    let linter = Linter::new(root(&dir));
+    assert_eq!(
+        linter.expand(&["docs"]).unwrap_err().to_string(),
+        r#"no YAML file was found in "docs""#
+    );
+}
+
+#[test]
+fn a_missing_file_argument_is_left_for_the_lint_to_report() {
+    let dir = project();
+    let linter = Linter::new(root(&dir));
+    assert_eq!(
+        expanded(&linter, &["missing.yaml", "-"]),
+        ["missing.yaml", "-"]
+    );
+}
+
 // Stdin.
 
 /// A reader that fails.

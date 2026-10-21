@@ -102,6 +102,17 @@ pub fn relative(base: &Path, target: &Path) -> Option<PathBuf> {
     Some(result)
 }
 
+/// Returns `path` relative to `base`, both absolute and cleaned, with `/` separators. A path
+/// outside `base` starts with `..`.
+pub(crate) fn slash_path(base: &Path, path: &Path) -> String {
+    let relative = relative(base, path).unwrap_or_else(|| path.to_path_buf());
+    let parts: Vec<_> = relative
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy())
+        .collect();
+    parts.join("/")
+}
+
 /// A path cleaned as Go's `filepath.Clean` cleans it: `.` removed and each `..` that follows a
 /// name removed with that name.
 struct Clean<'a> {

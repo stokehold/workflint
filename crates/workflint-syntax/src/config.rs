@@ -18,6 +18,7 @@ const ROOT_FIELDS: &[&str] = &[
     "python",
     "shellcheck",
     "tool-timeout",
+    "exclude",
 ];
 
 /// The keys of `python`.
@@ -46,6 +47,8 @@ pub struct ConfigDocument<P> {
     pub shellcheck: Option<ShellcheckKeys>,
     /// `tool-timeout`, in seconds. `None` if the key is missing or null.
     pub tool_timeout: Option<u64>,
+    /// `exclude`: globs, not validated. `None` if the key is missing or null.
+    pub exclude: Option<Vec<String>>,
     /// The keys that neither the reference nor workflint reads, in the order they are written.
     /// A key that a `<<` key merges in more than once is listed once.
     pub unknown_keys: Vec<UnknownKey>,
@@ -214,6 +217,7 @@ impl<P> ConfigDocument<P> {
                 python_linter: None,
                 shellcheck: None,
                 tool_timeout: None,
+                exclude: None,
                 unknown_keys: Vec::new(),
             };
             if let Some(root) = root {
@@ -258,6 +262,9 @@ impl<P> ConfigDocument<P> {
                             5 => {
                                 config.tool_timeout =
                                     d.custom(value, |d, id| decode_seconds(d, id, "tool-timeout"))?;
+                            }
+                            6 => {
+                                d.string_slice(value, &mut config.exclude)?;
                             }
                             _ => {
                                 d.string_map(
@@ -460,7 +467,7 @@ fn unknown_keys(source: &Source<'_>, root: NodeId) -> Vec<UnknownKey> {
                     }
                 }
             }
-            "config-variables" | "tool-timeout" => {}
+            "config-variables" | "tool-timeout" | "exclude" => {}
             "python" => {
                 for inner in entries(source, entry.value) {
                     if !PYTHON_FIELDS.contains(&key_text(source, inner.key)) {

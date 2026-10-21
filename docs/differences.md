@@ -913,6 +913,36 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M5.2.
 - Status: implemented. Tests in `crates/workflint-linter/tests/config.rs`: `an_invalid_ignore_regex_names_the_entry_and_its_position`, `a_broken_config_file_in_the_project_is_an_error_naming_it_once`, `decoding_errors_have_the_texts_of_the_reference`.
 
+<a id="directory-and-glob-arguments"></a>
+### Directory and glob arguments
+
+- Upstream: every argument is a file. A directory argument stops the run with `could not read "<dir>": read <dir>: is a directory` and exit code 3. A glob works only when the shell expands it, so a quoted glob, or a glob on a Windows shell that does not expand it, is a missing file.
+- workflint: a directory argument lints the files under it whose names end in `.yml` or `.yaml`, sorted by path. An argument that does not exist and contains `*`, `?`, `[`, or `{` is a glob in the syntax of `paths`, which workflint expands from the working directory, and it lints the matched files with those names, sorted by path. A directory without such a file exits with code 3 and `no YAML file was found in "<dir>"`. A glob without a match exits with code 3 and `no YAML file matches the glob "<glob>"`, and a malformed glob with `invalid glob pattern "<glob>"` (ADR 0036, [cli.md](cli.md#directories-and-globs)). An existing file is linted as before, whatever its name.
+- Why: `workflint .github` and a quoted glob should work on every OS.
+- Upstream issue: #310.
+- Milestone: M5.18.
+- Status: implemented. No fixture covers it, because the conformance runner passes files. Tests in `crates/workflint/tests/cli.rs`: `a_directory_argument_lints_the_yaml_files_under_it_sorted_by_path`, `a_directory_argument_without_a_yaml_file_exits_with_3`, `a_quoted_glob_is_expanded_by_workflint`, `a_glob_that_matches_nothing_exits_with_3`. In `crates/workflint-linter/tests/discover.rs`: `a_glob_argument_lists_the_yaml_files_it_matches_sorted_by_path`, `an_existing_file_whose_name_looks_like_a_glob_is_a_file`.
+
+<a id="gitignore"></a>
+### Discovery skips files that `.gitignore` names
+
+- Upstream: a run without file arguments lints every YAML file under `.github/workflows`, also those that `.gitignore` names.
+- workflint: a run without file arguments, a directory argument, and a glob argument skip the files that the repository's `.gitignore` files or `.git/info/exclude` name, in a Git or Jujutsu repository. The user's global excludes file is not read. The `.git`, `.jj`, and `.hg` directories are never walked. A file given by name is always linted (ADR 0036). When `.gitignore` skips every workflow file, a run without arguments prints `no YAML file was found in "<dir>"` and exits with code 3.
+- Why: ignored files are build output or local scratch files, which the repository does not hold.
+- Upstream issue: none. The idea comes from `docs/issues-coverage.md`, "Other ideas".
+- Milestone: M5.18.
+- Status: implemented. No fixture covers it, because the conformance runner passes files. Tests in `crates/workflint/tests/cli.rs`: `a_file_that_gitignore_excludes_is_skipped_by_discovery_and_linted_when_given`, `the_global_gitignore_of_the_user_is_not_read`. In `crates/workflint-linter/tests/discover.rs`: `discovery_skips_the_files_that_gitignore_excludes`.
+
+<a id="config-exclude"></a>
+### `exclude` skips files
+
+- Upstream: no key skips a file. `paths.<glob>.ignore: ['.*']` hides the errors of a generated file, but the file is still read and parsed.
+- workflint: the config key `exclude` is a list of globs, matched from the project root as `paths` globs are. A run without file arguments, a directory argument, and a glob argument skip the files they match. A file given by name is linted anyway (ADR 0036, [config.md](config.md#exclude)). Like the other workflint keys, `exclude` works in an actionlint config file too.
+- Why: generated workflows, such as the `*.lock.yml` files of GitHub Agentic Workflows, should not be linted when a run lints the whole repository.
+- Upstream issue: #667.
+- Milestone: M5.18.
+- Status: implemented. Tests in `crates/workflint/tests/cli.rs`: `an_exclude_glob_drops_files_from_discovery_directories_and_globs`. In `crates/workflint-linter/tests/discover.rs`: `discovery_skips_the_files_that_config_exclude_names`, `exclude_of_the_config_file_flag_applies_to_every_project`.
+
 ## Command line and output
 
 <a id="verbose-and-debug"></a>

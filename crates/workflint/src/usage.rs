@@ -26,6 +26,11 @@ pub(crate) fn text() -> String {
 
     $ workflint file1.yaml file2.yaml
 
+  A directory checks the YAML files under it, and workflint expands a quoted
+  glob itself:
+
+    $ workflint .github 'docs/**/*.yaml'
+
   To check text that is not saved in a file, such as the output of another
   command, pass - as the only argument. workflint reads it from stdin:
 

@@ -1,10 +1,10 @@
 //! The `workflint` command-line tool.
 //!
-//! It parses the command line with [`flags`], picks the inputs: the files given as arguments, the
-//! workflow files of the project without arguments, or stdin for a lone `-`. It lints them with
-//! [`Linter`], prints the diagnostics in the order of the inputs, or through the `-format`
-//! template of [`template`], and picks the exit code (`docs/cli.md`). The conformance suite runs it with the command line in
-//! `tests/conformance/README.md`.
+//! It parses the command line with [`flags`], picks the inputs: the files, directories, and
+//! globs given as arguments, the workflow files of the project without arguments, or stdin for
+//! a lone `-`. It lints them with [`Linter`], prints the diagnostics in the order of the inputs,
+//! or through the `-format` template of [`template`], and picks the exit code (`docs/cli.md`).
+//! The conformance suite runs it with the command line in `tests/conformance/README.md`.
 
 mod color;
 mod flags;
@@ -39,7 +39,7 @@ const EXIT_PROBLEM_FOUND: u8 = 1;
 /// The command line is invalid.
 const EXIT_INVALID_OPTION: u8 = 2;
 /// A file, stdin, or a config file could not be read, the workflow files of a run without
-/// arguments could not be found, a config file, an `-ignore` pattern, or the `-format` template
+/// arguments, of a directory argument, or of a glob argument could not be found, a config file, an `-ignore` pattern, or the `-format` template
 /// is invalid, the shellcheck that `-shellcheck` names, the pyflakes that `-pyflakes` names, or
 /// the Python linter that a config file names was not found, `-init-config` failed, the template
 /// failed while it ran, the output could not be written, or the lint of a file hit a bug in
@@ -182,15 +182,15 @@ fn config_file(options: &Options) -> Result<Option<Config>, String> {
 
 /// Returns the inputs of the run for the arguments `paths`, as actionlint picks them
 /// (`command.go:102-110`): the workflow files of the project without arguments, stdin named
-/// `stdin_filename` when `-` is the only argument, and else the files. The error is the message
-/// to print.
+/// `stdin_filename` when `-` is the only argument, and else the files that the arguments name,
+/// with directories and globs expanded (ADR 0036). The error is the message to print.
 fn inputs(linter: &Linter, paths: &[OsString], stdin_filename: &str) -> Result<Vec<Input>, String> {
     match paths {
         [] => linter.discover().map_err(|err| err.to_string()),
         [only] if only == "-" => Input::stdin(stdin_filename, io::stdin().lock())
             .map(|input| vec![input])
             .map_err(|err| err.to_string()),
-        _ => Ok(paths.iter().map(Input::file).collect()),
+        _ => linter.expand(paths).map_err(|err| err.to_string()),
     }
 }
 

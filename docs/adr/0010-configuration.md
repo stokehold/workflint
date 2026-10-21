@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-15
+- Amended by: ADR 0036
 
 ## Context
 
@@ -30,7 +31,7 @@ Project root:
 Schema:
 
 - The workflint schema is a superset of actionlint's: `self-hosted-runner.labels`, `config-variables`, and `paths.<glob>.ignore` keep their meaning.
-- workflint adds keys such as `rules`, `shellcheck`, `python`, `known-secrets`, `runner-labels`, and `require-ignore-reason`. Each key is documented in `docs/config.md` when it ships.
+- workflint adds keys such as `rules`, `shellcheck`, `python`, `known-secrets`, `runner-labels`, `require-ignore-reason`, and `exclude` (ADR 0036). Each key is documented in `docs/config.md` when it ships.
 - In a workflint config file, an unknown key is a fatal error (exit code 3) that names the key and its position.
 - In an actionlint config file, an unknown key is a warning, because actionlint accepted such files.
 - Path globs in `paths` and `rules` match against the path relative to the project root, with `/` separators on every OS.

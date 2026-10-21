@@ -1,6 +1,6 @@
 # Config file
 
-workflint reads actionlint's config file unchanged, and a config file of its own at `.github/workflint.yaml` (ADR 0010). This page lists where workflint looks for the file and every key that works today. The keys that workflint adds, `python`, `shellcheck`, and `tool-timeout`, work in an actionlint config file too, and actionlint ignores them.
+workflint reads actionlint's config file unchanged, and a config file of its own at `.github/workflint.yaml` (ADR 0010). This page lists where workflint looks for the file and every key that works today. The keys that workflint adds, `exclude`, `python`, `shellcheck`, and `tool-timeout`, work in an actionlint config file too, and actionlint ignores them.
 
 ## Where workflint looks
 
@@ -62,6 +62,20 @@ could not parse config file "/repo/.github/actionlint.yaml": yaml: unmarshal err
 ```
 
 A glob that matches no linted file does nothing, and workflint does not warn about it.
+
+### `exclude`
+
+Globs that name files workflint should not lint, such as generated workflows:
+
+```yaml
+exclude:
+  - .github/workflows/*.lock.yml
+  - vendor/**
+```
+
+A glob matches the path of a file from the project root, as the [`paths`](#paths) globs do, in the same syntax. A file that one of them matches is skipped when workflint looks for files: without file arguments, under a directory argument, and among the matches of a glob argument ([cli.md](cli.md#directories-and-globs)). A file given by name is linted anyway. With `-config-file`, its `exclude` applies to the files of every project, and a file in no project is matched by its path from the working directory. `vendor` alone matches the path `vendor` and no file under it, so use `vendor/**` for a directory. An invalid glob stops the run when the file is read: `invalid glob pattern "foo.{txt,xml" in "exclude"`. `null` and `[]` exclude nothing.
+
+Files that `.gitignore` names are skipped too, without an `exclude` entry.
 
 ### `python.linter`
 
@@ -128,9 +142,9 @@ could not parse config file "/repo/.github/workflint.yaml": yaml: unmarshal erro
 - [Config error messages](differences.md#config-error-messages).
 - [ruff is used for Python scripts when installed](differences.md#python-linter-auto).
 - [shellcheck settings and its cache](differences.md#shellcheck-settings).
+- [`exclude` skips files](differences.md#config-exclude).
 
 ## Coming later
 
 - A user config file in `$XDG_CONFIG_HOME/workflint/config.yaml`, and `--no-config`, in M9.4.
 - `rules`, to turn rules off and set their severity, in M9.2, and a published JSON Schema with `workflint config schema` in M9.3.
-- `exclude` in M5.18.

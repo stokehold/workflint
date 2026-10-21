@@ -718,3 +718,38 @@ fn an_unknown_key_under_shellcheck_is_reported_like_the_others() {
         r#"could not parse config file "workflint.yaml": unknown key "rc-file" in "shellcheck" at line:2,col:3"#
     );
 }
+
+#[test]
+fn exclude_globs_match_paths_from_the_project_root_like_paths_globs() {
+    let config = parse("exclude:\n  - '.github/workflows/*.lock.yml'\n  - 'vendor/**'\n");
+    assert_eq!(config.warnings(), []);
+    assert!(config.is_excluded(".github/workflows/ci.lock.yml"));
+    assert!(config.is_excluded("vendor/a/b.yaml"));
+    assert!(!config.is_excluded(".github/workflows/ci.yml"));
+    assert!(!config.is_excluded(".github/workflows/sub/ci.lock.yml"));
+    assert!(!parse("").is_excluded("a.yml"));
+    assert!(!parse("exclude:\n").is_excluded("a.yml"));
+}
+
+#[test]
+fn exclude_is_a_known_key_of_a_workflint_file() {
+    let config = Config::parse(
+        Path::new("workflint.yaml"),
+        ConfigKind::Workflint,
+        "exclude: ['*.lock.yml']\n",
+    )
+    .unwrap();
+    assert!(config.is_excluded("a.lock.yml"));
+}
+
+#[test]
+fn an_invalid_exclude_glob_or_a_value_that_is_not_a_list_is_an_error() {
+    assert_eq!(
+        parse_error("exclude: ['foo.{txt,xml']\n"),
+        r#"invalid glob pattern "foo.{txt,xml" in "exclude""#
+    );
+    assert_eq!(
+        parse_error("exclude: foo\n"),
+        "yaml: unmarshal errors:   line 1: cannot unmarshal !!str `foo` into []string"
+    );
+}

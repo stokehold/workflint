@@ -9,7 +9,7 @@ use crate::path::absolute;
 
 /// The names of the version control directories that mark a project root. `.git` may also be
 /// a file, as in a Git worktree or submodule.
-const MARKERS: [&str; 3] = [".git", ".jj", ".hg"];
+pub(crate) const MARKERS: [&str; 3] = [".git", ".jj", ".hg"];
 
 /// Finds the project roots of the linted files, and remembers the answer for each directory it
 /// has searched, so that a run reads the file system once per directory instead of once per

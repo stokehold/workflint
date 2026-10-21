@@ -15,8 +15,9 @@
 //! [`Tools`] runs shellcheck on the scripts that the rules collect, once per script and run,
 //! several scripts per process, with an opt-in cache on disk.
 //!
-//! [`Linter::discover`] returns the workflow files of a run without file arguments, and
-//! [`Input::stdin`] reads a workflow from stdin. [`config`] finds, reads, and writes the config
+//! [`Linter::discover`] returns the workflow files of a run without file arguments,
+//! [`Linter::expand`] the files of directory and glob arguments, both without the files that
+//! `.gitignore` or `exclude` names, and [`Input::stdin`] reads a workflow from stdin. [`config`] finds, reads, and writes the config
 //! file of a project, and [`Settings`] are what a file is linted with: the defaults, then the
 //! config file, then the [`Flags`].
 //!

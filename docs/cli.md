@@ -6,9 +6,17 @@ workflint takes actionlint's flags in the syntax of Go's `flag` package, keeps a
 workflint [check] [FLAGS] [FILES...] [-]
 ```
 
-`check` is the default command and may be left out. Each file argument is linted, and its errors are printed in the order of the arguments. A directory argument is an error. workflint finds the project of each file and checks the file's local actions and local reusable workflows against that project.
+`check` is the default command and may be left out. Each file argument is linted, and its errors are printed in the order of the arguments. workflint finds the project of each file and checks the file's local actions and local reusable workflows against that project.
 
 Without file arguments, workflint finds the project of the current directory and lints every file under its `.github/workflows` directory, subdirectories included, whose name ends in `.yml` or `.yaml`. The names are case-sensitive, so `ci.YAML` is skipped. It prints their errors in the order of their paths. Without a project, or without such a file, workflint prints `no project was found in any parent directories of "<dir>". ...` or `no YAML file was found in "<dir>"` and exits with code 3.
+
+## Directories and globs
+
+A directory argument, such as `workflint .github`, lints every file under it whose name ends in `.yml` or `.yaml`, subdirectories included, in the order of their paths. Symbolic links inside it are not followed. A directory without such a file prints `no YAML file was found in "<dir>"` and exits with code 3. actionlint stops at any directory argument ([differences.md](differences.md#directory-and-glob-arguments)).
+
+An argument that does not exist and contains `*`, `?`, `[`, or `{` is a glob, and workflint expands it itself. So `workflint '.github/workflows/*.yml'` works when quoted, and on Windows shells that do not expand globs. The syntax is that of [`paths` globs](config.md#paths): `*` does not match `/`, and `**` matches any number of directories, so `'**/*.yaml'` finds files at any depth. A glob matches from the current directory, and it lints the matched files whose names end in `.yml` or `.yaml`, in the order of their paths. On Windows, `\` separates directories in a glob. A glob that matches no such file prints `no YAML file matches the glob "<glob>"`, and a malformed one, such as `a.{yml`, prints `invalid glob pattern "<glob>"`. Both exit with code 3. A file whose name contains these characters is linted as a file when it exists.
+
+Discovery, directories, and globs skip the files that the repository's `.gitignore` files or `.git/info/exclude` name, in a Git or Jujutsu repository, and those that the [`exclude` key](config.md#exclude) of the config file names. The global excludes file of the user, `core.excludesFile`, is not read, so that every machine lints the same files ([differences.md](differences.md#gitignore)). The `.git`, `.jj`, and `.hg` directories are never walked. A file given by name is always linted, even when `.gitignore` or `exclude` names it.
 
 With `-` as the only argument, workflint reads a workflow from stdin and names it `<stdin>`, or the value of `-stdin-filename`. If a file exists at that name, the workflow gets that file's project, so its local actions and reusable workflows are checked. `-` among other arguments is a file named `-`.
 
@@ -110,7 +118,7 @@ A template that does not parse prints Go's error, such as `template "{{xxx}}" to
 | 0 | No errors, also when `-ignore` or the config dropped every error. `-h`, `-help`, `-version`, and a successful `-init-config` exit with 0 too. |
 | 1 | At least one error. |
 | 2 | The command line is invalid. |
-| 3 | A fatal error: a file, stdin, or a config file cannot be read, a run without file arguments finds no project or no workflow file, a config file, an `-ignore` pattern, or the `-format` template is invalid, the shellcheck that `-shellcheck` names is not found, `-init-config` fails, the `-format` template fails while it runs, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
+| 3 | A fatal error: a file, stdin, or a config file cannot be read, a run without file arguments finds no project or no workflow file, a directory argument has no workflow file, a glob argument matches none or is malformed, a config file, an `-ignore` pattern, or the `-format` template is invalid, the shellcheck that `-shellcheck` names is not found, `-init-config` fails, the `-format` template fails while it runs, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
 
 ## Version
 
