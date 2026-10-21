@@ -6,9 +6,17 @@ workflint takes actionlint's flags in the syntax of Go's `flag` package, keeps a
 workflint [check] [FLAGS] [FILES...] [-]
 ```
 
-`check` is the default command and may be left out. Each file argument is linted, and its errors are printed in the order of the arguments.
+`check` is the default command and may be left out. Each file argument is linted, and its errors are printed in the order of the arguments. A directory argument is an error. workflint finds the project of each file and checks the file's local actions and local reusable workflows against that project.
 
-This version lints only the files it is given. Running without arguments, which lints the files in `.github/workflows` of the current repository, and reading a workflow from stdin with `-` come with M5.1 (#246). Until then both exit with code 2.
+Without file arguments, workflint finds the project of the current directory and lints every file under its `.github/workflows` directory, subdirectories included, whose name ends in `.yml` or `.yaml`. The names are case-sensitive, so `ci.YAML` is skipped. It prints their errors in the order of their paths. Without a project, or without such a file, workflint prints `no project was found in any parent directories of "<dir>". ...` or `no YAML file was found in "<dir>"` and exits with code 3.
+
+With `-` as the only argument, workflint reads a workflow from stdin and names it `<stdin>`, or the value of `-stdin-filename`. If a file exists at that name, the workflow gets that file's project, so its local actions and reusable workflows are checked. `-` among other arguments is a file named `-`.
+
+## Project root
+
+The project root of a file is the nearest directory above it that has a `.github/workflows` directory and a `.git`, `.jj`, or `.hg` marker. `.git` may be a file, as in a Git worktree or submodule. If no directory above the file has both, the nearest one with a `.github` directory is the root. actionlint accepts only `.git` and has no fallback ([differences.md](differences.md#project-root-detection)).
+
+A file without a project has no local actions or local reusable workflows to check. Printed paths are relative to the current directory, so a run from a subdirectory prints `../.github/workflows/ci.yaml`.
 
 ## Flag syntax
 
@@ -39,7 +47,7 @@ The rules are those of Go's `flag` package:
 | `-format TEMPLATE` | Accepted and ignored until M5.8 (#251) prints errors with a Go template. |
 | `-config-file PATH` | Accepted and ignored until M5.2 (#247) reads the config. |
 | `-init-config` | Accepted and ignored until M5.2 (#247) writes a default config. |
-| `-stdin-filename NAME` | Accepted and ignored until M5.1 (#246) reads stdin. The default is `<stdin>`. |
+| `-stdin-filename NAME` | Names the workflow read from stdin. The default is `<stdin>`. If a file exists at `NAME`, the workflow gets that file's project. |
 | `-shellcheck COMMAND` | Accepted and ignored until M5.5 (#248) runs shellcheck. The default is `shellcheck`, and an empty value turns shellcheck off. |
 | `-pyflakes COMMAND` | Accepted and ignored until M5.12 (#249) runs pyflakes. The default is `pyflakes`, and an empty value turns pyflakes off. |
 
@@ -59,8 +67,8 @@ Color is on when stdout is a terminal, `NO_COLOR` is unset or empty, and `TERM` 
 |---|---|
 | 0 | No errors, also when `-ignore` dropped every error. `-h`, `-help`, and `-version` exit with 0 too. |
 | 1 | At least one error. |
-| 2 | The command line is invalid. Until M5.1 (#246), also no file argument, or `-` alone. |
-| 3 | A fatal error: a file cannot be read, an `-ignore` pattern is invalid, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. |
+| 2 | The command line is invalid. |
+| 3 | A fatal error: a file or stdin cannot be read, a run without file arguments finds no project or no workflow file, an `-ignore` pattern is invalid, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. |
 
 ## Version
 
@@ -78,9 +86,12 @@ The documentation links in `-help` point at the files of the release for a binar
 
 ## Logs
 
-`-verbose` writes what workflint does to stderr:
+`-verbose` writes what workflint does to stderr. A run without file arguments in `/home/me/repo` prints:
 
 ```text
+verbose: Linting all workflow files in repository: /home/me/repo
+verbose: Detected project: /home/me/repo
+verbose: Collected 2 YAML files
 verbose: Linting 2 files
 verbose: Linting .github/workflows/ci.yaml
 verbose: Using project at /home/me/repo
@@ -91,7 +102,7 @@ verbose: Found total 2 errors in 1 ms for .github/workflows/release.yaml
 verbose: Found 2 errors in 2 files
 ```
 
-The files are linted in parallel. The lines of one file are written together when the file is done, so they never mix with the lines of another file, and the files come in the order they finish. `-debug` adds lines such as `[Linter] unused-anchor found 2 errors` for each rule that found errors, and one line for each error that `-ignore` dropped. The times in the log vary from run to run, and the log is not part of the output that ADR 0013 keeps deterministic.
+The files are linted in parallel. The lines of one file are written together when the file is done, so they never mix with the lines of another file, and the files come in the order they finish. `-debug` adds lines such as `[Linter] unused-anchor found 2 errors` for each rule that found errors, and one line for each error that `-ignore` dropped. A run that reads stdin starts with `verbose: Reading the input from stdin`. The times in the log vary from run to run, and the log is not part of the output that ADR 0013 keeps deterministic.
 
 ## Environment variables
 

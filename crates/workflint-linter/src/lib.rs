@@ -13,11 +13,13 @@
 //! file. The [`registry`] lists every rule, with the rules of [`rules`] that the driver reports.
 //! [`tool`] runs external tools such as shellcheck with a timeout and a limit on processes.
 //!
-//! M5 adds file discovery and the config.
+//! [`Linter::discover`] returns the workflow files of a run without file arguments, and
+//! [`Input::stdin`] reads a workflow from stdin.
 //!
 //! This is an internal crate with no stability promise.
 
 mod cache;
+mod discover;
 mod ignore;
 mod linter;
 pub mod path;
@@ -27,6 +29,9 @@ pub mod rules;
 pub mod tool;
 
 pub use cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
+pub use discover::DiscoveryError;
 pub use ignore::{IgnorePattern, PatternError};
-pub use linter::{Check, FILE_SPAN, Input, Linted, Linter, ReadError, has_internal_error};
+pub use linter::{
+    Check, FILE_SPAN, Input, Linted, Linter, ReadError, STDIN, StdinError, has_internal_error,
+};
 pub use project::ProjectRoots;
