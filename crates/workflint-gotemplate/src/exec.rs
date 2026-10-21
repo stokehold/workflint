@@ -3,6 +3,7 @@
 //! The state records the node it is at, as Go's `state.at` does, so that an error names the
 //! same node and position as Go's.
 
+use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::io::Write;
 
@@ -102,6 +103,12 @@ impl Callee<'_> {
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// How deep template calls and control structures may nest while a template runs. Go allows
+/// 100,000 nested template calls. Parsing limits control structures to
+/// [`MAX_DEPTH`](crate::parse::MAX_DEPTH) in each template, so this limit only stops calls,
+/// such as a template that calls itself, before they overflow the stack.
+const MAX_EXEC_DEPTH: usize = 2 * crate::parse::MAX_DEPTH;
+
 pub(crate) struct State<'t, W> {
     name: &'t str,
     text: &'t str,
@@ -109,6 +116,10 @@ pub(crate) struct State<'t, W> {
     out: &'t mut W,
     node: At<'t>,
     vars: Vec<Variable>,
+    templates: &'t BTreeMap<String, ListNode>,
+    /// The name of the running template, which `{{template}}` changes.
+    current: &'t str,
+    depth: usize,
 }
 
 /// Runs `tree` with `data` as dot and `$`, writing to `out`.
@@ -131,8 +142,17 @@ pub(crate) fn execute<W: Write>(
             name: "$".to_owned(),
             value: data.clone(),
         }],
+        templates: &tree.templates,
+        current: name,
+        depth: 0,
     };
-    state.walk_list(&data, &tree.root)?;
+    let Some(root) = tree.templates.get(name) else {
+        return state.error(format_args!(
+            "{} is an incomplete or empty template",
+            crate::fmt::quote(name)
+        ));
+    };
+    state.walk_list(&data, root)?;
     Ok(())
 }
 
@@ -143,16 +163,19 @@ impl<'t, W: Write> State<'t, W> {
 
     /// Go's `state.errorf`.
     fn error<T>(&self, message: impl Display) -> Result<T> {
+        // Go names the running template, and gives the position in the text that the whole
+        // template set was parsed from.
         let name = self.name;
+        let current = self.current;
         let Some(pos) = self.node.pos() else {
-            return Err(Error::Exec(format!("template: {name}: {message}")));
+            return Err(Error::Exec(format!("template: {current}: {message}")));
         };
         let before = self.text.get(..pos).unwrap_or(self.text);
         let line = 1 + before.bytes().filter(|b| *b == b'\n').count();
         let column = before.rfind('\n').map_or(pos, |newline| pos - newline - 1);
         Err(Error::Exec(format!(
             "template: {name}:{line}:{column}: executing {} at <{}>: {message}",
-            crate::fmt::quote(name),
+            crate::fmt::quote(current),
             self.node.context()
         )))
     }
@@ -235,13 +258,72 @@ impl<'t, W: Write> State<'t, W> {
                 self.write(text)?;
                 Ok(Flow::Normal)
             }
+            Node::Template { name, pipe, .. } => {
+                self.walk_template(dot, node, name, pipe.as_ref())?;
+                Ok(Flow::Normal)
+            }
         }
     }
 
+    /// Counts one level of nesting, or fails past [`MAX_EXEC_DEPTH`].
+    fn enter(&mut self) -> Result<()> {
+        if self.depth >= MAX_EXEC_DEPTH {
+            return self.error(format_args!(
+                "exceeded maximum template depth ({MAX_EXEC_DEPTH})"
+            ));
+        }
+        self.depth += 1;
+        Ok(())
+    }
+
+    /// Go's `walkTemplate`: runs the named template with the pipeline's value as dot and `$`,
+    /// and none of the caller's variables.
+    fn walk_template(
+        &mut self,
+        dot: &Val,
+        node: &'t Node,
+        name: &str,
+        pipe: Option<&'t Pipe>,
+    ) -> Result<()> {
+        self.at(At::Node(node));
+        let Some((name, list)) = self.templates.get_key_value(name) else {
+            return self.error(format_args!(
+                "template {} not defined",
+                crate::fmt::quote(name)
+            ));
+        };
+        self.enter()?;
+        let dot = match pipe {
+            Some(pipe) => match self.eval_pipeline(dot, pipe) {
+                Ok(value) => value,
+                Err(error) => {
+                    self.depth -= 1;
+                    return Err(error);
+                }
+            },
+            None => Val::concrete(Value::Nil),
+        };
+        let caller_vars = std::mem::replace(
+            &mut self.vars,
+            vec![Variable {
+                name: "$".to_owned(),
+                value: dot.clone(),
+            }],
+        );
+        let caller = std::mem::replace(&mut self.current, name);
+        let result = self.walk_list(&dot, list);
+        self.current = caller;
+        self.vars = caller_vars;
+        self.depth -= 1;
+        result.map(|_| ())
+    }
+
     fn walk_if_or_with(&mut self, with: bool, dot: &Val, branch: &'t Branch) -> Result<Flow> {
+        self.enter()?;
         let mark = self.mark();
         let result = self.walk_if_or_with_inner(with, dot, branch);
         self.pop(mark);
+        self.depth -= 1;
         result
     }
 
@@ -262,9 +344,11 @@ impl<'t, W: Write> State<'t, W> {
 
     fn walk_range(&mut self, dot: &Val, node: &'t Node, branch: &'t Branch) -> Result<Flow> {
         self.at(At::Node(node));
+        self.enter()?;
         let mark = self.mark();
         let result = self.walk_range_inner(dot, branch);
         self.pop(mark);
+        self.depth -= 1;
         result.map(|()| Flow::Normal)
     }
 

@@ -4,6 +4,7 @@
 //! Each node keeps its byte offset, which execution errors turn into a line and column, and
 //! displays as Go's `Node.String` does, which execution errors quote.
 
+use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
 
 use crate::lex::{Item, ItemKind, Lexer};
@@ -18,7 +19,9 @@ pub(crate) const MAX_DEPTH: usize = 100;
 /// A parsed template.
 #[derive(Debug)]
 pub(crate) struct Tree {
-    pub(crate) root: ListNode,
+    /// The templates by name: the template itself under the name it was parsed with, and each
+    /// template that `{{define}}` or `{{block}}` defines.
+    pub(crate) templates: BTreeMap<String, ListNode>,
 }
 
 #[derive(Debug)]
@@ -29,13 +32,29 @@ pub(crate) struct ListNode {
 
 #[derive(Debug)]
 pub(crate) enum Node {
-    Text { pos: usize, text: String },
-    Action { pos: usize, pipe: Pipe },
+    Text {
+        pos: usize,
+        text: String,
+    },
+    Action {
+        pos: usize,
+        pipe: Pipe,
+    },
     If(Branch),
     Range(Branch),
     With(Branch),
-    Break { pos: usize },
-    Continue { pos: usize },
+    Break {
+        pos: usize,
+    },
+    Continue {
+        pos: usize,
+    },
+    /// `{{template "name" pipeline}}`, which `{{block}}` also produces.
+    Template {
+        pos: usize,
+        name: String,
+        pipe: Option<Pipe>,
+    },
 }
 
 /// The common part of `if`, `range`, and `with`.
@@ -139,7 +158,8 @@ impl Node {
             Node::Text { pos, .. }
             | Node::Action { pos, .. }
             | Node::Break { pos }
-            | Node::Continue { pos } => *pos,
+            | Node::Continue { pos }
+            | Node::Template { pos, .. } => *pos,
             Node::If(branch) | Node::Range(branch) | Node::With(branch) => branch.pos,
         }
     }
@@ -164,6 +184,13 @@ impl Display for Node {
             Node::With(branch) => branch.write(f, "with"),
             Node::Break { .. } => f.write_str("{{break}}"),
             Node::Continue { .. } => f.write_str("{{continue}}"),
+            Node::Template { name, pipe, .. } => {
+                write!(f, "{{{{template {}", crate::fmt::quote(name))?;
+                if let Some(pipe) = pipe {
+                    write!(f, " {pipe}")?;
+                }
+                f.write_str("}}")
+            }
         }
     }
 }
@@ -275,6 +302,7 @@ pub(crate) struct Parser<'a, F> {
     range_depth: usize,
     depth: usize,
     has_function: F,
+    templates: BTreeMap<String, ListNode>,
 }
 
 fn eof_item() -> Item {
@@ -304,9 +332,13 @@ pub(crate) fn parse(
         range_depth: 0,
         depth: 0,
         has_function,
+        templates: BTreeMap::new(),
     };
     let root = parser.parse_root()?;
-    Ok(Tree { root })
+    parser.add(name, root)?;
+    Ok(Tree {
+        templates: parser.templates,
+    })
 }
 
 impl<F: Fn(&str) -> bool> Parser<'_, F> {
@@ -402,6 +434,14 @@ impl<F: Fn(&str) -> bool> Parser<'_, F> {
             nodes: Vec::new(),
         };
         while self.peek().kind != ItemKind::Eof {
+            if self.peek().kind == ItemKind::LeftDelim {
+                let delim = self.next();
+                if self.next_non_space().kind == ItemKind::Define {
+                    self.parse_definition()?;
+                    continue;
+                }
+                self.backup2(delim);
+            }
             match self.text_or_action()? {
                 parsed @ (Parsed::End | Parsed::Else { .. }) => {
                     return self.error(format_args!("unexpected {}", parsed.describe()));
@@ -477,15 +517,113 @@ impl<F: Fn(&str) -> bool> Parser<'_, F> {
                 return Ok(Parsed::Node(Node::Range(self.parse_control("range")?)));
             }
             ItemKind::With => return Ok(Parsed::Node(Node::With(self.parse_control("with")?))),
-            ItemKind::Block | ItemKind::Define | ItemKind::Template => {
-                return self.error(format_args!("{{{{{}}}}} is not supported", token.val));
-            }
+            ItemKind::Block => return self.block_control().map(Parsed::Node),
+            ItemKind::Template => return self.template_control().map(Parsed::Node),
             _ => {}
         }
         self.backup();
         let pos = self.peek().pos;
         let pipe = self.pipeline("command", ItemKind::RightDelim)?;
         Ok(Parsed::Node(Node::Action { pos, pipe }))
+    }
+
+    /// Go's `add`: stores a template unless a non-empty one has its name.
+    fn add(&mut self, name: &str, root: ListNode) -> Result<()> {
+        match self.templates.get(name) {
+            Some(existing) if !is_empty_tree(existing) => {
+                if !is_empty_tree(&root) {
+                    return self.error(format_args!(
+                        "template: multiple definition of template {}",
+                        crate::fmt::quote(name)
+                    ));
+                }
+            }
+            _ => {
+                self.templates.insert(name.to_owned(), root);
+            }
+        }
+        Ok(())
+    }
+
+    /// Parses the list of a `{{define}}` or `{{block}}` as Go does in a new tree: with only
+    /// `$` defined and outside any `range`. A `{{define}}` is only at the top level, so only a
+    /// `{{block}}` counts as a level of nesting.
+    fn parse_subtree(&mut self, context: &str) -> Result<ListNode> {
+        let nested = context == "block clause";
+        if nested {
+            self.enter()?;
+        }
+        let vars = std::mem::replace(&mut self.vars, vec!["$".to_owned()]);
+        let range_depth = std::mem::take(&mut self.range_depth);
+        let result = self.item_list();
+        self.vars = vars;
+        self.range_depth = range_depth;
+        if nested {
+            self.depth -= 1;
+        }
+        let (list, end) = result?;
+        if !matches!(end, Parsed::End) {
+            return self.error(format_args!("unexpected {} in {context}", end.describe()));
+        }
+        Ok(list)
+    }
+
+    /// Go's `parseDefinition`, after `{{define`.
+    fn parse_definition(&mut self) -> Result<()> {
+        const CONTEXT: &str = "define clause";
+        let token = self.next_non_space();
+        if !matches!(token.kind, ItemKind::String | ItemKind::RawString) {
+            return self.unexpected(&token, CONTEXT);
+        }
+        let Some(name) = strconv::unquote(&token.val) else {
+            return self.error("invalid syntax");
+        };
+        self.expect(ItemKind::RightDelim, CONTEXT)?;
+        let list = self.parse_subtree(CONTEXT)?;
+        self.add(&name, list)
+    }
+
+    /// Go's `parseTemplateName`.
+    fn template_name(&self, token: &Item, context: &str) -> Result<String> {
+        match token.kind {
+            ItemKind::String | ItemKind::RawString => match strconv::unquote(&token.val) {
+                Some(name) => Ok(name),
+                None => self.error("invalid syntax"),
+            },
+            _ => self.unexpected(token, context),
+        }
+    }
+
+    /// Go's `blockControl`: defines the template and calls it.
+    fn block_control(&mut self) -> Result<Node> {
+        const CONTEXT: &str = "block clause";
+        let token = self.next_non_space();
+        let name = self.template_name(&token, CONTEXT)?;
+        let pipe = self.pipeline(CONTEXT, ItemKind::RightDelim)?;
+        let list = self.parse_subtree(CONTEXT)?;
+        self.add(&name, list)?;
+        Ok(Node::Template {
+            pos: token.pos,
+            name,
+            pipe: Some(pipe),
+        })
+    }
+
+    /// Go's `templateControl`.
+    fn template_control(&mut self) -> Result<Node> {
+        const CONTEXT: &str = "template clause";
+        let token = self.next_non_space();
+        let name = self.template_name(&token, CONTEXT)?;
+        let mut pipe = None;
+        if self.next_non_space().kind != ItemKind::RightDelim {
+            self.backup();
+            pipe = Some(self.pipeline(CONTEXT, ItemKind::RightDelim)?);
+        }
+        Ok(Node::Template {
+            pos: token.pos,
+            name,
+            pipe,
+        })
     }
 
     fn else_control(&mut self) -> Result<Parsed> {
@@ -847,4 +985,12 @@ fn float_to_int(f: f64) -> Option<i64> {
     let n = f as i64;
     #[allow(clippy::cast_precision_loss, clippy::float_cmp)]
     (n as f64 == f).then_some(n)
+}
+
+/// Go's `IsEmptyTree`: whether a template has nothing but space.
+fn is_empty_tree(list: &ListNode) -> bool {
+    list.nodes.iter().all(|node| match node {
+        Node::Text { text, .. } => text.trim().is_empty(),
+        _ => false,
+    })
 }

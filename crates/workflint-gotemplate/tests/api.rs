@@ -131,18 +131,34 @@ fn a_function_name_must_be_an_identifier() {
 }
 
 #[test]
-fn define_template_and_block_are_parse_errors() {
-    for (text, keyword) in [
-        (r#"{{define "x"}}{{end}}"#, "define"),
-        (r#"{{template "x"}}"#, "template"),
-        (r#"{{block "x" .}}{{end}}"#, "block"),
-    ] {
-        let error = Template::parse("t", text, Functions::new()).unwrap_err();
-        assert_eq!(
-            error.to_string(),
-            format!("template: t:1: {{{{{keyword}}}}} is not supported")
-        );
-    }
+fn a_template_that_calls_itself_stops_at_the_depth_limit() {
+    let error = render(
+        r#"{{define "self"}}{{template "self" .}}{{end}}{{template "self"}}"#,
+        Functions::new(),
+        &Value::Nil,
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        r#"template: t:1:28: executing "self" at <{{template "self" .}}>: exceeded maximum template depth (200)"#
+    );
+}
+
+#[test]
+fn deep_nesting_in_each_of_many_template_calls_stays_within_the_stack() {
+    // Each call nests 99 parentheses inside an `if`, the deepest a template allows, until the
+    // calls reach the limit.
+    let parens = format!("{}.{}", "(".repeat(99), ")".repeat(99));
+    let text = format!(
+        r#"{{{{define "self"}}}}{{{{if {parens}}}}}{{{{template "self" .}}}}{{{{end}}}}{{{{end}}}}{{{{template "self" 1}}}}"#
+    );
+    let error = render(&text, Functions::new(), &Value::Nil).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .ends_with("exceeded maximum template depth (200)"),
+        "{error}"
+    );
 }
 
 #[test]

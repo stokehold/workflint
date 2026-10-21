@@ -2,7 +2,7 @@
 //!
 //! This is an internal crate with no stability promise. actionlint formats its errors with a
 //! Go template, so workflint needs an engine that parses the same templates and prints the same
-//! bytes. The parser, executor, and built-in functions are ports of Go's `text/template`, and
+//! bytes. The parser, executor, and built-in functions follow Go's `text/template` closely, and
 //! errors use Go's wording. `README.md` lists what differs from Go.
 //!
 //! [`Template::parse`] parses a template and checks that each function it calls exists.

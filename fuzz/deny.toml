@@ -14,12 +14,10 @@ yanked = "deny"
 [licenses]
 version = 2
 # The licenses that the dependencies use, from the list in ADR 0017. ADR 0017
-# also permits BSD-2-Clause, ISC, and Zlib. Add one here when a dependency
-# needs it, as cargo deny warns about an allowance nothing uses. BSD-3-Clause
-# is for workflint-gotemplate, which ports code from Go (ADR 0035).
+# also permits BSD-2-Clause, BSD-3-Clause, ISC, and Zlib. Add one here when a
+# dependency needs it, as cargo deny warns about an allowance nothing uses.
 allow = [
     "Apache-2.0",
-    "BSD-3-Clause",
     "MIT",
     "Unicode-3.0",
 ]
