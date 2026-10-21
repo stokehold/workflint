@@ -178,8 +178,9 @@ fn script_shell(shell: &str) -> Option<ScriptShell> {
 
 /// Replaces each `${{ ... }}` in `script` with as many bytes of `_`, the reference's
 /// `sanitizeExpressionsInScript`. A `${{` without a `}}` after it stays. The result has the
-/// length of `script`, so an offset in it is the same offset in `script`.
-fn sanitize(script: &str) -> String {
+/// length of `script`, so an offset in it is the same offset in `script`. The `pyflakes` rule
+/// uses it too.
+pub(crate) fn sanitize(script: &str) -> String {
     let mut out = String::with_capacity(script.len());
     let mut rest = script;
     while let Some(start) = rest.find("${{") {
