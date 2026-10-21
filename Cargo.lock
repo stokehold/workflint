@@ -1138,6 +1138,8 @@ dependencies = [
  "rayon",
  "regex",
  "regex-syntax",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "tracing",

@@ -65,11 +65,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### shellcheck and pyflakes findings point into the script
 
 - Upstream: every shellcheck and pyflakes finding is reported at the `run:` key. The position inside the script appears only in the message, for example `SC2086:info:1:6:`.
-- workflint: the finding is reported at its line and column in the workflow file, mapped through the `run:` scalar's source map. The message text is unchanged.
+- workflint: the finding is reported at its line and column in the workflow file, mapped through the `run:` scalar's source map, and its span ends where shellcheck's `endLine` and `endColumn` say. The message text is unchanged, so `-ignore` patterns still match it. A finding on the `set -e` line that workflint adds before the script, which has no place in the file, is reported at the `run:` key. In `examples/shellcheck_integration`, the finding upstream reports at `6:9`, the `run:` key, is at `6:19`, the `$FOO` of `echo $FOO`.
 - Why: users want the editor or annotation to point at the faulty line (ADR 0012).
 - Upstream issue: #88, #360, PR #556.
 - Milestone: M5.
-- Status: planned.
+- Status: implemented for shellcheck. pyflakes follows with M5.12 (#249).
 - Fixtures: the shellcheck and pyflakes lines in `err/` and `examples/`.
 
 <a id="yaml-error-positions"></a>
@@ -1005,10 +1005,10 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### workflint's own flags
 
 - Upstream: none of these exist.
-- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `-quiet` and `-q` print only errors and fatal messages: no summary and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`.
-- Why: the summary answers rhysd/actionlint#691. `-quiet` and `-silent` suit scripts that need only the exit code or only the errors. Commands such as `workflint rules` come later, and `check` names the default one.
+- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `-quiet` and `-q` print only errors and fatal messages: no summary and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. `-jobs N` runs at most `N` external tool processes at once, one per CPU by default.
+- Why: the summary answers rhysd/actionlint#691. `-quiet` and `-silent` suit scripts that need only the exit code or only the errors. Commands such as `workflint rules` come later, and `check` names the default one. `-jobs` keeps shellcheck from using every CPU on a shared CI runner (ADR 0012).
 - Upstream issue: #691.
-- Milestone: M5.6.
+- Milestone: M5.6, and M5.5 for `-jobs`.
 - Status: implemented.
 
 <a id="ignore-pattern-syntax"></a>
@@ -1039,21 +1039,21 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### A tool failure does not abort the run
 
 - Upstream: if shellcheck or pyflakes exits with an error and no output, is killed by a signal, prints invalid JSON, or prints output without a final newline, the whole run stops with exit code 3 and prints no lint results.
-- workflint: the failure becomes a diagnostic on that script, with rule ID `shellcheck-failed` or `pyflakes-failed`, and the other scripts and files are still linted (ADR 0012). The run exits with code 1 because a diagnostic was reported.
+- workflint: the failure becomes a diagnostic at the `run:` key of that script, with rule ID `shellcheck-failed` or `pyflakes-failed`, and the other scripts and files are still linted (ADR 0012). The run exits with code 1 because a diagnostic was reported. A timeout and a tool that cannot be started are failures too. The message of invalid JSON is upstream's, `could not parse JSON output from shellcheck: <error>: stdout=<quoted output>`, with the JSON parser's error text in place of Go's. The other messages start with `shellcheck did not run successfully while checking this script:` and name shellcheck instead of the path of its executable.
 - Why: one bad script should not hide every other result.
 - Upstream issue: none.
 - Milestone: M5.
-- Status: planned. The rule IDs are proposals.
+- Status: implemented for shellcheck (`shellcheck-failed`). `pyflakes-failed` is a proposal until M5.12 (#249).
 
 <a id="missing-tools"></a>
 ### Missing tools are reported
 
 - Upstream: if shellcheck or pyflakes cannot be found, the rule is disabled silently. Only `-verbose` mentions it.
-- workflint: if a tool enabled by default is not installed, workflint prints one warning per run to stderr and continues. If the user asked for the tool by flag or config and it is not installed, workflint exits with code 3. `-shellcheck=` and `-pyflakes=` still disable the tools without a message (ADR 0012).
+- workflint: if a tool enabled by default is not installed, workflint prints one warning per run to stderr and continues. `-quiet` and `-silent` hide the warning. If the user asked for the tool by flag or config and it is not installed, workflint exits with code 3. `-shellcheck=shellcheck` asks for it too. `-shellcheck=` and `-pyflakes=` still disable the tools without a message (ADR 0012).
 - Why: results silently differed between machines with and without the tools.
 - Upstream issue: #189, #347.
 - Milestone: M5.
-- Status: planned.
+- Status: implemented for shellcheck and `-shellcheck`. pyflakes follows with M5.12 (#249), and the config keys with M5.13 (#250).
 
 <a id="external-process-hangs"></a>
 ### External processes cannot hang the run
@@ -1063,7 +1063,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: CI jobs hung for hours.
 - Upstream issue: #702, #704, #712.
 - Milestone: M5.
-- Status: `workflint_linter::tool` runs the processes this way since M5.4. The diagnostic for a timed-out script follows with M5.5 (#248) and M5.12 (#249).
+- Status: `workflint_linter::tool` runs the processes this way since M5.4. A timed-out shellcheck gives a `shellcheck-failed` diagnostic since M5.5, and pyflakes follows with M5.12 (#249).
 
 <a id="python-linter-auto"></a>
 ### ruff is used for Python scripts when installed

@@ -39,6 +39,19 @@ pub struct ToolCommand {
 }
 
 impl ToolCommand {
+    /// The executable at `program`, with `args` before the arguments of each run. Nothing is
+    /// looked up.
+    #[must_use]
+    pub fn new(
+        program: impl Into<PathBuf>,
+        args: impl IntoIterator<Item = impl Into<OsString>>,
+    ) -> Self {
+        Self {
+            program: program.into(),
+            args: args.into_iter().map(Into::into).collect(),
+        }
+    }
+
     /// Resolves the value of a flag such as `-shellcheck` as the reference's
     /// `resolveExternalCommand` does, with the `PATH` of the environment.
     ///

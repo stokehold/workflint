@@ -4,6 +4,7 @@ use workflint_diagnostics::{Diagnostic, SourceFile};
 use workflint_syntax::Workflow;
 
 use crate::local::{LocalMetadata, NoProject};
+use crate::tools::{ExternalTools, NoTools};
 use crate::{Context, Rule, create_rules};
 
 /// Calls the hooks of `rules` over `workflow`, each hook for every rule in the order of `rules`.
@@ -62,25 +63,41 @@ pub fn run_in_project<'a>(
     workflow: &'a Workflow<'a>,
     local: &dyn LocalMetadata,
 ) -> Vec<Diagnostic> {
+    run_with_tools(file, workflow, local, &NoTools)
+}
+
+/// Does what [`run_in_project`] does, with `tools` as the external tools that check scripts.
+#[must_use]
+pub fn run_with_tools<'a>(
+    file: &SourceFile,
+    workflow: &'a Workflow<'a>,
+    local: &dyn LocalMetadata,
+    tools: &dyn ExternalTools,
+) -> Vec<Diagnostic> {
     let mut rules = create_rules();
-    let mut cx = Context::with_local_metadata(file, local);
+    let mut cx = Context::with_local_metadata(file, local).with_tools(tools);
     visit(workflow, &mut rules, &mut cx);
     cx.into_diagnostics()
 }
 
 /// Lints `file` without the file system: parses it with the YAML layer and, if that gives a
 /// document, with the workflow parser, then runs the rules on the workflow with the local
-/// metadata in `local`. Returns the diagnostics of all three, unsorted.
+/// metadata in `local` and the external tools in `tools`. Returns the diagnostics of all three,
+/// unsorted.
 ///
 /// The binary and the tests of the rule pages both lint this way.
 #[must_use]
-pub fn check_file(file: &SourceFile, local: &dyn LocalMetadata) -> Vec<Diagnostic> {
+pub fn check_file(
+    file: &SourceFile,
+    local: &dyn LocalMetadata,
+    tools: &dyn ExternalTools,
+) -> Vec<Diagnostic> {
     let parsed = workflint_yaml::parse(file);
     let mut diagnostics = parsed.diagnostics;
     if let Some(document) = &parsed.document {
         let syntax = workflint_syntax::parse(file, document);
         diagnostics.extend(syntax.diagnostics);
-        diagnostics.extend(run_in_project(file, &syntax.workflow, local));
+        diagnostics.extend(run_with_tools(file, &syntax.workflow, local, tools));
     }
     diagnostics
 }

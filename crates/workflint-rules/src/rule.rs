@@ -5,6 +5,7 @@ use workflint_syntax::{AliasUses, Job, KeyedEntry, Step, Str, Workflow};
 
 use crate::kind::Kind;
 use crate::local::{LocalMetadata, NoProject};
+use crate::tools::{ExternalTools, NoTools};
 
 /// A rule: the reference's `Rule`, which implements some of the five hooks of its `Pass`.
 ///
@@ -48,8 +49,9 @@ pub trait Rule<'a> {
 }
 
 /// What the hooks of a rule get besides the node: the file being linted, the metadata of the
-/// project's local actions and local reusable workflows, the YAML aliases through which the
-/// parser reached each string of the workflow, and the list of diagnostics that the rules report.
+/// project's local actions and local reusable workflows, the external tools that check scripts,
+/// the YAML aliases through which the parser reached each string of the workflow, and the list of
+/// diagnostics that the rules report.
 ///
 /// The config (M5.2) becomes a field of this type, so the signature of the hooks stays the same
 /// when it arrives.
@@ -57,6 +59,7 @@ pub trait Rule<'a> {
 pub struct Context<'f> {
     file: &'f SourceFile,
     local: &'f dyn LocalMetadata,
+    tools: &'f dyn ExternalTools,
     /// The alias paths of the workflow being visited, which [`visit`](crate::visit) sets.
     pub(crate) aliases: AliasUses,
     diagnostics: Vec<Diagnostic>,
@@ -64,19 +67,20 @@ pub struct Context<'f> {
 
 impl<'f> Context<'f> {
     /// Creates the context for linting `file` outside any project, with no diagnostics. Lookups
-    /// of local actions and local reusable workflows find nothing.
+    /// of local actions and local reusable workflows find nothing, and no external tool runs.
     #[must_use]
     pub fn new(file: &'f SourceFile) -> Self {
         Self::with_local_metadata(file, &NoProject)
     }
 
     /// Creates the context for linting `file`, whose project has the local actions and local
-    /// reusable workflows in `local`, with no diagnostics.
+    /// reusable workflows in `local`, with no diagnostics. No external tool runs.
     #[must_use]
     pub fn with_local_metadata(file: &'f SourceFile, local: &'f dyn LocalMetadata) -> Self {
         Self {
             file,
             local,
+            tools: &NoTools,
             aliases: AliasUses::default(),
             diagnostics: Vec::new(),
         }
@@ -93,6 +97,18 @@ impl<'f> Context<'f> {
     #[must_use]
     pub fn local_metadata(&self) -> &'f dyn LocalMetadata {
         self.local
+    }
+
+    /// Returns the context with `tools` as the external tools that check scripts.
+    #[must_use]
+    pub fn with_tools(self, tools: &'f dyn ExternalTools) -> Self {
+        Self { tools, ..self }
+    }
+
+    /// Returns the external tools that check scripts.
+    #[must_use]
+    pub fn tools(&self) -> &'f dyn ExternalTools {
+        self.tools
     }
 
     /// Reports a diagnostic of `rule` at `span` with the rule's default severity.

@@ -23,10 +23,26 @@ fn cli_dir() -> PathBuf {
 
 /// A command that runs the binary with `args` in `dir`, without the environment variables
 /// that change its output.
+///
+/// Unless `args` set `-shellcheck`, the command starts with `-shellcheck=`, after a leading
+/// `check`, so the output does not depend on whether shellcheck is installed.
 fn command<S: AsRef<std::ffi::OsStr>>(dir: &Path, args: &[S]) -> Command {
+    let args: Vec<&std::ffi::OsStr> = args.iter().map(AsRef::as_ref).collect();
+    let sets_shellcheck = args.iter().any(|arg| {
+        let arg = arg.to_string_lossy();
+        arg.starts_with("-shellcheck") || arg.starts_with("--shellcheck")
+    });
     let mut command = Command::new(env!("CARGO_BIN_EXE_workflint"));
+    let (first, rest) = match args.split_first() {
+        Some((first, rest)) if *first == "check" => (Some(*first), rest),
+        _ => (None, &args[..]),
+    };
+    command.args(first);
+    if !sets_shellcheck {
+        command.arg("-shellcheck=");
+    }
     command
-        .args(args)
+        .args(rest)
         .current_dir(dir)
         .env_remove("NO_COLOR")
         .env_remove("TERM")
@@ -753,7 +769,6 @@ fn flags_of_later_tasks_are_accepted_and_ignored() {
         "-init-config",
         "-stdin-filename",
         "name.yaml",
-        "-shellcheck=shellcheck",
         "-pyflakes",
         "pyflakes",
         "broken.yaml",
@@ -1027,4 +1042,138 @@ fn the_log_lines_of_different_files_never_interleave() {
         }
     }
     assert_eq!(blocks, names.len(), "{}", run.stderr);
+}
+
+/// A file with a `run:` script that shellcheck reports.
+const UNQUOTED: &str =
+    "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $FOO\n";
+
+/// Writes `files` into a new directory with a `bin` directory that has no shellcheck, for `PATH`.
+fn without_shellcheck(files: &[(&str, &str)]) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join("bin")).unwrap();
+    for (name, text) in files {
+        std::fs::write(dir.path().join(name), text).unwrap();
+    }
+    dir
+}
+
+/// Runs the binary with `args` in `dir`, with `dir/bin` as the only directory on `PATH`.
+fn run_without_shellcheck(dir: &Path, args: &[&str]) -> Run {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_workflint"));
+    command
+        .args(args)
+        .current_dir(dir)
+        .env("PATH", dir.join("bin"))
+        .env_remove("NO_COLOR")
+        .env_remove("TERM");
+    run(command.output().unwrap())
+}
+
+const MISSING_SHELLCHECK: &str = "warning: shellcheck was not found on PATH, so the scripts of \
+                                  run: steps are not checked. Install shellcheck, or pass \
+                                  -shellcheck= to turn the check off\n";
+
+#[test]
+fn a_missing_default_shellcheck_prints_one_warning_and_lints_every_file() {
+    let dir = without_shellcheck(&[("a.yaml", UNQUOTED), ("b.yaml", UNQUOTED)]);
+    let run = run_without_shellcheck(dir.path(), &["-oneline", "a.yaml", "b.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: String::new(),
+            stderr: MISSING_SHELLCHECK.to_owned(),
+        }
+    );
+}
+
+#[test]
+fn quiet_and_silent_hide_the_warning_about_a_missing_shellcheck() {
+    let dir = without_shellcheck(&[("a.yaml", UNQUOTED)]);
+    for flag in ["-quiet", "-silent"] {
+        let run = run_without_shellcheck(dir.path(), &[flag, "a.yaml"]);
+        assert_eq!(run.stderr, "", "{flag}");
+        assert_eq!(run.code, Some(0), "{flag}");
+    }
+}
+
+#[test]
+fn a_missing_shellcheck_named_by_the_flag_exits_with_3() {
+    let dir = without_shellcheck(&[("a.yaml", UNQUOTED)]);
+    for (flag, error) in [
+        (
+            "-shellcheck=shellcheck",
+            "executable \"shellcheck\" was not found on PATH",
+        ),
+        (
+            "-shellcheck=./no/shellcheck",
+            "executable \"./no/shellcheck\" was not found",
+        ),
+    ] {
+        let run = run_without_shellcheck(dir.path(), &[flag, "a.yaml"]);
+        assert_eq!(
+            run,
+            Run {
+                code: Some(3),
+                stdout: String::new(),
+                stderr: format!("shellcheck given with -shellcheck was not found: {error}\n"),
+            },
+            "{flag}"
+        );
+    }
+}
+
+#[test]
+fn an_empty_shellcheck_flag_turns_the_check_off_without_a_message() {
+    let dir = without_shellcheck(&[("a.yaml", UNQUOTED)]);
+    let run = run_without_shellcheck(dir.path(), &["-shellcheck=", "a.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: String::new(),
+            stderr: String::new(),
+        }
+    );
+}
+
+#[test]
+fn shellcheck_from_path_checks_run_scripts() {
+    let Some(shellcheck) = std::env::var_os("PATH").and_then(|path| {
+        std::env::split_paths(&path)
+            .map(|dir| dir.join("shellcheck"))
+            .find(|path| path.is_file())
+    }) else {
+        eprintln!("skipped: shellcheck is not installed");
+        return;
+    };
+    let dir = without_shellcheck(&[("a.yaml", UNQUOTED)]);
+    std::fs::copy(&shellcheck, dir.path().join("bin").join("shellcheck")).unwrap();
+    let run = run_without_shellcheck(dir.path(), &["-oneline", "-jobs=1", "a.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(1),
+            stdout: "a.yaml:6:19: shellcheck reported issue in this script: SC2086:info:1:6: \
+                     Double quote to prevent globbing and word splitting [shellcheck-issue]\n"
+                .to_owned(),
+            stderr: String::new(),
+        }
+    );
+}
+
+#[test]
+fn jobs_must_be_a_positive_whole_number() {
+    for (value, reason) in [("0", "must be at least 1"), ("two", "parse error")] {
+        let run = workflint(&[&format!("-jobs={value}"), "valid.yaml"]);
+        assert_eq!(run.code, Some(2), "{value}");
+        assert!(
+            run.stderr.starts_with(&format!(
+                "invalid value \"{value}\" for flag -jobs: {reason}\n"
+            )),
+            "{}",
+            run.stderr
+        );
+    }
 }

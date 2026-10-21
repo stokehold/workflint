@@ -15,12 +15,14 @@ mod version;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, ErrorKind, IsTerminal, Write};
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{
     Color, Diagnostic, Severity, SourceFile, render_default, render_oneline,
 };
-use workflint_linter::{IgnorePattern, Input, Linter, has_internal_error, path};
+use workflint_linter::tool::{RunOptions, ToolCommand, ToolPool};
+use workflint_linter::{IgnorePattern, Input, Linter, Tools, has_internal_error, path};
 
 use crate::flags::{Options, Parsed};
 
@@ -31,8 +33,9 @@ const EXIT_PROBLEM_FOUND: u8 = 1;
 /// The command line is invalid.
 const EXIT_INVALID_OPTION: u8 = 2;
 /// A file or stdin could not be read, the workflow files of a run without arguments could not be
-/// found, an `-ignore` pattern is invalid, the output could not be written, or the lint of a file
-/// hit a bug in workflint and reported an `internal-error` diagnostic.
+/// found, an `-ignore` pattern is invalid, the shellcheck that `-shellcheck` names was not found,
+/// the output could not be written, or the lint of a file hit a bug in workflint and reported an
+/// `internal-error` diagnostic.
 const EXIT_FAILURE: u8 = 3;
 
 fn main() -> ExitCode {
@@ -68,6 +71,13 @@ fn main() -> ExitCode {
             tracing::Level::INFO
         });
     }
+    let tools = match tools(&options, quiet) {
+        Ok(tools) => tools,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(EXIT_FAILURE);
+        }
+    };
     let stdout = io::stdout();
     let color = color::enabled(
         options.color,
@@ -76,7 +86,9 @@ fn main() -> ExitCode {
         stdout.is_terminal(),
     );
     let format = Format::new(&options, color);
-    let linter = Linter::new(path::working_dir()).with_ignore(ignore);
+    let linter = Linter::new(path::working_dir())
+        .with_ignore(ignore)
+        .with_tools(tools);
     let inputs = match inputs(&linter, paths, &options.stdin_filename) {
         Ok(inputs) => inputs,
         Err(message) => {
@@ -130,6 +142,42 @@ fn ignore_patterns(options: &Options) -> Result<Vec<IgnorePattern>, String> {
             })
         })
         .collect()
+}
+
+/// The external tools of the run: shellcheck unless `-shellcheck=` turns it off.
+///
+/// A shellcheck that `-shellcheck` names but that is not found is an error, which is the
+/// message to print. When the flag is not given and `shellcheck` is not on `PATH`, the run goes
+/// on without it, and a warning says so unless `quiet` is set.
+fn tools(options: &Options, quiet: bool) -> Result<Tools, String> {
+    let spec = options.shellcheck.as_deref().unwrap_or("shellcheck");
+    if spec.is_empty() {
+        return Ok(Tools::none());
+    }
+    let command = match ToolCommand::resolve(spec) {
+        Ok(command) => command,
+        Err(err) if options.shellcheck.is_some() => {
+            return Err(format!(
+                "shellcheck given with -shellcheck was not found: {err}"
+            ));
+        }
+        Err(err) => {
+            tracing::info!("Rule \"shellcheck\" was disabled: {err}");
+            if !quiet {
+                eprintln!(
+                    "warning: shellcheck was not found on PATH, so the scripts of run: steps are \
+                     not checked. Install shellcheck, or pass -shellcheck= to turn the check off"
+                );
+            }
+            return Ok(Tools::none());
+        }
+    };
+    let pool = match options.jobs {
+        Some(jobs) => ToolPool::new(jobs),
+        None => ToolPool::with_available_parallelism(),
+    }
+    .map_err(|err| format!("could not run shellcheck: {err}"))?;
+    Ok(Tools::none().with_shellcheck(command, Arc::new(pool), RunOptions::default()))
 }
 
 /// The result of a run.
@@ -308,9 +356,10 @@ mod tests {
     fn check_or_panic(
         file: &SourceFile,
         local: &dyn workflint_rules::local::LocalMetadata,
+        tools: &dyn workflint_rules::tools::ExternalTools,
     ) -> Vec<Diagnostic> {
         assert!(!file.path().ends_with("panics.yaml"), "a rule failed");
-        workflint_rules::check_file(file, local)
+        workflint_rules::check_file(file, local, tools)
     }
 
     /// Runs `linter` on `paths` in `dir` with one-line output, and returns the exit code and

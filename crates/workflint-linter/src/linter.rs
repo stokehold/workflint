@@ -19,6 +19,7 @@ use rayon::prelude::*;
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, Span, sort_and_dedup};
 use workflint_rules::local::{LocalMetadata, NoProject};
+use workflint_rules::tools::ExternalTools;
 use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
 use crate::cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
@@ -27,10 +28,12 @@ use crate::ignore::IgnorePattern;
 use crate::path;
 use crate::project::ProjectRoots;
 use crate::rules::INTERNAL_ERROR;
+use crate::tools::Tools;
 
-/// What lints one file: parses it, runs the rules with the project's local metadata, and
-/// returns the diagnostics. [`Linter::new`] uses [`workflint_rules::check_file`].
-pub type Check = fn(&SourceFile, &dyn LocalMetadata) -> Vec<Diagnostic>;
+/// What lints one file: parses it, runs the rules with the project's local metadata and the
+/// run's external tools, and returns the diagnostics. [`Linter::new`] uses
+/// [`workflint_rules::check_file`].
+pub type Check = fn(&SourceFile, &dyn LocalMetadata, &dyn ExternalTools) -> Vec<Diagnostic>;
 
 /// One input of a run: a file to read, or a workflow read from stdin.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,6 +135,7 @@ pub struct Linter {
     cwd: PathBuf,
     check: Check,
     ignore: Arc<[IgnorePattern]>,
+    tools: Arc<Tools>,
 }
 
 impl Linter {
@@ -143,6 +147,17 @@ impl Linter {
             cwd,
             check: workflint_rules::check_file,
             ignore: Arc::new([]),
+            tools: Arc::new(Tools::none()),
+        }
+    }
+
+    /// Returns the linter with `tools` as the external tools that check the scripts of the
+    /// files. [`Linter::new`] runs none.
+    #[must_use]
+    pub fn with_tools(self, tools: Tools) -> Self {
+        Self {
+            tools: Arc::new(tools),
+            ..self
         }
     }
 
@@ -371,7 +386,7 @@ impl Linter {
         // The view of the cache may hold a half-done lookup after a panic. The file's record
         // still lists only the lookups that finished, so the replay stays right.
         let checked = panic::catch_unwind(AssertUnwindSafe(|| {
-            let mut diagnostics = (self.check)(source, local);
+            let mut diagnostics = (self.check)(source, local, self.tools.as_ref());
             sort_and_dedup(source, &mut diagnostics);
             diagnostics
         }));
