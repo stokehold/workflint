@@ -1,6 +1,6 @@
 //! The SARIF 2.1.0 output of `-format sarif`, which GitHub code scanning reads (ADR 0007).
 //!
-//! [`Results::of`] turns the diagnostics of one file into SARIF results, and [`write`] prints
+//! [`Results::of`] turns the diagnostics of one file into SARIF results, and [`write()`] prints
 //! one log with one run: the tool, a `rules` entry for every rule it is given, and the results
 //! of every file. Regions count columns in UTF-16 code units. Each result has a
 //! `partialFingerprints` entry computed from the rule ID, the file path, and the text of the
@@ -34,7 +34,7 @@ pub(crate) struct Tool<'a> {
 #[derive(Debug, Clone)]
 pub(crate) struct Results(Vec<Entry>);
 
-/// One result, before [`write`] gives it the index of its rule.
+/// One result, before [`write()`] gives it the index of its rule.
 #[derive(Debug, Clone)]
 struct Entry {
     rule: &'static RuleMeta,
