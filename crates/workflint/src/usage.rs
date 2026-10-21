@@ -36,9 +36,7 @@ pub(crate) fn text() -> String {
 
     $ workflint -format '{{{{json .}}}}'
 
-  This version lints only the files it is given. Running without arguments
-  and the -format flag are not supported yet. Reading a workflow from stdin
-  with `-` is not supported yet.
+  This version does not support the -format flag yet.
 
 Documents:
 
