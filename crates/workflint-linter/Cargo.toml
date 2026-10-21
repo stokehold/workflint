@@ -1,6 +1,6 @@
 [package]
 name = "workflint-linter"
-description = "Project discovery and caches of workflint. Internal crate with no stability promise."
+description = "Parallel driver, project discovery, and caches of workflint. Internal crate with no stability promise."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,6 +14,8 @@ include = ["/src", "/README.md", "/LICENSE", "/NOTICE"]
 
 [dependencies]
 ctrlc = { version = "3.5.2", features = ["termination"] }
+rayon = "1.12.0"
+thiserror = "2.0.21"
 workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
 workflint-rules = { path = "../workflint-rules", version = "0.0.1" }
 workflint-syntax = { path = "../workflint-syntax", version = "0.0.1" }

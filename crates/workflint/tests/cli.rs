@@ -392,7 +392,7 @@ fn runner_with_threads(dir: &Path, files: &[String], threads: usize) -> Run {
 }
 
 #[test]
-fn the_first_file_in_argument_order_reports_a_broken_local_action_whatever_the_thread_count() {
+fn the_first_file_by_path_reports_a_broken_local_action_whatever_the_order_and_thread_count() {
     let project = project_with_broken_action(16);
     let mut files: Vec<String> = (0..16)
         .map(|index| format!(".github/workflows/w{index}.yaml"))
@@ -406,7 +406,7 @@ fn the_first_file_in_argument_order_reports_a_broken_local_action_whatever_the_t
         .collect();
     assert_eq!(lines.len(), 1, "{}", one.stdout);
     assert!(
-        lines[0].starts_with(".github/workflows/w15.yaml:6:15:"),
+        lines[0].starts_with(".github/workflows/w0.yaml:6:15:"),
         "{}",
         lines[0]
     );

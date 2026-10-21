@@ -201,21 +201,51 @@ pub const TIME_LIMIT: Duration = Duration::from_secs(60);
 /// Returns a message if the program cannot start, if it runs longer than
 /// [`TIME_LIMIT`], or if [`check`] rejects what it did.
 pub fn run(program: &Path, invocation: &Invocation) -> Result<String, String> {
-    run_with_limit(program, invocation, TIME_LIMIT)
+    run_with_limit(program, invocation, Threads::Inherited, TIME_LIMIT)
+}
+
+/// How many threads a run of workflint lints with, through `RAYON_NUM_THREADS`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Threads {
+    /// `RAYON_NUM_THREADS` as the runner's environment has it.
+    Inherited,
+    /// One thread.
+    One,
+    /// The default of rayon: one per CPU. `RAYON_NUM_THREADS` is removed.
+    Default,
+}
+
+/// Runs `program` as [`run`] does, with `threads` threads.
+///
+/// # Errors
+///
+/// As [`run`].
+pub fn run_with_threads(
+    program: &Path,
+    invocation: &Invocation,
+    threads: Threads,
+) -> Result<String, String> {
+    run_with_limit(program, invocation, threads, TIME_LIMIT)
 }
 
 fn run_with_limit(
     program: &Path,
     invocation: &Invocation,
+    threads: Threads,
     limit: Duration,
 ) -> Result<String, String> {
-    let captured = process::output(
-        Command::new(program)
-            .args(&invocation.args)
-            .current_dir(&invocation.cwd),
-        limit,
-    )
-    .map_err(|error| format!("{error:#}"))?;
+    let mut command = Command::new(program);
+    command.args(&invocation.args).current_dir(&invocation.cwd);
+    match threads {
+        Threads::Inherited => {}
+        Threads::One => {
+            command.env("RAYON_NUM_THREADS", "1");
+        }
+        Threads::Default => {
+            command.env_remove("RAYON_NUM_THREADS");
+        }
+    }
+    let captured = process::output(&mut command, limit).map_err(|error| format!("{error:#}"))?;
     let code = match captured.finished {
         Finished::Exited(status) => status.code(),
         Finished::TimedOut => {
@@ -375,7 +405,13 @@ mod tests {
             .prepare(&Tools::default())
             .unwrap();
         let start = std::time::Instant::now();
-        let error = run_with_limit(&script, &invocation, Duration::from_millis(500)).unwrap_err();
+        let error = run_with_limit(
+            &script,
+            &invocation,
+            Threads::Inherited,
+            Duration::from_millis(500),
+        )
+        .unwrap_err();
         assert!(error.contains("did not finish within"), "{error}");
         assert!(start.elapsed() < Duration::from_secs(10));
     }

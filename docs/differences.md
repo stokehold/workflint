@@ -175,7 +175,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a crash loses every other result.
 - Upstream issue: #753.
 - Milestone: M2.
-- Status: implemented in the parser. The `internal-error` diagnostic for a rule that panics is planned for M5.
+- Status: implemented in the parser. The `internal-error` diagnostic for a rule that panics is implemented in the driver since M5.3.
 
 <a id="yaml-node-limit"></a>
 ### Workflows over GitHub's YAML node limit
@@ -754,7 +754,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: the same input must give the same output.
 - Upstream issue: none.
 - Milestone: M5.
-- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The binary lints files in parallel, then replays their uses of the cache in the order given and lints again each file whose answers that order changes, so the first use is the first in that order whatever the thread count (#218). The `workflow-call` rule reports the errors of reusable workflows since M4.25. The `expression` rule types step outputs without reporting them since M4.9, and reports the errors of reusable workflows that typing `needs` finds since M4.10. The `action` rule reports the errors of local actions since M4.18. The order by file path follows with M5.3.
+- Status: the cache computes each entry once and gives its error to the first lookup only (M4.3). The driver lints files in parallel, then replays their uses of the cache in order and lints again each file whose answers that order changes, so the first use is the first in that order whatever the thread count (#218). Since M5.3 that order is the order of the files' absolute paths, compared by name, not the order of the arguments. The `workflow-call` rule reports the errors of reusable workflows since M4.25. The `expression` rule types step outputs without reporting them since M4.9, and reports the errors of reusable workflows that typing `needs` finds since M4.10. The `action` rule reports the errors of local actions since M4.18. An error in a linted reusable workflow is still reported at its first caller, not in the workflow itself as ADR 0013 asks.
 - Fixtures: `projects/broken_local_action`, `projects/broken_reusable_workflow`, `projects/workflow_call_not_found`.
 
 <a id="with-expression-errors"></a>

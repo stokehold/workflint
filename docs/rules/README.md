@@ -2,7 +2,7 @@
 
 Each rule has a page here, `docs/rules/<id>.md`, named after its rule ID (ADR 0008). The diagnostics of a rule end with its ID in brackets, such as `[unexpected-key]`, where actionlint prints the kind (see [Rule ID in brackets instead of the kind](../differences.md#rule-id-in-brackets)). The `docs_url` of the rule's `RuleMeta` links the page.
 
-The test `rule_pages` in `crates/workflint-rules/tests/rule_pages.rs` reads every page. It runs each example through the YAML layer, the workflow parser, and the rules, as the binary does, and compares the result with the page. It also checks that every registered rule has a page, that every page belongs to a registered rule, and that the index below matches the registry.
+The test `rule_pages` in `crates/workflint-linter/tests/rule_pages.rs` reads every page. It runs each example through the YAML layer, the workflow parser, and the rules, as the binary does, and compares the result with the page. It also checks that every registered rule has a page, that every page belongs to a registered rule, and that the index below matches the registry.
 
 ## Page format
 
@@ -74,6 +74,7 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`hardcoded-password`](hardcoded-password.md) | `credentials` | correctness | error | `credentials.password` of a container or service is not a single `${{ }}` expression |
 | [`if-always-true`](if-always-true.md) | `if-cond` | correctness | error | An `if:` condition has text around its `${{ }}`, so it is always true |
 | [`incomplete-credentials`](incomplete-credentials.md) | `syntax-check` | correctness | error | `credentials` of a container or service lacks `username` or `password` |
+| [`internal-error`](internal-error.md) | `internal-error` | correctness | error | workflint stopped linting a file because of a bug |
 | [`invalid-action-format`](invalid-action-format.md) | `action` | correctness | error | A step's `uses:` is not a local action, a Docker image, or `{owner}/{repo}@{ref}` |
 | [`invalid-activity-type`](invalid-activity-type.md) | `events` | correctness | error | `types` lists an activity type that the event does not have |
 | [`invalid-branding-color`](invalid-branding-color.md) | `action` | correctness | error | A local action's `branding.color` is not a color that GitHub supports |

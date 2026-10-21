@@ -78,6 +78,8 @@ jobs:
         crates/workflint-data/**
         crates/workflint-diagnostics/**
         crates/workflint-expr/**
+        crates/workflint-linter/**
+        crates/workflint-rules/**
         crates/workflint-syntax/**
         crates/workflint-yaml/**
         fuzz/**
