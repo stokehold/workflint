@@ -973,6 +973,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M5.8.
 - Status: implemented. From M5.12 (#249), the list has `pyflakes` when pyflakes runs.
 
+<a id="format-sarif"></a>
+### `-format sarif` prints SARIF
+
+- Upstream: `-format` takes only a template. `-format sarif` prints `template to format error messages must contain at least one {{ }} placeholder: sarif` and exits with code 3. SARIF output comes from the template in `testdata/format/sarif_template.txt`.
+- workflint: `-format sarif` prints a SARIF 2.1.0 log ([sarif.md](sarif.md)). It has a `rules` entry with a help link for every rule ID, regions with an end line and end column in UTF-16 code units, the labels of each error as related locations, and fingerprints without line numbers. Any other value without `{{` prints the upstream error, and templates, including the upstream SARIF template, work as upstream.
+- Why: the upstream template has one rule per kind, a region that ends on its start line, and no fingerprints, so code scanning can lose track of an alert when lines above it move (ADR 0007).
+- Upstream issue: none.
+- Milestone: M5.15.
+- Status: implemented.
+
 <a id="log-interleaving"></a>
 ### Log lines do not interleave
 

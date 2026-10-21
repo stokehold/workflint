@@ -14,6 +14,9 @@ categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anstream = "1.0.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
 tracing = { version = "0.1.44", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["registry", "std"] }
 workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
@@ -24,6 +27,8 @@ workflint-linter = { path = "../workflint-linter", version = "0.0.1" }
 workspace = true
 
 [dev-dependencies]
+boon = "0.6.1"
+insta = "1.49.0"
 regex = "1.13.1"
 tempfile = "3.27.0"
 workflint-rules = { path = "../workflint-rules", version = "0.0.1" }
