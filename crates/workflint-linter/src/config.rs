@@ -134,6 +134,8 @@ pub struct ShellcheckConfig {
     pub args: Vec<String>,
     /// `cache`: whether results are kept in the on-disk cache.
     pub cache: bool,
+    /// Whether the file has a `shellcheck` key that is not null, which asks for shellcheck.
+    pub requested: bool,
 }
 
 /// A config file that was read.
@@ -202,11 +204,15 @@ impl Config {
                 config_variables: document.config_variables,
             },
             paths,
-            shellcheck: ShellcheckConfig {
-                rcfile: document.shellcheck.rcfile,
-                args: document.shellcheck.args.unwrap_or_default(),
-                cache: document.shellcheck.cache.unwrap_or_default(),
-            },
+            shellcheck: document
+                .shellcheck
+                .map(|keys| ShellcheckConfig {
+                    rcfile: keys.rcfile,
+                    args: keys.args.unwrap_or_default(),
+                    cache: keys.cache.unwrap_or_default(),
+                    requested: true,
+                })
+                .unwrap_or_default(),
             tool_timeout: document.tool_timeout.map(Duration::from_secs),
             warnings,
         })
@@ -285,6 +291,17 @@ impl Config {
     #[must_use]
     pub fn tool_timeout(&self) -> Option<Duration> {
         self.tool_timeout
+    }
+
+    /// The error for a run whose shellcheck was not found, `reason`, when this file asks for
+    /// shellcheck with a `shellcheck` key.
+    pub(crate) fn missing_shellcheck(&self, reason: &str) -> Option<ConfigError> {
+        self.shellcheck.requested.then(|| {
+            ConfigError::new(format!(
+                "shellcheck that config file {} configures was not found: {reason}",
+                quote(&self.path.to_string_lossy())
+            ))
+        })
     }
 
     /// Reads `shellcheck.rcfile`, a path from `base`, and returns its path and its text, or

@@ -210,13 +210,14 @@ fn tools(options: &Options, quiet: bool) -> Result<Tools, String> {
         }
         Err(err) => {
             tracing::info!("Rule \"shellcheck\" was disabled: {err}");
+            let tools = Tools::none().with_shellcheck_not_found(err.to_string());
             if !quiet {
                 eprintln!(
                     "warning: shellcheck was not found on PATH, so the scripts of run: steps are \
                      not checked. Install shellcheck, or pass -shellcheck= to turn the check off"
                 );
             }
-            return Ok(Tools::none());
+            return Ok(tools);
         }
     };
     let pool = match options.jobs {

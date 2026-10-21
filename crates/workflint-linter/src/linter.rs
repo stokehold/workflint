@@ -292,7 +292,8 @@ impl Linter {
         };
         let mut roots = ProjectRoots::default();
         let mut caches = BTreeMap::new();
-        let mut settings = ProjectSettings::new(&self.flags, &self.cwd);
+        let mut settings =
+            ProjectSettings::new(&self.flags, &self.cwd, self.tools.shellcheck_not_found());
         let mut files = Vec::with_capacity(inputs.len());
         for input in inputs {
             let root = if input.stdin.is_some() {
@@ -570,26 +571,30 @@ struct File<'i> {
 struct ProjectSettings<'f> {
     flags: &'f Flags,
     cwd: &'f Path,
+    /// Why shellcheck does not run, when the default one was not found.
+    shellcheck_not_found: Option<&'f str>,
     /// The settings of each project root found so far, and under `None` those of the files in
     /// no project.
     projects: BTreeMap<Option<PathBuf>, Arc<Settings>>,
 }
 
 impl<'f> ProjectSettings<'f> {
-    fn new(flags: &'f Flags, cwd: &'f Path) -> Self {
+    fn new(flags: &'f Flags, cwd: &'f Path, shellcheck_not_found: Option<&'f str>) -> Self {
         if let Some(config) = &flags.config_file {
             warn(config);
         }
         Self {
             flags,
             cwd,
+            shellcheck_not_found,
             projects: BTreeMap::new(),
         }
     }
 
     /// Returns the settings of a file in the project at `root`, or in no project, reading the
     /// project's config file the first time. The config file of `-config-file` takes the place
-    /// of every project's.
+    /// of every project's. A config file that asks for a shellcheck that was not found is an
+    /// error.
     fn of(&mut self, root: Option<&Path>) -> Result<Arc<Settings>, ConfigError> {
         let key = root.map(Path::to_path_buf);
         if let Some(settings) = self.projects.get(&key) {
@@ -607,6 +612,11 @@ impl<'f> ProjectSettings<'f> {
             }
             (None, None) => None,
         };
+        if let (Some(config), Some(reason)) = (config, self.shellcheck_not_found)
+            && let Some(err) = config.missing_shellcheck(reason)
+        {
+            return Err(err);
+        }
         let settings = Arc::new(Settings::new(config, root.unwrap_or(self.cwd), self.flags)?);
         self.projects.insert(key, Arc::clone(&settings));
         Ok(settings)

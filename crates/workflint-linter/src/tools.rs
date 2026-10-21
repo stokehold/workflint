@@ -107,6 +107,8 @@ impl ShellcheckOptions {
 #[derive(Debug, Default)]
 pub struct Tools {
     shellcheck: Option<Shellcheck>,
+    /// Why shellcheck does not run, when the default one was not found.
+    shellcheck_not_found: Option<String>,
 }
 
 impl Tools {
@@ -126,6 +128,7 @@ impl Tools {
         options: RunOptions,
     ) -> Self {
         Self {
+            shellcheck_not_found: None,
             shellcheck: Some(Shellcheck {
                 command,
                 pool,
@@ -150,10 +153,27 @@ impl Tools {
         self
     }
 
+    /// Runs no shellcheck, because the default one was not found for `reason`. A project whose
+    /// config file asks for shellcheck then stops the run ([`LintError::Config`]).
+    ///
+    /// [`LintError::Config`]: crate::LintError::Config
+    #[must_use]
+    pub fn with_shellcheck_not_found(self, reason: String) -> Self {
+        Self {
+            shellcheck: None,
+            shellcheck_not_found: Some(reason),
+        }
+    }
+
     /// Whether shellcheck runs.
     #[must_use]
     pub fn has_shellcheck(&self) -> bool {
         self.shellcheck.is_some()
+    }
+
+    /// Why shellcheck does not run, when the default one was not found.
+    pub(crate) fn shellcheck_not_found(&self) -> Option<&str> {
+        self.shellcheck_not_found.as_deref()
     }
 
     /// The tools for the files of a project with `options`.

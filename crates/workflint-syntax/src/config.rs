@@ -36,8 +36,8 @@ pub struct ConfigDocument<P> {
     /// The entries of `paths`, in the order go-yaml sets them: as written, then the entries
     /// that `<<` keys merge in.
     pub paths: Vec<PathEntry<P>>,
-    /// `shellcheck`.
-    pub shellcheck: ShellcheckKeys,
+    /// `shellcheck`. `None` if the key is missing or null.
+    pub shellcheck: Option<ShellcheckKeys>,
     /// `tool-timeout`, in seconds. `None` if the key is missing or null.
     pub tool_timeout: Option<u64>,
     /// The keys that neither the reference nor workflint reads, in the order they are written. A key that a `<<`
@@ -166,7 +166,7 @@ impl<P> ConfigDocument<P> {
                 runner_labels: None,
                 config_variables: None,
                 paths: Vec::new(),
-                shellcheck: ShellcheckKeys::default(),
+                shellcheck: None,
                 tool_timeout: None,
                 unknown_keys: Vec::new(),
             };
@@ -192,8 +192,8 @@ impl<P> ConfigDocument<P> {
                                 d.string_slice(value, &mut config.config_variables)?;
                             }
                             3 => {
-                                let keys = &mut config.shellcheck;
-                                d.structure(
+                                let mut keys = ShellcheckKeys::default();
+                                let set = d.structure(
                                     value,
                                     "workflint.ShellcheckConfig",
                                     SHELLCHECK_FIELDS,
@@ -215,6 +215,9 @@ impl<P> ConfigDocument<P> {
                                         Ok(())
                                     },
                                 )?;
+                                if set {
+                                    config.shellcheck = Some(keys);
+                                }
                             }
                             4 => {
                                 config.tool_timeout =

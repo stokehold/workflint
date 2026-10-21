@@ -11,10 +11,10 @@ workflint reports it at the `run:` key of a script that [shellcheck-issue](shell
 - shellcheck cannot be started.
 - It exits with a status other than 0 and prints nothing to stdout. The message has its exit status and stderr.
 - A signal kills it.
-- It runs longer than 60 seconds, and workflint kills it.
+- It runs longer than 60 seconds, or the seconds of the config key [`tool-timeout`](../config.md#tool-timeout), and workflint kills it.
 - Its stdout is not the JSON that `-f json` prints. The message has the stdout.
 
-The other scripts and files are linted as usual, and the run exits with code 1.
+When one shellcheck process checks several scripts and fails, workflint checks each of them alone, so the diagnostic is the one the script gets alone. The other scripts and files are linted as usual, and the run exits with code 1.
 
 ## Why
 

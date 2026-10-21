@@ -1471,3 +1471,35 @@ fn shellcheck_cache_keeps_the_findings_under_xdg_cache_home() {
     let entries = std::fs::read_dir(cache.join("workflint").join("shellcheck")).unwrap();
     assert_eq!(entries.count(), 1);
 }
+
+#[test]
+fn a_config_file_with_shellcheck_keys_and_no_shellcheck_exits_with_3() {
+    let dir = without_shellcheck(&[("a.yaml", UNQUOTED)]);
+    let config = dir.path().join("workflint.yaml");
+    std::fs::write(&config, "shellcheck:\n  args: [-S, warning]\n").unwrap();
+    let run = run_without_shellcheck(dir.path(), &["-config-file", "workflint.yaml", "a.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(3),
+            stdout: String::new(),
+            stderr: format!(
+                "{MISSING_SHELLCHECK}shellcheck that config file \"workflint.yaml\" configures was \
+                 not found: executable \"shellcheck\" was not found on PATH\n"
+            ),
+        }
+    );
+    // `-shellcheck=` still turns the check off without a message.
+    let run = run_without_shellcheck(
+        dir.path(),
+        &["-shellcheck=", "-config-file", "workflint.yaml", "a.yaml"],
+    );
+    assert_eq!((run.code, run.stderr.as_str()), (Some(0), ""));
+    // A config file without `shellcheck` only warns.
+    std::fs::write(&config, "shellcheck:\nconfig-variables: []\n").unwrap();
+    let run = run_without_shellcheck(dir.path(), &["-config-file", "workflint.yaml", "a.yaml"]);
+    assert_eq!(
+        (run.code, run.stderr),
+        (Some(0), MISSING_SHELLCHECK.to_owned())
+    );
+}

@@ -1,6 +1,6 @@
 # Config file
 
-workflint reads actionlint's config file unchanged, and a config file of its own at `.github/workflint.yaml` (ADR 0010). This page lists where workflint looks for the file and every key that works today.
+workflint reads actionlint's config file unchanged, and a config file of its own at `.github/workflint.yaml` (ADR 0010). This page lists where workflint looks for the file and every key that works today. The keys that workflint adds, `shellcheck` and `tool-timeout`, work in an actionlint config file too, and actionlint ignores them.
 
 ## Where workflint looks
 
@@ -61,6 +61,41 @@ could not parse config file "/repo/.github/actionlint.yaml": yaml: unmarshal err
 
 A glob that matches no linted file does nothing, and workflint does not warn about it.
 
+### `shellcheck`
+
+How shellcheck checks `run:` scripts ([shellcheck-issue](rules/shellcheck-issue.md)):
+
+```yaml
+shellcheck:
+  rcfile: .shellcheckrc
+  args: [--severity=warning]
+  cache: true
+```
+
+A config file with a `shellcheck` key asks for shellcheck. If shellcheck is not installed, the run stops with exit code 3: `shellcheck that config file "<path>" configures was not found: <error>`. `-shellcheck=` still turns shellcheck off without a message.
+
+### `shellcheck.rcfile`
+
+A shellcheck rc file, as a path from the project root, such as `.shellcheckrc`. workflint passes it with `--rcfile` in place of `--norc`, so its directives, such as `disable=SC2086`, apply to every script. Without the key, workflint passes `--norc` as actionlint does, and no `.shellcheckrc` on the machine changes the results. With `-config-file`, the path starts at the project root of each linted file, or at the working directory for a file in no project. A file that cannot be read stops the run with exit code 3: `could not read shellcheck.rcfile "<path>" of config file "<path>": <error>`.
+
+### `shellcheck.args`
+
+More arguments for shellcheck, such as `[--severity=warning]` or `[-o, all]`. workflint passes them after its own arguments and before the script, as written. An argument that changes the output format, such as `-f gcc`, makes every script fail with [shellcheck-failed](rules/shellcheck-failed.md), because workflint reads shellcheck's JSON output. The `SHELLCHECK_OPTS` environment variable keeps working too.
+
+### `shellcheck.cache`
+
+`true` keeps the findings of each script in a cache on disk, so that a later run starts no shellcheck for a script it has checked before. The default is `false`. `-shellcheck-cache` turns the cache on for every project.
+
+The cache is the directory `$XDG_CACHE_HOME/workflint/shellcheck`. When `XDG_CACHE_HOME` is not set, it is `workflint/shellcheck` in the platform's cache directory: `~/.cache` on Linux, `~/Library/Caches` on macOS, and `%LOCALAPPDATA%` on Windows. An entry belongs to a hash of shellcheck's version, its arguments, the text of the rcfile, `SHELLCHECK_OPTS`, and the script, so a new shellcheck or a changed rcfile misses the cache. A run with the cache on starts `shellcheck --version` once to learn the version. workflint stores only findings, so a script that shellcheck could not check runs again next time. An entry that cannot be read or decoded counts as missing, and the run writes it again. workflint never deletes entries. Delete the directory to empty the cache.
+
+### `tool-timeout`
+
+How many seconds an external tool process, such as shellcheck, may run. When the time passes, workflint kills the process and reports [shellcheck-failed](rules/shellcheck-failed.md) on its script. The value is a whole number greater than 0, and the default is 60. workflint checks up to 64 scripts in one shellcheck process. When such a process times out, workflint checks each of its scripts alone, so each script gets the whole timeout. A value that is not a whole number greater than 0 stops the run with exit code 3:
+
+```text
+could not parse config file "/repo/.github/workflint.yaml": yaml: unmarshal errors:   line 1: "tool-timeout" must be a whole number of seconds greater than 0, but "0" was found at line:1,col:15
+```
+
 ## Creating a config file
 
 `workflint -init-config` writes `.github/workflint.yaml` in the project of the working directory, prints `Config file was generated at "<path>"`, and exits with code 0. The file has actionlint's template, with every key at its default and comments that explain them. workflint refuses to overwrite a config file: if the project has any of the four files above, it prints `config file already exists at "<path>"` and exits with code 3. Outside a project, it exits with code 3 too. The arguments after the flags, and `-config-file`, are ignored.
@@ -72,9 +107,10 @@ A glob that matches no linted file does nothing, and workflint does not warn abo
 - [Unknown config keys are reported](differences.md#config-unknown-keys).
 - [Non-string `ignore` entries are rejected](differences.md#config-ignore-entries).
 - [Config error messages](differences.md#config-error-messages).
+- [shellcheck settings and its cache](differences.md#shellcheck-settings).
 
 ## Coming later
 
 - A user config file in `$XDG_CONFIG_HOME/workflint/config.yaml`, and `--no-config`, in M9.4.
 - `rules`, to turn rules off and set their severity, in M9.2, and a published JSON Schema with `workflint config schema` in M9.3.
-- `python` settings with pyflakes in M5.12, `shellcheck` settings in M5.13, and `exclude` in M5.18.
+- `python` settings with pyflakes in M5.12, and `exclude` in M5.18.
