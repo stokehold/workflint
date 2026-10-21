@@ -164,8 +164,8 @@ impl Setup {
             .map_err(|error| format!("preparing {}: {error}", fixture.id))?;
         // A crash, a hang, another exit code or output on standard error
         // fails the fixture even when a list expects it to fail: the lists
-        // excuse wrong diagnostics, not a broken binary. So does output that
-        // depends on the thread count (ADR 0013).
+        // excuse wrong diagnostics, not a broken binary. So does output of
+        // workflint that depends on the thread count (ADR 0013).
         let run = |threads| {
             binary::run_with_threads(self.program.path(), &invocation, threads).map_err(|reason| {
                 match self.listings.get(&fixture.id) {
@@ -177,9 +177,14 @@ impl Setup {
             })
         };
         let stdout = run(Threads::One)?;
-        let parallel = run(Threads::Default)?;
-        if parallel != stdout {
-            return Err(thread_difference(&stdout, &parallel));
+        // The reference ignores `RAYON_NUM_THREADS`, and its output varies
+        // between runs on some fixtures, whose .out files accept every
+        // variant, such as `projects/workflow_call_not_found`.
+        if self.program == Program::Workflint {
+            let parallel = run(Threads::Default)?;
+            if parallel != stdout {
+                return Err(thread_difference(&stdout, &parallel));
+            }
         }
         let actual: Result<Vec<_>, String> =
             output::parse_output(&stdout).and_then(|diagnostics| {
