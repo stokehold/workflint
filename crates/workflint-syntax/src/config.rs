@@ -9,8 +9,11 @@ use workflint_yaml::{Entry, NodeId, NodeKind, Tag};
 
 use crate::typed::{DecodeError, Decoder, Source, UnmarshalError};
 
-/// The keys of the config's root mapping.
-const ROOT_FIELDS: &[&str] = &["self-hosted-runner", "config-variables", "paths"];
+/// The keys of the config's root mapping: the reference's, then workflint's.
+const ROOT_FIELDS: &[&str] = &["self-hosted-runner", "config-variables", "paths", "python"];
+
+/// The keys of `python`.
+const PYTHON_FIELDS: &[&str] = &["linter"];
 
 /// The Go type of `self-hosted-runner`, an anonymous struct, as go-yaml names it.
 const SELF_HOSTED_RUNNER_TYPE: &str = r#"struct { Labels []string "yaml:\"labels\"" }"#;
@@ -26,9 +29,47 @@ pub struct ConfigDocument<P> {
     /// The entries of `paths`, in the order go-yaml sets them: as written, then the entries
     /// that `<<` keys merge in.
     pub paths: Vec<PathEntry<P>>,
-    /// The keys that the reference ignores, in the order they are written. A key that a `<<`
-    /// key merges in more than once is listed once.
+    /// `python.linter`. `None` if the key is missing or null.
+    pub python_linter: Option<PythonLinter>,
+    /// The keys that neither the reference nor workflint reads, in the order they are written.
+    /// A key that a `<<` key merges in more than once is listed once.
     pub unknown_keys: Vec<UnknownKey>,
+}
+
+/// The value of `python.linter`: what checks the scripts of `shell: python` steps.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PythonLinter {
+    /// `auto`: ruff if it is installed, else pyflakes.
+    #[default]
+    Auto,
+    /// `ruff`, restricted to the pyflakes rules.
+    Ruff,
+    /// `pyflakes`.
+    Pyflakes,
+    /// `off`: nothing checks the scripts.
+    Off,
+}
+
+impl PythonLinter {
+    /// Every value, in the order the docs list them.
+    pub const ALL: [Self; 4] = [Self::Auto, Self::Ruff, Self::Pyflakes, Self::Off];
+
+    /// The value as written in the config file.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Ruff => "ruff",
+            Self::Pyflakes => "pyflakes",
+            Self::Off => "off",
+        }
+    }
+}
+
+impl fmt::Display for PythonLinter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
 }
 
 /// One entry of `paths`.
@@ -60,6 +101,8 @@ pub enum KeyParent {
     SelfHostedRunner,
     /// The value of the `paths` entry with this glob.
     Path(String),
+    /// `python`.
+    Python,
 }
 
 impl fmt::Display for UnknownKey {
@@ -70,6 +113,7 @@ impl fmt::Display for UnknownKey {
             KeyParent::Root => {}
             KeyParent::SelfHostedRunner => f.write_str(" in \"self-hosted-runner\"")?,
             KeyParent::Path(glob) => write!(f, " in \"paths\" entry {}", quote(glob))?,
+            KeyParent::Python => f.write_str(" in \"python\"")?,
         }
         write!(f, " at {}", self.position)
     }
@@ -138,6 +182,7 @@ impl<P> ConfigDocument<P> {
                 runner_labels: None,
                 config_variables: None,
                 paths: Vec::new(),
+                python_linter: None,
                 unknown_keys: Vec::new(),
             };
             if let Some(root) = root {
@@ -160,6 +205,20 @@ impl<P> ConfigDocument<P> {
                             }
                             1 => {
                                 d.string_slice(value, &mut config.config_variables)?;
+                            }
+                            3 => {
+                                d.structure(
+                                    value,
+                                    "workflint.PythonConfig",
+                                    PYTHON_FIELDS,
+                                    &mut |d, _, value| {
+                                        if let Some(linter) = d.custom(value, decode_python_linter)?
+                                        {
+                                            config.python_linter = Some(linter);
+                                        }
+                                        Ok(())
+                                    },
+                                )?;
                             }
                             _ => {
                                 d.string_map(
@@ -257,7 +316,37 @@ fn decode_ignore<P>(
     Ok(patterns)
 }
 
-/// Lists the keys under `root` that the reference does not read.
+/// Decodes `python.linter`, which must be the name of a [`PythonLinter`], with case.
+fn decode_python_linter(d: &mut Decoder<'_>, id: NodeId) -> Result<PythonLinter, DecodeError> {
+    let source = d.source();
+    let at = source.position(id);
+    let found = match source
+        .node(source.resolve_alias(id))
+        .map(|node| &node.kind)
+    {
+        Some(NodeKind::Scalar(scalar)) => {
+            if let Some(linter) = PythonLinter::ALL
+                .into_iter()
+                .find(|linter| linter.name() == &*scalar.value)
+            {
+                return Ok(linter);
+            }
+            quote(&scalar.value)
+        }
+        Some(NodeKind::Sequence(_)) => "sequence node".to_owned(),
+        Some(NodeKind::Mapping(_)) => "mapping node".to_owned(),
+        Some(NodeKind::Alias(_)) | None => "alias".to_owned(),
+    };
+    Err(DecodeError::Type(vec![UnmarshalError {
+        line: at.line,
+        message: format!(
+            "\"python.linter\" must be \"auto\", \"ruff\", \"pyflakes\", or \"off\", but {found} \
+             was found at {at}"
+        ),
+    }]))
+}
+
+/// Lists the keys under `root` that neither the reference nor workflint reads.
 fn unknown_keys(source: &Source<'_>, root: NodeId) -> Vec<UnknownKey> {
     let mut unknown = Vec::new();
     let mut seen = BTreeSet::new();
@@ -280,6 +369,13 @@ fn unknown_keys(source: &Source<'_>, root: NodeId) -> Vec<UnknownKey> {
                 }
             }
             "config-variables" => {}
+            "python" => {
+                for inner in entries(source, entry.value) {
+                    if !PYTHON_FIELDS.contains(&key_text(source, inner.key)) {
+                        add(inner.key, KeyParent::Python);
+                    }
+                }
+            }
             "paths" => {
                 for path in entries(source, entry.value) {
                     let glob = key_text(source, path.key);

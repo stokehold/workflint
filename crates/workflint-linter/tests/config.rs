@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 use tempfile::TempDir;
 use workflint_linter::config::{Config, ConfigKind, DEFAULT_CONFIG, init_config};
+use workflint_rules::PythonLinter;
 
 /// Parses `text` as an actionlint config file named `c.yaml`.
 fn parse(text: &str) -> Config {
@@ -288,6 +289,79 @@ fn every_paths_glob_that_matches_the_path_applies() {
             "{message:?} at {path}"
         );
     }
+}
+
+#[test]
+fn python_linter_takes_each_of_its_values_and_defaults_to_auto() {
+    let cases = [
+        ("", PythonLinter::Auto),
+        ("python:\n", PythonLinter::Auto),
+        ("python:\n  linter:\n", PythonLinter::Auto),
+        ("python:\n  linter: auto\n", PythonLinter::Auto),
+        ("python:\n  linter: ruff\n", PythonLinter::Ruff),
+        ("python:\n  linter: pyflakes\n", PythonLinter::Pyflakes),
+        ("python:\n  linter: 'off'\n", PythonLinter::Off),
+    ];
+    for (text, linter) in cases {
+        assert_eq!(parse(text).rules().python_linter, linter, "{text:?}");
+    }
+}
+
+#[test]
+fn python_linter_in_an_actionlint_file_is_read_without_a_warning() {
+    let config = parse("python:\n  linter: ruff\n");
+    assert_eq!(config.rules().python_linter, PythonLinter::Ruff);
+    assert!(config.warnings().is_empty(), "{:?}", config.warnings());
+}
+
+#[test]
+fn an_invalid_python_linter_is_an_error_that_lists_the_values() {
+    let expected = |found: &str, line: usize| {
+        format!(
+            "yaml: unmarshal errors:   line {line}: \"python.linter\" must be \"auto\", \"ruff\", \
+             \"pyflakes\", or \"off\", but {found} was found at line:{line},col:11"
+        )
+    };
+    assert_eq!(
+        parse_error("python:\n  linter: black\n"),
+        expected("\"black\"", 2)
+    );
+    // Case counts, as it does for every value of the config file.
+    assert_eq!(
+        parse_error("python:\n  linter: Ruff\n"),
+        expected("\"Ruff\"", 2)
+    );
+    // YAML 1.1 reads an unquoted `off` as a boolean, but go-yaml v3 does not.
+    assert_eq!(parse("python:\n  linter: off\n").rules().python_linter, PythonLinter::Off);
+    assert_eq!(
+        parse_error("python:\n  linter: [ruff]\n"),
+        expected("sequence node", 2)
+    );
+    assert_eq!(
+        parse_error("python: ruff\n"),
+        "yaml: unmarshal errors:   line 1: cannot unmarshal !!str `ruff` into workflint.PythonConfig"
+    );
+}
+
+#[test]
+fn an_unknown_key_under_python_is_a_warning_or_an_error() {
+    let text = "python:\n  lint: ruff\n";
+    let warnings: Vec<String> = parse(text)
+        .warnings()
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+    assert_eq!(
+        warnings,
+        [r#"config file "c.yaml": unknown key "lint" in "python" at line:2,col:3 is ignored"#]
+    );
+    let err = Config::parse(Path::new("workflint.yaml"), ConfigKind::Workflint, text)
+        .unwrap_err()
+        .to_string();
+    assert_eq!(
+        err,
+        r#"could not parse config file "workflint.yaml": unknown key "lint" in "python" at line:2,col:3"#
+    );
 }
 
 #[test]
