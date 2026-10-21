@@ -59,7 +59,7 @@ workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <c
 
 - `-oneline` prints one line per error, the form that [Matching](#matching) parses.
 - `-no-color` keeps escape sequences out of the output whatever the environment, as `-color` or a terminal would add them. `NO_COLOR` and `TERM` do not matter with it.
-- workflint runs the shellcheck that `-shellcheck` names. It accepts `-pyflakes`, and ignores it until pyflakes (M5.12, #249) uses it. It reads the config file of `-config-file`, which replaces the config file of the project.
+- workflint runs the shellcheck that `-shellcheck` names and the pyflakes that `-pyflakes` names. `-pyflakes` wins over the default `python.linter: auto`, so the fixtures run pyflakes, not ruff, also when ruff is installed. It reads the config file of `-config-file`, which replaces the config file of the project.
 - The runner passes none of `-ignore`, `-color`, `-verbose`, `-debug`, `-format`, `-summary`, `-quiet`, and `-silent`, so standard output holds only the errors and standard error stays empty.
 - `<config>` is `<temp>/project/actionlint.yaml` for a project that has one, and `<temp>/config.yaml` otherwise. Passing a config file means the CLI reads no config from the workflint repository or from the user's config directory.
 - `<files>` is `test.yaml`, or a project's workflow files as relative paths with `/` separators, such as `workflows/nested/piyo.yaml`, in the order of Go's `filepath.Walk`. actionlint's CLI does not accept a directory.
@@ -67,7 +67,7 @@ workflint -oneline -no-color -shellcheck=<path> -pyflakes=<path> -config-file <c
   - `err` and `examples` fixtures turn a tool on only if the file name contains `shellcheck` or `pyflakes`.
   - `ok` fixtures turn on every tool found on `PATH`.
   - `projects` turn both off.
-  - A fixture whose file name contains a tool's name is skipped, with a message, if the tool is not on `PATH`. The Linux legs of the CI test job install shellcheck 0.11.0 and the pyflakes version in `requirements.txt`, so these fixtures run there.
+  - A fixture whose file name contains a tool's name is skipped, with a message, if the tool is not on `PATH`. The Linux legs of the CI test job install shellcheck 0.11.0 and the pyflakes and ruff versions in `requirements.txt`, so these fixtures run there.
 - Standard input is empty.
 - Exit code 0 means no errors, and exit code 1 means errors were found. The fixture fails, with a message that names the cause, if the binary exits with 0 and prints output, exits with 1 and prints nothing, exits with any other code, is stopped by a signal, or prints anything to standard error. It fails this way even when `expected-failures.toml` lists it, because that file excuses wrong diagnostics, not a crash.
 - The runner kills the binary, and its child processes on Unix, after 60 seconds, and fails the fixture.

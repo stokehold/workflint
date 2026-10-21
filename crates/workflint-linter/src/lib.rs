@@ -39,9 +39,10 @@ pub use cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
 pub use discover::DiscoveryError;
 pub use ignore::{IgnorePattern, PatternError};
 pub use linter::{
-    Check, FILE_SPAN, Input, LintError, Linted, Linter, ReadError, STDIN, StdinError,
+    Check, FILE_SPAN, Input, LintError, Linted, Linter, MissingTool, ReadError, STDIN, StdinError,
     has_internal_error,
 };
 pub use project::ProjectRoots;
 pub use settings::{Flags, Settings};
 pub use tools::Tools;
+pub use workflint_rules::PythonLinter;

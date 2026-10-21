@@ -69,7 +69,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: users want the editor or annotation to point at the faulty line (ADR 0012).
 - Upstream issue: #88, #360, PR #556.
 - Milestone: M5.
-- Status: implemented for shellcheck. pyflakes follows with M5.12 (#249).
+- Status: implemented. A pyflakes finding has no end, so its span is empty. pyflakes counts the column of a syntax error in characters and of any other finding in bytes, and ruff counts characters. A pyflakes finding without a line, such as `<stdin>: problem decoding source`, is reported at the `run:` key. In `examples/pyflakes_integration`, the finding upstream reports at `19:9`, the `run:` key, is at `21:15`, the `sys` of `for sys in`.
 - Fixtures: the shellcheck and pyflakes lines in `err/` and `examples/`.
 
 <a id="yaml-error-positions"></a>
@@ -1039,11 +1039,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### A tool failure does not abort the run
 
 - Upstream: if shellcheck or pyflakes exits with an error and no output, is killed by a signal, prints invalid JSON, or prints output without a final newline, the whole run stops with exit code 3 and prints no lint results.
-- workflint: the failure becomes a diagnostic at the `run:` key of that script, with rule ID `shellcheck-failed` or `pyflakes-failed`, and the other scripts and files are still linted (ADR 0012). The run exits with code 1 because a diagnostic was reported. A timeout and a tool that cannot be started are failures too. The message of invalid JSON is upstream's, `could not parse JSON output from shellcheck: <error>: stdout=<quoted output>`, with the JSON parser's error text in place of Go's. The other messages start with `shellcheck did not run successfully while checking this script:` and name shellcheck instead of the path of its executable.
+- workflint: the failure becomes a diagnostic at the `run:` key of that script, with rule ID `shellcheck-failed` or `pyflakes-failed`, and the other scripts and files are still linted (ADR 0012). The run exits with code 1 because a diagnostic was reported. A timeout and a tool that cannot be started are failures too. The message of invalid JSON is upstream's, `could not parse JSON output from shellcheck: <error>: stdout=<quoted output>`, with the JSON parser's error text in place of Go's. The other messages start with `shellcheck did not run successfully while checking this script:` and name shellcheck instead of the path of its executable. For pyflakes, output without a final line break keeps upstream's message, `error message from pyflakes does not end with \n nor \r\n while checking this script. output: <quoted output>`, without the position. pyflakes exiting with a status other than 0 without printing a `<stdin>:` line, such as a Python traceback, is a failure too, where upstream reports nothing. For ruff, an exit status other than 0 and 1 and output that is not JSON are failures. The messages name pyflakes or ruff.
 - Why: one bad script should not hide every other result.
 - Upstream issue: none.
 - Milestone: M5.
-- Status: implemented for shellcheck (`shellcheck-failed`). `pyflakes-failed` is a proposal until M5.12 (#249).
+- Status: implemented: `shellcheck-failed` since M5.5, `pyflakes-failed` since M5.12.
 
 <a id="missing-tools"></a>
 ### Missing tools are reported
@@ -1053,7 +1053,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: results silently differed between machines with and without the tools.
 - Upstream issue: #189, #347.
 - Milestone: M5.
-- Status: implemented for shellcheck and `-shellcheck`. pyflakes follows with M5.12 (#249), and the config keys with M5.13 (#250).
+- Status: implemented for shellcheck and `-shellcheck` since M5.5, and for pyflakes, ruff, `-pyflakes`, and `python.linter` since M5.12. With `python.linter: auto`, the default, the warning `neither ruff nor pyflakes was found on PATH ...` comes with the first Python script of the run, so a run without Python scripts prints none. A `ruff` or `pyflakes` that `python.linter` names and that is not found exits with code 3. The shellcheck config keys follow with M5.13 (#250).
 
 <a id="external-process-hangs"></a>
 ### External processes cannot hang the run
@@ -1063,17 +1063,17 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: CI jobs hung for hours.
 - Upstream issue: #702, #704, #712.
 - Milestone: M5.
-- Status: `workflint_linter::tool` runs the processes this way since M5.4. A timed-out shellcheck gives a `shellcheck-failed` diagnostic since M5.5, and pyflakes follows with M5.12 (#249).
+- Status: `workflint_linter::tool` runs the processes this way since M5.4. A timed-out shellcheck gives a `shellcheck-failed` diagnostic since M5.5, and a timed-out pyflakes or ruff a `pyflakes-failed` diagnostic since M5.12.
 
 <a id="python-linter-auto"></a>
 ### ruff is used for Python scripts when installed
 
 - Upstream: `shell: python` scripts are checked with pyflakes.
-- workflint: config `python.linter` takes `auto`, `ruff`, `pyflakes` or `off`. The default, `auto`, uses ruff restricted to the pyflakes rule set if ruff is installed, and otherwise pyflakes. The `-pyflakes` flag keeps working as in actionlint. With ruff, the finding text after `pyflakes reported issue in this script:` comes from ruff and can differ from pyflakes' wording (ADR 0012).
+- workflint: config `python.linter` takes `auto`, `ruff`, `pyflakes` or `off`. The default, `auto`, uses ruff restricted to the pyflakes rule set if ruff is installed, and otherwise pyflakes. ruff runs as `ruff check --isolated --no-cache --select F --output-format json -`, so no ruff config file changes its findings. The `-pyflakes` flag keeps working as in actionlint and wins over `python.linter`: `-pyflakes=PATH` runs that pyflakes, and `-pyflakes=` checks nothing. With ruff, the finding text after `pyflakes reported issue in this script:` is the line and column, then ruff's code and message as its `concise` output prints them, such as `1:7: F821 Undefined name `hello``, so it differs from pyflakes' wording, `1:7: undefined name 'hello'` (ADR 0012). The rule IDs, `pyflakes-issue` and `pyflakes-failed`, and the kind, `pyflakes`, stay. `-ignore` patterns written for pyflakes' messages do not match ruff's.
 - Why: ruff is faster and more often installed than pyflakes.
 - Upstream issue: #439.
 - Milestone: M5.
-- Status: planned.
+- Status: implemented. Tests in `crates/workflint/tests/cli.rs`: `auto_uses_ruff_when_it_is_on_path_and_pyflakes_otherwise`, `python_linter_picks_ruff_or_pyflakes`, `the_pyflakes_flag_wins_over_python_linter`. In `crates/workflint-linter/tests/pyflakes.rs`: `the_real_ruff_points_at_the_right_line_and_column_of_the_file`.
 
 ## Investigated and kept
 

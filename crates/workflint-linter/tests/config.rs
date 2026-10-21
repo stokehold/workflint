@@ -332,7 +332,10 @@ fn an_invalid_python_linter_is_an_error_that_lists_the_values() {
         expected("\"Ruff\"", 2)
     );
     // YAML 1.1 reads an unquoted `off` as a boolean, but go-yaml v3 does not.
-    assert_eq!(parse("python:\n  linter: off\n").rules().python_linter, PythonLinter::Off);
+    assert_eq!(
+        parse("python:\n  linter: off\n").rules().python_linter,
+        PythonLinter::Off
+    );
     assert_eq!(
         parse_error("python:\n  linter: [ruff]\n"),
         expected("sequence node", 2)

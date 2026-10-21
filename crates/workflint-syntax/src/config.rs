@@ -212,7 +212,8 @@ impl<P> ConfigDocument<P> {
                                     "workflint.PythonConfig",
                                     PYTHON_FIELDS,
                                     &mut |d, _, value| {
-                                        if let Some(linter) = d.custom(value, decode_python_linter)?
+                                        if let Some(linter) =
+                                            d.custom(value, decode_python_linter)?
                                         {
                                             config.python_linter = Some(linter);
                                         }
@@ -320,10 +321,7 @@ fn decode_ignore<P>(
 fn decode_python_linter(d: &mut Decoder<'_>, id: NodeId) -> Result<PythonLinter, DecodeError> {
     let source = d.source();
     let at = source.position(id);
-    let found = match source
-        .node(source.resolve_alias(id))
-        .map(|node| &node.kind)
-    {
+    let found = match source.node(source.resolve_alias(id)).map(|node| &node.kind) {
         Some(NodeKind::Scalar(scalar)) => {
             if let Some(linter) = PythonLinter::ALL
                 .into_iter()

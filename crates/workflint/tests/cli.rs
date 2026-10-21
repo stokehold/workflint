@@ -24,22 +24,28 @@ fn cli_dir() -> PathBuf {
 /// A command that runs the binary with `args` in `dir`, without the environment variables
 /// that change its output.
 ///
-/// Unless `args` set `-shellcheck`, the command starts with `-shellcheck=`, after a leading
-/// `check`, so the output does not depend on whether shellcheck is installed.
+/// Unless `args` set `-shellcheck` or `-pyflakes`, the command starts with `-shellcheck=` or
+/// `-pyflakes=`, after a leading `check`, so the output does not depend on whether shellcheck,
+/// pyflakes, or ruff is installed.
 fn command<S: AsRef<std::ffi::OsStr>>(dir: &Path, args: &[S]) -> Command {
     let args: Vec<&std::ffi::OsStr> = args.iter().map(AsRef::as_ref).collect();
-    let sets_shellcheck = args.iter().any(|arg| {
-        let arg = arg.to_string_lossy();
-        arg.starts_with("-shellcheck") || arg.starts_with("--shellcheck")
-    });
+    let sets = |flag: &str| {
+        args.iter().any(|arg| {
+            let arg = arg.to_string_lossy();
+            arg.trim_start_matches('-').starts_with(flag) && arg.starts_with('-')
+        })
+    };
     let mut command = Command::new(env!("CARGO_BIN_EXE_workflint"));
     let (first, rest) = match args.split_first() {
         Some((first, rest)) if *first == "check" => (Some(*first), rest),
         _ => (None, &args[..]),
     };
     command.args(first);
-    if !sets_shellcheck {
+    if !sets("shellcheck") {
         command.arg("-shellcheck=");
+    }
+    if !sets("pyflakes") {
+        command.arg("-pyflakes=");
     }
     command
         .args(rest)
@@ -242,7 +248,7 @@ fn go_flag_forms_are_accepted() {
         "--no-color",
         "-shellcheck",
         "",
-        "--pyflakes=/usr/bin/pyflakes",
+        "--pyflakes=",
         "-config-file=config.yaml",
         "broken.yaml",
     ]);
@@ -770,8 +776,6 @@ fn flags_of_later_tasks_are_accepted_and_ignored() {
         "{{json .}}",
         "-stdin-filename",
         "name.yaml",
-        "-pyflakes",
-        "pyflakes",
         "broken.yaml",
     ]);
     assert_eq!(
@@ -1054,7 +1058,11 @@ fn without_shellcheck(files: &[(&str, &str)]) -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir(dir.path().join("bin")).unwrap();
     for (name, text) in files {
-        std::fs::write(dir.path().join(name), text).unwrap();
+        let path = name
+            .split('/')
+            .fold(dir.path().to_path_buf(), |path, part| path.join(part));
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
     }
     dir
 }
@@ -1162,6 +1170,195 @@ fn shellcheck_from_path_checks_run_scripts() {
             stderr: String::new(),
         }
     );
+}
+
+/// A file with a `shell: python` script that pyflakes and ruff report.
+const PYTHON: &str = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(hello)\n        shell: python\n";
+
+/// Writes `files` into a new project with a `bin` directory, for `PATH`, that has a copy of each
+/// of `tools` from `PATH`. Returns `None` if one of `tools` is not installed.
+fn with_tools(files: &[(&str, &str)], tools: &[&str]) -> Option<tempfile::TempDir> {
+    let dir = without_shellcheck(files);
+    std::fs::create_dir(dir.path().join(".git")).unwrap();
+    std::fs::create_dir_all(dir.path().join(".github/workflows")).unwrap();
+    for tool in tools {
+        let name = format!("{tool}{}", std::env::consts::EXE_SUFFIX);
+        let found = std::env::var_os("PATH").and_then(|path| {
+            std::env::split_paths(&path)
+                .map(|dir| dir.join(&name))
+                .find(|path| path.is_file())
+        });
+        let Some(found) = found else {
+            eprintln!("skipped: {tool} is not installed");
+            return None;
+        };
+        std::fs::copy(&found, dir.path().join("bin").join(&name)).unwrap();
+    }
+    Some(dir)
+}
+
+/// The config file `.github/workflint.yaml` with `python.linter` set to `linter`.
+fn python_linter(linter: &str) -> (&'static str, String) {
+    (
+        ".github/workflint.yaml",
+        format!("python:\n  linter: {linter}\n"),
+    )
+}
+
+const MISSING_PYTHON_LINTER: &str = "warning: neither ruff nor pyflakes was found on PATH, so the \
+                                     scripts of shell: python steps are not checked. Install ruff \
+                                     or pyflakes, or pass -pyflakes= to turn the check off\n";
+
+#[test]
+fn without_ruff_and_pyflakes_a_python_script_prints_one_warning() {
+    let dir = without_shellcheck(&[("a.yaml", PYTHON), ("b.yaml", PYTHON)]);
+    let run = run_without_shellcheck(
+        dir.path(),
+        &["-oneline", "-shellcheck=", "a.yaml", "b.yaml"],
+    );
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: String::new(),
+            stderr: MISSING_PYTHON_LINTER.to_owned(),
+        }
+    );
+    for flag in ["-quiet", "-silent"] {
+        let run = run_without_shellcheck(dir.path(), &[flag, "-shellcheck=", "a.yaml"]);
+        assert_eq!(run.stderr, "", "{flag}");
+    }
+}
+
+#[test]
+fn without_ruff_and_pyflakes_a_file_without_python_prints_no_warning() {
+    let dir = without_shellcheck(&[("a.yaml", UNQUOTED)]);
+    let run = run_without_shellcheck(dir.path(), &["-shellcheck=", "a.yaml"]);
+    assert_eq!(run.stderr, "");
+    assert_eq!(run.code, Some(0));
+}
+
+#[test]
+fn a_missing_pyflakes_named_by_the_flag_exits_with_3() {
+    let dir = without_shellcheck(&[("a.yaml", UNQUOTED)]);
+    let run = run_without_shellcheck(
+        dir.path(),
+        &["-shellcheck=", "-pyflakes=pyflakes", "a.yaml"],
+    );
+    assert_eq!(
+        run,
+        Run {
+            code: Some(3),
+            stdout: String::new(),
+            stderr: "pyflakes given with -pyflakes was not found: executable \"pyflakes\" was not \
+                     found on PATH\n"
+                .to_owned(),
+        }
+    );
+}
+
+#[test]
+fn a_python_linter_that_the_config_names_and_that_is_missing_exits_with_3() {
+    for linter in ["ruff", "pyflakes"] {
+        let config = python_linter(linter);
+        let dir = with_tools(&[(config.0, &config.1), ("a.yaml", UNQUOTED)], &[]).unwrap();
+        let run = run_without_shellcheck(dir.path(), &["-shellcheck=", "a.yaml"]);
+        assert_eq!(run.code, Some(3), "{linter}: {}", run.stderr);
+        assert!(
+            run.stderr.starts_with("python.linter in config file \"")
+                && run.stderr.ends_with(&format!(
+                    "workflint.yaml\" is \"{linter}\", but {linter} was not found on PATH\n"
+                )),
+            "{linter}: {}",
+            run.stderr
+        );
+    }
+}
+
+#[test]
+fn python_linter_off_and_an_empty_pyflakes_flag_check_nothing_without_a_message() {
+    let config = python_linter("'off'");
+    let dir = with_tools(&[(config.0, &config.1), ("a.yaml", PYTHON)], &[]).unwrap();
+    let run = run_without_shellcheck(dir.path(), &["-shellcheck=", "a.yaml"]);
+    assert_eq!(
+        run,
+        Run {
+            code: Some(0),
+            stdout: String::new(),
+            stderr: String::new(),
+        }
+    );
+    // `-pyflakes=` turns the check off also when the config file names a linter.
+    let config = python_linter("ruff");
+    let dir = with_tools(&[(config.0, &config.1), ("a.yaml", PYTHON)], &[]).unwrap();
+    let run = run_without_shellcheck(dir.path(), &["-shellcheck=", "-pyflakes=", "a.yaml"]);
+    assert_eq!(run.code, Some(0), "{}", run.stderr);
+    assert_eq!(run.stderr, "");
+}
+
+/// The finding of pyflakes in [`PYTHON`].
+const PYFLAKES_HELLO: &str = "a.yaml:6:20: pyflakes reported issue in this script: 1:7: \
+                              undefined name 'hello' [pyflakes-issue]\n";
+
+/// The finding of ruff in [`PYTHON`].
+const RUFF_HELLO: &str = "a.yaml:6:20: pyflakes reported issue in this script: 1:7: F821 \
+                          Undefined name `hello` [pyflakes-issue]\n";
+
+#[test]
+fn auto_uses_ruff_when_it_is_on_path_and_pyflakes_otherwise() {
+    let args = ["-oneline", "-shellcheck=", "a.yaml"];
+    let Some(both) = with_tools(&[("a.yaml", PYTHON)], &["ruff", "pyflakes"]) else {
+        return;
+    };
+    let run = run_without_shellcheck(both.path(), &args);
+    assert_eq!(
+        (run.code, run.stdout.as_str(), run.stderr.as_str()),
+        (Some(1), RUFF_HELLO, "")
+    );
+    let Some(pyflakes) = with_tools(&[("a.yaml", PYTHON)], &["pyflakes"]) else {
+        return;
+    };
+    let run = run_without_shellcheck(pyflakes.path(), &args);
+    assert_eq!(
+        (run.code, run.stdout.as_str(), run.stderr.as_str()),
+        (Some(1), PYFLAKES_HELLO, "")
+    );
+}
+
+#[test]
+fn python_linter_picks_ruff_or_pyflakes() {
+    for (linter, expected) in [
+        ("ruff", RUFF_HELLO),
+        ("pyflakes", PYFLAKES_HELLO),
+        ("auto", RUFF_HELLO),
+    ] {
+        let config = python_linter(linter);
+        let Some(dir) = with_tools(
+            &[(config.0, &config.1), ("a.yaml", PYTHON)],
+            &["ruff", "pyflakes"],
+        ) else {
+            return;
+        };
+        let run = run_without_shellcheck(dir.path(), &["-oneline", "-shellcheck=", "a.yaml"]);
+        assert_eq!(run.stdout, expected, "{linter}: {}", run.stderr);
+        assert_eq!(run.code, Some(1), "{linter}");
+    }
+}
+
+#[test]
+fn the_pyflakes_flag_wins_over_python_linter() {
+    let config = python_linter("ruff");
+    let Some(dir) = with_tools(
+        &[(config.0, &config.1), ("a.yaml", PYTHON)],
+        &["ruff", "pyflakes"],
+    ) else {
+        return;
+    };
+    let run = run_without_shellcheck(
+        dir.path(),
+        &["-oneline", "-shellcheck=", "-pyflakes=pyflakes", "a.yaml"],
+    );
+    assert_eq!(run.stdout, PYFLAKES_HELLO, "{}", run.stderr);
 }
 
 #[test]

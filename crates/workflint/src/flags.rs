@@ -25,7 +25,9 @@ pub(crate) struct Options {
     pub(crate) jobs: Option<NonZeroUsize>,
     pub(crate) no_color: bool,
     pub(crate) oneline: bool,
-    pub(crate) pyflakes: String,
+    /// `-pyflakes`, or `None` when the flag is not given and `python.linter` picks the Python
+    /// linter.
+    pub(crate) pyflakes: Option<String>,
     pub(crate) quiet: bool,
     /// `-shellcheck`, or `None` when the flag is not given and shellcheck runs if it is found.
     pub(crate) shellcheck: Option<String>,
@@ -58,7 +60,7 @@ impl Default for Options {
             jobs: None,
             no_color: false,
             oneline: false,
-            pyflakes: default_of("pyflakes"),
+            pyflakes: None,
             quiet: false,
             shellcheck: None,
             silent: false,
@@ -166,8 +168,9 @@ pub(crate) static FLAGS: [Flag; 19] = [
         "pyflakes",
         Some("pyflakes"),
         "Command name or file path of \"pyflakes\" external command. If empty, pyflakes \
-         integration will be disabled. Not supported yet",
-        |options, value| options.pyflakes = value,
+         integration will be disabled. If given, pyflakes checks Python scripts whatever \
+         python.linter says",
+        |options, value| options.pyflakes = Some(value),
     ),
     Flag::bool(
         "oneline",
@@ -489,7 +492,7 @@ mod tests {
                 jobs: NonZeroUsize::new(3),
                 no_color: true,
                 oneline: true,
-                pyflakes: "p".to_owned(),
+                pyflakes: Some("p".to_owned()),
                 quiet: true,
                 shellcheck: Some("s".to_owned()),
                 silent: true,
@@ -505,10 +508,11 @@ mod tests {
     #[test]
     fn string_flags_default_to_the_reference_values() {
         let defaults = Options::default();
-        assert_eq!(defaults.pyflakes, "pyflakes");
         assert_eq!(defaults.stdin_filename, "<stdin>");
-        let shellcheck = FLAGS.iter().find(|flag| flag.name == "shellcheck");
-        assert_eq!(shellcheck.and_then(|flag| flag.default), Some("shellcheck"));
+        for name in ["shellcheck", "pyflakes"] {
+            let flag = FLAGS.iter().find(|flag| flag.name == name);
+            assert_eq!(flag.and_then(|flag| flag.default), Some(name));
+        }
     }
 
     #[test]
@@ -518,6 +522,16 @@ mod tests {
         assert_eq!(
             options(&["-shellcheck", "shellcheck"]).shellcheck,
             Some("shellcheck".to_owned())
+        );
+    }
+
+    #[test]
+    fn pyflakes_is_none_unless_given_and_may_be_empty() {
+        assert_eq!(options(&[]).pyflakes, None);
+        assert_eq!(options(&["-pyflakes="]).pyflakes, Some(String::new()));
+        assert_eq!(
+            options(&["-pyflakes", "pyflakes"]).pyflakes,
+            Some("pyflakes".to_owned())
         );
     }
 

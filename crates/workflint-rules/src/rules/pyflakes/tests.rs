@@ -189,8 +189,14 @@ fn expressions_are_replaced_and_no_line_is_added() {
 
 #[test]
 fn every_script_of_the_file_goes_in_one_call_with_the_configured_linter() {
-    let text = one_step("run: print(1)\n        shell: python\n      - run: print(2)\n        shell: python\n");
-    for linter in [PythonLinter::Auto, PythonLinter::Ruff, PythonLinter::Pyflakes] {
+    let text = one_step(
+        "run: print(1)\n        shell: python\n      - run: print(2)\n        shell: python\n",
+    );
+    for linter in [
+        PythonLinter::Auto,
+        PythonLinter::Ruff,
+        PythonLinter::Pyflakes,
+    ] {
         let tools = Canned::findings(Vec::new());
         lint_with(&text, &tools, linter);
         assert_eq!(
@@ -214,7 +220,8 @@ fn python_linter_off_collects_no_script() {
 #[test]
 fn a_finding_points_at_its_line_and_column_in_a_literal_block() {
     let tools = Canned::findings(vec![pyflakes(2, 7, HELLO)]);
-    let text = one_step("run: |\n          import os\n          print(hello)\n        shell: python\n");
+    let text =
+        one_step("run: |\n          import os\n          print(hello)\n        shell: python\n");
     assert_eq!(
         lint(&text, &tools),
         [format!(
@@ -227,8 +234,11 @@ fn a_finding_points_at_its_line_and_column_in_a_literal_block() {
 fn a_pyflakes_column_counts_bytes_and_a_ruff_column_counts_characters() {
     // `é` is two bytes. `hello` starts at byte 16 and at character 15, from 0.
     let text = one_step("run: x = 'é'; print(hello)\n        shell: python\n");
-    let expected =
-        |message: &str| format!("test.yaml:6:29: pyflakes reported issue in this script: {message} [pyflakes-issue]");
+    let expected = |message: &str| {
+        format!(
+            "test.yaml:6:29: pyflakes reported issue in this script: {message} [pyflakes-issue]"
+        )
+    };
     let tools = Canned::findings(vec![pyflakes(1, 17, HELLO)]);
     assert_eq!(lint(&text, &tools), [expected(&format!("1:17: {HELLO}"))]);
     let tools = Canned::findings(vec![PythonFinding {
@@ -256,7 +266,9 @@ fn a_finding_without_a_column_points_at_the_start_of_its_line() {
     let text = one_step("run: |\n          a = 1\n          b = = 2\n        shell: python\n");
     assert_eq!(
         lint(&text, &tools),
-        ["test.yaml:8:11: pyflakes reported issue in this script: 2: invalid syntax [pyflakes-issue]"]
+        [
+            "test.yaml:8:11: pyflakes reported issue in this script: 2: invalid syntax [pyflakes-issue]"
+        ]
     );
 }
 
@@ -273,7 +285,9 @@ fn a_finding_past_the_end_points_at_the_end_of_the_script() {
     let text = one_step("run: print(\n        shell: python\n");
     assert_eq!(
         lint(&text, &tools),
-        ["test.yaml:6:20: pyflakes reported issue in this script: 2:1: invalid-syntax: unexpected EOF while parsing [pyflakes-issue]"]
+        [
+            "test.yaml:6:20: pyflakes reported issue in this script: 2:1: invalid-syntax: unexpected EOF while parsing [pyflakes-issue]"
+        ]
     );
 }
 
@@ -283,7 +297,9 @@ fn a_finding_on_line_zero_points_at_the_run_key() {
     let text = one_step("run: print(1)\n        shell: python\n");
     assert_eq!(
         lint(&text, &tools),
-        ["test.yaml:6:9: pyflakes reported issue in this script: 0:1: problem decoding source [pyflakes-issue]"]
+        [
+            "test.yaml:6:9: pyflakes reported issue in this script: 0:1: problem decoding source [pyflakes-issue]"
+        ]
     );
 }
 

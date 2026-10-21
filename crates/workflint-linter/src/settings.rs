@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use workflint_rules::RuleConfig;
+use workflint_rules::{PythonLinter, RuleConfig};
 
 use crate::config::{Config, PathConfig};
 use crate::ignore::IgnorePattern;
@@ -17,6 +17,9 @@ pub struct Flags {
     /// `-config-file`: the config file for every file of the run, in place of the config file
     /// of each project.
     pub config_file: Option<Arc<Config>>,
+    /// The Python linter that `-pyflakes` picks over `python.linter`: pyflakes when the flag
+    /// names it, `off` when the flag is empty, and `None` when the flag is not given.
+    pub python_linter: Option<PythonLinter>,
 }
 
 /// What the lint of one file runs with. [`Settings::default`] is the defaults, and
@@ -50,7 +53,12 @@ impl Settings {
     /// Applies `flags`. Their config file is applied before, when the settings are chosen.
     #[must_use]
     pub fn with_flags(self, flags: &Flags) -> Self {
+        let mut rules = self.rules;
+        if let Some(linter) = flags.python_linter {
+            rules.python_linter = linter;
+        }
         Self {
+            rules,
             ignore: flags.ignore.clone(),
             ..self
         }
