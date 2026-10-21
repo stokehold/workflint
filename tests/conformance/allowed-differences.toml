@@ -177,6 +177,54 @@ upstream = '/test\.yaml:53:9: shellcheck reported issue in this script: .+ \[she
 workflint = '/test\.yaml:53:23: shellcheck reported issue in this script: .+ \[shellcheck\]/'
 
 [[difference]]
+anchor = "script-finding-positions"
+fixture = "err/pyflakes_job_default_shell"
+upstream = '/test\.yaml:9:9: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+workflint = '/test\.yaml:9:20: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/pyflakes_step_shell"
+upstream = '/test\.yaml:7:9: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+workflint = '/test\.yaml:7:20: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/pyflakes_step_shell"
+upstream = '/test\.yaml:10:9: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+workflint = '/test\.yaml:10:19: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/pyflakes_step_shell"
+upstream = '/test\.yaml:13:9: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+workflint = '/test\.yaml:13:20: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/pyflakes_workflow_default_shell"
+upstream = '/test\.yaml:11:9: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+workflint = '/test\.yaml:11:20: pyflakes reported issue in this script: .+ \[pyflakes\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "examples/pyflakes_integration"
+upstream = "test.yaml:10:9: pyflakes reported issue in this script: 1:7: undefined name 'hello' [pyflakes]"
+workflint = "test.yaml:10:20: pyflakes reported issue in this script: 1:7: undefined name 'hello' [pyflakes]"
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "examples/pyflakes_integration"
+upstream = "test.yaml:19:9: pyflakes reported issue in this script: 2:5: import 'sys' from line 1 shadowed by loop variable [pyflakes]"
+workflint = "test.yaml:21:15: pyflakes reported issue in this script: 2:5: import 'sys' from line 1 shadowed by loop variable [pyflakes]"
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "examples/pyflakes_integration"
+upstream = "test.yaml:23:9: pyflakes reported issue in this script: 1:1: 'time.sleep' imported but unused [pyflakes]"
+workflint = "test.yaml:24:11: pyflakes reported issue in this script: 1:1: 'time.sleep' imported but unused [pyflakes]"
+
+[[difference]]
 anchor = "dispatch-options-quoting"
 fixture = "err/workflow_dispatch_input_types"
 upstream = 'test.yaml:18:18: default value "bar" of "choice_default_is_not_in_options" input is not included in its options "\"foo\"" [events]'

@@ -24,8 +24,10 @@ use workflint_diagnostics::{
 };
 use workflint_gotemplate::Value;
 use workflint_linter::config::{Config, init_config};
-use workflint_linter::tool::{RunOptions, ToolCommand, ToolPool};
-use workflint_linter::{IgnorePattern, Input, Linter, Tools, has_internal_error, path};
+use workflint_linter::tool::{ResolveError, RunOptions, ToolCommand, ToolPool};
+use workflint_linter::{
+    IgnorePattern, Input, Linter, PythonLinter, Tools, has_internal_error, path,
+};
 
 use crate::flags::{Options, Parsed};
 use crate::template::{Formatter, PrintError};
@@ -38,9 +40,10 @@ const EXIT_PROBLEM_FOUND: u8 = 1;
 const EXIT_INVALID_OPTION: u8 = 2;
 /// A file, stdin, or a config file could not be read, the workflow files of a run without
 /// arguments could not be found, a config file, an `-ignore` pattern, or the `-format` template
-/// is invalid, the shellcheck that `-shellcheck` names was not found, `-init-config` failed, the
-/// template failed while it ran, the output could not be written, or the lint of a file hit a bug
-/// in workflint and reported an `internal-error` diagnostic.
+/// is invalid, the shellcheck that `-shellcheck` names, the pyflakes that `-pyflakes` names, or
+/// the Python linter that a config file names was not found, `-init-config` failed, the template
+/// failed while it ran, the output could not be written, or the lint of a file hit a bug in
+/// workflint and reported an `internal-error` diagnostic.
 const EXIT_FAILURE: u8 = 3;
 
 fn main() -> ExitCode {
@@ -98,7 +101,7 @@ fn main() -> ExitCode {
             return ExitCode::from(EXIT_FAILURE);
         }
     };
-    let tools = match tools(&options, quiet) {
+    let (tools, python_linter) = match tools(&options, quiet) {
         Ok(tools) => tools,
         Err(message) => {
             eprintln!("{message}");
@@ -114,6 +117,9 @@ fn main() -> ExitCode {
     );
     let format = Format::new(&options, color, formatter.as_ref());
     let mut linter = Linter::new(cwd).with_ignore(ignore).with_tools(tools);
+    if let Some(python_linter) = python_linter {
+        linter = linter.with_python_linter(python_linter);
+    }
     if let Some(config) = config_file {
         linter = linter.with_config_file(config);
     }
@@ -210,23 +216,67 @@ fn ignore_patterns(options: &Options) -> Result<Vec<IgnorePattern>, String> {
         .collect()
 }
 
-/// The external tools of the run: shellcheck unless `-shellcheck=` turns it off.
+/// The external tools of the run, and the Python linter that `-pyflakes` picks over the
+/// `python.linter` of the config files.
 ///
-/// A shellcheck that `-shellcheck` names but that is not found is an error, which is the
-/// message to print. When the flag is not given and `shellcheck` is not on `PATH`, the run goes
-/// on without it, and a warning says so unless `quiet` is set.
-fn tools(options: &Options, quiet: bool) -> Result<Tools, String> {
+/// shellcheck runs unless `-shellcheck=` turns it off. A shellcheck that `-shellcheck` names but
+/// that is not found is an error, which is the message to print. When the flag is not given and
+/// `shellcheck` is not on `PATH`, the run goes on without it, and a warning says so unless
+/// `quiet` is set.
+///
+/// `-pyflakes=` turns the Python linter off, and `-pyflakes` with a value runs that pyflakes,
+/// which must be found. Without the flag, the run has the `ruff` and the `pyflakes` that are on
+/// `PATH`, and each project's `python.linter` picks one. The linter warns once if no linter is
+/// found for a script that `auto` would check, and stops the run if a config file names a
+/// linter that is not found.
+fn tools(options: &Options, quiet: bool) -> Result<(Tools, Option<PythonLinter>), String> {
+    let shellcheck = shellcheck(options, quiet)?;
+    let (python_linter, pyflakes, ruff) = match options.pyflakes.as_deref() {
+        Some("") => (Some(PythonLinter::Off), None, None),
+        Some(spec) => {
+            let command = ToolCommand::resolve(spec)
+                .map_err(|err| format!("pyflakes given with -pyflakes was not found: {err}"))?;
+            (Some(PythonLinter::Pyflakes), Some(command), None)
+        }
+        None => (
+            None,
+            found("pyflakes", ToolCommand::resolve("pyflakes")),
+            found("ruff", ToolCommand::resolve("ruff")),
+        ),
+    };
+    if shellcheck.is_none() && pyflakes.is_none() && ruff.is_none() {
+        return Ok((Tools::none(), python_linter));
+    }
+    let pool = match options.jobs {
+        Some(jobs) => ToolPool::new(jobs),
+        None => ToolPool::with_available_parallelism(),
+    }
+    .map_err(|err| format!("could not run the external tools: {err}"))?;
+    let pool = Arc::new(pool);
+    let mut tools = Tools::none();
+    if let Some(command) = shellcheck {
+        tools = tools.with_shellcheck(command, Arc::clone(&pool), RunOptions::default());
+    }
+    if let Some(command) = pyflakes {
+        tools = tools.with_pyflakes(command, Arc::clone(&pool), RunOptions::default());
+    }
+    if let Some(command) = ruff {
+        tools = tools.with_ruff(command, pool, RunOptions::default());
+    }
+    Ok((tools, python_linter))
+}
+
+/// The shellcheck of the run, as [`tools`] picks it.
+fn shellcheck(options: &Options, quiet: bool) -> Result<Option<ToolCommand>, String> {
     let spec = options.shellcheck.as_deref().unwrap_or("shellcheck");
     if spec.is_empty() {
-        return Ok(Tools::none());
+        return Ok(None);
     }
-    let command = match ToolCommand::resolve(spec) {
-        Ok(command) => command,
-        Err(err) if options.shellcheck.is_some() => {
-            return Err(format!(
-                "shellcheck given with -shellcheck was not found: {err}"
-            ));
-        }
+    match ToolCommand::resolve(spec) {
+        Ok(command) => Ok(Some(command)),
+        Err(err) if options.shellcheck.is_some() => Err(format!(
+            "shellcheck given with -shellcheck was not found: {err}"
+        )),
         Err(err) => {
             tracing::info!("Rule \"shellcheck\" was disabled: {err}");
             if !quiet {
@@ -235,15 +285,17 @@ fn tools(options: &Options, quiet: bool) -> Result<Tools, String> {
                      not checked. Install shellcheck, or pass -shellcheck= to turn the check off"
                 );
             }
-            return Ok(Tools::none());
+            Ok(None)
         }
-    };
-    let pool = match options.jobs {
-        Some(jobs) => ToolPool::new(jobs),
-        None => ToolPool::with_available_parallelism(),
     }
-    .map_err(|err| format!("could not run shellcheck: {err}"))?;
-    Ok(Tools::none().with_shellcheck(command, Arc::new(pool), RunOptions::default()))
+}
+
+/// The command of `resolved`, the lookup of the tool `name` on `PATH`, or `None` if it was not
+/// found.
+fn found(name: &str, resolved: Result<ToolCommand, ResolveError>) -> Option<ToolCommand> {
+    resolved
+        .inspect_err(|err| tracing::debug!("{name} is not used: {err}"))
+        .ok()
 }
 
 /// The result of a run.

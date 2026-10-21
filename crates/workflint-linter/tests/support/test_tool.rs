@@ -6,6 +6,8 @@
 //! - `args ARG...`: prints each argument on its own line.
 //! - `env NAME`: prints the value of the environment variable `NAME`.
 //! - `exit CODE [TEXT]`: prints `TEXT` to stdout if given, `failed` to stderr, and exits with `CODE`.
+//! - `say CODE STDOUT STDERR`: prints `STDOUT` to stdout and `STDERR` to stderr, and exits with
+//!   `CODE`.
 //! - `interleave`: prints `out 1` to stdout, `err` to stderr, and `out 2` to stdout, in that order.
 //! - `sleep`: sleeps for two minutes, longer than any test waits.
 //! - `pidfile DIR`: writes its process ID to a file in `DIR`, then sleeps like `sleep`.
@@ -45,6 +47,12 @@ fn main() {
                 print!("{text}");
             }
             eprint!("failed");
+            process::exit(rest[0].parse().unwrap());
+        }
+        Some("say") => {
+            print!("{}", rest[1]);
+            io::stdout().flush().unwrap();
+            eprint!("{}", rest[2]);
             process::exit(rest[0].parse().unwrap());
         }
         Some("interleave") => {

@@ -23,7 +23,7 @@ mod runner;
 pub mod tools;
 mod visitor;
 
-pub use config::RuleConfig;
+pub use config::{PythonLinter, RuleConfig};
 pub use rule::{Context, Rule};
 pub use rules::{CREATION_ORDER, create_rules};
 pub use visitor::{check_file, run, run_in_project, run_with_config, run_with_tools, visit};

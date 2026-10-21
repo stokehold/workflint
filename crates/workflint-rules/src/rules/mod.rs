@@ -17,6 +17,7 @@ mod if_cond;
 mod job_needs;
 mod matrix;
 mod permissions;
+mod pyflakes;
 mod runner_label;
 mod shell_name;
 mod shellcheck;
@@ -51,7 +52,7 @@ pub static CREATION_ORDER: [&Kind; 17] = [
 ];
 
 /// The rule metadata that the rule modules of this crate define, sorted by rule ID.
-pub(crate) static ALL: [&RuleMeta; 77] = [
+pub(crate) static ALL: [&RuleMeta; 79] = [
     &action::ACTION_FILE_NOT_FOUND,
     &events::ACTIVITY_TYPES_NOT_SUPPORTED,
     &action::BROKEN_ACTION_METADATA,
@@ -108,6 +109,8 @@ pub(crate) static ALL: [&RuleMeta; 77] = [
     &expression::OBJECT_IN_TEMPLATE,
     &events::OPTIONS_ON_NON_CHOICE_INPUT,
     &action::OUTDATED_ACTION,
+    &pyflakes::PYFLAKES_FAILED,
+    &pyflakes::PYFLAKES_ISSUE,
     &events::REQUIRED_INPUT_WITH_DEFAULT,
     &workflow_call::REUSABLE_WORKFLOW_NOT_FOUND,
     &runner_label::RUNNER_LABEL_CONFLICT,
@@ -139,9 +142,9 @@ pub fn create_rules<'a>() -> Vec<Box<dyn Rule<'a> + 'a>> {
 
 /// Creates the rule of `kind`, or returns `None` while the rule does not exist yet.
 ///
-/// Each task that ports a reference rule adds an arm here. pyflakes comes with M5.12. The
-/// `shellcheck` rule is always created, and collects scripts only when the context's external
-/// tools run shellcheck.
+/// Each task that ports a reference rule adds an arm here. The `shellcheck` rule is always
+/// created, and collects scripts only when the context's external tools run shellcheck. The
+/// `pyflakes` rule is always created too, and collects scripts unless `python.linter` is `off`.
 fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
     match kind.name {
         "action" => Some(Box::new(action::Action)),
@@ -156,6 +159,7 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
         "job-needs" => Some(Box::new(job_needs::JobNeeds::default())),
         "matrix" => Some(Box::new(matrix::Matrix)),
         "permissions" => Some(Box::new(permissions::Permissions)),
+        "pyflakes" => Some(Box::new(pyflakes::Pyflakes::new())),
         "runner-label" => Some(Box::new(runner_label::RunnerLabel)),
         "shell-name" => Some(Box::new(shell_name::ShellName::new())),
         "shellcheck" => Some(Box::new(shellcheck::Shellcheck::new())),

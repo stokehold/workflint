@@ -2,7 +2,7 @@
 
 Each rule has a page here, `docs/rules/<id>.md`, named after its rule ID (ADR 0008). The diagnostics of a rule end with its ID in brackets, such as `[unexpected-key]`, where actionlint prints the kind (see [Rule ID in brackets instead of the kind](../differences.md#rule-id-in-brackets)). The `docs_url` of the rule's `RuleMeta` links the page.
 
-The test `rule_pages` in `crates/workflint-linter/tests/rule_pages.rs` reads every page. It runs each example through the YAML layer, the workflow parser, and the rules, as the binary does, and compares the result with the page. The examples of the rules of the `shellcheck` kind run with shellcheck: those of `shellcheck-issue` with the shellcheck on `PATH`, and are skipped without it, and those of `shellcheck-failed` with a stand-in that exits with status 2 and prints `failed` to stderr. The other pages run no external tool. It also checks that every registered rule has a page, that every page belongs to a registered rule, and that the index below matches the registry.
+The test `rule_pages` in `crates/workflint-linter/tests/rule_pages.rs` reads every page. It runs each example through the YAML layer, the workflow parser, and the rules, as the binary does, and compares the result with the page. The examples of the rules of the `shellcheck` and `pyflakes` kinds run with their tool: those of `shellcheck-issue` and `pyflakes-issue` with the shellcheck or pyflakes on `PATH`, and are skipped without it, and those of `shellcheck-failed` and `pyflakes-failed` with a stand-in that exits with status 2 and prints `failed` to stderr. The other pages run no external tool. It also checks that every registered rule has a page, that every page belongs to a registered rule, and that the index below matches the registry.
 
 ## Page format
 
@@ -123,6 +123,8 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`object-in-template`](object-in-template.md) | `expression` | correctness | error | A `${{ }}` in a string evaluates to an object, an array, or null |
 | [`options-on-non-choice-input`](options-on-non-choice-input.md) | `events` | correctness | error | A `workflow_dispatch` input that is not a `choice` has `options` |
 | [`outdated-action`](outdated-action.md) | `action` | correctness | error | A popular action's version runs on a runtime that GitHub no longer has |
+| [`pyflakes-failed`](pyflakes-failed.md) | `pyflakes` | correctness | error | pyflakes or ruff could not check a Python `run:` script |
+| [`pyflakes-issue`](pyflakes-issue.md) | `pyflakes` | correctness | error | pyflakes or ruff reports a problem in a Python `run:` script |
 | [`recursive-alias`](recursive-alias.md) | `syntax-check` | correctness | error | An alias refers to a node that encloses it |
 | [`required-input-with-default`](required-input-with-default.md) | `events` | correctness | error | A required `workflow_call` input has a default, which is never used |
 | [`reusable-call-key-without-uses`](reusable-call-key-without-uses.md) | `syntax-check` | correctness | error | A job without `uses` has `with` or `secrets` |

@@ -1,21 +1,27 @@
 //! The external tools of a run, which check the scripts that rules collect (ADR 0012).
 //!
-//! [`Tools`] implements [`ExternalTools`] for the rules. It runs shellcheck through a
-//! [`ToolPool`], turns its JSON output into findings, and turns a run that gives no findings into
-//! the message of a `shellcheck-failed` diagnostic. Each script with its shell runs once per run:
-//! the first file that needs it runs shellcheck, and every other file with the same script gets
-//! the same outcome, also while the first run is still going.
+//! [`Tools`] implements [`ExternalTools`] for the rules. It runs shellcheck, pyflakes, and ruff
+//! through a [`ToolPool`], turns their output into findings, and turns a run that gives no
+//! findings into the message of a `shellcheck-failed` or `pyflakes-failed` diagnostic. Each
+//! script runs once per tool and run: the first file that needs it runs the tool, and every
+//! other file with the same script gets the same outcome, also while the first run is still
+//! going. [`python`] reads the output of pyflakes and ruff.
+
+mod python;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::hash::Hash;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::thread;
 
 use serde::Deserialize;
 use workflint_diagnostics::quote::quote;
+use workflint_rules::PythonLinter;
 use workflint_rules::tools::{
-    ExternalTools, ScriptShell, ShellScript, ShellcheckFinding, ShellcheckOutcome,
+    ExternalTools, PythonOutcome, PythonTool, ScriptShell, ShellScript, ShellcheckFinding,
+    ShellcheckOutcome,
 };
 
 use crate::tool::{RunOptions, ToolCommand, ToolOutcome, ToolPool};
@@ -23,7 +29,11 @@ use crate::tool::{RunOptions, ToolCommand, ToolOutcome, ToolPool};
 /// The external tools of a run. [`Tools::none`] runs none.
 #[derive(Debug, Default)]
 pub struct Tools {
-    shellcheck: Option<Shellcheck>,
+    shellcheck: Option<Runner<(ScriptShell, String), ShellcheckOutcome>>,
+    pyflakes: Option<Runner<String, PythonOutcome>>,
+    ruff: Option<Runner<String, PythonOutcome>>,
+    /// Whether the warning that no Python linter is installed was logged.
+    warned_python: AtomicBool,
 }
 
 impl Tools {
@@ -42,12 +52,47 @@ impl Tools {
         options: RunOptions,
     ) -> Self {
         Self {
-            shellcheck: Some(Shellcheck {
-                command,
-                pool,
-                options,
-                outcomes: Mutex::new(HashMap::new()),
-            }),
+            shellcheck: Some(Runner::new("shellcheck", command, pool, options)),
+            ..self
+        }
+    }
+
+    /// Runs pyflakes with `command` in `pool`, with `options` for each process. pyflakes prints
+    /// some problems to stdout and others to stderr, so its output is always read as one stream.
+    #[must_use]
+    pub fn with_pyflakes(
+        self,
+        command: ToolCommand,
+        pool: Arc<ToolPool>,
+        mut options: RunOptions,
+    ) -> Self {
+        options.combine_output = true;
+        Self {
+            pyflakes: Some(Runner::new("pyflakes", command, pool, options)),
+            ..self
+        }
+    }
+
+    /// Runs ruff with `command` in `pool`, with `options` for each process.
+    #[must_use]
+    pub fn with_ruff(self, command: ToolCommand, pool: Arc<ToolPool>, options: RunOptions) -> Self {
+        Self {
+            ruff: Some(Runner::new("ruff", command, pool, options)),
+            ..self
+        }
+    }
+
+    /// The Python linter that runs for `linter`, or `None` if `linter` is `off` or names a tool
+    /// that is not here. `auto` picks ruff, else pyflakes.
+    #[must_use]
+    pub fn python_tool(&self, linter: PythonLinter) -> Option<PythonTool> {
+        let ruff = self.ruff.as_ref().map(|_| PythonTool::Ruff);
+        let pyflakes = self.pyflakes.as_ref().map(|_| PythonTool::Pyflakes);
+        match linter {
+            PythonLinter::Auto => ruff.or(pyflakes),
+            PythonLinter::Ruff => ruff,
+            PythonLinter::Pyflakes => pyflakes,
+            PythonLinter::Off => None,
         }
     }
 }
@@ -58,49 +103,122 @@ impl ExternalTools for Tools {
     }
 
     fn shellcheck(&self, scripts: &[ShellScript]) -> Vec<Arc<ShellcheckOutcome>> {
-        self.shellcheck
-            .as_ref()
-            .map_or_else(Vec::new, |shellcheck| shellcheck.check(scripts))
+        let Some(runner) = &self.shellcheck else {
+            return Vec::new();
+        };
+        runner.check(
+            scripts,
+            |script| (script.shell, script.text.clone()),
+            |script| {
+                let args = script.shell.shellcheck_args();
+                tracing::debug!(
+                    "Running {} {} on a {} script",
+                    runner.command.program().display(),
+                    args.join(" "),
+                    script.shell.name()
+                );
+                outcome(runner.run(&args[..], &script.text))
+            },
+            || ShellcheckOutcome::Failed("shellcheck was not run on this script".to_owned()),
+        )
+    }
+
+    fn python(&self, linter: PythonLinter, scripts: &[String]) -> Vec<Arc<PythonOutcome>> {
+        let (tool, runner) = match self.python_tool(linter) {
+            Some(PythonTool::Ruff) => (PythonTool::Ruff, &self.ruff),
+            Some(PythonTool::Pyflakes) => (PythonTool::Pyflakes, &self.pyflakes),
+            None => {
+                if linter == PythonLinter::Auto && !self.warned_python.swap(true, Ordering::Relaxed)
+                {
+                    tracing::warn!(
+                        "neither ruff nor pyflakes was found on PATH, so the scripts of \
+                         shell: python steps are not checked. Install ruff or pyflakes, or pass \
+                         -pyflakes= to turn the check off"
+                    );
+                }
+                return Vec::new();
+            }
+        };
+        let Some(runner) = runner else {
+            return Vec::new();
+        };
+        let args = python::args(tool);
+        runner.check(
+            scripts,
+            Clone::clone,
+            |script| {
+                tracing::debug!(
+                    "Running {} {} on a Python script",
+                    runner.command.program().display(),
+                    args.join(" ")
+                );
+                python::outcome(tool, runner.run(args, script))
+            },
+            || PythonOutcome::Failed(format!("{} was not run on this script", tool.name())),
+        )
     }
 }
 
 /// The outcome of one script, which the first file that needs it fills.
-type Cell = Arc<OnceLock<Arc<ShellcheckOutcome>>>;
+type Cell<O> = Arc<OnceLock<Arc<O>>>;
 
-/// shellcheck, and the outcome of each script it has been given in the run.
-struct Shellcheck {
+/// One tool, and the outcome of each script it has been given in the run, by key.
+struct Runner<K, O> {
+    name: &'static str,
     command: ToolCommand,
     pool: Arc<ToolPool>,
     options: RunOptions,
-    /// The outcome of each script, by shell and text. The arguments depend only on the shell.
-    outcomes: Mutex<HashMap<(ScriptShell, String), Cell>>,
+    outcomes: Mutex<HashMap<K, Cell<O>>>,
 }
 
-impl fmt::Debug for Shellcheck {
+impl<K, O> fmt::Debug for Runner<K, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Shellcheck")
+        f.debug_struct("Runner")
+            .field("name", &self.name)
             .field("command", &self.command)
             .field("options", &self.options)
             .finish_non_exhaustive()
     }
 }
 
-impl Shellcheck {
-    /// Runs shellcheck on each of `scripts` that has no outcome yet, as many at once as the
-    /// pool allows, and returns the outcome of each.
-    fn check(&self, scripts: &[ShellScript]) -> Vec<Arc<ShellcheckOutcome>> {
-        let cells: Vec<Cell> = {
+impl<K: Eq + Hash, O: Send + Sync> Runner<K, O> {
+    fn new(
+        name: &'static str,
+        command: ToolCommand,
+        pool: Arc<ToolPool>,
+        options: RunOptions,
+    ) -> Self {
+        Self {
+            name,
+            command,
+            pool,
+            options,
+            outcomes: Mutex::new(HashMap::new()),
+        }
+    }
+
+    /// Runs the tool with `args` and `stdin`.
+    fn run<S: AsRef<std::ffi::OsStr>>(&self, args: &[S], stdin: &str) -> ToolOutcome {
+        self.pool
+            .run(&self.command, args, stdin.as_bytes(), &self.options)
+    }
+
+    /// Runs `run` on each of `scripts` whose `key` has no outcome yet, as many at once as the
+    /// pool allows, and returns the outcome of each. `missing` is the outcome of a script whose
+    /// run did not finish, which only a panic in another thread causes.
+    fn check<T: Sync>(
+        &self,
+        scripts: &[T],
+        key: impl Fn(&T) -> K,
+        run: impl Fn(&T) -> O + Sync,
+        missing: impl Fn() -> O,
+    ) -> Vec<Arc<O>> {
+        let cells: Vec<Cell<O>> = {
             // A panic while the lock is held leaves the map as it was, so it stays usable.
             let mut outcomes = self.outcomes.lock().unwrap_or_else(PoisonError::into_inner);
             scripts
                 .iter()
-                .map(|script| {
-                    Arc::clone(
-                        outcomes
-                            .entry((script.shell, script.text.clone()))
-                            .or_default(),
-                    )
-                })
+                .map(|script| Arc::clone(outcomes.entry(key(script)).or_default()))
                 .collect()
         };
         let next = AtomicUsize::new(0);
@@ -110,7 +228,7 @@ impl Shellcheck {
                 let (Some(script), Some(cell)) = (scripts.get(index), cells.get(index)) else {
                     break;
                 };
-                cell.get_or_init(|| Arc::new(self.run(script)));
+                cell.get_or_init(|| Arc::new(run(script)));
             }
         };
         let workers = scripts.len().min(self.pool.limit().get());
@@ -118,7 +236,7 @@ impl Shellcheck {
             for _ in 1..workers {
                 // Without another thread, this one does all the work.
                 let spawned = thread::Builder::new()
-                    .name("workflint-shellcheck".to_owned())
+                    .name(format!("workflint-{}", self.name))
                     .spawn_scoped(scope, work);
                 if spawned.is_err() {
                     break;
@@ -128,29 +246,8 @@ impl Shellcheck {
         });
         cells
             .iter()
-            .map(|cell| {
-                cell.get().cloned().unwrap_or_else(|| {
-                    Arc::new(ShellcheckOutcome::Failed(
-                        "shellcheck was not run on this script".to_owned(),
-                    ))
-                })
-            })
+            .map(|cell| cell.get().cloned().unwrap_or_else(|| Arc::new(missing())))
             .collect()
-    }
-
-    /// Runs shellcheck on `script`.
-    fn run(&self, script: &ShellScript) -> ShellcheckOutcome {
-        let args = script.shell.shellcheck_args();
-        tracing::debug!(
-            "Running {} {} on a {} script",
-            self.command.program().display(),
-            args.join(" "),
-            script.shell.name()
-        );
-        outcome(
-            self.pool
-                .run(&self.command, &args, script.text.as_bytes(), &self.options),
-        )
     }
 }
 
@@ -175,12 +272,6 @@ struct JsonFinding {
 
 /// Turns the outcome of a shellcheck process into findings or the message of a failure.
 pub(crate) fn outcome(outcome: ToolOutcome) -> ShellcheckOutcome {
-    let failed = |detail: String| {
-        ShellcheckOutcome::Failed(format!(
-            "shellcheck did not run successfully while checking this script: {detail}"
-        ))
-    };
-    let stderr = |stderr: &[u8]| quote(&String::from_utf8_lossy(stderr));
     match outcome {
         ToolOutcome::Exited { stdout, .. } => {
             // The reference's `json.Unmarshal` reads `null` as no findings.
@@ -206,33 +297,41 @@ pub(crate) fn outcome(outcome: ToolOutcome) -> ShellcheckOutcome {
                 )),
             }
         }
-        ToolOutcome::FailedWithoutOutput { code, stderr: err } => failed(format!(
-            "shellcheck exited with status {code} but stdout was empty. stderr: {}",
+        outcome => ShellcheckOutcome::Failed(process_failure("shellcheck", outcome)),
+    }
+}
+
+/// The message of a process of the tool `name` that gave no output to read: it failed without
+/// output, was killed, timed out, could not start, or its pipes failed.
+pub(crate) fn process_failure(name: &str, outcome: ToolOutcome) -> String {
+    let stderr = |stderr: &[u8]| quote(&String::from_utf8_lossy(stderr));
+    let detail = match outcome {
+        ToolOutcome::Exited { code, .. } => format!("{name} exited with status {code}"),
+        ToolOutcome::FailedWithoutOutput { code, stderr: err } => format!(
+            "{name} exited with status {code} but stdout was empty. stderr: {}",
             stderr(&err)
-        )),
+        ),
         ToolOutcome::Signaled {
             signal: Some(signal),
             stderr: err,
-        } => failed(format!(
-            "shellcheck was terminated by signal {signal}. stderr: {}",
+        } => format!(
+            "{name} was terminated by signal {signal}. stderr: {}",
             stderr(&err)
-        )),
+        ),
         ToolOutcome::Signaled {
             signal: None,
             stderr: err,
-        } => failed(format!(
-            "shellcheck was terminated. stderr: {}",
-            stderr(&err)
-        )),
-        ToolOutcome::TimedOut { timeout } => failed(format!(
-            "shellcheck did not finish in {} seconds and was killed",
+        } => format!("{name} was terminated. stderr: {}", stderr(&err)),
+        ToolOutcome::TimedOut { timeout } => format!(
+            "{name} did not finish in {} seconds and was killed",
             timeout.as_secs_f64()
-        )),
-        ToolOutcome::SpawnFailed(err) => failed(format!("shellcheck could not be started: {err}")),
-        ToolOutcome::IoFailed(err) => failed(format!(
-            "reading the output of shellcheck or writing the script to it failed: {err}"
-        )),
-    }
+        ),
+        ToolOutcome::SpawnFailed(err) => format!("{name} could not be started: {err}"),
+        ToolOutcome::IoFailed(err) => {
+            format!("reading the output of {name} or writing the script to it failed: {err}")
+        }
+    };
+    format!("{name} did not run successfully while checking this script: {detail}")
 }
 
 #[cfg(test)]

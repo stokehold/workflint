@@ -37,6 +37,8 @@ paths:
   .github/workflows/release.yaml:
     ignore:
       - 'label "gpu" is unknown'
+python:
+  linter: ruff
 ```
 
 ### `self-hosted-runner.labels`
@@ -61,6 +63,23 @@ could not parse config file "/repo/.github/actionlint.yaml": yaml: unmarshal err
 
 A glob that matches no linted file does nothing, and workflint does not warn about it.
 
+### `python.linter`
+
+What checks the scripts of `shell: python` steps ([pyflakes-issue](rules/pyflakes-issue.md)). The value is one of these, and case counts:
+
+- `auto`, the default: ruff if `ruff` is on `PATH`, else pyflakes if `pyflakes` is on `PATH`. With neither, the first Python script of the run prints `warning: neither ruff nor pyflakes was found on PATH, so the scripts of shell: python steps are not checked. ...` to stderr, and the run goes on. A run without Python scripts prints nothing.
+- `ruff`: ruff restricted to the pyflakes rules, without any ruff config file. Its messages have ruff's rule code and wording, such as `1:7: F821 Undefined name `hello``.
+- `pyflakes`: pyflakes, as actionlint runs it.
+- `off`: nothing checks the scripts.
+
+A `ruff` or `pyflakes` that is not on `PATH` stops the run with exit code 3: `python.linter in config file "<path>" is "ruff", but ruff was not found on PATH`. The `-pyflakes` flag wins over the key: `-pyflakes=PATH` runs that pyflakes, and `-pyflakes=` checks nothing ([cli.md](cli.md#flags)). Any other value stops the run when the file is read:
+
+```text
+could not parse config file "/repo/.github/workflint.yaml": yaml: unmarshal errors:   line 2: "python.linter" must be "auto", "ruff", "pyflakes", or "off", but "black" was found at line:2,col:11
+```
+
+workflint reads `python` in actionlint config files too, without a warning.
+
 ## Creating a config file
 
 `workflint -init-config` writes `.github/workflint.yaml` in the project of the working directory, prints `Config file was generated at "<path>"`, and exits with code 0. The file has actionlint's template, with every key at its default and comments that explain them. workflint refuses to overwrite a config file: if the project has any of the four files above, it prints `config file already exists at "<path>"` and exits with code 3. Outside a project, it exits with code 3 too. The arguments after the flags, and `-config-file`, are ignored.
@@ -72,9 +91,10 @@ A glob that matches no linted file does nothing, and workflint does not warn abo
 - [Unknown config keys are reported](differences.md#config-unknown-keys).
 - [Non-string `ignore` entries are rejected](differences.md#config-ignore-entries).
 - [Config error messages](differences.md#config-error-messages).
+- [ruff is used for Python scripts when installed](differences.md#python-linter-auto).
 
 ## Coming later
 
 - A user config file in `$XDG_CONFIG_HOME/workflint/config.yaml`, and `--no-config`, in M9.4.
 - `rules`, to turn rules off and set their severity, in M9.2, and a published JSON Schema with `workflint config schema` in M9.3.
-- `python` settings with pyflakes in M5.12, `shellcheck` settings in M5.13, and `exclude` in M5.18.
+- `shellcheck` settings in M5.13, and `exclude` in M5.18.

@@ -239,7 +239,7 @@ impl Setup {
             .map_err(|error| format!("preparing {}: {error}", path.display()))?;
         invocation.args.retain(|arg| arg != "-oneline");
         let stdout = binary::run(self.program.path(), &invocation)?;
-        checks_md::compare(output, &stdout, replacements, |code| {
+        checks_md::compare(output, &stdout, replacements, input, |code| {
             if self.map_kinds {
                 rule_kinds::actionlint_kind(code)
                     .map(str::to_owned)
