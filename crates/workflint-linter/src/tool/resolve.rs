@@ -21,6 +21,9 @@ pub enum ResolveError {
 impl fmt::Display for ResolveError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::NotFound { name } if Path::new(name).components().count() > 1 => {
+                write!(f, "executable {name:?} was not found")
+            }
             Self::NotFound { name } => write!(f, "executable {name:?} was not found on PATH"),
         }
     }

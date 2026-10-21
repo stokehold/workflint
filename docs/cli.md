@@ -40,14 +40,15 @@ The rules are those of Go's `flag` package:
 | `-config-file PATH` | Accepted and ignored until M5.2 (#247) reads the config. |
 | `-init-config` | Accepted and ignored until M5.2 (#247) writes a default config. |
 | `-stdin-filename NAME` | Accepted and ignored until M5.1 (#246) reads stdin. The default is `<stdin>`. |
-| `-shellcheck COMMAND` | Accepted and ignored until M5.5 (#248) runs shellcheck. The default is `shellcheck`, and an empty value turns shellcheck off. |
+| `-shellcheck COMMAND` | The shellcheck that checks `run:` scripts ([shellcheck-issue](rules/shellcheck-issue.md)): a name to look up on `PATH`, a path, or a command line whose first word is one of these. The default is `shellcheck`, and an empty value turns shellcheck off. Without the flag, a missing `shellcheck` prints one warning to stderr and the run goes on. A shellcheck that the flag names but that is not found exits with code 3. |
+| `-jobs N` | Runs at most `N` external tool processes, such as shellcheck, at once. The default is the number of CPUs. |
 | `-pyflakes COMMAND` | Accepted and ignored until M5.12 (#249) runs pyflakes. The default is `pyflakes`, and an empty value turns pyflakes off. |
 
-`check`, `-quiet`, `-q`, `-silent`, and `-summary` are workflint's own. [differences.md](differences.md#workflint-flags) lists them with the other differences.
+`check`, `-quiet`, `-q`, `-silent`, `-summary`, and `-jobs` are workflint's own. [differences.md](differences.md#workflint-flags) lists them with the other differences.
 
 ## Output
 
-Errors go to stdout. Logs, the usage, the summary, and fatal messages such as `could not read "x.yaml": ...` go to stderr.
+Errors go to stdout. Logs, the usage, the summary, the warning about a missing shellcheck, and fatal messages such as `could not read "x.yaml": ...` go to stderr. `-quiet` and `-silent` hide the warning.
 
 The default format prints the header line `path:line:col: message [rule-id]`, the source line, and a line with `^~~~` under the span. `-oneline` prints only the header line. The layout is actionlint's, except that the brackets hold workflint's rule ID instead of actionlint's kind ([differences.md](differences.md#rule-id-in-brackets)). The problem matcher in actionlint's `.github/actionlint-matcher.json` matches the header lines with and without color.
 
@@ -60,7 +61,7 @@ Color is on when stdout is a terminal, `NO_COLOR` is unset or empty, and `TERM` 
 | 0 | No errors, also when `-ignore` dropped every error. `-h`, `-help`, and `-version` exit with 0 too. |
 | 1 | At least one error. |
 | 2 | The command line is invalid. Until M5.1 (#246), also no file argument, or `-` alone. |
-| 3 | A fatal error: a file cannot be read, an `-ignore` pattern is invalid, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. |
+| 3 | A fatal error: a file cannot be read, an `-ignore` pattern is invalid, the shellcheck that `-shellcheck` names is not found, the output cannot be written, or workflint hit a bug in itself and reported an `internal-error`. A shellcheck that fails on a script is no fatal error: it gives a [shellcheck-failed](rules/shellcheck-failed.md) diagnostic. |
 
 ## Version
 
@@ -101,3 +102,5 @@ The files are linted in parallel. The lines of one file are written together whe
 | `TERM` | `dumb` turns color off unless `-color` is given. |
 | `WORKFLINT_INSTALLED_FROM` | The second line of `-version`. |
 | `RAYON_NUM_THREADS` | The number of files linted at once. The output is the same for every value. |
+| `PATH` | Where `-shellcheck` looks up a bare name. |
+| `SHELLCHECK_OPTS` | Options that shellcheck reads. workflint passes its environment on to shellcheck. |

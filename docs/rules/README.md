@@ -2,7 +2,7 @@
 
 Each rule has a page here, `docs/rules/<id>.md`, named after its rule ID (ADR 0008). The diagnostics of a rule end with its ID in brackets, such as `[unexpected-key]`, where actionlint prints the kind (see [Rule ID in brackets instead of the kind](../differences.md#rule-id-in-brackets)). The `docs_url` of the rule's `RuleMeta` links the page.
 
-The test `rule_pages` in `crates/workflint-linter/tests/rule_pages.rs` reads every page. It runs each example through the YAML layer, the workflow parser, and the rules, as the binary does, and compares the result with the page. It also checks that every registered rule has a page, that every page belongs to a registered rule, and that the index below matches the registry.
+The test `rule_pages` in `crates/workflint-linter/tests/rule_pages.rs` reads every page. It runs each example through the YAML layer, the workflow parser, and the rules, as the binary does, and compares the result with the page. The examples of the rules of the `shellcheck` kind run with shellcheck: those of `shellcheck-issue` with the shellcheck on `PATH`, and are skipped without it, and those of `shellcheck-failed` with a stand-in that exits with status 2 and prints `failed` to stderr. The other pages run no external tool. It also checks that every registered rule has a page, that every page belongs to a registered rule, and that the index below matches the registry.
 
 ## Page format
 
@@ -130,6 +130,8 @@ The test `the_rules_index_matches_the_registry` compares this table with the reg
 | [`runner-label-conflict`](runner-label-conflict.md) | `runner-label` | correctness | error | Two `runs-on` labels of a job cannot be on the same runner |
 | [`runs-key-not-allowed`](runs-key-not-allowed.md) | `action` | correctness | error | The `runs` section of a local action has a key that its kind of action does not use |
 | [`schedule-without-config`](schedule-without-config.md) | `syntax-check` | correctness | error | `schedule` is named in a string or a sequence item of `on`, so it has no `cron` entries |
+| [`shellcheck-failed`](shellcheck-failed.md) | `shellcheck` | correctness | error | shellcheck could not check a `run:` script |
+| [`shellcheck-issue`](shellcheck-issue.md) | `shellcheck` | correctness | error | shellcheck reports a problem in a `run:` script |
 | [`single-expression-required`](single-expression-required.md) | `expression` | correctness | error | A value that must be one `${{ }}` holds another number of them |
 | [`step-without-run-or-uses`](step-without-run-or-uses.md) | `syntax-check` | correctness | error | A step has neither `run` nor `uses` |
 | [`too-many-dispatch-inputs`](too-many-dispatch-inputs.md) | `events` | correctness | error | `workflow_dispatch` has more inputs than GitHub allows |

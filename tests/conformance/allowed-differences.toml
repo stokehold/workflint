@@ -93,6 +93,90 @@ upstream = "test.yaml:20:9: leading and trailing spaces are not allowed in glob 
 workflint = "test.yaml:21:9: leading and trailing spaces are not allowed in glob path. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]"
 
 [[difference]]
+anchor = "script-finding-positions"
+fixture = "examples/shellcheck_integration"
+upstream = "test.yaml:6:9: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]"
+workflint = "test.yaml:6:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]"
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "examples/shellcheck_integration"
+upstream = "test.yaml:14:9: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]"
+workflint = "test.yaml:14:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]"
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:15:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:15:14: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:15:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:15:23: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:20:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:20:14: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:20:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:20:23: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:30:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:30:14: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:30:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:30:23: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:42:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:42:14: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:42:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:42:23: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:47:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:47:14: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:47:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:47:23: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:53:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:53:14: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
+anchor = "script-finding-positions"
+fixture = "err/shellcheck_default_shell_detection"
+upstream = '/test\.yaml:53:9: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+workflint = '/test\.yaml:53:23: shellcheck reported issue in this script: .+ \[shellcheck\]/'
+
+[[difference]]
 anchor = "dispatch-options-quoting"
 fixture = "err/workflow_dispatch_input_types"
 upstream = 'test.yaml:18:18: default value "bar" of "choice_default_is_not_in_options" input is not included in its options "\"foo\"" [events]'

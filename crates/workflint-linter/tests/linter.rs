@@ -11,6 +11,7 @@ use workflint_diagnostics::{Color, Diagnostic, SourceFile, render_oneline};
 use workflint_linter::rules::INTERNAL_ERROR;
 use workflint_linter::{IgnorePattern, Input, Linted, Linter};
 use workflint_rules::local::LocalMetadata;
+use workflint_rules::tools::ExternalTools;
 
 const VALID: &str =
     "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n";
@@ -159,13 +160,17 @@ fn a_broken_reusable_workflow_is_reported_in_the_first_caller_by_path() {
 }
 
 /// The rules, except that the lint of a file named `panics.yaml` panics.
-fn check_or_panic(file: &SourceFile, local: &dyn LocalMetadata) -> Vec<Diagnostic> {
+fn check_or_panic(
+    file: &SourceFile,
+    local: &dyn LocalMetadata,
+    tools: &dyn ExternalTools,
+) -> Vec<Diagnostic> {
     assert!(
         !file.path().ends_with("panics.yaml"),
         "a rule failed on {}",
         file.path()
     );
-    workflint_rules::check_file(file, local)
+    workflint_rules::check_file(file, local, tools)
 }
 
 #[test]
