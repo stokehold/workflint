@@ -45,3 +45,4 @@ pub use linter::{
 pub use project::ProjectRoots;
 pub use settings::{Flags, Settings};
 pub use tools::Tools;
+pub use workflint_rules::kind::Kind;

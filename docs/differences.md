@@ -23,8 +23,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: ignore comments and per-rule config need a stable, specific ID (ADR 0008, ADR 0009). The upstream problem matcher regex still matches, and its `code` group now captures the rule ID.
 - Upstream issue: #71, #75.
 - Milestone: M1 (diagnostic model), M5 (output).
-- Status: implemented in the default and `-oneline` output. The `.Kind` and `.Rule` split for templates is a proposal to confirm in M5.
-- Fixtures: every `.out` line differs in the bracket only. The conformance runner maps rule IDs back to kinds before comparing.
+- Status: implemented in the default and `-oneline` output, and in `-format` templates since M5.8. A template that prints a whole diagnostic with `printf "%v"` gets the rule ID as an eighth value.
+- Fixtures: every `.out` line differs in the bracket only. The conformance runner maps rule IDs back to kinds before comparing. The `format/` cases print `.Kind`, so the rule ID changes none of their output.
 
 <a id="sort-order"></a>
 ### Order of diagnostics at the same position
@@ -48,7 +48,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: one consistent unit. ASCII-only files without tabs report the same columns as upstream. Their indicator differs only where the span is not the run up to the next space, for example a message about a quoted string that contains spaces.
 - Upstream issue: none.
 - Milestone: M1, M3.
-- Status: implemented in the default and `-oneline` output. The other formats follow in M5.
+- Status: implemented in the default and `-oneline` output, and in `-format` templates since M5.8. The `Snippet` field holds the same indicator line as the default output, and `EndColumn` is the column of the last character that the indicator covers. The named formats follow in M5.
+- Fixtures: `format/test.json`, `format/test.jsonl`, `format/test.md`, and `format/test.sarif`. The spans of the two `unexpected-key` errors cover the key without its colon, so their indicators and end columns are one character shorter.
 
 <a id="positions-inside-scalars"></a>
 ### Exact positions inside multi-line and quoted strings
@@ -938,11 +939,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### `-format` execution errors exit with code 3
 
 - Upstream: when a template fails at run time, for example `-format '{{.Foo}}'`, the error is ignored for a single file or stdin, which prints nothing and exits with 0 or 1. With two or more files the same error exits with code 3.
-- workflint: a template execution error prints the error to stderr and exits with code 3 in every mode.
+- workflint: a template execution error prints the error to stderr and exits with code 3 in every mode. The output up to the failing action is printed first, as upstream prints it.
 - Why: a broken template should not look like a clean run.
 - Upstream issue: none.
-- Milestone: M5.
-- Status: planned.
+- Milestone: M5.8.
+- Status: implemented.
 
 <a id="format-template-subset"></a>
 ### Where `-format` templates differ from Go's template language
@@ -956,10 +957,21 @@ The last section lists behaviour that was investigated and deliberately kept.
   - `printf` prints floats with `%b`, `%x`, and `%X` as a wrong verb, such as `%!x(float64=1.5)`. Go prints them in binary or hexadecimal notation.
   - A string never holds invalid UTF-8. A `\xff` escape in a string literal, or `slice` through the middle of a character, gives U+FFFD where Go keeps the byte.
   - `index` on a string returns an `int`, so an error names `int` where Go names `uint8`. `len` of a missing map key fails with `len of nil pointer`, the error of a nil value. Go fails with an error about a zero `reflect.Value`.
+  - `replace` with an empty old string inserts the new string between every two bytes, as Go does, and turns each character of several bytes that it splits into U+FFFD characters.
 - Why: the templates that users copy from actionlint use none of these. The limits on nesting keep a crafted template from overflowing the stack, and printing addresses would make output differ between runs (ADR 0013).
 - Upstream issue: none.
 - Milestone: M5.7.
-- Status: implemented in `workflint-gotemplate`. The `-format` flag uses it from M5.8.
+- Status: implemented in `workflint-gotemplate`, which `-format` uses since M5.8.
+
+<a id="all-kinds-of-the-run"></a>
+### `allKinds` lists the kinds of every rule the run uses
+
+- Upstream: `allKinds` lists `syntax-check` and the kinds of the rules that checked at least one file. A file with a YAML syntax error runs no rules, so a run whose files all fail to parse lists only `syntax-check`, and the `rules` of the SARIF template depend on the input.
+- workflint: `allKinds` lists `syntax-check` and the kinds of every rule that the run uses, whatever the files contain. As upstream, it lists `shellcheck` only when shellcheck runs.
+- Why: the list describes the tool, not the input, so the same command line gives the same SARIF `rules`.
+- Upstream issue: none.
+- Milestone: M5.8.
+- Status: implemented. From M5.12 (#249), the list has `pyflakes` when pyflakes runs.
 
 <a id="log-interleaving"></a>
 ### Log lines do not interleave
