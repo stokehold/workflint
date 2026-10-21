@@ -44,7 +44,7 @@ The rules are those of Go's `flag` package:
 | `-quiet`, `-q` | Prints only errors and fatal messages: no summary and no log. |
 | `-silent` | Prints only fatal messages. The exit code says whether errors were found. |
 | `-summary` | Prints one line with the number of errors by severity to stderr, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. |
-| `-format TEMPLATE` | Prints the errors through a Go template. See [Format templates](#format-templates). |
+| `-format TEMPLATE` | Prints the errors through a Go template. See [Format templates](#format-templates). `-format sarif` prints them as SARIF instead ([sarif.md](sarif.md)). |
 | `-config-file PATH`, `--config PATH` | Lints every file with the config file at `PATH`, in place of the config file of each project. A file that cannot be read or decoded exits with code 3. See [config.md](config.md). |
 | `-init-config` | Writes the default config file to `.github/workflint.yaml` in the project of the working directory and exits. The file arguments are ignored. See [config.md](config.md#creating-a-config-file). |
 | `-stdin-filename NAME` | Names the workflow read from stdin. The default is `<stdin>`. If a file exists at `NAME`, the workflow gets that file's project. |
@@ -73,7 +73,7 @@ workflint -format '{{range $err := .}}{{json $err}}{{end}}'
 workflint -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}\n{{end}}'
 ```
 
-The template must contain `{{`. Before parsing, workflint replaces the escapes `\a`, `\b`, `\f`, `\n`, `\r`, `\t`, `\v`, and `\\` in the flag value with the characters they stand for, so `-format '{{range .}}{{.Message}}\n{{end}}'` prints one message per line. The template runs once, over the list of the errors of every file in the order of the output. The output has no color, and `-oneline` changes nothing.
+The template must contain `{{`, except for `sarif`, which names the [SARIF output](sarif.md). Before parsing, workflint replaces the escapes `\a`, `\b`, `\f`, `\n`, `\r`, `\t`, `\v`, and `\\` in the flag value with the characters they stand for, so `-format '{{range .}}{{.Message}}\n{{end}}'` prints one message per line. The template runs once, over the list of the errors of every file in the order of the output. The output has no color, and `-oneline` changes nothing.
 
 Each error has these fields:
 

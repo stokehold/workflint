@@ -1,0 +1,99 @@
+---
+source: crates/workflint/src/sarif.rs
+expression: text
+---
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "workflint",
+          "version": "1.2.3",
+          "semanticVersion": "1.2.3",
+          "informationUri": "https://github.com/stokehold/workflint",
+          "rules": [
+            {
+              "id": "error-rule",
+              "shortDescription": {
+                "text": "A test rule reports something"
+              },
+              "helpUri": "https://example.com/rules/test.md",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "correctness"
+                ]
+              }
+            },
+            {
+              "id": "info-rule",
+              "shortDescription": {
+                "text": "A test rule reports something"
+              },
+              "helpUri": "https://example.com/rules/test.md",
+              "defaultConfiguration": {
+                "enabled": false,
+                "level": "note"
+              },
+              "properties": {
+                "tags": [
+                  "style"
+                ]
+              }
+            },
+            {
+              "id": "warning-rule",
+              "shortDescription": {
+                "text": "A test rule reports something"
+              },
+              "helpUri": "https://example.com/rules/test.md",
+              "defaultConfiguration": {
+                "enabled": false,
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "pedantic"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "columnKind": "utf16CodeUnits",
+      "results": [
+        {
+          "ruleId": "error-rule",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "the value is bad"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".github/workflows/ci.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 12,
+                  "endLine": 2,
+                  "endColumn": 15
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "workflint/v1": "e94eab2dfe6a379d:1"
+          }
+        }
+      ]
+    }
+  ]
+}

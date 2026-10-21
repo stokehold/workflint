@@ -78,6 +78,96 @@ YAML test suite
   Test cases from the data-2020-02-11 tag are vendored in
   crates/workflint-yaml/tests/yaml-test-suite/, with the suite's LICENSE file.
 
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
+SARIF SDK
+  https://github.com/microsoft/sarif-sdk
+  Copyright (c) Microsoft Corporation
+  MIT license
+  The SARIF 2.1.0 JSON schema from commit
+  aaf860dff84137c7a6346f2bd6c4a5642a33b3c5 is vendored in
+  crates/workflint/tests/sarif-schema/, with its original LICENSE file. The
+  tests of the SARIF output validate against it.
+
 unslop skill
   https://github.com/cursor/plugins/tree/main/pstack/skills/unslop
   Copyright (c) 2026 Lauren Tan
