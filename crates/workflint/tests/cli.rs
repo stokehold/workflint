@@ -1168,7 +1168,7 @@ fn a_broken_project_config_exits_with_3_before_any_output() {
     let root = working_dir_of(project.path());
     let workflow = ".github/workflows/a.yaml";
     std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
-    let config = root.as_path().join(".github/actionlint.yaml");
+    let config = root.as_path().join(".github").join("actionlint.yaml");
     std::fs::write(&config, "paths:\n  a:\n    ignore: ['(']\n").unwrap();
     let run = run(command(root.as_path(), &["-oneline", workflow])
         .output()
@@ -1194,7 +1194,7 @@ fn an_unknown_key_in_a_workflint_config_exits_with_3() {
     let root = working_dir_of(project.path());
     let workflow = ".github/workflows/a.yaml";
     std::fs::write(root.as_path().join(workflow), CUSTOM_LABEL).unwrap();
-    let config = root.as_path().join(".github/workflint.yaml");
+    let config = root.as_path().join(".github").join("workflint.yaml");
     std::fs::write(&config, "self-hosted-runners:\n  labels: [gpu]\n").unwrap();
     let run = run(command(root.as_path(), &["-oneline", workflow])
         .output()
@@ -1223,7 +1223,7 @@ fn an_unknown_key_in_an_actionlint_config_prints_a_warning_and_the_run_goes_on()
         "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n",
     )
     .unwrap();
-    let config = root.as_path().join(".github/actionlint.yaml");
+    let config = root.as_path().join(".github").join("actionlint.yaml");
     std::fs::write(&config, "self-hosted-runners:\n  labels: [gpu]\n").unwrap();
     let run = run(command(root.as_path(), &["-oneline", workflow])
         .output()
