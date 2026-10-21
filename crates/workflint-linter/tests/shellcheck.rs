@@ -275,7 +275,7 @@ fn project(files: &[(&str, &str)], config: &str) -> TempDir {
 
 /// Lints the workflows `names` of the project at `root` with `linter`, and returns the one-line
 /// output of each.
-fn lint_in(root: &Path, names: &[&str], linter: Linter) -> Vec<String> {
+fn lint_in(root: &Path, names: &[&str], linter: &Linter) -> Vec<String> {
     let inputs: Vec<Input> = names
         .iter()
         .map(|name| Input::file(root.join(".github").join("workflows").join(name)))
@@ -326,7 +326,7 @@ fn without_rcfile_shellcheck_gets_norc() {
     );
     let linter =
         Linter::new(root.path().to_path_buf()).with_tools(tools(record, Duration::from_secs(60)));
-    assert_eq!(lint_in(root.path(), &["a.yaml"], linter), [""]);
+    assert_eq!(lint_in(root.path(), &["a.yaml"], &linter), [""]);
     assert_eq!(recorded_args(log.path()), [REFERENCE_ARGS]);
 }
 
@@ -342,7 +342,7 @@ fn rcfile_replaces_norc_with_the_file_from_the_project_root() {
     // The working directory is not the project root, and the path still starts at the root.
     let cwd = root.path().join(".github");
     let linter = Linter::new(cwd.clone()).with_tools(tools(record, Duration::from_secs(60)));
-    assert_eq!(lint_in(root.path(), &["a.yaml"], linter), [""]);
+    assert_eq!(lint_in(root.path(), &["a.yaml"], &linter), [""]);
     let rcfile = root.path().join(".shellcheckrc");
     let mut expected = vec!["--rcfile".to_owned(), rcfile.to_str().unwrap().to_owned()];
     expected.extend(REFERENCE_ARGS[1..].iter().map(|&arg| arg.to_owned()));
@@ -381,7 +381,7 @@ fn args_come_after_workflints_arguments_and_before_the_script() {
     );
     let linter =
         Linter::new(root.path().to_path_buf()).with_tools(tools(record, Duration::from_secs(60)));
-    assert_eq!(lint_in(root.path(), &["a.yaml"], linter), [""]);
+    assert_eq!(lint_in(root.path(), &["a.yaml"], &linter), [""]);
     let mut expected: Vec<&str> = REFERENCE_ARGS[..8].to_vec();
     expected.extend(["--severity=warning", "-o", "all", "-"]);
     assert_eq!(recorded_args(log.path()), [expected]);
@@ -397,7 +397,7 @@ fn the_tool_timeout_of_the_config_file_kills_shellcheck() {
     let linter = Linter::new(root.path().to_path_buf())
         .with_tools(tools(stand_in(&["sleep"]), Duration::from_secs(60)));
     assert_eq!(
-        lint_in(root.path(), &["a.yaml"], linter),
+        lint_in(root.path(), &["a.yaml"], &linter),
         [format!(
             ".github/workflows/a.yaml:6:9: {DID_NOT_RUN}shellcheck did not finish in 1 seconds \
              and was killed [shellcheck-failed]\n"
@@ -409,7 +409,7 @@ fn the_tool_timeout_of_the_config_file_kills_shellcheck() {
 /// with the cache in `cache`.
 fn cached(records: &Path, version: &str, cache: &Path) -> Tools {
     let command = stand_in(&["version", version, "record", records.to_str().unwrap()]);
-    tools(command, Duration::from_secs(60)).with_cache_dir(cache.to_path_buf())
+    tools(command, Duration::from_secs(60)).with_cache_dir(cache)
 }
 
 /// The workflows of the cache tests and the config that turns the cache on.
@@ -426,7 +426,7 @@ fn cache_project() -> TempDir {
 /// Lints the workflows of [`cache_project`] once with `tools`.
 fn lint_cached(root: &Path, tools: Tools) -> Vec<String> {
     let linter = Linter::new(root.to_path_buf()).with_tools(tools);
-    lint_in(root, &["a.yaml", "b.yaml"], linter)
+    lint_in(root, &["a.yaml", "b.yaml"], &linter)
 }
 
 #[test]
@@ -464,7 +464,7 @@ fn a_changed_rcfile_misses_the_cache() {
     let lint = |log: &Path| {
         let linter =
             Linter::new(root.path().to_path_buf()).with_tools(cached(log, "0.11.0", cache.path()));
-        lint_in(root.path(), &["a.yaml"], linter)
+        lint_in(root.path(), &["a.yaml"], &linter)
     };
     fs::write(&rcfile, "disable=SC2086\n").unwrap();
     lint(log.path());
@@ -505,7 +505,7 @@ fn the_cache_is_off_unless_the_config_or_the_flag_turns_it_on() {
         &[("a.yaml", &workflow(&["run: echo $FOO"]))],
         "shellcheck:\n  cache: false\n",
     );
-    let lint = |linter: Linter| lint_in(root.path(), &["a.yaml"], linter);
+    let lint = |linter: Linter| lint_in(root.path(), &["a.yaml"], &linter);
     lint(Linter::new(root.path().to_path_buf()).with_tools(cached(
         log.path(),
         "0.11.0",
@@ -525,7 +525,7 @@ fn a_script_that_shellcheck_could_not_check_is_not_cached() {
     let cache = TempDir::new().unwrap();
     let root = cache_project();
     let command = stand_in(&["version", "0.11.0", "exit", "2", ""]);
-    let tools = tools(command, Duration::from_secs(60)).with_cache_dir(cache.path().to_path_buf());
+    let tools = tools(command, Duration::from_secs(60)).with_cache_dir(cache.path());
     let outputs = lint_cached(root.path(), tools);
     assert!(outputs[0].contains("[shellcheck-failed]"), "{outputs:?}");
     assert_eq!(walk(cache.path()).len(), 0);

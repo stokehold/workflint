@@ -536,7 +536,7 @@ fn init_config_outside_a_project_is_an_error() {
 fn shellcheck_keys_are_read_and_default_to_no_rcfile_no_args_and_no_cache() {
     let config = parse("");
     assert_eq!(config.shellcheck().rcfile, None);
-    assert!(config.shellcheck().args.is_empty());
+    assert_eq!(config.shellcheck().args, Vec::<String>::new());
     assert!(!config.shellcheck().cache);
     assert_eq!(config.tool_timeout(), None);
 
@@ -552,17 +552,20 @@ fn shellcheck_keys_are_read_and_default_to_no_rcfile_no_args_and_no_cache() {
         config.tool_timeout(),
         Some(std::time::Duration::from_secs(90))
     );
-    assert!(config.warnings().is_empty());
+    assert_eq!(config.warnings(), []);
 }
 
 #[test]
 fn null_shellcheck_keys_are_their_defaults() {
     let config = parse("shellcheck:\n  rcfile:\n  args:\n  cache:\ntool-timeout:\n");
     assert_eq!(config.shellcheck().rcfile, None);
-    assert!(config.shellcheck().args.is_empty());
+    assert_eq!(config.shellcheck().args, Vec::<String>::new());
     assert!(!config.shellcheck().cache);
     assert_eq!(config.tool_timeout(), None);
-    assert!(parse("shellcheck:\n").shellcheck().args.is_empty());
+    assert_eq!(
+        parse("shellcheck:\n").shellcheck().args,
+        Vec::<String>::new()
+    );
 }
 
 #[test]

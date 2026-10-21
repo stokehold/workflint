@@ -225,13 +225,12 @@ fn tools(options: &Options, quiet: bool) -> Result<Tools, String> {
     }
     .map_err(|err| format!("could not run shellcheck: {err}"))?;
     let tools = Tools::none().with_shellcheck(command, Arc::new(pool), RunOptions::default());
-    Ok(match workflint_linter::default_cache_dir() {
-        Some(dir) => tools.with_cache_dir(dir),
-        None => {
-            tracing::debug!("No cache directory was found, so the shellcheck cache is not used");
-            tools
-        }
-    })
+    if let Some(dir) = workflint_linter::default_cache_dir() {
+        Ok(tools.with_cache_dir(&dir))
+    } else {
+        tracing::debug!("No cache directory was found, so the shellcheck cache is not used");
+        Ok(tools)
+    }
 }
 
 /// The result of a run.

@@ -25,7 +25,7 @@ use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs;
 use std::panic::{self, AssertUnwindSafe};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::thread;
 use std::time::Duration;
@@ -143,7 +143,7 @@ impl Tools {
     /// it on. `dir` is usually [`default_cache_dir`]. Without a directory, no project uses the
     /// cache.
     #[must_use]
-    pub fn with_cache_dir(mut self, dir: PathBuf) -> Self {
+    pub fn with_cache_dir(mut self, dir: &Path) -> Self {
         if let Some(shellcheck) = &mut self.shellcheck {
             shellcheck.cache = Some(DiskCache::new(dir.join("shellcheck")));
         }
