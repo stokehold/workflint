@@ -1532,9 +1532,12 @@ version = "0.0.1"
 name = "workflint-diagnostics"
 version = "0.0.1"
 dependencies = [
+ "boon",
  "codspeed-divan-compat",
  "datatest-stable",
  "insta",
+ "serde",
+ "serde_json",
  "thiserror",
  "unicode-general-category",
  "unicode-width",

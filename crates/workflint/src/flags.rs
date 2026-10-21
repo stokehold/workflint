@@ -182,8 +182,9 @@ pub(crate) static FLAGS: [Flag; 20] = [
     Flag::string(
         "format",
         None,
-        "Custom template to format error messages in Go template syntax, or sarif to print SARIF. \
-         The command-line documentation lists the template's fields and functions",
+        "Custom template to format error messages in Go template syntax, or the name of a \
+         format: json, jsonl, or sarif. The command-line documentation lists the template's \
+         fields and functions",
         |options, value| options.format = value,
     ),
     Flag::string(

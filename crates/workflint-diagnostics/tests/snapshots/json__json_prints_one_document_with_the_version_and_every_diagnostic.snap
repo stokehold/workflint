@@ -1,0 +1,5 @@
+---
+source: crates/workflint-diagnostics/tests/json.rs
+expression: output
+---
+{"version":1,"diagnostics":[{"rule":"unused-anchor","kind":"syntax-check","severity":"warning","message":"anchor \"ä\" is defined but not used","help":null,"path":"ワーク/ci.yaml","start":{"line":7,"column":10,"offset":85},"end":{"line":7,"column":12,"offset":88}},{"rule":"undefined-property","kind":"expression","severity":"error","message":"undefined variable \"gihub\". available variables are \"env\", \"github\"","help":"did you mean \"github\"?","path":"ワーク/ci.yaml","start":{"line":9,"column":23,"offset":124},"end":{"line":9,"column":28,"offset":129}}]}

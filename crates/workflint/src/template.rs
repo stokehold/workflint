@@ -63,13 +63,9 @@ pub(crate) enum PrintError {
 impl Formatter {
     /// Parses `format`, the value of `-format`, after unescaping its backslash escapes, as
     /// `NewErrorFormatter` does (`error.go:252-290`). The error is the message to print.
+    ///
+    /// The caller passes only values with `{{`, because a value without it names a format.
     pub(crate) fn new(format: &str) -> Result<Self, String> {
-        if !format.contains("{{") {
-            return Err(format!(
-                "template to format error messages must contain at least one {{{{ }}}} \
-                 placeholder: {format}"
-            ));
-        }
         let kinds = Arc::new(OnceLock::new());
         let template = Template::parse(NAME, &unescape_backslash(format), functions(&kinds))
             .map_err(|err| {

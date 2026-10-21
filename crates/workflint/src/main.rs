@@ -3,8 +3,8 @@
 //! It parses the command line with [`flags`], picks the inputs: the files, directories, and
 //! globs given as arguments, the workflow files of the project without arguments, or stdin for
 //! a lone `-`. It lints them with [`Linter`], prints the diagnostics in the order of the inputs,
-//! through the `-format` template of [`template`], or as SARIF with `-format sarif`, and picks
-//! the exit code (`docs/cli.md`). The conformance suite runs it with the command line in
+//! in the format that `-format` names or through its template of [`template`], and picks the
+//! exit code (`docs/cli.md`). The conformance suite runs it with the command line in
 //! `tests/conformance/README.md`.
 
 mod color;
@@ -22,7 +22,8 @@ use std::sync::Arc;
 
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{
-    Color, Diagnostic, Severity, SourceFile, render_default, render_oneline,
+    Color, Diagnostic, JsonRecord, Severity, SourceFile, json_records, render_default, render_json,
+    render_jsonl, render_oneline,
 };
 use workflint_gotemplate::Value;
 use workflint_linter::config::{Config, init_config};
@@ -41,8 +42,9 @@ const EXIT_PROBLEM_FOUND: u8 = 1;
 /// The command line is invalid.
 const EXIT_INVALID_OPTION: u8 = 2;
 /// A file, stdin, or a config file could not be read, the workflow files of a run without
-/// arguments, of a directory argument, or of a glob argument could not be found, a config file, an `-ignore` pattern, or the `-format` template
-/// is invalid, the shellcheck that `-shellcheck` names, the pyflakes that `-pyflakes` names, or
+/// arguments, of a directory argument, or of a glob argument could not be found, a config file,
+/// an `-ignore` pattern, or the `-format` template or format name is invalid, the shellcheck that
+/// `-shellcheck` names, the pyflakes that `-pyflakes` names, or
 /// the Python linter that a config file names was not found, `-init-config` failed, the template
 /// failed while it ran, the output could not be written, or the lint of a file hit a bug in
 /// workflint and reported an `internal-error` diagnostic.
@@ -84,8 +86,8 @@ fn main() -> ExitCode {
         }
     };
     // As in actionlint, an invalid template stops the run before `-init-config`.
-    let formatter = match formatter(&options) {
-        Ok(formatter) => formatter,
+    let format_flag = match format_flag(&options) {
+        Ok(format_flag) => format_flag,
         Err(message) => {
             eprintln!("{message}");
             return ExitCode::from(EXIT_FAILURE);
@@ -117,9 +119,9 @@ fn main() -> ExitCode {
         |name| std::env::var(name).ok(),
         stdout.is_terminal(),
     );
-    let format = Format::new(&options, color, formatter.as_ref());
+    let format = Format::new(&options, color, format_flag.as_ref());
     let linter = linter(cwd, ignore, tools, python_linter, config_file, &options);
-    if let Some(formatter) = &formatter {
+    if let Some(FormatFlag::Template(formatter)) = &format_flag {
         formatter.set_kinds(linter.kinds());
     }
     let inputs = match inputs(&linter, paths, &options.stdin_filename) {
@@ -164,9 +166,6 @@ fn init(cwd: &std::path::Path) -> ExitCode {
     }
 }
 
-/// The `-format` value that picks SARIF output instead of a template.
-const SARIF: &str = "sarif";
-
 /// The tool that SARIF output names.
 const SARIF_TOOL: sarif::Tool<'static> = sarif::Tool {
     name: "workflint",
@@ -174,13 +173,52 @@ const SARIF_TOOL: sarif::Tool<'static> = sarif::Tool {
     information_uri: "https://github.com/stokehold/workflint",
 };
 
-/// Parses the template of `-format`, if it is given and is not the name of a format. The error
-/// is the message to print.
-fn formatter(options: &Options) -> Result<Option<Formatter>, String> {
-    if options.format.is_empty() || options.format == SARIF {
+/// What `-format` asks for.
+enum FormatFlag {
+    /// A format that a value without `{{` names.
+    Named(Named),
+    /// A template.
+    Template(Formatter),
+}
+
+/// A format that `-format` names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Named {
+    Json,
+    JsonLines,
+    Sarif,
+}
+
+/// The names of the [`Named`] formats, in the order the error about an unknown name lists them.
+const FORMAT_NAMES: [(&str, Named); 3] = [
+    ("json", Named::Json),
+    ("jsonl", Named::JsonLines),
+    ("sarif", Named::Sarif),
+];
+
+/// Reads `-format`, if it is given. A value with `{{` is a template, which this parses, and any
+/// other value names a format (ADR 0003). The error is the message to print.
+fn format_flag(options: &Options) -> Result<Option<FormatFlag>, String> {
+    let value = options.format.as_str();
+    if value.is_empty() {
         return Ok(None);
     }
-    Formatter::new(&options.format).map(Some)
+    if value.contains("{{") {
+        return Formatter::new(value).map(|formatter| Some(FormatFlag::Template(formatter)));
+    }
+    FORMAT_NAMES
+        .iter()
+        .find(|(name, _)| *name == value)
+        .map(|&(_, named)| Some(FormatFlag::Named(named)))
+        .ok_or_else(|| {
+            let names: Vec<&str> = FORMAT_NAMES.iter().map(|(name, _)| *name).collect();
+            format!(
+                "unknown format {}: -format takes a Go template with at least one {{{{ }}}} \
+                 placeholder, or one of the format names {}",
+                quote(value),
+                names.join(", ")
+            )
+        })
 }
 
 /// Reads the config file of `-config-file`, if it is given. The error is the message to print.
@@ -402,7 +440,8 @@ impl Counts {
 /// `err`.
 ///
 /// As in actionlint, a file or a config file that cannot be read stops the run before anything
-/// is written. A `-format` template runs once, over the diagnostics of every file. When it fails,
+/// is written. The `json` format writes one document over the diagnostics of every file. A
+/// `-format` template runs once, over the diagnostics of every file. When it fails,
 /// its output up to the failing action is written, and the run exits with code 3
 /// (`docs/differences.md#template-execution-errors`).
 fn run(
@@ -441,7 +480,7 @@ fn run(
                 .into_iter()
                 .filter_map(|rendered| match rendered.output {
                     Output::Sarif(results) => Some(results),
-                    Output::Text(_) | Output::Fields(_) => None,
+                    Output::Text(_) | Output::Fields(_) | Output::Records(_) => None,
                 })
                 .collect();
             sarif::write(out, &SARIF_TOOL, registry::rules(), &results).and_then(|()| out.flush())
@@ -451,7 +490,7 @@ fn run(
                 .into_iter()
                 .flat_map(|rendered| match rendered.output {
                     Output::Fields(fields) => fields,
-                    Output::Text(_) | Output::Sarif(_) => Vec::new(),
+                    Output::Text(_) | Output::Records(_) | Output::Sarif(_) => Vec::new(),
                 })
                 .collect();
             let printed = formatter.print(out, fields);
@@ -468,12 +507,27 @@ fn run(
                 Ok(()) => flushed,
             }
         }
+        Format::Json | Format::JsonLines => {
+            let records: Vec<JsonRecord> = files
+                .into_iter()
+                .flat_map(|rendered| match rendered.output {
+                    Output::Records(records) => records,
+                    Output::Text(_) | Output::Fields(_) | Output::Sarif(_) => Vec::new(),
+                })
+                .collect();
+            if matches!(format, Format::Json) {
+                render_json(out, &records)
+            } else {
+                render_jsonl(out, &records)
+            }
+            .and_then(|()| out.flush())
+        }
         _ => files
             .iter()
             .try_for_each(|rendered| match &rendered.output {
                 Output::Text(Ok(output)) => out.write_all(output),
                 Output::Text(Err(err)) => Err(io::Error::new(err.kind(), err.to_string())),
-                Output::Fields(_) | Output::Sarif(_) => Ok(()),
+                Output::Fields(_) | Output::Records(_) | Output::Sarif(_) => Ok(()),
             })
             .and_then(|()| out.flush()),
     };
@@ -511,6 +565,8 @@ enum Output {
     Fields(Vec<Value>),
     /// The SARIF results of the diagnostics, for `-format sarif`.
     Sarif(sarif::Results),
+    /// The records of the diagnostics, for `-format json` and `-format jsonl`.
+    Records(Vec<JsonRecord>),
 }
 
 /// The output format.
@@ -520,6 +576,10 @@ enum Format<'a> {
     Default(Color),
     /// `-oneline`: the header line only.
     Oneline(Color),
+    /// `-format json`: one JSON document for every file.
+    Json,
+    /// `-format jsonl`: one JSON object per diagnostic.
+    JsonLines,
     /// `-format`: the template, without color.
     Template(&'a Formatter),
     /// `-format sarif`: one SARIF log for every file.
@@ -531,13 +591,17 @@ enum Format<'a> {
 impl<'a> Format<'a> {
     /// The format of `options`. `-silent` wins over `-format`, which wins over `-oneline`, as in
     /// actionlint (`linter.go:405`).
-    fn new(options: &Options, color: bool, formatter: Option<&'a Formatter>) -> Self {
+    fn new(options: &Options, color: bool, format_flag: Option<&'a FormatFlag>) -> Self {
         let color = if color { Color::On } else { Color::Off };
         if options.silent {
             Self::Silent
-        } else if options.format == SARIF {
-            Self::Sarif
-        } else if let Some(formatter) = formatter {
+        } else if let Some(FormatFlag::Named(named)) = format_flag {
+            match named {
+                Named::Json => Self::Json,
+                Named::JsonLines => Self::JsonLines,
+                Named::Sarif => Self::Sarif,
+            }
+        } else if let Some(FormatFlag::Template(formatter)) = format_flag {
             Self::Template(formatter)
         } else if options.oneline {
             Self::Oneline(color)
@@ -551,6 +615,13 @@ impl<'a> Format<'a> {
         let written = match self {
             Self::Default(color) => render_default(&mut output, file, diagnostics, color),
             Self::Oneline(color) => render_oneline(&mut output, file, diagnostics, color),
+            Self::Json | Self::JsonLines => {
+                return Rendered {
+                    output: Output::Records(json_records(file, diagnostics)),
+                    counts: Counts::of(diagnostics),
+                    internal_error: has_internal_error(diagnostics),
+                };
+            }
             Self::Template(_) => {
                 return Rendered {
                     output: Output::Fields(template::fields(file, diagnostics)),

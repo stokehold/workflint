@@ -29,6 +29,7 @@ Rules that another crate reports are an exception to "rules live in `workflint-r
 - `xtask/` is the package behind `cargo xtask`, the developer commands. `cargo xtask --help` lists them. Its `conformance` test target is the conformance suite, `xtask/goyaml-dump/` is the Go program that `cargo xtask yaml-parity` builds to dump go-yaml's tree, and `xtask/expr-check/` is the Go program that `cargo xtask expr-parity` builds around the reference's expression checker. It is never published (ADR 0006).
 - `xtask/go-quote-hash/` is a Go program that hashes the output of Go's `strconv.Quote` and `strconv.QuoteRune` for every Unicode scalar value. The tests of `workflint_diagnostics::quote` compare their own output with these hashes.
 - `xtask/go-template-golden/` is a Go program that runs templates with Go's `text/template` and writes the expected output and errors that the tests of `workflint-gotemplate` compare with.
+- `schemas/` holds the JSON Schema of workflint's output formats, such as `json-output.schema.json` for `-format json` and `-format jsonl` ([json-output.md](json-output.md)). Tests validate the output against it.
 - `fuzz/` holds the cargo-fuzz targets. It is a Cargo workspace of its own, with its own `Cargo.lock` and a pinned nightly toolchain, because `cargo fuzz` needs nightly (ADR 0025). It is never published.
 
 ## How a run works
