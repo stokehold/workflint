@@ -866,11 +866,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Project root without `.git`
 
 - Upstream: a project root needs `.github/workflows` and a `.git` file or directory. Without `.git`, linting with no arguments fails with `no project was found in any parent directories of ...` and exit code 3.
-- workflint: `.jj` and `.hg` also mark a root. If no ancestor has a version control marker, the nearest ancestor with a `.github` directory is the root (ADR 0010).
+- workflint: `.jj` and `.hg` also mark a root. If no ancestor has both `.github/workflows` and a marker, the nearest ancestor with a `.github` directory is the root (ADR 0010). A marker in an ancestor without `.github/workflows`, such as a Git repository in the home directory, does not stop the fallback. A file in an exported source tree gets the tree's project, and its local actions and reusable workflows are checked. A root without `.github/workflows` has no workflow files, so a run without file arguments there prints `no YAML file was found in ...` and exits with code 3.
 - Why: repositories in other version control systems, and exported source trees, should lint.
 - Upstream issue: #242, PR #752.
 - Milestone: M5.
-- Status: planned.
+- Status: implemented. No fixture covers it, because the conformance runner creates `.git` in every project. The `workflint-linter` tests `a_jj_directory_marks_a_project_root`, `an_hg_directory_marks_a_project_root`, and `without_a_marker_the_nearest_ancestor_with_a_github_directory_is_the_root` cover it.
 
 <a id="config-file-lookup"></a>
 ### Config file names and lookup order
@@ -975,7 +975,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Log lines
 
 - Upstream: `-verbose` also prints `Found <n> parse errors in <ms> ms for <path>` for each file. `-debug` prints the options, the config, a line `[Linter] <rule> found <n> errors` for every rule, the `[<rule>] ...` lines that rules write about their work, and `[Visitor] ... took <ms> ms` timings.
-- workflint: `-verbose` prints the other lines of the reference: `Linting <n> files`, `Linting <path>`, `Using project at <root>`, `Found total <n> errors in <ms> ms for <path>`, the line about errors that `-ignore` dropped, and `Found <n> errors in <n> files`. It adds `Linting <path> again, because the files before it changed what it reads` when the driver lints a file again (ADR 0013). `-debug` adds `[Linter] <rule-id> found <n> errors` for each rule ID that found errors, and `[Linter] Error "<message>" is ignored due to -ignore command line option` for each dropped error.
+- workflint: `-verbose` prints the other lines of the reference: `Linting all workflow files in repository: <dir>`, `Detected project: <root>`, `Collected <n> YAML files`, `Reading the input from stdin`, `Linting <n> files`, `Linting <path>`, `Using project at <root>`, `Found total <n> errors in <ms> ms for <path>`, the line about errors that `-ignore` dropped, and `Found <n> errors in <n> files`. It adds `Linting <path> again, because the files before it changed what it reads` when the driver lints a file again (ADR 0013). `-debug` adds `[Linter] <rule-id> found <n> errors` for each rule ID that found errors, and `[Linter] Error "<message>" is ignored due to -ignore command line option` for each dropped error.
 - Why: workflint parses a file and runs its rules in one step, and its rules are not separate passes over the tree, so the parse-only count and the per-pass timings do not exist. The debug lines are for developers, and the conformance suite does not compare them.
 - Upstream issue: none.
 - Milestone: M5.6.

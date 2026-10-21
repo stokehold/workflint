@@ -14,11 +14,13 @@
 //! [`tool`] runs external tools such as shellcheck with a timeout and a limit on processes, and
 //! [`Tools`] runs shellcheck on the scripts that the rules collect, once per script and run.
 //!
-//! M5 adds file discovery and the config.
+//! [`Linter::discover`] returns the workflow files of a run without file arguments, and
+//! [`Input::stdin`] reads a workflow from stdin.
 //!
 //! This is an internal crate with no stability promise.
 
 mod cache;
+mod discover;
 mod ignore;
 mod linter;
 pub mod path;
@@ -29,7 +31,10 @@ pub mod tool;
 mod tools;
 
 pub use cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
+pub use discover::DiscoveryError;
 pub use ignore::{IgnorePattern, PatternError};
-pub use linter::{Check, FILE_SPAN, Input, Linted, Linter, ReadError, has_internal_error};
+pub use linter::{
+    Check, FILE_SPAN, Input, Linted, Linter, ReadError, STDIN, StdinError, has_internal_error,
+};
 pub use project::ProjectRoots;
 pub use tools::Tools;
