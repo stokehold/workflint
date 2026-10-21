@@ -25,18 +25,20 @@ impl IgnorePattern {
     /// as ``error parsing regexp: missing closing ): `(` ``.
     pub fn new(pattern: &str) -> Result<Self, PatternError> {
         let translated = translate(pattern)?;
-        if let Err(error) = regex_syntax::Parser::new().parse(&translated.text) {
-            return Err(translated.error(pattern, &error));
-        }
-        if let Ok(ast) = ast::parse::Parser::new().parse(&translated.text) {
-            if let Some(span) = too_many_copies(&ast) {
-                let start = translated.origin(span.start.offset, pattern);
-                let end = translated.origin(span.end.offset, pattern);
-                return Err(PatternError::new(
-                    INVALID_REPEAT_SIZE,
-                    pattern.get(start..end).unwrap_or(pattern),
-                ));
-            }
+        let error = |error: regex_syntax::Error| translated.error(pattern, &error);
+        let ast = ast::parse::Parser::new()
+            .parse(&translated.text)
+            .map_err(|err| error(err.into()))?;
+        hir::translate::Translator::new()
+            .translate(&translated.text, &ast)
+            .map_err(|err| error(err.into()))?;
+        if let Some(span) = too_many_copies(&ast) {
+            let start = translated.origin(span.start.offset, pattern);
+            let end = translated.origin(span.end.offset, pattern);
+            return Err(PatternError::new(
+                INVALID_REPEAT_SIZE,
+                pattern.get(start..end).unwrap_or(pattern),
+            ));
         }
         let regex = Regex::new(&translated.text).map_err(|error| match error {
             regex::Error::CompiledTooBig(_) => PatternError::new("expression too large", pattern),

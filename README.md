@@ -33,6 +33,7 @@ A GitHub Action (`stokehold/workflint-action`), a pre-commit hook, and install s
 
 | Document | Contents |
 |---|---|
+| [docs/cli.md](docs/cli.md) | The command line: flags, output, exit codes. |
 | [docs/roadmap.md](docs/roadmap.md) | Milestones and tasks. |
 | [docs/architecture.md](docs/architecture.md) | Crates, data flow, main types. |
 | [docs/adr/](docs/adr/README.md) | Architecture decision records. |

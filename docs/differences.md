@@ -677,11 +677,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### A missing file of a local action is a warning
 
 - Upstream: a file that the `runs` section of a local action names and that does not exist is an error, like every other finding: `file "dist/index.js" does not exist in "...". it is specified at "main" key in "runs" section in "..." action`.
-- workflint: the message is the same, and the rule `action-file-not-found` has the default severity warning. This covers `main`, `pre`, and `post` of JavaScript actions and `image`, `pre-entrypoint`, `entrypoint`, and `post-entrypoint` of Docker actions. Until M5.6 applies `--fail-on`, a warning still makes the exit code 1, so the output and the exit code do not change yet. After M5.6, a run whose only findings are missing files exits with 0 by default.
+- workflint: the message is the same, and the rule `action-file-not-found` has the default severity warning. This covers `main`, `pre`, and `post` of JavaScript actions and `image`, `pre-entrypoint`, `entrypoint`, and `post-entrypoint` of Docker actions. Until M9.1 adds `--fail-on`, a warning still makes the exit code 1, so the output and the exit code do not change yet. After M9.1, a run whose only findings are missing files exits with 0 by default.
 - Why: a JavaScript action's entrypoint is often built by an earlier step of the job, such as `npm run build`, and is not in the repository when workflint runs.
 - Upstream issue: #518.
-- Milestone: M4.18 (severity), M5.6 (exit code).
-- Status: the severity is implemented. The exit code follows with M5.6.
+- Milestone: M4.18 (severity), M9.1 (exit code).
+- Status: the severity is implemented. The exit code follows with M9.1.
 
 <a id="dispatch-options-quoting"></a>
 ### `workflow_dispatch` options quoted once
@@ -921,18 +921,18 @@ The last section lists behaviour that was investigated and deliberately kept.
 - workflint: debug output is enabled, which includes verbose output.
 - Why: the more detailed level should win.
 - Upstream issue: none.
-- Milestone: M5.
-- Status: planned.
+- Milestone: M5.6.
+- Status: implemented.
 
 <a id="color-flag-precedence"></a>
 ### `-color` overrides `NO_COLOR`
 
 - Upstream: a non-empty `NO_COLOR` disables color even when `-color` is given, because the color library reads the variable at startup.
-- workflint: `-color` forces color. `-no-color` still wins over `-color`. Without either flag, `NO_COLOR` disables color as before.
+- workflint: `-color` forces color, also when `TERM` is `dumb`. `-no-color` still wins over `-color`. Without either flag, `NO_COLOR` disables color as before.
 - Why: no-color.org says a command-line flag overrides the variable.
 - Upstream issue: none.
-- Milestone: M5.
-- Status: planned.
+- Milestone: M5.6.
+- Status: implemented.
 
 <a id="template-execution-errors"></a>
 ### `-format` execution errors exit with code 3
@@ -965,11 +965,63 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Log lines do not interleave
 
 - Upstream: the `verbose: ` prefix and the message are separate writes without a lock, so concurrent files produce lines such as `verbose: verbose: Found 1 parse errors`.
-- workflint: each log line is written whole.
+- workflint: each log line is written whole, and the lines of one file are written together when the file is done, so the lines of two files never mix.
 - Why: interleaved prefixes make the log hard to read.
 - Upstream issue: none.
-- Milestone: M5.
-- Status: planned.
+- Milestone: M5.6.
+- Status: implemented.
+
+<a id="log-lines"></a>
+### Log lines
+
+- Upstream: `-verbose` also prints `Found <n> parse errors in <ms> ms for <path>` for each file. `-debug` prints the options, the config, a line `[Linter] <rule> found <n> errors` for every rule, the `[<rule>] ...` lines that rules write about their work, and `[Visitor] ... took <ms> ms` timings.
+- workflint: `-verbose` prints the other lines of the reference: `Linting <n> files`, `Linting <path>`, `Using project at <root>`, `Found total <n> errors in <ms> ms for <path>`, the line about errors that `-ignore` dropped, and `Found <n> errors in <n> files`. It adds `Linting <path> again, because the files before it changed what it reads` when the driver lints a file again (ADR 0013). `-debug` adds `[Linter] <rule-id> found <n> errors` for each rule ID that found errors, and `[Linter] Error "<message>" is ignored due to -ignore command line option` for each dropped error.
+- Why: workflint parses a file and runs its rules in one step, and its rules are not separate passes over the tree, so the parse-only count and the per-pass timings do not exist. The debug lines are for developers, and the conformance suite does not compare them.
+- Upstream issue: none.
+- Milestone: M5.6.
+- Status: implemented. M5.2 (#247) adds the config lines.
+
+<a id="help-text"></a>
+### Help text
+
+- Upstream: `-help` prints a header about actionlint with links to actionlint's documentation, then the flags.
+- workflint: the header names workflint, shows the optional `check` command, links to workflint's command-line page, rule pages, and this file, and says which features this version does not support yet. The help text of a flag that is accepted but not used yet ends with `Not supported yet`. The help of `-ignore`, `-init-config`, `-color`, `-debug`, `-format`, and `-config-file` is reworded, and workflint's own flags are listed with the others.
+- Why: the links and the text must describe workflint.
+- Upstream issue: none.
+- Milestone: M5.6.
+- Status: implemented.
+
+<a id="version-output"></a>
+### `-version` output
+
+- Upstream: the lines are the version, `installed by building from source` or the channel that the release build sets, and `built with <go version> compiler for <GOOS>/<GOARCH>`. A build from source gives a Go pseudo-version such as `v1.7.13-0.20260419144658-011a6d15e749`.
+- workflint: line 1 is the version of the `workflint` crate, such as `0.1.0`, without a leading `v`. Line 2 comes from the `WORKFLINT_INSTALLED_FROM` environment variable when it is set, which the package launchers use. Line 3 is `built with rustc <version> for <os>/<arch>`, with Go's names for the operating system and the architecture.
+- Why: workflint is built by Cargo, not by Go. Go's names keep the third line the same as the names of the release archives (ADR 0014).
+- Upstream issue: none.
+- Milestone: M5.6.
+- Status: implemented.
+
+<a id="workflint-flags"></a>
+### workflint's own flags
+
+- Upstream: none of these exist.
+- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `-quiet` and `-q` print only errors and fatal messages: no summary and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`.
+- Why: the summary answers rhysd/actionlint#691. `-quiet` and `-silent` suit scripts that need only the exit code or only the errors. Commands such as `workflint rules` come later, and `check` names the default one.
+- Upstream issue: #691.
+- Milestone: M5.6.
+- Status: implemented.
+
+<a id="ignore-pattern-syntax"></a>
+### `-ignore` patterns that Go rejects
+
+- Upstream: `-ignore` patterns are compiled by Go's `regexp` package.
+- workflint: patterns are read with Go's syntax and match as in Go, and invalid patterns give Go's error message. Some patterns differ:
+  - A Unicode property that Go does not know, such as `\p{Alphabetic}`, is accepted.
+  - An invalid range whose end is a class, such as `[a-\d]`, is rejected with another message: Go says ``invalid escape sequence: `\d` ``, and workflint says ``invalid character class range: `a-` ``.
+- Why: workflint translates the pattern to the syntax of the `regex` crate, which knows more Unicode properties and reports this range itself.
+- Upstream issue: none.
+- Milestone: M5.6.
+- Status: implemented.
 
 <a id="closed-pipe"></a>
 ### A closed output pipe ends the run with its exit code

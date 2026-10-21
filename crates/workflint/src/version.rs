@@ -28,10 +28,13 @@ pub(crate) fn lines(installed_from: Option<&str>) -> String {
 /// The Git ref of the documentation that matches this build: the release tag for a build of
 /// the release pipeline, and `main` for any other build.
 pub(crate) fn docs_ref() -> String {
-    let release = VERSION
-        .split('.')
-        .all(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()));
-    if BUILT_INSTALLED_FROM.is_some() && release && VERSION.split('.').count() == 3 {
+    // A release version has three numbers, as `^\d+\.\d+\.\d+$` in the reference.
+    let numbers: Vec<&str> = VERSION.split('.').collect();
+    let release = numbers.len() == 3
+        && numbers
+            .iter()
+            .all(|number| !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit()));
+    if BUILT_INSTALLED_FROM.is_some() && release {
         format!("v{VERSION}")
     } else {
         "main".to_owned()

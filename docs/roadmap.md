@@ -152,7 +152,7 @@ Goal: a drop-in binary. Release 0.1.0 at the end of this milestone.
 - M5.3 Parallel driver, per-project caches with deterministic error attribution, panic isolation.
 - M5.4 External tool process pool with timeouts and concurrent I/O; 200 KiB script test on every OS.
 - M5.5 shellcheck and pyflakes rules with source-mapped positions, deduplication, and the opt-in cache. Evaluate batching.
-- M5.6 CLI with Go-style flag normalisation over clap, exit codes, `-version`, help.
+- M5.6 CLI with a Go-style flag parser (ADR 0035), exit codes, `-version`, help.
 - M5.7 `workflint-gotemplate`: lexer, parser, executor, actionlint's functions; fixtures from the reference's format tests.
 - M5.8 Output formats: default, `-oneline`, `-format`, `json`, `sarif`, `github`.
 - M5.9 Whole conformance suite green; oracle diff clean apart from allowed differences, and the oracle job made blocking; performance targets met. Needs M5.11.
