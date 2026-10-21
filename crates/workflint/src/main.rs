@@ -116,13 +116,7 @@ fn main() -> ExitCode {
         stdout.is_terminal(),
     );
     let format = Format::new(&options, color, formatter.as_ref());
-    let mut linter = Linter::new(cwd).with_ignore(ignore).with_tools(tools);
-    if let Some(python_linter) = python_linter {
-        linter = linter.with_python_linter(python_linter);
-    }
-    if let Some(config) = config_file {
-        linter = linter.with_config_file(config);
-    }
+    let linter = linter(cwd, ignore, tools, python_linter, config_file, &options);
     if let Some(formatter) = &formatter {
         formatter.set_kinds(linter.kinds());
     }
@@ -200,6 +194,28 @@ fn inputs(linter: &Linter, paths: &[OsString], stdin_filename: &str) -> Result<V
     }
 }
 
+/// The linter of the run, with the flags and the config file of `-config-file`.
+fn linter(
+    cwd: std::path::PathBuf,
+    ignore: Vec<IgnorePattern>,
+    tools: Tools,
+    python_linter: Option<PythonLinter>,
+    config_file: Option<Config>,
+    options: &Options,
+) -> Linter {
+    let mut linter = Linter::new(cwd).with_ignore(ignore).with_tools(tools);
+    if let Some(python_linter) = python_linter {
+        linter = linter.with_python_linter(python_linter);
+    }
+    if let Some(config) = config_file {
+        linter = linter.with_config_file(config);
+    }
+    if options.shellcheck_cache {
+        linter = linter.with_shellcheck_cache();
+    }
+    linter
+}
+
 /// Compiles the `-ignore` patterns. The error is the message to print.
 fn ignore_patterns(options: &Options) -> Result<Vec<IgnorePattern>, String> {
     options
@@ -230,7 +246,10 @@ fn ignore_patterns(options: &Options) -> Result<Vec<IgnorePattern>, String> {
 /// found for a script that `auto` would check, and stops the run if a config file names a
 /// linter that is not found.
 fn tools(options: &Options, quiet: bool) -> Result<(Tools, Option<PythonLinter>), String> {
-    let shellcheck = shellcheck(options, quiet)?;
+    let (shellcheck, not_found) = match shellcheck(options, quiet)? {
+        Ok(command) => (Some(command), None),
+        Err(not_found) => (None, not_found),
+    };
     let (python_linter, pyflakes, ruff) = match options.pyflakes.as_deref() {
         Some("") => (Some(PythonLinter::Off), None, None),
         Some(spec) => {
@@ -244,8 +263,12 @@ fn tools(options: &Options, quiet: bool) -> Result<(Tools, Option<PythonLinter>)
             found("ruff", ToolCommand::resolve("ruff")),
         ),
     };
+    let mut tools = Tools::none();
+    if let Some(reason) = not_found {
+        tools = tools.with_shellcheck_not_found(reason);
+    }
     if shellcheck.is_none() && pyflakes.is_none() && ruff.is_none() {
-        return Ok((Tools::none(), python_linter));
+        return Ok((tools, python_linter));
     }
     let pool = match options.jobs {
         Some(jobs) => ToolPool::new(jobs),
@@ -253,9 +276,13 @@ fn tools(options: &Options, quiet: bool) -> Result<(Tools, Option<PythonLinter>)
     }
     .map_err(|err| format!("could not run the external tools: {err}"))?;
     let pool = Arc::new(pool);
-    let mut tools = Tools::none();
     if let Some(command) = shellcheck {
         tools = tools.with_shellcheck(command, Arc::clone(&pool), RunOptions::default());
+        if let Some(dir) = workflint_linter::default_cache_dir() {
+            tools = tools.with_cache_dir(&dir);
+        } else {
+            tracing::debug!("No cache directory was found, so the shellcheck cache is not used");
+        }
     }
     if let Some(command) = pyflakes {
         tools = tools.with_pyflakes(command, Arc::clone(&pool), RunOptions::default());
@@ -266,14 +293,17 @@ fn tools(options: &Options, quiet: bool) -> Result<(Tools, Option<PythonLinter>)
     Ok((tools, python_linter))
 }
 
-/// The shellcheck of the run, as [`tools`] picks it.
-fn shellcheck(options: &Options, quiet: bool) -> Result<Option<ToolCommand>, String> {
+/// The shellcheck of the run, as [`tools`] picks it, or why the default one was not found.
+fn shellcheck(
+    options: &Options,
+    quiet: bool,
+) -> Result<Result<ToolCommand, Option<String>>, String> {
     let spec = options.shellcheck.as_deref().unwrap_or("shellcheck");
     if spec.is_empty() {
-        return Ok(None);
+        return Ok(Err(None));
     }
     match ToolCommand::resolve(spec) {
-        Ok(command) => Ok(Some(command)),
+        Ok(command) => Ok(Ok(command)),
         Err(err) if options.shellcheck.is_some() => Err(format!(
             "shellcheck given with -shellcheck was not found: {err}"
         )),
@@ -285,7 +315,7 @@ fn shellcheck(options: &Options, quiet: bool) -> Result<Option<ToolCommand>, Str
                      not checked. Install shellcheck, or pass -shellcheck= to turn the check off"
                 );
             }
-            Ok(None)
+            Ok(Err(Some(err.to_string())))
         }
     }
 }

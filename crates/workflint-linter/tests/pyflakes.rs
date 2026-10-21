@@ -309,6 +309,32 @@ fn a_failing_linter_gives_pyflakes_failed_and_the_other_file_is_still_linted() {
     );
 }
 
+#[test]
+fn the_tool_timeout_of_the_config_file_kills_the_python_linter() {
+    let dir = TempDir::new().unwrap();
+    fs::create_dir(dir.path().join(".git")).unwrap();
+    fs::create_dir_all(dir.path().join(".github").join("workflows")).unwrap();
+    // Without the config file, the process would get 60 seconds.
+    let linter =
+        Linter::new(dir.path().to_path_buf()).with_tools(with_pyflakes(stand_in(&["sleep"])));
+    let outputs = lint_in(
+        dir.path(),
+        &[
+            (".github/workflint.yaml", "tool-timeout: 1\n"),
+            ("a.yaml", &workflow(&["run: print(1)"])),
+        ],
+        &linter,
+    )
+    .unwrap();
+    assert_eq!(
+        outputs,
+        [
+            "a.yaml:9:9: pyflakes did not run successfully while checking this script: pyflakes did \
+          not finish in 1 seconds and was killed [pyflakes-failed]\n"
+        ]
+    );
+}
+
 /// The executable `name` on `PATH`, if there is one.
 fn on_path(name: &str) -> Option<ToolCommand> {
     ToolCommand::resolve(name).ok()

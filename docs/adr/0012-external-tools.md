@@ -18,7 +18,7 @@ Other problems in the reference:
 Process handling:
 
 - `workflint-linter` runs external tools through one subprocess module. It spawns the process first, then writes stdin from a dedicated thread while reading stdout and stderr concurrently. Child processes inherit no other file descriptors.
-- Every process has a timeout, 60 seconds by default and configurable. On timeout, workflint kills the process, reports a diagnostic for that script, and continues.
+- Every process has a timeout, 60 seconds by default and set by the config key `tool-timeout`. On timeout, workflint kills the process, reports a diagnostic for that script, and continues.
 - At most `available_parallelism()` tool processes run at once, configurable with `--jobs`.
 - On SIGINT or SIGTERM, workflint kills its child processes and exits.
 - A failure of a tool on one script produces a diagnostic for that script. It does not abort the run.
@@ -29,9 +29,9 @@ shellcheck:
 - workflint invokes shellcheck with the same arguments and script preprocessing as the reference, so findings match.
 - workflint maps each finding's line and column through the `run:` scalar's source map to the exact position in the workflow file.
 - Identical scripts with the same shell and arguments run once per workflint run.
-- An opt-in on-disk cache in `$XDG_CACHE_HOME/workflint` stores results keyed by a hash of the shellcheck version, arguments, and script.
-- `--norc` stays the default for reproducible results. Config can set `shellcheck.rcfile` and extra `shellcheck.args`.
-- Batching several scripts into one shellcheck process is evaluated in M5 and adopted if it meets ADR 0019's targets with identical output.
+- An opt-in on-disk cache in `$XDG_CACHE_HOME/workflint/shellcheck`, or the platform's cache directory, stores the findings of each script, keyed by a hash of the shellcheck version, arguments, rcfile text, `SHELLCHECK_OPTS`, and script. The config key `shellcheck.cache` or the flag `-shellcheck-cache` turns it on. A failure is not stored, and an entry that cannot be read is a miss.
+- `--norc` stays the default for reproducible results. Config can set `shellcheck.rcfile`, a path from the project root, and extra `shellcheck.args`. A config file with a `shellcheck` key asks for shellcheck.
+- One shellcheck process checks up to 64 scripts that share a shell and settings, each in a file of a temporary directory, with `-f json`, whose findings name their file. The driver queues the scripts of every file before it lints, so that batches span files. A batch that fails runs each of its scripts alone on stdin. M5.13 measured it on the corpus, in a Linux container with 4 CPUs: 61.3 s without batches and 8.7 s with them, against 85.3 s for the reference, with byte-identical output. `json1` was rejected, because it counts a tab as one column where `json` and the reference move to the next tab stop.
 
 Python:
 

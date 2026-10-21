@@ -1017,10 +1017,10 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### workflint's own flags
 
 - Upstream: none of these exist.
-- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `--config PATH` is `-config-file PATH` (ADR 0010). `-quiet` and `-q` print only errors and fatal messages: no summary, no warnings, and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. `-jobs N` runs at most `N` external tool processes at once, one per CPU by default.
+- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `--config PATH` is `-config-file PATH` (ADR 0010). `-quiet` and `-q` print only errors and fatal messages: no summary, no warnings, and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. `-jobs N` runs at most `N` external tool processes at once, one per CPU by default. `-shellcheck-cache` keeps the findings of shellcheck in a cache on disk ([shellcheck-settings](#shellcheck-settings)).
 - Why: the summary answers rhysd/actionlint#691. `-quiet` and `-silent` suit scripts that need only the exit code or only the errors. Commands such as `workflint rules` come later, and `check` names the default one. `-jobs` keeps shellcheck from using every CPU on a shared CI runner (ADR 0012).
 - Upstream issue: #691.
-- Milestone: M5.6, M5.5 for `-jobs`, and M5.2 for `--config`.
+- Milestone: M5.6, M5.5 for `-jobs`, M5.2 for `--config`, and M5.13 for `-shellcheck-cache`.
 - Status: implemented.
 
 <a id="ignore-pattern-syntax"></a>
@@ -1061,11 +1061,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Missing tools are reported
 
 - Upstream: if shellcheck or pyflakes cannot be found, the rule is disabled silently. Only `-verbose` mentions it.
-- workflint: if a tool enabled by default is not installed, workflint prints one warning per run to stderr and continues. `-quiet` and `-silent` hide the warning. If the user asked for the tool by flag or config and it is not installed, workflint exits with code 3. `-shellcheck=shellcheck` asks for it too. `-shellcheck=` and `-pyflakes=` still disable the tools without a message (ADR 0012).
+- workflint: if a tool enabled by default is not installed, workflint prints one warning per run to stderr and continues. `-quiet` and `-silent` hide the warning. If the user asked for the tool by flag or config and it is not installed, workflint exits with code 3. `-shellcheck=shellcheck` asks for it too, and so does a config file with a `shellcheck` key. `-shellcheck=` and `-pyflakes=` still disable the tools without a message (ADR 0012).
 - Why: results silently differed between machines with and without the tools.
 - Upstream issue: #189, #347.
 - Milestone: M5.
-- Status: implemented for shellcheck and `-shellcheck` since M5.5, and for pyflakes, ruff, `-pyflakes`, and `python.linter` since M5.12. With `python.linter: auto`, the default, the warning `neither ruff nor pyflakes was found on PATH ...` comes with the first Python script of the run, so a run without Python scripts prints none. A `ruff` or `pyflakes` that `python.linter` names and that is not found exits with code 3. The shellcheck config keys follow with M5.13 (#250).
+- Status: implemented for shellcheck and `-shellcheck` since M5.5, and for pyflakes, ruff, `-pyflakes`, and `python.linter` since M5.12. With `python.linter: auto`, the default, the warning `neither ruff nor pyflakes was found on PATH ...` comes with the first Python script of the run, so a run without Python scripts prints none. A `ruff` or `pyflakes` that `python.linter` names and that is not found exits with code 3. A config file with a `shellcheck` key asks for shellcheck since M5.13. Tests in `crates/workflint/tests/cli.rs`: `a_missing_shellcheck_named_by_the_flag_exits_with_3`, `a_config_file_with_shellcheck_keys_and_no_shellcheck_exits_with_3`.
 
 <a id="external-process-hangs"></a>
 ### External processes cannot hang the run
@@ -1076,6 +1076,16 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Upstream issue: #702, #704, #712.
 - Milestone: M5.
 - Status: `workflint_linter::tool` runs the processes this way since M5.4. A timed-out shellcheck gives a `shellcheck-failed` diagnostic since M5.5, and a timed-out pyflakes or ruff a `pyflakes-failed` diagnostic since M5.12.
+
+<a id="shellcheck-settings"></a>
+### shellcheck settings and its cache
+
+- Upstream: shellcheck always gets `--norc`, so a `.shellcheckrc` is never read, and nothing but `SHELLCHECK_OPTS` adds arguments. A process has no timeout. Every run checks every script again.
+- workflint: the config keys `shellcheck.rcfile`, `shellcheck.args`, and `tool-timeout` set an rc file in place of `--norc`, more arguments, and the timeout of a process. `shellcheck.cache` or `-shellcheck-cache` keeps the findings of each script in `$XDG_CACHE_HOME/workflint/shellcheck`, or in the platform's cache directory, and a later run starts no shellcheck for a script whose findings are there ([config.md](config.md#shellcheck)). Without these settings the output is upstream's. workflint checks up to 64 scripts in one shellcheck process, each in a file of a temporary directory that it deletes afterwards, and the findings are the same as for each script alone on stdin.
+- Why: projects keep their shellcheck settings in `.shellcheckrc` and expect them to apply. A shellcheck process costs more to start than to check a short script, so batches cut the time of a run with shellcheck, and the cache skips the scripts it has seen (ADR 0012, ADR 0019).
+- Upstream issue: #486, #755.
+- Milestone: M5.13.
+- Status: implemented. Tests in `crates/workflint-linter/tests/shellcheck.rs`: `rcfile_replaces_norc_with_the_file_from_the_project_root`, `args_come_after_workflints_arguments_and_before_the_script`, `the_tool_timeout_of_the_config_file_kills_shellcheck`, `a_second_run_with_the_cache_on_does_not_start_shellcheck_for_a_cached_script`, `real_shellcheck_gives_a_batch_the_findings_of_each_script_alone`.
 
 <a id="python-linter-auto"></a>
 ### ruff is used for Python scripts when installed

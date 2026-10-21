@@ -31,6 +31,7 @@ pub(crate) struct Options {
     pub(crate) quiet: bool,
     /// `-shellcheck`, or `None` when the flag is not given and shellcheck runs if it is found.
     pub(crate) shellcheck: Option<String>,
+    pub(crate) shellcheck_cache: bool,
     pub(crate) silent: bool,
     pub(crate) stdin_filename: String,
     pub(crate) summary: bool,
@@ -63,6 +64,7 @@ impl Default for Options {
             pyflakes: None,
             quiet: false,
             shellcheck: None,
+            shellcheck_cache: false,
             silent: false,
             stdin_filename: default_of("stdin-filename"),
             summary: false,
@@ -150,7 +152,7 @@ impl Flag {
 }
 
 /// Every flag: actionlint's, and then workflint's own.
-pub(crate) static FLAGS: [Flag; 19] = [
+pub(crate) static FLAGS: [Flag; 20] = [
     Flag::list(
         "ignore",
         "Regular expression in Go syntax. Errors whose message it matches are not reported. \
@@ -246,6 +248,12 @@ pub(crate) static FLAGS: [Flag; 19] = [
         "Maximum number of external tool processes, such as shellcheck, that run at once. The \
          default is the number of CPUs",
         |options, jobs| options.jobs = Some(jobs),
+    ),
+    Flag::bool(
+        "shellcheck-cache",
+        "Keep the findings of shellcheck in a cache on disk, so that a later run does not check \
+         the same script again. The config key shellcheck.cache does the same for one project",
+        |options, on| options.shellcheck_cache = on,
     ),
 ];
 
@@ -475,6 +483,7 @@ mod tests {
             "-pyflakes=p",
             "-q",
             "-shellcheck=s",
+            "-shellcheck-cache",
             "-silent",
             "-stdin-filename=n",
             "-summary",
@@ -496,6 +505,7 @@ mod tests {
                 pyflakes: Some("p".to_owned()),
                 quiet: true,
                 shellcheck: Some("s".to_owned()),
+                shellcheck_cache: true,
                 silent: true,
                 stdin_filename: "n".to_owned(),
                 summary: true,

@@ -4,7 +4,8 @@ use workflint_diagnostics::{Diagnostic, SourceFile};
 use workflint_syntax::Workflow;
 
 use crate::local::{LocalMetadata, NoProject};
-use crate::tools::{ExternalTools, NoTools};
+use crate::rules::shellcheck_rule;
+use crate::tools::{CollectScripts, ExternalTools, NoTools, ShellScript};
 use crate::{Context, Rule, RuleConfig, create_rules};
 
 /// Calls the hooks of `rules` over `workflow`, each hook for every rule in the order of `rules`.
@@ -119,4 +120,22 @@ pub fn check_file(
         ));
     }
     diagnostics
+}
+
+/// The scripts that the `shellcheck` rule gives shellcheck for `file`, in the order of the file,
+/// with the shell of each. The linter queues them before it lints, so that it can check the
+/// scripts of many files in few shellcheck processes. A file that does not parse has none.
+#[must_use]
+pub fn shell_scripts(file: &SourceFile) -> Vec<ShellScript> {
+    let parsed = workflint_yaml::parse(file);
+    let Some(document) = &parsed.document else {
+        return Vec::new();
+    };
+    let syntax = workflint_syntax::parse(file, document);
+    let collect = CollectScripts::default();
+    let config = RuleConfig::default();
+    let mut rules = vec![shellcheck_rule()];
+    let mut cx = Context::with_config(file, &NoProject, &config).with_tools(&collect);
+    visit(&syntax.workflow, &mut rules, &mut cx);
+    collect.0.into_inner()
 }

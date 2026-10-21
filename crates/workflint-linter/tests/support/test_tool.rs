@@ -16,7 +16,17 @@
 //! - `pool DIR N`: runs `N` copies of `pidfile DIR` at once through a `ToolPool` and waits for them.
 //! - `kill-self`: sends itself SIGKILL with the `kill` command (Unix only).
 //! - `record DIR ARG...`: writes the arguments after `DIR`, one per line, then a line `--`, then
-//!   stdin, to a new file in `DIR`, and prints `[]`, shellcheck's output for no findings.
+//!   stdin, to a new file in `DIR`, and prints `[]`, shellcheck's output for no findings. When
+//!   the arguments name script files in place of `-`, as a batch does, it writes one such file
+//!   for each script, with the script files left out of the arguments, `-` after them, and the
+//!   script in place of stdin. Each file is named `PID-N`, so the files of one process share
+//!   the prefix.
+//! - `version TEXT MODE...`: prints shellcheck's `--version` output for version `TEXT` when the
+//!   arguments contain `--version`, and otherwise does what `MODE...` does.
+//! - `per-file`: prints one finding for each script, at line 2, column 1, whose message is the
+//!   script's second line, the first line of the `run:` value. A script on stdin is file `-`.
+//! - `no-batch MODE...`: fails with exit code 3 and no output when the arguments name script
+//!   files, and otherwise does what `MODE...` does.
 
 #![allow(clippy::unwrap_used, clippy::panic)]
 
@@ -33,8 +43,12 @@ const LONG_SLEEP: Duration = Duration::from_secs(120);
 
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
-    let rest: Vec<&str> = args.iter().skip(1).map(String::as_str).collect();
-    match args.first().map(String::as_str) {
+    run(&args.iter().map(String::as_str).collect::<Vec<_>>());
+}
+
+fn run(args: &[&str]) {
+    let rest: Vec<&str> = args.iter().skip(1).copied().collect();
+    match args.first().copied() {
         Some("echo") => echo(),
         Some("args") => {
             for arg in rest {
@@ -69,6 +83,25 @@ fn main() {
         Some("overlap") => overlap(Path::new(rest[0])),
         Some("pool") => pool(Path::new(rest[0]), rest[1].parse().unwrap()),
         Some("record") => record(Path::new(rest[0]), &rest[1..]),
+        Some("version") => {
+            if rest.contains(&"--version") {
+                println!(
+                    "ShellCheck - shell script analysis tool\nversion: {}\nlicense: GNU General \
+                     Public License, version 3\nwebsite: https://www.shellcheck.net",
+                    rest[0]
+                );
+            } else {
+                run(&rest[1..]);
+            }
+        }
+        Some("per-file") => per_file(&rest),
+        Some("no-batch") => {
+            if script_files(&rest).1.is_empty() {
+                run(&rest);
+            } else {
+                process::exit(3);
+            }
+        }
         Some("kill-self") => {
             process::Command::new("kill")
                 .args(["-KILL", &process::id().to_string()])
@@ -91,16 +124,72 @@ fn echo() {
     }
 }
 
-fn record(dir: &Path, args: &[&str]) {
-    let mut text = String::new();
-    for arg in args {
-        text.push_str(arg);
-        text.push('\n');
+/// The arguments without the script files, and the script files: the arguments that name
+/// files, except the value of `--rcfile`.
+fn script_files<'a>(args: &[&'a str]) -> (Vec<&'a str>, Vec<&'a str>) {
+    let (mut flags, mut files) = (Vec::new(), Vec::new());
+    let mut previous = "";
+    for &arg in args {
+        if previous != "--rcfile" && Path::new(arg).is_file() {
+            files.push(arg);
+        } else {
+            flags.push(arg);
+        }
+        previous = arg;
     }
-    text.push_str("--\n");
-    io::stdin().read_to_string(&mut text).unwrap();
-    fs::write(dir.join(process::id().to_string()), text).unwrap();
+    (flags, files)
+}
+
+fn record(dir: &Path, args: &[&str]) {
+    let (mut flags, files) = script_files(args);
+    let scripts: Vec<String> = if files.is_empty() {
+        let mut stdin = String::new();
+        io::stdin().read_to_string(&mut stdin).unwrap();
+        vec![stdin]
+    } else {
+        flags.push("-");
+        files
+            .iter()
+            .map(|file| fs::read_to_string(file).unwrap())
+            .collect()
+    };
+    for (index, script) in scripts.iter().enumerate() {
+        let mut text = String::new();
+        for arg in &flags {
+            text.push_str(arg);
+            text.push('\n');
+        }
+        text.push_str("--\n");
+        text.push_str(script);
+        fs::write(dir.join(format!("{}-{index}", process::id())), text).unwrap();
+    }
     print!("[]");
+}
+
+fn per_file(args: &[&str]) {
+    let (_, files) = script_files(args);
+    let scripts: Vec<(String, String)> = if files.is_empty() {
+        let mut stdin = String::new();
+        io::stdin().read_to_string(&mut stdin).unwrap();
+        vec![("-".to_owned(), stdin)]
+    } else {
+        files
+            .iter()
+            .map(|file| ((*file).to_owned(), fs::read_to_string(file).unwrap()))
+            .collect()
+    };
+    let findings: Vec<String> = scripts
+        .iter()
+        .map(|(file, script)| {
+            let message = script.lines().nth(1).unwrap_or_default();
+            format!(
+                r#"{{"file":{},"line":2,"endLine":2,"column":1,"endColumn":2,"level":"info","code":1000,"message":{}}}"#,
+                serde_json::to_string(file).unwrap(),
+                serde_json::to_string(message).unwrap()
+            )
+        })
+        .collect();
+    print!("[{}]", findings.join(","));
 }
 
 fn overlap(dir: &Path) {

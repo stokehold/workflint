@@ -82,5 +82,7 @@ Use these words with these meanings in code, docs, and pull requests.
 | driver | The `Linter` in `workflint-linter`, which lints the inputs of a run in parallel with one cache per project and returns each file's diagnostics in input order (ADR 0013). |
 | internal error | An `internal-error` diagnostic: the driver's report of a panic in the lint of one file, or of a cache that a panic left unusable. The run lints the other files and exits with code 3 (ADR 0007). |
 | external tool | shellcheck, ruff, or pyflakes, run as a subprocess (ADR 0012). |
+| batch | Up to 64 scripts with the same shell and shellcheck settings that one shellcheck process checks, each in a file of a temporary directory (ADR 0012). |
+| shellcheck cache | The opt-in directory `$XDG_CACHE_HOME/workflint/shellcheck` that keeps the findings of each script, keyed by a hash of shellcheck's version, arguments, rcfile, `SHELLCHECK_OPTS`, and the script (ADR 0012). |
 | milestone | A roadmap stage, M0 to M9, or P for after 1.0. Each one is also a GitHub milestone. |
 | task | One unit of roadmap work, sized for one pull request, tracked as a GitHub issue (ADR 0020). |

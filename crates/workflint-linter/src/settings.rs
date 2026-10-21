@@ -5,8 +5,9 @@ use std::sync::Arc;
 
 use workflint_rules::{PythonLinter, RuleConfig};
 
-use crate::config::{Config, PathConfig};
+use crate::config::{Config, ConfigError, PathConfig};
 use crate::ignore::IgnorePattern;
+use crate::tools::ShellcheckOptions;
 
 /// The flags of a run that change how files are linted. The binary fills them from the command
 /// line.
@@ -17,14 +18,15 @@ pub struct Flags {
     /// `-config-file`: the config file for every file of the run, in place of the config file
     /// of each project.
     pub config_file: Option<Arc<Config>>,
+    /// `-shellcheck-cache`: every project uses the on-disk cache of shellcheck.
+    pub shellcheck_cache: bool,
     /// The Python linter that `-pyflakes` picks over `python.linter`: pyflakes when the flag
     /// names it, `off` when the flag is empty, and `None` when the flag is not given.
     pub python_linter: Option<PythonLinter>,
 }
 
-/// What the lint of one file runs with. [`Settings::default`] is the defaults, and
-/// [`with_config`](Self::with_config) and [`with_flags`](Self::with_flags) apply the config file
-/// and the flags over them, in that order. A setting that both a config key and a flag set
+/// What the lint of one file runs with: the defaults, [`Settings::default`], then the config
+/// file, then the flags ([`Settings::new`]). A setting that both a config key and a flag set
 /// takes the flag's value.
 #[derive(Debug, Clone, Default)]
 pub struct Settings {
@@ -36,12 +38,42 @@ pub struct Settings {
     paths: Vec<PathConfig>,
     /// The patterns of `-ignore`.
     ignore: Vec<IgnorePattern>,
+    /// How shellcheck runs.
+    shellcheck: Arc<ShellcheckOptions>,
 }
 
 impl Settings {
-    /// Applies the keys of `config`.
-    #[must_use]
-    pub fn with_config(self, config: &Config) -> Self {
+    /// The settings of the files of a project with `config`, if it has a config file, and
+    /// `flags`. `base` is the project root, or the working directory for files in no project:
+    /// `shellcheck.rcfile` is a path from it.
+    ///
+    /// # Errors
+    ///
+    /// Fails if `shellcheck.rcfile` cannot be read.
+    pub fn new(config: Option<&Config>, base: &Path, flags: &Flags) -> Result<Self, ConfigError> {
+        let mut shellcheck = ShellcheckOptions::default();
+        let mut settings = Self::default();
+        if let Some(config) = config {
+            if let Some((path, text)) = config.read_rcfile(base)? {
+                shellcheck = shellcheck.with_rcfile(path, text);
+            }
+            shellcheck = shellcheck
+                .with_args(config.shellcheck().args.clone())
+                .with_cache(config.shellcheck().cache)
+                .with_timeout(config.tool_timeout());
+            settings = settings.with_config(config);
+        }
+        if flags.shellcheck_cache {
+            shellcheck = shellcheck.with_cache(true);
+        }
+        Ok(Self {
+            shellcheck: Arc::new(shellcheck),
+            ..settings.with_flags(flags)
+        })
+    }
+
+    /// Applies the keys of `config` that the rules and the ignores read.
+    fn with_config(self, config: &Config) -> Self {
         Self {
             config_path: Some(config.path().to_path_buf()),
             rules: config.rules().clone(),
@@ -50,9 +82,8 @@ impl Settings {
         }
     }
 
-    /// Applies `flags`. Their config file is applied before, when the settings are chosen.
-    #[must_use]
-    pub fn with_flags(self, flags: &Flags) -> Self {
+    /// Applies the `-ignore` patterns and the Python linter of `flags`.
+    fn with_flags(self, flags: &Flags) -> Self {
         let mut rules = self.rules;
         if let Some(linter) = flags.python_linter {
             rules.python_linter = linter;
@@ -74,6 +105,12 @@ impl Settings {
     #[must_use]
     pub fn rules(&self) -> &RuleConfig {
         &self.rules
+    }
+
+    /// How shellcheck runs on the scripts of the file.
+    #[must_use]
+    pub fn shellcheck(&self) -> &Arc<ShellcheckOptions> {
+        &self.shellcheck
     }
 
     /// The patterns that drop diagnostics of the file at `path`, a path from the project root

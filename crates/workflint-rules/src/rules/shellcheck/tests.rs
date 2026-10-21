@@ -397,3 +397,33 @@ jobs:
         .collect();
     assert_eq!(scripts, ["one", "two", "three"]);
 }
+
+#[test]
+fn shell_scripts_lists_the_scripts_that_the_rule_gives_the_tools() {
+    let text = "on: push
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ github.sha }}
+      - run: echo one
+        shell: sh
+      - run: Write-Host x
+        shell: pwsh
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo two
+";
+    let canned = Canned::findings(Vec::new());
+    lint(text, &canned);
+    let file = SourceFile::new(FileId::new(0), "test.yaml", text).unwrap();
+    let listed: Vec<(&'static str, String)> = crate::shell_scripts(&file)
+        .iter()
+        .map(|script| (script.shell.name(), script.text.clone()))
+        .collect();
+    assert_eq!(listed, canned.scripts());
+    assert_eq!(listed.len(), 3);
+    let broken = SourceFile::new(FileId::new(0), "test.yaml", "on: [").unwrap();
+    assert_eq!(crate::shell_scripts(&broken), Vec::new());
+}

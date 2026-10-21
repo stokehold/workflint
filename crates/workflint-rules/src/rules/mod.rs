@@ -168,6 +168,11 @@ fn create<'a>(kind: &Kind) -> Option<Box<dyn Rule<'a> + 'a>> {
     }
 }
 
+/// The `shellcheck` rule alone, which [`shell_scripts`](crate::shell_scripts) runs.
+pub(crate) fn shellcheck_rule<'a>() -> Box<dyn Rule<'a> + 'a> {
+    Box::new(shellcheck::Shellcheck::new())
+}
+
 /// Calls `create` for each kind of [`CREATION_ORDER`] and keeps the rules it returns.
 fn create_in_order<'a>(
     create: impl Fn(&'static Kind) -> Option<Box<dyn Rule<'a> + 'a>>,

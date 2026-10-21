@@ -12,7 +12,7 @@ workflint reports it at the `run:` key of a script that [pyflakes-issue](pyflake
 - pyflakes exits with a status other than 0 and prints no `<stdin>:` line, or prints a `<stdin>:` line without a line break at its end. The message has its output.
 - ruff exits with a status other than 0 or 1, or prints something that is not its JSON. The message has its stderr or its stdout.
 - A signal kills the linter.
-- It runs longer than 60 seconds, and workflint kills it.
+- It runs longer than 60 seconds, or the seconds of the config key [`tool-timeout`](../config.md#tool-timeout), and workflint kills it.
 
 The other scripts and files are linted as usual, and the run exits with code 1.
 

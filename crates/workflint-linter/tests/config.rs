@@ -608,3 +608,113 @@ fn init_config_outside_a_project_is_an_error() {
          \".github/workflows\" directory exists"
     );
 }
+
+#[test]
+fn shellcheck_keys_are_read_and_default_to_no_rcfile_no_args_and_no_cache() {
+    let config = parse("");
+    assert_eq!(config.shellcheck().rcfile, None);
+    assert_eq!(config.shellcheck().args, Vec::<String>::new());
+    assert!(!config.shellcheck().cache);
+    assert_eq!(config.tool_timeout(), None);
+
+    let text = "shellcheck:\n  rcfile: .shellcheckrc\n  args: [--severity=warning, -o, all]\n  cache: true\ntool-timeout: 90\n";
+    let config = parse(text);
+    assert_eq!(config.shellcheck().rcfile.as_deref(), Some(".shellcheckrc"));
+    assert_eq!(
+        config.shellcheck().args,
+        ["--severity=warning", "-o", "all"]
+    );
+    assert!(config.shellcheck().cache);
+    assert_eq!(
+        config.tool_timeout(),
+        Some(std::time::Duration::from_secs(90))
+    );
+    assert_eq!(config.warnings(), []);
+}
+
+#[test]
+fn null_shellcheck_keys_are_their_defaults() {
+    let config = parse("shellcheck:\n  rcfile:\n  args:\n  cache:\ntool-timeout:\n");
+    assert_eq!(config.shellcheck().rcfile, None);
+    assert_eq!(config.shellcheck().args, Vec::<String>::new());
+    assert!(!config.shellcheck().cache);
+    assert_eq!(config.tool_timeout(), None);
+    assert_eq!(
+        parse("shellcheck:\n").shellcheck().args,
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn shellcheck_keys_of_the_wrong_type_are_errors() {
+    let cases = [
+        (
+            "shellcheck: [a]\n",
+            "yaml: unmarshal errors:   line 1: cannot unmarshal !!seq into workflint.ShellcheckConfig",
+        ),
+        (
+            "shellcheck:\n  args: foo\n",
+            "yaml: unmarshal errors:   line 2: cannot unmarshal !!str `foo` into []string",
+        ),
+        (
+            "shellcheck:\n  cache: maybe\n",
+            "yaml: unmarshal errors:   line 2: cannot unmarshal !!str `maybe` into bool",
+        ),
+        (
+            "shellcheck:\n  rcfile: [a]\n",
+            "yaml: unmarshal errors:   line 2: cannot unmarshal !!seq into string",
+        ),
+    ];
+    for (text, error) in cases {
+        assert_eq!(parse_error(text), error, "{text:?}");
+    }
+}
+
+#[test]
+fn a_tool_timeout_that_is_not_a_positive_whole_number_of_seconds_is_an_error() {
+    for (value, shown) in [
+        ("0", "0"),
+        ("-5", "-5"),
+        ("1.5", "1.5"),
+        ("soon", "soon"),
+        ("[1]", "[1]"),
+    ] {
+        let text = format!("tool-timeout: {value}\n");
+        assert_eq!(
+            parse_error(&text),
+            format!(
+                "yaml: unmarshal errors:   line 1: \"tool-timeout\" must be a whole number of \
+                 seconds greater than 0, but {} was found at line:1,col:15",
+                if value.starts_with('[') {
+                    "a sequence".to_owned()
+                } else {
+                    format!("\"{shown}\"")
+                }
+            ),
+            "{text:?}"
+        );
+    }
+}
+
+#[test]
+fn an_unknown_key_under_shellcheck_is_reported_like_the_others() {
+    let config = parse("shellcheck:\n  rc-file: x\n");
+    let warnings: Vec<String> = config.warnings().iter().map(ToString::to_string).collect();
+    assert_eq!(
+        warnings,
+        [
+            r#"config file "c.yaml": unknown key "rc-file" in "shellcheck" at line:2,col:3 is ignored"#
+        ]
+    );
+    let err = Config::parse(
+        Path::new("workflint.yaml"),
+        ConfigKind::Workflint,
+        "shellcheck:\n  rc-file: x\n",
+    )
+    .unwrap_err()
+    .to_string();
+    assert_eq!(
+        err,
+        r#"could not parse config file "workflint.yaml": unknown key "rc-file" in "shellcheck" at line:2,col:3"#
+    );
+}

@@ -10,6 +10,7 @@ use std::fmt;
 use std::fs;
 use std::io::{self, ErrorKind, Write as _};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{FileId, SourceFile};
@@ -124,6 +125,19 @@ impl PathConfig {
     }
 }
 
+/// The `shellcheck` keys of a config file.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ShellcheckConfig {
+    /// `rcfile`, as written: a path from the project root.
+    pub rcfile: Option<String>,
+    /// `args`: arguments for shellcheck after workflint's own.
+    pub args: Vec<String>,
+    /// `cache`: whether results are kept in the on-disk cache.
+    pub cache: bool,
+    /// Whether the file has a `shellcheck` key that is not null, which asks for shellcheck.
+    pub requested: bool,
+}
+
 /// A config file that was read.
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -131,6 +145,8 @@ pub struct Config {
     kind: ConfigKind,
     rules: RuleConfig,
     paths: Vec<PathConfig>,
+    shellcheck: ShellcheckConfig,
+    tool_timeout: Option<Duration>,
     warnings: Vec<ConfigWarning>,
 }
 
@@ -189,6 +205,16 @@ impl Config {
                 python_linter: document.python_linter.unwrap_or_default(),
             },
             paths,
+            shellcheck: document
+                .shellcheck
+                .map(|keys| ShellcheckConfig {
+                    rcfile: keys.rcfile,
+                    args: keys.args.unwrap_or_default(),
+                    cache: keys.cache.unwrap_or_default(),
+                    requested: true,
+                })
+                .unwrap_or_default(),
+            tool_timeout: document.tool_timeout.map(Duration::from_secs),
             warnings,
         })
     }
@@ -254,6 +280,50 @@ impl Config {
     #[must_use]
     pub fn rules(&self) -> &RuleConfig {
         &self.rules
+    }
+
+    /// The `shellcheck` keys.
+    #[must_use]
+    pub fn shellcheck(&self) -> &ShellcheckConfig {
+        &self.shellcheck
+    }
+
+    /// `tool-timeout`: how long an external tool process may run, if the file sets it.
+    #[must_use]
+    pub fn tool_timeout(&self) -> Option<Duration> {
+        self.tool_timeout
+    }
+
+    /// The error for a run whose shellcheck was not found, `reason`, when this file asks for
+    /// shellcheck with a `shellcheck` key.
+    pub(crate) fn missing_shellcheck(&self, reason: &str) -> Option<ConfigError> {
+        self.shellcheck.requested.then(|| {
+            ConfigError::new(format!(
+                "shellcheck that config file {} configures was not found: {reason}",
+                quote(&self.path.to_string_lossy())
+            ))
+        })
+    }
+
+    /// Reads `shellcheck.rcfile`, a path from `base`, and returns its path and its text, or
+    /// `None` if the key is not set.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the file cannot be read, with a message that names it and this config file.
+    pub fn read_rcfile(&self, base: &Path) -> Result<Option<(PathBuf, Vec<u8>)>, ConfigError> {
+        let Some(rcfile) = &self.shellcheck.rcfile else {
+            return Ok(None);
+        };
+        let path = crate::path::absolute(base, Path::new(rcfile));
+        match fs::read(&path) {
+            Ok(text) => Ok(Some((path, text))),
+            Err(err) => Err(ConfigError::new(format!(
+                "could not read shellcheck.rcfile {} of config file {}: {err}",
+                quote(&path.to_string_lossy()),
+                quote(&self.path.to_string_lossy())
+            ))),
+        }
     }
 
     /// The unknown keys of an actionlint config file, in the order they are written.
