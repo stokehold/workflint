@@ -6,6 +6,8 @@
 //! segments, `?` matches one character, `[...]` and `[^...]` or `[!...]` match a character in
 //! or out of a class, `{a,b}` matches either alternative, and `\` escapes the next character.
 //! The functions follow doublestar's code, so that a pattern matches the same paths.
+//!
+//! Ported from doublestar, Copyright (c) 2014 Bob Matcuk, under the MIT license (see `NOTICE`).
 
 /// A pattern that doublestar finds malformed while matching, its `ErrBadPattern`.
 struct BadPattern;

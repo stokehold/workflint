@@ -6,7 +6,7 @@
 
 `vars.NAME` reads a configuration variable that the configuration does not list.
 
-When the configuration file lists the configuration variables of the repository, `vars.NAME` must name one of them, in any case. An empty list allows none. Without a list, `vars` accepts any name.
+When the config's [`config-variables`](../config.md#config-variables) lists the configuration variables of the repository, `vars.NAME` must name one of them, in any case. An empty list allows none. Without a list, `vars` accepts any name. The message names the variable in lower case, as actionlint does.
 
 ## Why
 

@@ -203,7 +203,7 @@ pub(crate) static FLAGS: [Flag; 18] = [
     ),
     Flag::bool("q", "Same as -quiet", |options, on| options.quiet = on),
     Flag::string("config", None, "Same as -config-file", |options, value| {
-        options.config_file = value
+        options.config_file = value;
     }),
     Flag::bool(
         "silent",

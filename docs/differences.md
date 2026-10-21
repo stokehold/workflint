@@ -814,7 +814,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - BuildJet is not listed, because it stopped running jobs on 2026-03-31.
 - Why: these providers run jobs for many repositories, and their documented labels were reported as unknown. A self-hosted Windows runner with a custom label got no check of its shells.
 - Upstream issue: #499.
-- Milestone: M4.33, and M4.37 for the extra Namespace labels and the order of known labels before words. M5.2 adds configured labels, and M7.3 generates runner label data.
+- Milestone: M4.33, and M4.37 for the extra Namespace labels and the order of known labels before words. M7.3 generates runner label data.
 - Status: implemented.
 - Fixtures: `workflint/err/runner_provider_os` and `workflint/ok/runner_provider_labels.yaml`. The output of no vendored fixture changes.
 - Corpus: no output changes. None of the 827 `unknown-runner-label` hits is a provider label.
@@ -846,11 +846,11 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### `paths` globs match from the project root
 
 - Upstream: `paths.<glob>` in the config is documented as relative to the repository root, but it is matched against the path relative to the current directory. Run from a subdirectory, the path becomes `../.github/workflows/x.yaml`, and the ignores stop working.
-- workflint: globs match the path relative to the project root, with `/` separators on every OS (ADR 0010).
+- workflint: globs match the path relative to the project root, with `/` separators on every OS (ADR 0010). A file in no project, linted with `-config-file`, is matched by its path from the working directory, as upstream does for every file.
 - Why: this is the documented behaviour.
-- Upstream issue: #481.
-- Milestone: M5.
-- Status: planned.
+- Upstream issue: #481. The issue also asks for a warning when a glob matches no linted file. workflint does not warn, because a run that lints some of the files, such as a pre-commit hook, would warn about the globs of every other file.
+- Milestone: M5.2.
+- Status: implemented. No fixture changes: the conformance runner lints each project from its root. The `workflint-linter` test `paths_globs_match_the_path_from_the_project_root_in_any_working_directory` lints from two subdirectories.
 
 <a id="project-root-boundary"></a>
 ### Project root checks compare whole path components
@@ -859,8 +859,8 @@ The last section lists behaviour that was investigated and deliberately kept.
 - workflint: paths are compared by whole components. Each file gets the project of its own nearest root, whatever order the files come in. A file in `/work/repo-other/` never uses the caches of `/work/repo`, and a file in `/work/repo/sub/` uses those of `sub`.
 - Why: files from a sibling directory or a nested repository got the wrong config and caches.
 - Upstream issue: #750.
-- Milestone: M4 for the caches, M5 for the config.
-- Status: implemented for the caches of local actions and local reusable workflows. No fixture covers it, because a fixture cannot hold the `.git` directory of a nested repository. The `workflint-linter` tests `a_workflow_outside_the_project_root_is_not_registered` and `a_nested_repository_is_its_own_project_whichever_file_comes_first` cover it. The config is planned for M5.
+- Milestone: M4 for the caches, M5.2 for the config.
+- Status: implemented for the caches of local actions and local reusable workflows, and from M5.2 for the config file. No fixture covers it, because a fixture cannot hold the `.git` directory of a nested repository. The `workflint-linter` tests `a_workflow_outside_the_project_root_is_not_registered`, `a_nested_repository_is_its_own_project_whichever_file_comes_first`, and `each_project_uses_its_own_config` cover it.
 
 <a id="project-root-detection"></a>
 ### Project root without `.git`
@@ -875,42 +875,42 @@ The last section lists behaviour that was investigated and deliberately kept.
 <a id="config-file-lookup"></a>
 ### Config file names and lookup order
 
-- Upstream: the config is `-config-file`, else `.github/actionlint.yaml`, else `.github/actionlint.yml`. `-init-config` writes `.github/actionlint.yaml`.
-- workflint: the order is `-config-file` or `--config`, then `.github/workflint.yaml` and `.yml`, then `.github/actionlint.yaml` and `.yml`, then the user config in `$XDG_CONFIG_HOME/workflint/config.yaml`. The first file found is used without merging. `--no-config` skips them all. `-init-config` writes `.github/workflint.yaml` (ADR 0010).
+- Upstream: the config is `-config-file`, else `.github/actionlint.yaml`, else `.github/actionlint.yml`. Upstream reads the project's config file also when `-config-file` is given, so a broken `.github/actionlint.yaml` stops the run even then. `-init-config` writes `.github/actionlint.yaml`, and refuses when `.github/actionlint.yaml` or `.yml` exists.
+- workflint: the order is `-config-file` or `--config`, then `.github/workflint.yaml` and `.yml`, then `.github/actionlint.yaml` and `.yml`. The first file found is used without merging, and with `-config-file` the project's files are not read. `-init-config` writes `.github/workflint.yaml`, and refuses when any of the four files exists (ADR 0010). From M9.4, the user config in `$XDG_CONFIG_HOME/workflint/config.yaml` comes last, and `--no-config` skips them all.
 - Why: workflint adds settings that actionlint does not understand, so they need their own file. Existing actionlint configs keep working.
-- Upstream issue: #675.
-- Milestone: M5.
-- Status: planned.
+- Upstream issue: #675, for the user config of M9.4.
+- Milestone: M5.2 for the project files and `-init-config`, M9.4 for the user config and `--no-config`.
+- Status: implemented for M5.2. Tests in `crates/workflint-linter/tests/config.rs`: `the_lookup_takes_the_first_file_in_the_order_of_adr_0010`, `init_config_refuses_to_overwrite_any_config_file`. In `crates/workflint-linter/tests/linter.rs`: `an_explicit_config_file_is_used_for_every_file_instead_of_the_project_config`.
 
 <a id="config-unknown-keys"></a>
 ### Unknown config keys are reported
 
 - Upstream: unknown keys are ignored, so a typo such as `self-hosted-runners` silently does nothing.
-- workflint: an unknown key in an actionlint config file prints a warning. An unknown key in a workflint config file is a fatal error with exit code 3 (ADR 0010).
+- workflint: an unknown key in an actionlint config file prints a warning to stderr, such as `warning: config file "<path>": unknown key "lables" in "self-hosted-runner" at line:2,col:3 is ignored`. An unknown key in a workflint config file is a fatal error with exit code 3, `could not parse config file "<path>": unknown key ...` (ADR 0010). A file is a workflint config file when it is named `workflint.yaml` or `workflint.yml`, also when `-config-file` names it, and an actionlint config file otherwise. Keys that a `<<` merge key brings in are checked too.
 - Why: silent typos lead to wrong results.
 - Upstream issue: #554.
-- Milestone: M5.
-- Status: planned.
+- Milestone: M5.2.
+- Status: implemented. Tests in `crates/workflint-linter/tests/config.rs`: `an_unknown_key_in_an_actionlint_file_is_a_warning`, `an_unknown_key_in_a_workflint_file_is_an_error`, `keys_merged_with_a_merge_key_are_checked_too`. In `crates/workflint/tests/cli.rs`: `an_unknown_key_in_a_workflint_config_exits_with_3`, `an_unknown_key_in_an_actionlint_config_prints_a_warning_and_the_run_goes_on`.
 
 <a id="config-ignore-entries"></a>
 ### Non-string `ignore` entries are rejected
 
-- Upstream: entries of `paths.<glob>.ignore` are not checked to be strings. `ignore: [{}]` compiles the empty regex, which matches every message and silences everything.
-- workflint: a non-string entry is a config error, exit code 3.
+- Upstream: entries of `paths.<glob>.ignore` are not checked to be strings. `ignore: [{}]`, `ignore: [[x]]`, and an empty entry compile the empty regex, which matches every message and silences everything. An alias entry such as `*name` compiles the anchor's name instead of its value.
+- workflint: an entry that is a mapping, a sequence, or null is a config error, exit code 3: `"ignore" entry must be a string but mapping node was found at line:3,col:14`. A number or a boolean is its text, as upstream. An alias entry is the text it refers to.
 - Why: a malformed config should not hide all errors.
 - Upstream issue: #749.
-- Milestone: M5.
-- Status: planned.
+- Milestone: M5.2.
+- Status: implemented. Tests in `crates/workflint-linter/tests/config.rs`: `an_ignore_entry_that_is_a_collection_or_null_is_an_error`, `an_ignore_entry_that_is_a_number_or_an_alias_of_a_string_is_its_text`.
 
 <a id="config-error-messages"></a>
 ### Config error messages
 
-- Upstream: errors in a repository config are wrapped twice, `could not parse config file "x": could not parse config file "x": ...`. An invalid ignore regex reports `... at line%d,col:%d`, missing the colon after `line`, and gives the position of the list rather than the entry.
-- workflint: the prefix appears once, the position reads `line:%d,col:%d`, and it points at the entry.
+- Upstream: errors in a repository config are wrapped twice, `could not parse config file "x": could not parse config file "x": ...`. An invalid ignore regex reports `... at line%d,col:%d`, missing the colon after `line`, and gives the position of the list rather than the entry. The `line N:` before it is the line of the list too.
+- workflint: the prefix appears once, the position reads `line:%d,col:%d`, and both it and the `line N:` before it point at the entry. The other texts are upstream's, from go-yaml.
 - Why: the upstream messages contain a typo and repeated text.
 - Upstream issue: none.
-- Milestone: M5.
-- Status: planned.
+- Milestone: M5.2.
+- Status: implemented. Tests in `crates/workflint-linter/tests/config.rs`: `an_invalid_ignore_regex_names_the_entry_and_its_position`, `a_broken_config_file_in_the_project_is_an_error_naming_it_once`, `decoding_errors_have_the_texts_of_the_reference`.
 
 ## Command line and output
 
@@ -979,7 +979,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: workflint parses a file and runs its rules in one step, and its rules are not separate passes over the tree, so the parse-only count and the per-pass timings do not exist. The debug lines are for developers, and the conformance suite does not compare them.
 - Upstream issue: none.
 - Milestone: M5.6.
-- Status: implemented. M5.2 (#247) adds the config lines.
+- Status: implemented. From M5.2, `-debug` also prints `[Linter] Config: <path>` or `[Linter] No config was found` for each file, as upstream does with the config's Go value, and `[Linter] Error "<message>" is ignored due to the "ignore" config in the config file` for each error that the config dropped.
 
 <a id="help-text"></a>
 ### Help text
@@ -1005,10 +1005,10 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### workflint's own flags
 
 - Upstream: none of these exist.
-- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `-quiet` and `-q` print only errors and fatal messages: no summary and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`.
+- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `--config PATH` is `-config-file PATH` (ADR 0010). `-quiet` and `-q` print only errors and fatal messages: no summary, no warnings, and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`.
 - Why: the summary answers rhysd/actionlint#691. `-quiet` and `-silent` suit scripts that need only the exit code or only the errors. Commands such as `workflint rules` come later, and `check` names the default one.
 - Upstream issue: #691.
-- Milestone: M5.6.
+- Milestone: M5.6, and M5.2 for `--config`.
 - Status: implemented.
 
 <a id="ignore-pattern-syntax"></a>

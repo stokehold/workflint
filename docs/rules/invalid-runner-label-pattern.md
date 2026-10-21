@@ -6,7 +6,7 @@
 
 A runner label pattern in the config is not a valid glob.
 
-The patterns of the config's `self-hosted-runner.labels` use Go's `path.Match` syntax: `*` matches any text without `/`, `?` matches one character, `[...]` and `[^...]` match a character in or out of a class, and `\` escapes the next character. A pattern such as `gpu-[` is malformed. The rule reports it at each label that is not a built-in label and that reaches the pattern, because no earlier pattern matched it. The message ends with `syntax error in pattern`.
+The patterns of the config's [`self-hosted-runner.labels`](../config.md#self-hosted-runnerlabels) use Go's `path.Match` syntax: `*` matches any text without `/`, `?` matches one character, `[...]` and `[^...]` match a character in or out of a class, and `\` escapes the next character. A pattern such as `gpu-[` is malformed. The rule reports it at each label that is not a built-in label and that reaches the pattern, because no earlier pattern matched it. The message ends with `syntax error in pattern`.
 
 ## Why
 
