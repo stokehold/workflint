@@ -27,6 +27,16 @@ pub(crate) fn explicit(tag: Option<&str>) -> Option<Tag> {
 /// Resolves the tag of an untagged plain scalar from its value under the
 /// YAML 1.2 core schema.
 pub(crate) fn plain(value: &str) -> Tag {
+    // Every null, bool, int, and float starts with one of these bytes, and
+    // most strings do not, so they skip the checks below.
+    if !matches!(
+        value.as_bytes().first(),
+        None | Some(
+            b'0'..=b'9' | b'-' | b'+' | b'.' | b'~' | b'n' | b'N' | b't' | b'T' | b'f' | b'F'
+        )
+    ) {
+        return Tag::Str;
+    }
     match value {
         "" | "~" | "null" | "Null" | "NULL" => Tag::Null,
         "true" | "True" | "TRUE" | "false" | "False" | "FALSE" => Tag::Bool,

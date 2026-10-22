@@ -1536,6 +1536,7 @@ dependencies = [
  "codspeed-divan-compat",
  "datatest-stable",
  "insta",
+ "memchr",
  "serde",
  "serde_json",
  "thiserror",

@@ -44,6 +44,11 @@ fn is_allowed(ch: char) -> bool {
         || ch >= '\u{10000}' && ch <= '\u{10FFFF}'
 }
 
+/// Whether `byte` is an ASCII character that [`is_allowed`] allows.
+fn is_allowed_ascii(byte: u8) -> bool {
+    matches!(byte, b'\t' | b'\n' | b'\r' | b' '..=b'~')
+}
+
 /// The scanner's buffer of decoded characters, which upstream kept in a
 /// `VecDeque<char>`.
 ///
@@ -143,6 +148,14 @@ impl Scanner<'_> {
             end -= 1;
         }
         let chunk = chunk.get(..end).unwrap_or_default();
+        // Most chunks are ASCII without control characters. Checking the
+        // bytes first and widening them in one pass is several times faster
+        // than the loop below.
+        if chunk.bytes().all(is_allowed_ascii) {
+            self.buffer.chars.extend(chunk.bytes().map(char::from));
+            self.reader.decoded += end;
+            return Ok(());
+        }
         self.buffer.chars.reserve(chunk.len());
         for (offset, ch) in chunk.char_indices() {
             if !is_allowed(ch) {

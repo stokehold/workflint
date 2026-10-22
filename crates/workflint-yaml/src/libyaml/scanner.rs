@@ -187,6 +187,37 @@ pub(crate) struct Scanner<'input> {
     pub(crate) comments: VecDeque<Comment>,
     /// The comment blocks of the current `scan_to_next_token` call.
     comment_blocks: Vec<CommentBlock>,
+    /// The buffers of the scalar scanners, kept between scalars.
+    spare: Spare,
+}
+
+/// The buffers that the scalar scanners fill with the blanks and line breaks
+/// between the parts of a scalar. The scanner keeps them between scalars, so
+/// that each scalar does not allocate them again. They are empty between
+/// scalars.
+#[derive(Default)]
+struct Spare {
+    leading_break: String,
+    trailing_breaks: String,
+    whitespaces: String,
+}
+
+impl Spare {
+    /// Empties the buffers and keeps their memory.
+    fn cleared(
+        mut leading_break: String,
+        mut trailing_breaks: String,
+        mut whitespaces: String,
+    ) -> Self {
+        leading_break.clear();
+        trailing_breaks.clear();
+        whitespaces.clear();
+        Self {
+            leading_break,
+            trailing_breaks,
+            whitespaces,
+        }
+    }
 }
 
 impl<'input> Scanner<'input> {
@@ -214,6 +245,7 @@ impl<'input> Scanner<'input> {
             simple_keys_by_token: BTreeMap::new(),
             comments: VecDeque::new(),
             comment_blocks: Vec::new(),
+            spare: Spare::default(),
         }
     }
 
@@ -285,6 +317,20 @@ impl<'input> Scanner<'input> {
             self.mark.column += 1;
             self.chars += 1;
         }
+    }
+
+    /// Appends the input from byte offset `start` to the current position to
+    /// `string`. The scanner moved over those characters with
+    /// [`skip_char`](Self::skip_char), which leaves the same state as
+    /// [`read_char`](Self::read_char), so this appends what `read_char`
+    /// would have appended, in one copy.
+    fn push_skipped(&self, string: &mut String, start: u64) {
+        let skipped = usize::try_from(start)
+            .ok()
+            .zip(usize::try_from(self.mark.index).ok())
+            .and_then(|(start, end)| self.source.get(start..end));
+        debug_assert!(skipped.is_some(), "skipped characters out of the input");
+        string.push_str(skipped.unwrap_or_default());
     }
 
     /// Equivalent to the libyaml macro `READ_LINE`.
@@ -1691,8 +1737,11 @@ impl<'input> Scanner<'input> {
     fn scan_block_scalar(&mut self, literal: bool) -> Result<Token> {
         let mut end_mark: Mark;
         let mut string = String::new();
-        let mut leading_break = String::new();
-        let mut trailing_breaks = String::new();
+        let Spare {
+            mut leading_break,
+            mut trailing_breaks,
+            whitespaces,
+        } = std::mem::take(&mut self.spare);
         let mut chomping: i8 = 0;
         let mut increment: i64 = 0;
         let mut indent: i64 = 0;
@@ -1798,10 +1847,12 @@ impl<'input> Scanner<'input> {
             string.push_str(&trailing_breaks);
             trailing_breaks.clear();
             leading_blank = IS_BLANK!(self.buffer);
+            let line_start = self.mark.index;
             while !IS_BREAKZ!(self.buffer) {
-                self.read_char(&mut string);
+                self.skip_char();
                 self.cache(1)?;
             }
+            self.push_skipped(&mut string, line_start);
             self.cache(2)?;
             self.read_line_break(&mut leading_break);
             self.scan_block_scalar_breaks(
@@ -1819,6 +1870,7 @@ impl<'input> Scanner<'input> {
         if chomping == 1 {
             string.push_str(&trailing_breaks);
         }
+        self.spare = Spare::cleared(leading_break, trailing_breaks, whitespaces);
 
         Ok(Token {
             data: TokenData::Scalar {
@@ -1880,9 +1932,11 @@ impl<'input> Scanner<'input> {
 
     fn scan_flow_scalar(&mut self, single: bool) -> Result<Token> {
         let mut string = String::new();
-        let mut leading_break = String::new();
-        let mut trailing_breaks = String::new();
-        let mut whitespaces = String::new();
+        let Spare {
+            mut leading_break,
+            mut trailing_breaks,
+            mut whitespaces,
+        } = std::mem::take(&mut self.spare);
         let mut leading_blanks;
 
         let start_mark: Mark = self.mark;
@@ -2097,6 +2151,7 @@ impl<'input> Scanner<'input> {
 
         self.skip_char();
         let end_mark: Mark = self.mark;
+        self.spare = Spare::cleared(leading_break, trailing_breaks, whitespaces);
         Ok(Token {
             data: TokenData::Scalar {
                 value: string,
@@ -2114,9 +2169,11 @@ impl<'input> Scanner<'input> {
     fn scan_plain_scalar(&mut self) -> Result<Token> {
         let mut end_mark: Mark;
         let mut string = String::new();
-        let mut leading_break = String::new();
-        let mut trailing_breaks = String::new();
-        let mut whitespaces = String::new();
+        let Spare {
+            mut leading_break,
+            mut trailing_breaks,
+            mut whitespaces,
+        } = std::mem::take(&mut self.spare);
         let mut leading_blanks = false;
         let indent: i64 = self.indent + 1;
         end_mark = self.mark;
@@ -2137,6 +2194,9 @@ impl<'input> Scanner<'input> {
             if CHECK!(self.buffer, '#') {
                 break;
             }
+            // The characters of this run are copied in one piece after the
+            // loop. The blanks before them are added on the first one.
+            let mut run_start = None;
             while !IS_BLANKZ!(self.buffer) {
                 // A `:` that no blank follows is part of the scalar, also in
                 // a flow collection, as in go-yaml. libyaml rejects it before
@@ -2174,9 +2234,13 @@ impl<'input> Scanner<'input> {
                         whitespaces.clear();
                     }
                 }
-                self.read_char(&mut string);
+                run_start.get_or_insert(self.mark.index);
+                self.skip_char();
                 end_mark = self.mark;
                 self.cache(2)?;
+            }
+            if let Some(start) = run_start {
+                self.push_skipped(&mut string, start);
             }
             if !(IS_BLANK!(self.buffer) || IS_BREAK!(self.buffer)) {
                 break;
@@ -2218,6 +2282,7 @@ impl<'input> Scanner<'input> {
         if leading_blanks {
             self.simple_key_allowed = true;
         }
+        self.spare = Spare::cleared(leading_break, trailing_breaks, whitespaces);
 
         Ok(Token {
             data: TokenData::Scalar {

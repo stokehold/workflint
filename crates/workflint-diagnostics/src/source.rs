@@ -251,6 +251,12 @@ const LINE_BREAKS: [&str; 6] = ["\r\n", "\n", "\r", "\u{85}", "\u{2028}", "\u{20
 fn line_starts(text: &str) -> Vec<usize> {
     let bytes = text.as_bytes();
     let mut starts = vec![0];
+    // Without `\r` and the first bytes of U+0085, U+2028, and U+2029, every
+    // break is a `\n`, and memchr finds them many bytes at a time.
+    if memchr::memchr3(b'\r', 0xc2, 0xe2, bytes).is_none() {
+        starts.extend(memchr::memchr_iter(b'\n', bytes).map(|at| at + 1));
+        return starts;
+    }
     let mut i = 0;
     while let Some(&byte) = bytes.get(i) {
         let break_len = match byte {
