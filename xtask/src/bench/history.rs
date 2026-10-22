@@ -14,14 +14,13 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use super::results::{Measurement, Results, SCHEMA_VERSION, ScenarioOutcome, format_seconds};
+use super::results::{
+    Measurement, Results, SCHEMA_VERSION, ScenarioOutcome, TargetResult, format_seconds,
+};
 
 /// A scenario regresses when its wall time grows by more than this factor
 /// against the previous scheduled run.
 pub(crate) const REGRESSION_FACTOR: f64 = 1.10;
-
-/// The first workflint version that the targets apply to (ADR 0019).
-const TARGETS_FROM: (u64, u64) = (0, 1);
 
 /// A scenario that got slower against the previous scheduled run.
 #[derive(Debug, PartialEq)]
@@ -107,25 +106,15 @@ pub(crate) fn regressions(previous: &Results, current: &Results) -> Vec<Regressi
     found
 }
 
-/// Whether the ADR 0019 targets apply to workflint `version`.
-pub(crate) fn targets_apply(version: &str) -> bool {
-    let mut parts = version.split(['.', '-', '+']);
-    let major = parts.next().and_then(|part| part.parse::<u64>().ok());
-    let minor = parts.next().and_then(|part| part.parse::<u64>().ok());
-    match (major, minor) {
-        (Some(major), Some(minor)) => (major, minor) >= TARGETS_FROM,
-        _ => false,
-    }
-}
-
-/// The targets that `results` missed, as `(scenario title, target)`.
-fn missed_targets(results: &Results) -> Vec<(&str, &str)> {
+/// The targets that `results` missed, with the title of their scenario. They
+/// count from the first nightly run, before 0.1.0 too (ADR 0039).
+pub(crate) fn missed_targets(results: &Results) -> Vec<(&str, &TargetResult)> {
     let mut missed = Vec::new();
     for scenario in &results.scenarios {
         if let ScenarioOutcome::Measured { targets, .. } = &scenario.outcome {
             for target in targets {
                 if target.met == Some(false) {
-                    missed.push((scenario.title.as_str(), target.target.as_str()));
+                    missed.push((scenario.title.as_str(), target));
                 }
             }
         }
@@ -266,11 +255,7 @@ pub(crate) fn compare(history: &str, current: &Results) -> Result<Report> {
         }
     }
 
-    let missed = if targets_apply(&current.workflint.version) {
-        missed_targets(current)
-    } else {
-        Vec::new()
-    };
+    let missed = missed_targets(current);
     let failed = failed_measurements(current);
     let problem = !failed.is_empty() || !found.is_empty() || !missed.is_empty() || !lost.is_empty();
     let issue = problem.then(|| {
@@ -302,7 +287,12 @@ pub(crate) fn compare(history: &str, current: &Results) -> Result<Report> {
         if !missed.is_empty() {
             body.push_str("\n### Missed targets\n\n");
             for (scenario, target) in &missed {
-                let _ = writeln!(body, "- {scenario}: {target}");
+                let _ = writeln!(
+                    body,
+                    "- {scenario}: {}, measured {}",
+                    target.target,
+                    target.formatted_value()
+                );
             }
         }
         body
@@ -462,26 +452,9 @@ mod tests {
     }
 
     #[test]
-    fn targets_apply_from_version_0_1_0() {
-        assert!(!targets_apply("0.0.1"));
-        assert!(targets_apply("0.1.0"));
-        assert!(targets_apply("0.1.0-rc.1"));
-        assert!(targets_apply("1.2.3"));
-        assert!(!targets_apply("unknown"));
-    }
-
-    #[test]
-    fn missed_target_before_0_1_0_opens_no_issue() {
-        // workflint at 0.5 of the reference misses the 1/3 target.
+    fn missed_target_opens_an_issue_before_0_1_0_too() {
+        // workflint 0.0.1 at 0.5 of the reference misses the 1/3 target.
         let current = sample(0.5, 1.0);
-        let report = compare("", &current).unwrap();
-        assert_eq!(report.issue, None);
-    }
-
-    #[test]
-    fn missed_target_from_0_1_0_opens_an_issue() {
-        let mut current = sample(0.5, 1.0);
-        current.workflint.version = "0.1.0".to_owned();
         let issue = compare("", &current).unwrap().issue.unwrap();
         assert!(issue.contains("### Missed targets"), "{issue}");
         assert!(issue.contains("wall time at most 1/3 of the reference"));

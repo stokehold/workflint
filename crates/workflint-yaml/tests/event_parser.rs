@@ -791,3 +791,49 @@ fn iterator_ends_after_the_first_error() {
         assert!(parser.next().is_none(), "{input:?}");
     }
 }
+
+#[test]
+fn plain_scalars_that_cross_a_chunk_of_the_input_keep_their_values_and_marks() {
+    // The reader decodes the input 512 bytes at a time, and the scanner
+    // skips the characters of a plain scalar that it already has in bulk.
+    for length in 500..530 {
+        let long = "x".repeat(length);
+        let input = format!("a: {long}a:b é c\nd: e\n");
+        let (events, err) = run(&input);
+        assert!(err.is_none(), "{length}: {err:?}");
+        let values: Vec<(&str, Mark, Mark)> = events
+            .iter()
+            .filter_map(|event| match &event.data {
+                EventData::Scalar { value, .. } => {
+                    Some((value.as_str(), event.start_mark, event.end_mark))
+                }
+                _ => None,
+            })
+            .collect();
+        let value = format!("{long}a:b é c");
+        let end = u32::try_from(3 + value.len()).unwrap();
+        let end_column = u32::try_from(3 + value.chars().count()).unwrap();
+        let [_, (scanned, _, value_end), (key, key_start, _), _] = values[..] else {
+            panic!("{length}: {values:?}");
+        };
+        assert_eq!(scanned, value, "{length}");
+        assert_eq!((value_end.index, at(value_end)), (end, (0, end_column)));
+        assert_eq!(
+            (key, key_start.index, at(key_start)),
+            ("d", end + 1, (1, 0))
+        );
+    }
+}
+
+#[test]
+fn plain_scalars_in_a_flow_collection_end_at_flow_indicators() {
+    let long = "x".repeat(600);
+    let input = format!("[{long}a?b, c:d, e, {{k: v}}]\n");
+    let values: Vec<String> = scalars(&input)
+        .unwrap()
+        .into_iter()
+        .map(|scalar| scalar.value)
+        .collect();
+    let expected = [&format!("{long}a?b"), "c:d", "e", "k", "v"];
+    assert_eq!(values, expected);
+}

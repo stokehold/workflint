@@ -22,7 +22,7 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0016](0016-agent-driven-development.md) | Agent-driven development process | accepted | [0020](0020-task-tracking-in-github-issues.md), [0028](0028-revisions-after-the-m1-m3-review.md), [0029](0029-rule-modules-and-descriptions.md) |
 | [0017](0017-licensing-and-attribution.md) | Licensing and attribution | accepted | [0025](0025-fuzz-workspace.md) |
 | [0018](0018-toolchain-and-code-standards.md) | Rust toolchain and code standards | accepted | [0025](0025-fuzz-workspace.md), [0028](0028-revisions-after-the-m1-m3-review.md) |
-| [0019](0019-performance-targets.md) | Performance targets and tracking | accepted | [0028](0028-revisions-after-the-m1-m3-review.md), [0038](0038-shellcheck-scenario-target.md) |
+| [0019](0019-performance-targets.md) | Performance targets and tracking | accepted | [0028](0028-revisions-after-the-m1-m3-review.md), [0038](0038-shellcheck-scenario-target.md), [0039](0039-nightly-benchmarks-fail-on-a-missed-target.md) |
 | [0020](0020-task-tracking-in-github-issues.md) | Task tracking in GitHub issues | accepted | [0031](0031-agents-enable-auto-merge.md) |
 | [0021](0021-supply-chain-and-ci-security.md) | Supply chain and CI security | accepted | [0026](0026-agent-sandbox.md) |
 | [0022](0022-yaml-layer-revisions.md) | YAML layer revisions | accepted | [0028](0028-revisions-after-the-m1-m3-review.md) |
@@ -42,3 +42,4 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0036](0036-file-arguments-gitignore-and-exclude.md) | Directory and glob arguments, `.gitignore`, and `exclude` | accepted | |
 | [0037](0037-shell-completions-and-man-page.md) | Shell completions and the man page | accepted | |
 | [0038](0038-shellcheck-scenario-target.md) | Target for the corpus with shellcheck | accepted | |
+| [0039](0039-nightly-benchmarks-fail-on-a-missed-target.md) | The nightly benchmark job fails on a missed target | accepted | |

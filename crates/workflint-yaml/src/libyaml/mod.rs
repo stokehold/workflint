@@ -37,8 +37,6 @@ pub use self::error::{Error, ErrorKind, Mark};
 pub use self::event::{Event, EventData, NodeMarks};
 pub use self::parser::Parser;
 
-pub(crate) const INPUT_BUFFER_SIZE: usize = 16384;
-
 /// The version directive data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]

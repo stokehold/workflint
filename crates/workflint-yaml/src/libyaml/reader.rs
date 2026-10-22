@@ -5,6 +5,7 @@
 // control character is reported at the same point of the scan as in go-yaml.
 // The character checks in `is_allowed` are upstream's.
 
+use super::macros::{is_blank, is_blankz, is_break};
 use super::scanner::Scanner;
 use super::{Error, Result};
 
@@ -63,9 +64,11 @@ pub(crate) struct CharBuffer {
 }
 
 impl CharBuffer {
-    pub(crate) fn with_capacity(capacity: usize) -> Self {
+    /// An empty buffer with room for what it usually holds: the characters
+    /// of one raw chunk and the few that the scanner has not read yet.
+    pub(crate) fn new() -> Self {
         Self {
-            chars: Vec::with_capacity(capacity),
+            chars: Vec::with_capacity(2 * RAW_CHUNK),
             start: 0,
         }
     }
@@ -92,6 +95,38 @@ impl CharBuffer {
         let ch = self.front().copied()?;
         self.start += 1;
         Some(ch)
+    }
+
+    /// Counts the unread characters, from the first, that a plain scalar
+    /// continues over in one step each, and returns their number and their
+    /// length in bytes.
+    ///
+    /// Such a character is no blank, no line break, and no `:` that a blank
+    /// or a line break follows, and in a flow collection (`flow`) also no
+    /// `,`, `[`, `]`, `{`, `}`, or `?` that a blank or a line break follows.
+    /// The count stops two characters before the end of the buffer, so that
+    /// each character after it is known and the scanner's `cache(2)` after
+    /// each step would not have read on.
+    pub(crate) fn plain_run(&self, flow: bool) -> (usize, usize) {
+        let unread = self.chars.get(self.start..).unwrap_or_default();
+        let mut count = 0;
+        let mut bytes = 0;
+        for pair in unread.windows(3) {
+            let [ch, next, _] = *pair else {
+                break;
+            };
+            let ends = is_blank(ch)
+                || is_break(ch)
+                || ch == ':' && is_blankz(next)
+                || flow
+                    && (matches!(ch, ',' | '[' | ']' | '{' | '}') || ch == '?' && is_blankz(next));
+            if ends {
+                break;
+            }
+            count += 1;
+            bytes += ch.len_utf8();
+        }
+        (count, bytes)
     }
 
     /// Reads the first `count` unread characters, or every one if there are

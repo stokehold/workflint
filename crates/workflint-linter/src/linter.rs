@@ -397,22 +397,27 @@ impl Linter {
                 continue;
             };
             let next = match std::mem::replace(slot, First::Taken) {
-                First::Pending {
-                    source,
-                    mut diagnostics,
-                    cache,
-                    record,
-                } => match commit(cache, record, &source) {
-                    Ok(Some(prior)) => {
-                        Again::Lint(file, source, cache.for_file_after(&file.absolute, prior))
+                First::Pending(pending) => {
+                    let Pending {
+                        source,
+                        mut diagnostics,
+                        cache,
+                        record,
+                    } = *pending;
+                    match commit(cache, record, &source) {
+                        Ok(Some(prior)) => Again::Lint(Box::new((
+                            file,
+                            source,
+                            cache.for_file_after(&file.absolute, prior),
+                        ))),
+                        Ok(None) => Again::Finish(Box::new((file, source, diagnostics))),
+                        Err(diagnostic) => {
+                            diagnostics.push(diagnostic);
+                            sort_and_dedup(&source, &mut diagnostics);
+                            Again::Finish(Box::new((file, source, diagnostics)))
+                        }
                     }
-                    Ok(None) => Again::Finish(file, source, diagnostics),
-                    Err(diagnostic) => {
-                        diagnostics.push(diagnostic);
-                        sort_and_dedup(&source, &mut diagnostics);
-                        Again::Finish(file, source, diagnostics)
-                    }
-                },
+                }
                 First::Done(done) => Again::Done(done),
                 First::Taken => continue,
             };
@@ -563,12 +568,12 @@ impl Linter {
         Ok(if record.is_empty() {
             First::Done(finish(file, source, diagnostics, started))
         } else {
-            First::Pending {
+            First::Pending(Box::new(Pending {
                 source,
                 diagnostics,
                 cache,
                 record,
-            }
+            }))
         })
     }
 
@@ -580,7 +585,8 @@ impl Linter {
     ) -> T {
         let started = Instant::now();
         match again {
-            Again::Lint(file, source, local) => {
+            Again::Lint(lint) => {
+                let (file, source, local) = *lint;
                 let _span = tracing::info_span!(FILE_SPAN).entered();
                 tracing::info!(
                     "Linting {} again, because the files before it changed what it reads",
@@ -593,7 +599,8 @@ impl Linter {
                 }
                 finish(file, source, diagnostics, started)
             }
-            Again::Finish(file, source, diagnostics) => {
+            Again::Finish(finished) => {
+                let (file, source, diagnostics) = *finished;
                 let _span = tracing::info_span!(FILE_SPAN).entered();
                 finish(file, source, diagnostics, started)
             }
@@ -798,27 +805,34 @@ fn warn(config: &Config) {
 }
 
 /// A file after its first lint.
+///
+/// The run keeps one for each file until every file is linted, so the variants that most files
+/// do not have are boxed.
 enum First<'c, T> {
     /// The file did not use a cache, so `finish` has its final diagnostics.
     Done(T),
-    /// The file used `cache`, so its diagnostics may depend on the files before it.
-    Pending {
-        source: SourceFile,
-        /// The sorted diagnostics.
-        diagnostics: Vec<Diagnostic>,
-        cache: &'c LocalCache,
-        record: FileRecord,
-    },
+    /// The file used a cache, so its diagnostics may depend on the files before it.
+    Pending(Box<Pending<'c>>),
     /// The replay has moved the file on.
     Taken,
 }
 
-/// What is left to do for a file after the uses of the caches are replayed.
+/// A file whose diagnostics may depend on the files before it.
+struct Pending<'c> {
+    source: SourceFile,
+    /// The sorted diagnostics.
+    diagnostics: Vec<Diagnostic>,
+    cache: &'c LocalCache,
+    record: FileRecord,
+}
+
+/// What is left to do for a file after the uses of the caches are replayed. As with [`First`],
+/// the variants that most files do not have are boxed.
 enum Again<'f, 'c, T> {
     /// Lint the file again with this view of its cache.
-    Lint(&'f File<'f>, SourceFile, FileMetadata<'c>),
+    Lint(Box<(&'f File<'f>, SourceFile, FileMetadata<'c>)>),
     /// Finish the file with the diagnostics of the first lint.
-    Finish(&'f File<'f>, SourceFile, Vec<Diagnostic>),
+    Finish(Box<(&'f File<'f>, SourceFile, Vec<Diagnostic>)>),
     Done(T),
 }
 

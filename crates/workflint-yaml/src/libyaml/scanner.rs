@@ -4,9 +4,7 @@ use super::macros::{is_blank, is_blankz, is_break};
 use super::parser::SimpleKey;
 use super::reader::{CharBuffer, ReaderState, yaml_parser_update_buffer};
 use super::token::{Token, TokenData};
-use super::{
-    CommentKind, Encoding, Error, ErrorKind, INPUT_BUFFER_SIZE, Mark, Result, ScalarStyle,
-};
+use super::{CommentKind, Encoding, Error, ErrorKind, Mark, Result, ScalarStyle};
 
 /// The most digits of a `%YAML` version number, go-yaml's
 /// `max_number_length`.
@@ -226,7 +224,7 @@ impl<'input> Scanner<'input> {
         Self {
             source: input,
             reader: ReaderState::default(),
-            buffer: CharBuffer::with_capacity(INPUT_BUFFER_SIZE),
+            buffer: CharBuffer::new(),
             buffer_starts_with_bom: false,
             mark: Mark::default(),
             chars: 0,
@@ -279,6 +277,18 @@ impl<'input> Scanner<'input> {
             self.mark.column += 1;
             self.chars += 1;
         }
+    }
+
+    /// Skips the next `count` characters, `bytes` long, none of which is a
+    /// blank or a line break, as `count` calls of
+    /// [`skip_char`](Self::skip_char) would.
+    fn skip_run(&mut self, count: usize, bytes: usize) {
+        self.buffer.skip(count);
+        self.newlines = 0;
+        let to_u32 = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+        self.mark.index = self.mark.index.saturating_add(to_u32(bytes));
+        self.mark.column = self.mark.column.saturating_add(to_u32(count));
+        self.chars += count as u64;
     }
 
     /// Equivalent to the libyaml macro `SKIP_LINE`.
@@ -2238,6 +2248,13 @@ impl<'input> Scanner<'input> {
                 self.skip_char();
                 end_mark = self.mark;
                 self.cache(2)?;
+                // The characters that would go through the steps above
+                // without stopping or reading on are skipped at once.
+                let (count, bytes) = self.buffer.plain_run(self.flow_level != 0);
+                if count > 0 {
+                    self.skip_run(count, bytes);
+                    end_mark = self.mark;
+                }
             }
             if let Some(start) = run_start {
                 self.push_skipped(&mut string, start);

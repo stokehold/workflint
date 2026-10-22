@@ -49,8 +49,8 @@ enum Command {
         #[arg(long, value_name = "FILE")]
         results: Option<PathBuf>,
         /// Where to write the body of a `performance` issue when a
-        /// measurement failed, the result regressed, or, from 0.1.0, it
-        /// missed a target. Removed otherwise.
+        /// measurement failed, the result regressed, or it missed a target.
+        /// Removed otherwise.
         #[arg(long, value_name = "FILE")]
         issue_body: Option<PathBuf>,
     },
