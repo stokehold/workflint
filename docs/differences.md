@@ -1037,7 +1037,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Help text
 
 - Upstream: `-help` prints a header about actionlint with links to actionlint's documentation, then the flags.
-- workflint: the header names workflint, shows the optional `check` command, links to workflint's command-line page, rule pages, and this file, and says which features this version does not support yet. The help text of a flag that is accepted but not used yet ends with `Not supported yet`. The help of `-ignore`, `-init-config`, `-color`, `-debug`, `-format`, and `-config-file` is reworded, and workflint's own flags are listed with the others.
+- workflint: the header names workflint, shows the optional `check` command and the `completion` command, tells how to load a completion script, links to workflint's command-line page, rule pages, and this file, and says which features this version does not support yet. The help text of a flag that is accepted but not used yet ends with `Not supported yet`. The help of `-ignore`, `-init-config`, `-color`, `-debug`, `-format`, and `-config-file` is reworded, and workflint's own flags are listed with the others.
 - Why: the links and the text must describe workflint.
 - Upstream issue: none.
 - Milestone: M5.6.
@@ -1067,10 +1067,10 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### workflint's own flags
 
 - Upstream: none of these exist.
-- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `--config PATH` is `-config-file PATH` (ADR 0010). `-quiet` and `-q` print only errors and fatal messages: no summary, no warnings, and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. `-jobs N` runs at most `N` external tool processes at once, one per CPU by default. `-shellcheck-cache` keeps the findings of shellcheck in a cache on disk ([shellcheck-settings](#shellcheck-settings)). `-output FORMAT=PATH` writes the errors in a named format to a file, as well as to stdout ([github-output.md](github-output.md#several-formats-in-one-run)).
+- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `workflint completion bash|zsh|fish|powershell` prints a completion script, so upstream's `actionlint completion bash`, which lints files named `completion` and `bash`, means something else. `--config PATH` is `-config-file PATH` (ADR 0010). `-quiet` and `-q` print only errors and fatal messages: no summary, no warnings, and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. `-jobs N` runs at most `N` external tool processes at once, one per CPU by default. `-shellcheck-cache` keeps the findings of shellcheck in a cache on disk ([shellcheck-settings](#shellcheck-settings)). `-output FORMAT=PATH` writes the errors in a named format to a file, as well as to stdout ([github-output.md](github-output.md#several-formats-in-one-run)).
 - Why: the summary answers rhysd/actionlint#691. `-quiet` and `-silent` suit scripts that need only the exit code or only the errors. Commands such as `workflint rules` come later, and `check` names the default one. `-jobs` keeps shellcheck from using every CPU on a shared CI runner (ADR 0012). `-output` lets one run write annotations, a job summary, and a SARIF file, which the GitHub Action needs (ADR 0015).
-- Upstream issue: #691.
-- Milestone: M5.6, M5.5 for `-jobs`, M5.2 for `--config`, M5.13 for `-shellcheck-cache`, and M5.16 for `-output`.
+- Upstream issue: #691, and #300 for `completion`.
+- Milestone: M5.6, M5.5 for `-jobs`, M5.2 for `--config`, M5.13 for `-shellcheck-cache`, M5.16 for `-output`, and M5.19 for `completion`.
 - Status: implemented.
 
 <a id="ignore-pattern-syntax"></a>

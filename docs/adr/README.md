@@ -38,5 +38,6 @@ ADR 0001 explains how these records work. To change a decision, write a new ADR 
 | [0032](0032-diagnostic-help-text.md) | Diagnostic help text | accepted | |
 | [0033](0033-platform-data-updates-before-m7.md) | Platform data updates before M7 | accepted | |
 | [0034](0034-rules-of-the-driver.md) | Rules of the driver | accepted | |
-| [0035](0035-command-line-parser-and-environment.md) | Command-line parser and environment | accepted | |
+| [0035](0035-command-line-parser-and-environment.md) | Command-line parser and environment | accepted | [0037](0037-shell-completions-and-man-page.md) |
 | [0036](0036-file-arguments-gitignore-and-exclude.md) | Directory and glob arguments, `.gitignore`, and `exclude` | accepted | |
+| [0037](0037-shell-completions-and-man-page.md) | Shell completions and the man page | accepted | |
