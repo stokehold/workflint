@@ -99,6 +99,7 @@ fn completion_help_prints_the_usage() {
 
 /// Splits `line` into words as bash fills `COMP_WORDS` for the cursor at the end: at
 /// whitespace, with `=` and `:` as words of their own.
+#[cfg(unix)]
 fn bash_words(line: &str) -> Vec<String> {
     let mut words = Vec::new();
     for part in line.split_whitespace() {
@@ -125,6 +126,7 @@ fn bash_words(line: &str) -> Vec<String> {
 
 /// The words that the bash script offers for `line`, with the cursor at the end, as bash calls
 /// the completion function.
+#[cfg(unix)]
 fn bash_complete(dir: &Path, line: &str) -> Vec<String> {
     let driver = r#"
         source ./workflint.bash || exit 1
