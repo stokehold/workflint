@@ -1054,23 +1054,23 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Status: implemented.
 
 <a id="named-formats"></a>
-### `-format` names the `json`, `jsonl`, and `sarif` formats
+### `-format` names the `github`, `json`, `jsonl`, `sarif`, and `summary` formats
 
 - Upstream: a `-format` value without `{{` prints `template to format error messages must contain at least one {{ }} placeholder: <value>` and exits with code 3.
-- workflint: a value without `{{` names a format. `json` prints one JSON document and `jsonl` one JSON object per line, in the versioned schema of [json-output.md](json-output.md), with the rule ID, the severity, the help text, and byte offsets. `sarif` prints SARIF ([format-sarif](#format-sarif)). Any other value prints `unknown format "<value>": -format takes a Go template with at least one {{ }} placeholder, or one of the format names json, jsonl, sarif` and exits with code 3, as upstream does.
-- Why: tools can read workflint's output without writing a template. Upstream rejects every such value, so no command line that works with actionlint changes meaning (ADR 0003).
-- Upstream issue: none.
-- Milestone: M5.14.
+- workflint: a value without `{{` names a format. `json` prints one JSON document and `jsonl` one JSON object per line, in the versioned schema of [json-output.md](json-output.md), with the rule ID, the severity, the help text, and byte offsets. `sarif` prints SARIF ([format-sarif](#format-sarif)). `github` prints GitHub workflow commands, the most severe first, and `summary` prints a Markdown report for the job summary ([github-output.md](github-output.md)). Any other value prints `unknown format "<value>": -format takes a Go template with at least one {{ }} placeholder, or one of the format names github, json, jsonl, sarif, summary` and exits with code 3, as upstream does.
+- Why: tools can read workflint's output without writing a template, and a run in GitHub Actions gets annotations without a problem matcher. Upstream rejects every such value, so no command line that works with actionlint changes meaning (ADR 0003).
+- Upstream issue: #520 for `github`.
+- Milestone: M5.14, and M5.16 for `github` and `summary`.
 - Status: implemented.
 
 <a id="workflint-flags"></a>
 ### workflint's own flags
 
 - Upstream: none of these exist.
-- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `--config PATH` is `-config-file PATH` (ADR 0010). `-quiet` and `-q` print only errors and fatal messages: no summary, no warnings, and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. `-jobs N` runs at most `N` external tool processes at once, one per CPU by default. `-shellcheck-cache` keeps the findings of shellcheck in a cache on disk ([shellcheck-settings](#shellcheck-settings)).
-- Why: the summary answers rhysd/actionlint#691. `-quiet` and `-silent` suit scripts that need only the exit code or only the errors. Commands such as `workflint rules` come later, and `check` names the default one. `-jobs` keeps shellcheck from using every CPU on a shared CI runner (ADR 0012).
+- workflint: `workflint check` is the default command, so `workflint check a.yaml` is `workflint a.yaml`. `--config PATH` is `-config-file PATH` (ADR 0010). `-quiet` and `-q` print only errors and fatal messages: no summary, no warnings, and no log. `-silent` prints only fatal messages, and the exit code says whether errors were found. `-summary` prints one line to stderr with the number of errors by severity, such as `3 problems in 2 files: 2 errors, 1 warning, 0 info`. `-jobs N` runs at most `N` external tool processes at once, one per CPU by default. `-shellcheck-cache` keeps the findings of shellcheck in a cache on disk ([shellcheck-settings](#shellcheck-settings)). `-output FORMAT=PATH` writes the errors in a named format to a file, as well as to stdout ([github-output.md](github-output.md#several-formats-in-one-run)).
+- Why: the summary answers rhysd/actionlint#691. `-quiet` and `-silent` suit scripts that need only the exit code or only the errors. Commands such as `workflint rules` come later, and `check` names the default one. `-jobs` keeps shellcheck from using every CPU on a shared CI runner (ADR 0012). `-output` lets one run write annotations, a job summary, and a SARIF file, which the GitHub Action needs (ADR 0015).
 - Upstream issue: #691.
-- Milestone: M5.6, M5.5 for `-jobs`, M5.2 for `--config`, and M5.13 for `-shellcheck-cache`.
+- Milestone: M5.6, M5.5 for `-jobs`, M5.2 for `--config`, M5.13 for `-shellcheck-cache`, and M5.16 for `-output`.
 - Status: implemented.
 
 <a id="ignore-pattern-syntax"></a>

@@ -1,0 +1,10 @@
+---
+source: crates/workflint/src/github.rs
+expression: github_text(&files)
+---
+::error file=a.yaml,line=1,endLine=1,col=7,endColumn=9,title=error-rule::e1
+::error file=b.yaml,line=1,endLine=1,col=1,endColumn=3,title=error-rule::e2
+::warning file=a.yaml,line=1,endLine=1,col=4,endColumn=6,title=warning-rule::w1
+::warning file=b.yaml,line=1,endLine=1,col=7,endColumn=9,title=warning-rule::w2
+::notice file=a.yaml,line=1,endLine=1,col=1,endColumn=3,title=info-rule::i1
+::notice file=b.yaml,line=1,endLine=1,col=4,endColumn=6,title=info-rule::i2

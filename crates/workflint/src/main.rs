@@ -3,20 +3,24 @@
 //! It parses the command line with [`flags`], picks the inputs: the files, directories, and
 //! globs given as arguments, the workflow files of the project without arguments, or stdin for
 //! a lone `-`. It lints them with [`Linter`], prints the diagnostics in the order of the inputs,
-//! in the format that `-format` names or through its template of [`template`], and picks the
-//! exit code (`docs/cli.md`). The conformance suite runs it with the command line in
+//! in the format that `-format` names or through its template of [`template`], writes the files
+//! that `-output` names, and picks the exit code (`docs/cli.md`). The conformance suite runs it with the command line in
 //! `tests/conformance/README.md`.
 
 mod color;
 mod flags;
+mod github;
 mod log;
 mod sarif;
+mod summary;
 mod template;
 mod usage;
 mod version;
 
 use std::ffi::OsString;
+use std::fs::{File, OpenOptions};
 use std::io::{self, BufWriter, ErrorKind, IsTerminal, Write};
+use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
 
@@ -43,10 +47,11 @@ const EXIT_PROBLEM_FOUND: u8 = 1;
 const EXIT_INVALID_OPTION: u8 = 2;
 /// A file, stdin, or a config file could not be read, the workflow files of a run without
 /// arguments, of a directory argument, or of a glob argument could not be found, a config file,
-/// an `-ignore` pattern, or the `-format` template or format name is invalid, the shellcheck that
+/// an `-ignore` pattern, the `-format` template or format name, or an `-output` value is invalid,
+/// the shellcheck that
 /// `-shellcheck` names, the pyflakes that `-pyflakes` names, or
 /// the Python linter that a config file names was not found, `-init-config` failed, the template
-/// failed while it ran, the output could not be written, or the lint of a file hit a bug in
+/// failed while it ran, the output or an `-output` file could not be written, or the lint of a file hit a bug in
 /// workflint and reported an `internal-error` diagnostic.
 const EXIT_FAILURE: u8 = 3;
 
@@ -57,7 +62,7 @@ fn main() -> ExitCode {
             eprint!("{}", usage::text());
             return ExitCode::from(EXIT_NO_PROBLEM);
         }
-        Ok(Parsed::Run(options, paths)) => (options, paths),
+        Ok(Parsed::Run(options, paths)) => (*options, paths),
         Err(message) => {
             eprint!("{message}\n{}", usage::text());
             return ExitCode::from(EXIT_INVALID_OPTION);
@@ -88,6 +93,13 @@ fn main() -> ExitCode {
     // As in actionlint, an invalid template stops the run before `-init-config`.
     let format_flag = match format_flag(&options) {
         Ok(format_flag) => format_flag,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(EXIT_FAILURE);
+        }
+    };
+    let output_files = match output_files(&options) {
+        Ok(output_files) => output_files,
         Err(message) => {
             eprintln!("{message}");
             return ExitCode::from(EXIT_FAILURE);
@@ -135,10 +147,10 @@ fn main() -> ExitCode {
     let outcome = if color {
         // Makes the escape sequences work on the consoles of older Windows versions.
         let mut out = BufWriter::new(anstream::AutoStream::always(stdout.lock()));
-        run(&linter, &inputs, format, &mut out, &mut err)
+        run(&linter, &inputs, format, &output_files, &mut out, &mut err)
     } else {
         let mut out = BufWriter::new(stdout.lock());
-        run(&linter, &inputs, format, &mut out, &mut err)
+        run(&linter, &inputs, format, &output_files, &mut out, &mut err)
     };
     if let Some(counts) = &outcome.counts {
         tracing::info!("Found {} errors in {} files", counts.total(), inputs.len());
@@ -181,20 +193,95 @@ enum FormatFlag {
     Template(Formatter),
 }
 
-/// A format that `-format` names.
+/// A format that `-format` or `-output` names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Named {
+    Github,
     Json,
     JsonLines,
     Sarif,
+    Summary,
 }
 
 /// The names of the [`Named`] formats, in the order the error about an unknown name lists them.
-const FORMAT_NAMES: [(&str, Named); 3] = [
+const FORMAT_NAMES: [(&str, Named); 5] = [
+    ("github", Named::Github),
     ("json", Named::Json),
     ("jsonl", Named::JsonLines),
     ("sarif", Named::Sarif),
+    ("summary", Named::Summary),
 ];
+
+/// The named format `name`, if there is one.
+fn named_format(name: &str) -> Option<Named> {
+    FORMAT_NAMES
+        .iter()
+        .find(|(known, _)| *known == name)
+        .map(|&(_, named)| named)
+}
+
+/// The format names, as the errors about an unknown name list them.
+fn format_names() -> String {
+    let names: Vec<&str> = FORMAT_NAMES.iter().map(|(name, _)| *name).collect();
+    names.join(", ")
+}
+
+/// A file that `-output` names, and the format to write to it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct OutputFile {
+    format: Named,
+    path: PathBuf,
+}
+
+impl OutputFile {
+    /// Creates the file, or opens it to append for the summary format, which GitHub's
+    /// `GITHUB_STEP_SUMMARY` file collects from several commands.
+    fn open(&self) -> io::Result<File> {
+        if self.format == Named::Summary {
+            OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&self.path)
+        } else {
+            File::create(&self.path)
+        }
+    }
+}
+
+/// Reads the `-output` values, `FORMAT=PATH`. The error is the message to print.
+fn output_files(options: &Options) -> Result<Vec<OutputFile>, String> {
+    options
+        .output
+        .iter()
+        .map(|value| {
+            let Some((name, path)) = value.split_once('=') else {
+                return Err(format!(
+                    "invalid value {} for -output: it takes FORMAT=PATH, such as \
+                     sarif=results.sarif",
+                    quote(value)
+                ));
+            };
+            let format = named_format(name).ok_or_else(|| {
+                format!(
+                    "unknown format {} in -output {}: FORMAT is one of the format names {}",
+                    quote(name),
+                    quote(value),
+                    format_names()
+                )
+            })?;
+            if path.is_empty() {
+                return Err(format!(
+                    "invalid value {} for -output: the path is empty",
+                    quote(value)
+                ));
+            }
+            Ok(OutputFile {
+                format,
+                path: PathBuf::from(path),
+            })
+        })
+        .collect()
+}
 
 /// Reads `-format`, if it is given. A value with `{{` is a template, which this parses, and any
 /// other value names a format (ADR 0003). The error is the message to print.
@@ -206,17 +293,14 @@ fn format_flag(options: &Options) -> Result<Option<FormatFlag>, String> {
     if value.contains("{{") {
         return Formatter::new(value).map(|formatter| Some(FormatFlag::Template(formatter)));
     }
-    FORMAT_NAMES
-        .iter()
-        .find(|(name, _)| *name == value)
-        .map(|&(_, named)| Some(FormatFlag::Named(named)))
+    named_format(value)
+        .map(|named| Some(FormatFlag::Named(named)))
         .ok_or_else(|| {
-            let names: Vec<&str> = FORMAT_NAMES.iter().map(|(name, _)| *name).collect();
             format!(
                 "unknown format {}: -format takes a Go template with at least one {{{{ }}}} \
                  placeholder, or one of the format names {}",
                 quote(value),
-                names.join(", ")
+                format_names()
             )
         })
 }
@@ -435,26 +519,36 @@ impl Counts {
     }
 }
 
-/// Lints `inputs` with `linter`, writes their diagnostics in `format` to `out` in the order of
-/// `inputs`, and returns the exit code and the number of diagnostics. Fatal messages go to
-/// `err`.
+/// Lints `inputs` with `linter`, writes their diagnostics in `format` to `out` and in the format
+/// of each of `files` to its file, in the order of `inputs`, and returns the exit code and the
+/// number of diagnostics. Fatal messages go to `err`.
 ///
 /// As in actionlint, a file or a config file that cannot be read stops the run before anything
-/// is written. The `json` format writes one document over the diagnostics of every file. A
-/// `-format` template runs once, over the diagnostics of every file. When it fails,
-/// its output up to the failing action is written, and the run exits with code 3
-/// (`docs/differences.md#template-execution-errors`).
+/// is written. The `json`, `sarif`, `github`, and `summary` formats write one document over the
+/// diagnostics of every file. A `-format` template runs once, over the diagnostics of every
+/// file. When it fails, its output up to the failing action is written, and the run exits with
+/// code 3 (`docs/differences.md#template-execution-errors`). A file of `files` that cannot be
+/// written prints a message and exits with code 3, after the other files are written.
 fn run(
     linter: &Linter,
     inputs: &[Input],
     format: Format<'_>,
+    files: &[OutputFile],
     out: &mut impl Write,
     err: &mut impl Write,
 ) -> Outcome {
-    let files = match linter.lint_with(inputs, |file, diagnostics| {
-        format.render(&file, &diagnostics)
+    let formats: Vec<Format<'_>> = std::iter::once(format)
+        .chain(files.iter().map(|file| Format::of_named(file.format)))
+        .collect();
+    let rendered = match linter.lint_with(inputs, |file, diagnostics| Rendered {
+        outputs: formats
+            .iter()
+            .map(|format| format.render(&file, &diagnostics))
+            .collect(),
+        counts: Counts::of(&diagnostics),
+        internal_error: has_internal_error(&diagnostics),
     }) {
-        Ok(files) => files,
+        Ok(rendered) => rendered,
         Err(lint_error) => {
             // Nothing is left to report a failed write of the message to.
             let _ = writeln!(err, "{lint_error}");
@@ -464,55 +558,138 @@ fn run(
             };
         }
     };
-    let counts = files.iter().fold(Counts::default(), |total, rendered| {
+    let counts = rendered.iter().fold(Counts::default(), |total, rendered| {
         total.add(rendered.counts)
     });
-    let code = if files.iter().any(|rendered| rendered.internal_error) {
+    let mut code = if rendered.iter().any(|rendered| rendered.internal_error) {
         EXIT_FAILURE
     } else if counts.total() > 0 {
         EXIT_PROBLEM_FOUND
     } else {
         EXIT_NO_PROBLEM
     };
+    // The outputs of each format, in the order of `formats`.
+    let mut columns: Vec<Vec<Output>> = formats.iter().map(|_| Vec::new()).collect();
+    for rendered in rendered {
+        for (column, output) in columns.iter_mut().zip(rendered.outputs) {
+            column.push(output);
+        }
+    }
+    let summary_line = counts.summary(inputs.len());
+    let mut columns = columns.into_iter();
+    let stdout_outputs = columns.next().unwrap_or_default();
+    match write_outputs(format, stdout_outputs, &summary_line, out) {
+        // A reader that stops early, such as `head`, is not an error. actionlint dies of SIGPIPE
+        // there without a message.
+        Err(WriteError::Io(write_error)) if write_error.kind() == ErrorKind::BrokenPipe => {}
+        Err(WriteError::Io(write_error)) => {
+            let _ = writeln!(err, "could not write the output: {write_error}");
+            code = EXIT_FAILURE;
+        }
+        Err(WriteError::Template(message)) => {
+            let _ = writeln!(err, "{message}");
+            code = EXIT_FAILURE;
+        }
+        Ok(()) => {}
+    }
+    for (file, outputs) in files.iter().zip(columns) {
+        let written = file.open().map_err(WriteError::Io).and_then(|opened| {
+            let mut writer = BufWriter::new(opened);
+            write_outputs(
+                Format::of_named(file.format),
+                outputs,
+                &summary_line,
+                &mut writer,
+            )
+        });
+        // Only a `-format` template fails with `WriteError::Template`, and it writes to stdout.
+        let reason = match written {
+            Ok(()) => continue,
+            Err(WriteError::Io(write_error)) => write_error.to_string(),
+            Err(WriteError::Template(message)) => message,
+        };
+        let _ = writeln!(
+            err,
+            "could not write the output to {}: {reason}",
+            quote(&file.path.to_string_lossy())
+        );
+        code = EXIT_FAILURE;
+    }
+    Outcome {
+        code,
+        counts: Some(counts),
+    }
+}
+
+/// Why [`write_outputs`] failed.
+enum WriteError {
+    /// The template failed while it ran. The message is the one to print.
+    Template(String),
+    /// The output could not be written.
+    Io(io::Error),
+}
+
+/// Writes `outputs`, the outputs of the files in `format`, to `out`, and flushes it.
+/// `summary_line` is the line of `-summary` for the run.
+fn write_outputs(
+    format: Format<'_>,
+    outputs: Vec<Output>,
+    summary_line: &str,
+    out: &mut impl Write,
+) -> Result<(), WriteError> {
     let written = match format {
         Format::Sarif => {
-            let results: Vec<sarif::Results> = files
+            let results: Vec<sarif::Results> = outputs
                 .into_iter()
-                .filter_map(|rendered| match rendered.output {
+                .filter_map(|output| match output {
                     Output::Sarif(results) => Some(results),
-                    Output::Text(_) | Output::Fields(_) | Output::Records(_) => None,
+                    _ => None,
                 })
                 .collect();
-            sarif::write(out, &SARIF_TOOL, registry::rules(), &results).and_then(|()| out.flush())
+            sarif::write(out, &SARIF_TOOL, registry::rules(), &results)
+        }
+        Format::Github => {
+            let annotations: Vec<github::Annotations> = outputs
+                .into_iter()
+                .filter_map(|output| match output {
+                    Output::Github(annotations) => Some(annotations),
+                    _ => None,
+                })
+                .collect();
+            github::write(out, &annotations)
+        }
+        Format::Summary => {
+            let rows: Vec<summary::Rows> = outputs
+                .into_iter()
+                .filter_map(|output| match output {
+                    Output::Summary(rows) => Some(rows),
+                    _ => None,
+                })
+                .collect();
+            summary::write(out, summary_line, &rows, summary::SIZE_LIMIT)
         }
         Format::Template(formatter) => {
-            let fields = files
+            let fields = outputs
                 .into_iter()
-                .flat_map(|rendered| match rendered.output {
+                .flat_map(|output| match output {
                     Output::Fields(fields) => fields,
-                    Output::Text(_) | Output::Records(_) | Output::Sarif(_) => Vec::new(),
+                    _ => Vec::new(),
                 })
                 .collect();
             let printed = formatter.print(out, fields);
             let flushed = out.flush();
-            match printed {
-                Err(PrintError::Template(message)) => {
-                    let _ = writeln!(err, "{message}");
-                    return Outcome {
-                        code: EXIT_FAILURE,
-                        counts: Some(counts),
-                    };
-                }
-                Err(PrintError::Write(write_error)) => Err(write_error),
-                Ok(()) => flushed,
-            }
+            return match printed {
+                Err(PrintError::Template(message)) => Err(WriteError::Template(message)),
+                Err(PrintError::Write(write_error)) => Err(WriteError::Io(write_error)),
+                Ok(()) => flushed.map_err(WriteError::Io),
+            };
         }
         Format::Json | Format::JsonLines => {
-            let records: Vec<JsonRecord> = files
+            let records: Vec<JsonRecord> = outputs
                 .into_iter()
-                .flat_map(|rendered| match rendered.output {
+                .flat_map(|output| match output {
                     Output::Records(records) => records,
-                    Output::Text(_) | Output::Fields(_) | Output::Sarif(_) => Vec::new(),
+                    _ => Vec::new(),
                 })
                 .collect();
             if matches!(format, Format::Json) {
@@ -520,53 +697,42 @@ fn run(
             } else {
                 render_jsonl(out, &records)
             }
-            .and_then(|()| out.flush())
         }
-        _ => files
-            .iter()
-            .try_for_each(|rendered| match &rendered.output {
-                Output::Text(Ok(output)) => out.write_all(output),
+        Format::Default(_) | Format::Oneline(_) | Format::Silent => {
+            outputs.iter().try_for_each(|output| match output {
+                Output::Text(Ok(text)) => out.write_all(text),
                 Output::Text(Err(err)) => Err(io::Error::new(err.kind(), err.to_string())),
-                Output::Fields(_) | Output::Records(_) | Output::Sarif(_) => Ok(()),
+                _ => Ok(()),
             })
-            .and_then(|()| out.flush()),
-    };
-    let code = match written {
-        // A reader that stops early, such as `head`, is not an error. actionlint dies of SIGPIPE
-        // there without a message.
-        Err(write_error) if write_error.kind() == ErrorKind::BrokenPipe => code,
-        Err(write_error) => {
-            let _ = writeln!(err, "could not write the output: {write_error}");
-            EXIT_FAILURE
         }
-        Ok(()) => code,
     };
-    Outcome {
-        code,
-        counts: Some(counts),
-    }
+    written.and_then(|()| out.flush()).map_err(WriteError::Io)
 }
 
-/// The output of one file.
+/// The outputs of one file.
 struct Rendered {
-    /// What the file adds to the output.
-    output: Output,
+    /// What the file adds to the output of each format of the run.
+    outputs: Vec<Output>,
     /// The number of diagnostics by severity.
     counts: Counts,
     /// Whether the file has an `internal-error` diagnostic.
     internal_error: bool,
 }
 
-/// What one file adds to the output.
+/// What one file adds to the output of one format.
 enum Output {
     /// The rendered diagnostics, or the error of rendering them.
     Text(io::Result<Vec<u8>>),
     /// The template values of the diagnostics, for the `-format` template.
     Fields(Vec<Value>),
-    /// The SARIF results of the diagnostics, for `-format sarif`.
+    /// The SARIF results of the diagnostics, for the `sarif` format.
     Sarif(sarif::Results),
-    /// The records of the diagnostics, for `-format json` and `-format jsonl`.
+    /// The records of the diagnostics, for the `json` and `jsonl` formats.
     Records(Vec<JsonRecord>),
+    /// The workflow commands of the diagnostics, for the `github` format.
+    Github(github::Annotations),
+    /// The table rows of the diagnostics, for the `summary` format.
+    Summary(summary::Rows),
 }
 
 /// The output format.
@@ -576,14 +742,18 @@ enum Format<'a> {
     Default(Color),
     /// `-oneline`: the header line only.
     Oneline(Color),
-    /// `-format json`: one JSON document for every file.
+    /// `json`: one JSON document for every file.
     Json,
-    /// `-format jsonl`: one JSON object per diagnostic.
+    /// `jsonl`: one JSON object per diagnostic.
     JsonLines,
     /// `-format`: the template, without color.
     Template(&'a Formatter),
-    /// `-format sarif`: one SARIF log for every file.
+    /// `sarif`: one SARIF log for every file.
     Sarif,
+    /// `github`: one workflow command per diagnostic, the most severe first.
+    Github,
+    /// `summary`: a Markdown report for the job summary.
+    Summary,
     /// `-silent`: nothing.
     Silent,
 }
@@ -596,11 +766,7 @@ impl<'a> Format<'a> {
         if options.silent {
             Self::Silent
         } else if let Some(FormatFlag::Named(named)) = format_flag {
-            match named {
-                Named::Json => Self::Json,
-                Named::JsonLines => Self::JsonLines,
-                Named::Sarif => Self::Sarif,
-            }
+            Self::of_named(*named)
         } else if let Some(FormatFlag::Template(formatter)) = format_flag {
             Self::Template(formatter)
         } else if options.oneline {
@@ -610,43 +776,37 @@ impl<'a> Format<'a> {
         }
     }
 
-    fn render(self, file: &SourceFile, diagnostics: &[Diagnostic]) -> Rendered {
+    /// The format that `named` names.
+    const fn of_named(named: Named) -> Self {
+        match named {
+            Named::Github => Self::Github,
+            Named::Json => Self::Json,
+            Named::JsonLines => Self::JsonLines,
+            Named::Sarif => Self::Sarif,
+            Named::Summary => Self::Summary,
+        }
+    }
+
+    /// What `file` with `diagnostics` adds to the output.
+    fn render(self, file: &SourceFile, diagnostics: &[Diagnostic]) -> Output {
         let mut output = Vec::new();
         let written = match self {
             Self::Default(color) => render_default(&mut output, file, diagnostics, color),
             Self::Oneline(color) => render_oneline(&mut output, file, diagnostics, color),
             Self::Json | Self::JsonLines => {
-                return Rendered {
-                    output: Output::Records(json_records(file, diagnostics)),
-                    counts: Counts::of(diagnostics),
-                    internal_error: has_internal_error(diagnostics),
-                };
+                return Output::Records(json_records(file, diagnostics));
             }
-            Self::Template(_) => {
-                return Rendered {
-                    output: Output::Fields(template::fields(file, diagnostics)),
-                    counts: Counts::of(diagnostics),
-                    internal_error: has_internal_error(diagnostics),
-                };
-            }
-            Self::Sarif => {
-                return Rendered {
-                    output: Output::Sarif(sarif::Results::of(file, diagnostics)),
-                    counts: Counts::of(diagnostics),
-                    internal_error: has_internal_error(diagnostics),
-                };
-            }
+            Self::Template(_) => return Output::Fields(template::fields(file, diagnostics)),
+            Self::Sarif => return Output::Sarif(sarif::Results::of(file, diagnostics)),
+            Self::Github => return Output::Github(github::Annotations::of(file, diagnostics)),
+            Self::Summary => return Output::Summary(summary::Rows::of(file, diagnostics)),
             Self::Silent => Ok(()),
         };
-        Rendered {
-            // The output waits for the other files, so it keeps no spare capacity.
-            output: Output::Text(written.map(|()| {
-                output.shrink_to_fit();
-                output
-            })),
-            counts: Counts::of(diagnostics),
-            internal_error: has_internal_error(diagnostics),
-        }
+        // The output waits for the other files, so it keeps no spare capacity.
+        Output::Text(written.map(|()| {
+            output.shrink_to_fit();
+            output
+        }))
     }
 }
 
@@ -676,6 +836,7 @@ mod tests {
             linter,
             &inputs,
             Format::Oneline(Color::Off),
+            &[],
             &mut out,
             &mut err,
         );
