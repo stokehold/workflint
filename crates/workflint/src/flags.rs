@@ -25,6 +25,8 @@ pub(crate) struct Options {
     pub(crate) jobs: Option<NonZeroUsize>,
     pub(crate) no_color: bool,
     pub(crate) oneline: bool,
+    /// The `-output` values, `FORMAT=PATH`, in order.
+    pub(crate) output: Vec<String>,
     /// `-pyflakes`, or `None` when the flag is not given and `python.linter` picks the Python
     /// linter.
     pub(crate) pyflakes: Option<String>,
@@ -61,6 +63,7 @@ impl Default for Options {
             jobs: None,
             no_color: false,
             oneline: false,
+            output: Vec::new(),
             pyflakes: None,
             quiet: false,
             shellcheck: None,
@@ -152,7 +155,7 @@ impl Flag {
 }
 
 /// Every flag: actionlint's, and then workflint's own.
-pub(crate) static FLAGS: [Flag; 20] = [
+pub(crate) static FLAGS: [Flag; 21] = [
     Flag::list(
         "ignore",
         "Regular expression in Go syntax. Errors whose message it matches are not reported. \
@@ -183,8 +186,8 @@ pub(crate) static FLAGS: [Flag; 20] = [
         "format",
         None,
         "Custom template to format error messages in Go template syntax, or the name of a \
-         format: json, jsonl, or sarif. The command-line documentation lists the template's \
-         fields and functions",
+         format: github, json, jsonl, sarif, or summary. The command-line documentation lists \
+         the template's fields and functions",
         |options, value| options.format = value,
     ),
     Flag::string(
@@ -256,6 +259,13 @@ pub(crate) static FLAGS: [Flag; 20] = [
          the same script again. The config key shellcheck.cache does the same for one project",
         |options, on| options.shellcheck_cache = on,
     ),
+    Flag::list(
+        "output",
+        "Also write the errors to a file, as FORMAT=PATH, such as sarif=results.sarif. FORMAT is \
+         github, json, jsonl, sarif, or summary. The summary format appends to the file. This \
+         flag is repeatable",
+        |options, value| options.output.push(value),
+    ),
 ];
 
 /// The command line, parsed.
@@ -263,8 +273,9 @@ pub(crate) static FLAGS: [Flag; 20] = [
 pub(crate) enum Parsed<'a> {
     /// `-h` or `-help`: print the usage and exit with 0.
     Help,
-    /// Run with these flags on these arguments.
-    Run(Options, &'a [OsString]),
+    /// Run with these flags on these arguments. The flags are boxed, so that the result stays
+    /// small.
+    Run(Box<Options>, &'a [OsString]),
 }
 
 /// Parses the arguments after the program name.
@@ -327,7 +338,7 @@ pub(crate) fn parse(args: &[OsString]) -> Result<Parsed<'_>, String> {
             }
         }
     }
-    Ok(Parsed::Run(options, rest))
+    Ok(Parsed::Run(Box::new(options), rest))
 }
 
 /// The value of the flag `name`: `value`, the text after `=`, or else the next argument, which
@@ -402,7 +413,7 @@ mod tests {
         match parse(&args)? {
             Parsed::Help => Err("help".to_owned()),
             Parsed::Run(options, files) => Ok((
-                options,
+                *options,
                 files
                     .iter()
                     .map(|file| file.to_string_lossy().into_owned())
@@ -470,6 +481,14 @@ mod tests {
     }
 
     #[test]
+    fn output_collects_every_value_in_order() {
+        assert_eq!(
+            options(&["-output", "sarif=a", "--output=json=b"]).output,
+            ["sarif=a", "json=b"]
+        );
+    }
+
+    #[test]
     fn every_flag_sets_its_own_field() {
         let set = options(&[
             "-color",
@@ -481,6 +500,7 @@ mod tests {
             "-jobs=3",
             "-no-color",
             "-oneline",
+            "-output=json=o",
             "-pyflakes=p",
             "-q",
             "-shellcheck=s",
@@ -503,6 +523,7 @@ mod tests {
                 jobs: NonZeroUsize::new(3),
                 no_color: true,
                 oneline: true,
+                output: vec!["json=o".to_owned()],
                 pyflakes: Some("p".to_owned()),
                 quiet: true,
                 shellcheck: Some("s".to_owned()),

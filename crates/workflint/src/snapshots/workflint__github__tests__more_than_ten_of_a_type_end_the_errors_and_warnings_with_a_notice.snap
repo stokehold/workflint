@@ -1,0 +1,22 @@
+---
+source: crates/workflint/src/github.rs
+expression: "github_text(&[many(&ERROR_RULE, 12), many(&WARNING_RULE, 3),\nmany(&INFO_RULE, 2),])"
+---
+::error file=a.yaml,line=1,endLine=1,col=1,endColumn=4,title=error-rule::t00
+::error file=a.yaml,line=2,endLine=2,col=1,endColumn=4,title=error-rule::t01
+::error file=a.yaml,line=3,endLine=3,col=1,endColumn=4,title=error-rule::t02
+::error file=a.yaml,line=4,endLine=4,col=1,endColumn=4,title=error-rule::t03
+::error file=a.yaml,line=5,endLine=5,col=1,endColumn=4,title=error-rule::t04
+::error file=a.yaml,line=6,endLine=6,col=1,endColumn=4,title=error-rule::t05
+::error file=a.yaml,line=7,endLine=7,col=1,endColumn=4,title=error-rule::t06
+::error file=a.yaml,line=8,endLine=8,col=1,endColumn=4,title=error-rule::t07
+::error file=a.yaml,line=9,endLine=9,col=1,endColumn=4,title=error-rule::t08
+::error file=a.yaml,line=10,endLine=10,col=1,endColumn=4,title=error-rule::t09
+::error file=a.yaml,line=11,endLine=11,col=1,endColumn=4,title=error-rule::t10
+::error file=a.yaml,line=12,endLine=12,col=1,endColumn=4,title=error-rule::t11
+::warning file=a.yaml,line=1,endLine=1,col=1,endColumn=4,title=warning-rule::t00
+::warning file=a.yaml,line=2,endLine=2,col=1,endColumn=4,title=warning-rule::t01
+::warning file=a.yaml,line=3,endLine=3,col=1,endColumn=4,title=warning-rule::t02
+::notice title=workflint::2 of 17 problems have no annotation, because GitHub shows at most 10 annotations of each type per step. The job summary and the log of this step list every problem.
+::notice file=a.yaml,line=1,endLine=1,col=1,endColumn=4,title=info-rule::t00
+::notice file=a.yaml,line=2,endLine=2,col=1,endColumn=4,title=info-rule::t01

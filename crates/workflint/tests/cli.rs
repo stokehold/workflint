@@ -776,6 +776,7 @@ fn the_usage_lists_every_flag_of_actionlint_and_workflint() {
         "-init-config",
         "-no-color",
         "-oneline",
+        "-output value",
         "-pyflakes string",
         "-q",
         "-quiet",
@@ -1854,7 +1855,7 @@ fn format_keeps_unknown_escapes() {
 }
 
 const UNKNOWN_FORMAT: &str = "unknown format \"hello\": -format takes a Go template with at \
-    least one {{ }} placeholder, or one of the format names json, jsonl, sarif\n";
+    least one {{ }} placeholder, or one of the format names github, json, jsonl, sarif, summary\n";
 
 #[test]
 fn format_sarif_prints_one_log_for_every_file_and_exits_with_1() {
@@ -2236,4 +2237,154 @@ fn json_formats_ignore_color_and_oneline_and_silent_wins() {
     assert_eq!(run, plain);
     let run = format("jsonl", &["-silent", "anchors.yaml"]);
     assert_eq!((run.code, run.stdout.as_str()), (Some(1), ""));
+}
+
+/// What `-format github` prints for `broken.yaml` and `anchors.yaml`.
+const BROKEN_AND_ANCHORS_GITHUB: &str = "\
+::error file=broken.yaml,line=5,endLine=5,col=12,endColumn=13,title=yaml-syntax-error::could not parse as YAML: block sequence entries are not allowed in this context
+::error file=anchors.yaml,line=3,endLine=3,col=6,endColumn=8,title=unused-anchor::anchor \"b\" is defined but not used
+::error file=anchors.yaml,line=4,endLine=4,col=6,endColumn=8,title=unused-anchor::anchor \"a\" is defined but not used
+";
+
+#[test]
+fn format_github_prints_one_workflow_command_per_diagnostic() {
+    let run = format(
+        "github",
+        &["-color", "-oneline", "broken.yaml", "anchors.yaml"],
+    );
+    assert_eq!(
+        run,
+        Run {
+            code: Some(1),
+            stdout: BROKEN_AND_ANCHORS_GITHUB.to_owned(),
+            stderr: String::new(),
+        }
+    );
+    let run = format("github", &["valid.yaml"]);
+    assert_eq!((run.code, run.stdout.as_str()), (Some(0), ""));
+}
+
+#[test]
+fn github_to_stdout_and_sarif_and_json_to_files_match_runs_with_each_format_alone() {
+    let dir = tempfile::tempdir().unwrap();
+    let sarif = dir.path().join("out.sarif");
+    let json = dir.path().join("out.json");
+    let files = ["broken.yaml", "anchors.yaml", "valid.yaml"];
+    let sarif_flag = format!("sarif={}", sarif.display());
+    let json_flag = format!("--output={}", format_args!("json={}", json.display()));
+    let args: Vec<&str> = ["-format", "github", "-output", &sarif_flag, &json_flag]
+        .into_iter()
+        .chain(files)
+        .collect();
+    let run = workflint(&args);
+    assert_eq!(run, format("github", &files));
+    assert_eq!(
+        std::fs::read_to_string(&sarif).unwrap(),
+        format("sarif", &files).stdout
+    );
+    assert_eq!(
+        std::fs::read_to_string(&json).unwrap(),
+        format("json", &files).stdout
+    );
+}
+
+#[test]
+fn output_writes_files_after_the_default_format_and_with_silent() {
+    let dir = tempfile::tempdir().unwrap();
+    let jsonl = dir.path().join("out.jsonl");
+    let flag = format!("jsonl={}", jsonl.display());
+    let run = workflint(&["-oneline", "-output", &flag, "anchors.yaml"]);
+    assert_eq!((run.code, run.stdout.as_str()), (Some(1), ANCHORS));
+    let expected = format("jsonl", &["anchors.yaml"]).stdout;
+    assert_eq!(std::fs::read_to_string(&jsonl).unwrap(), expected);
+
+    std::fs::write(
+        &jsonl,
+        "old contents that are longer than the new ones\n".repeat(20),
+    )
+    .unwrap();
+    let run = workflint(&["-silent", "-output", &flag, "anchors.yaml"]);
+    assert_eq!((run.code, run.stdout.as_str()), (Some(1), ""));
+    assert_eq!(std::fs::read_to_string(&jsonl).unwrap(), expected);
+}
+
+#[test]
+fn output_summary_appends_a_markdown_report_to_its_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let summary = dir.path().join("summary.md");
+    std::fs::write(&summary, "earlier step\n").unwrap();
+    let flag = format!("summary={}", summary.display());
+    let run = workflint(&["-format", "github", "-output", &flag, "anchors.yaml"]);
+    assert_eq!(run.code, Some(1));
+    let report = format("summary", &["anchors.yaml"]).stdout;
+    assert_eq!(
+        report,
+        "## workflint\n\n2 problems in 1 file: 2 errors, 0 warnings, 0 info\n\n\
+         | Severity | Location | Rule | Message |\n| --- | --- | --- | --- |\n\
+         | error | anchors\\.yaml\\:3\\:6 | [unused-anchor](https://github.com/stokehold/workflint/blob/main/docs/rules/unused-anchor.md) | anchor \\\"b\\\" is defined but not used |\n\
+         | error | anchors\\.yaml\\:4\\:6 | [unused-anchor](https://github.com/stokehold/workflint/blob/main/docs/rules/unused-anchor.md) | anchor \\\"a\\\" is defined but not used |\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&summary).unwrap(),
+        format!("earlier step\n{report}")
+    );
+}
+
+#[test]
+fn an_invalid_output_value_exits_with_3_before_linting() {
+    for (value, message) in [
+        (
+            "sarif",
+            "invalid value \"sarif\" for -output: it takes FORMAT=PATH, such as \
+             sarif=results.sarif\n",
+        ),
+        (
+            "xml=out.xml",
+            "unknown format \"xml\" in -output \"xml=out.xml\": FORMAT is one of the format \
+             names github, json, jsonl, sarif, summary\n",
+        ),
+        (
+            "json=",
+            "invalid value \"json=\" for -output: the path is empty\n",
+        ),
+    ] {
+        let run = workflint(&["-output", value, "missing.yaml"]);
+        assert_eq!(
+            run,
+            Run {
+                code: Some(3),
+                stdout: String::new(),
+                stderr: message.to_owned(),
+            },
+            "{value}"
+        );
+    }
+}
+
+#[test]
+fn an_output_file_that_cannot_be_written_exits_with_3_after_the_other_outputs() {
+    let dir = tempfile::tempdir().unwrap();
+    let bad = dir.path().join("no-such-dir").join("out.sarif");
+    let good = dir.path().join("out.json");
+    let bad_flag = format!("sarif={}", bad.display());
+    let good_flag = format!("json={}", good.display());
+    let run = workflint(&[
+        "-oneline",
+        "-output",
+        &bad_flag,
+        "-output",
+        &good_flag,
+        "anchors.yaml",
+    ]);
+    assert_eq!((run.code, run.stdout.as_str()), (Some(3), ANCHORS));
+    // The path is quoted as Go's `%q` quotes it, which doubles the backslashes on Windows.
+    let prefix = format!(
+        "could not write the output to {:?}: ",
+        bad.display().to_string()
+    );
+    assert!(run.stderr.starts_with(&prefix), "{}", run.stderr);
+    assert_eq!(
+        std::fs::read_to_string(&good).unwrap(),
+        format("json", &["anchors.yaml"]).stdout
+    );
 }

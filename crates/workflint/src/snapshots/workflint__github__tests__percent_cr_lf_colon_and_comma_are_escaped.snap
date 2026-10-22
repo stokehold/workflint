@@ -1,0 +1,5 @@
+---
+source: crates/workflint/src/github.rs
+expression: "github_text(&[Annotations::of(&f, &[d])])"
+---
+::error file=dir/a%3Ab%2Cc%25.yaml,line=1,endLine=1,col=4,endColumn=7,title=error-rule::100%25 wrong: a, b%0D%0Anext line%0A%0Ahelp: did you mean "x:y"?

@@ -42,6 +42,11 @@ pub(crate) fn text() -> String {
     $ workflint -format json
     $ workflint -format '{{{{json .}}}}'
 
+  In GitHub Actions, -format github prints annotations, and -output writes
+  more formats to files in the same run:
+
+    $ workflint -format github -output sarif=workflint.sarif
+
 Documents:
 
   - Command line: {docs}/cli.md

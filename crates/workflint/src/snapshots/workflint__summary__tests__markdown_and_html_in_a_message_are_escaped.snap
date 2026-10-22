@@ -1,0 +1,12 @@
+---
+source: crates/workflint/src/summary.rs
+expression: "summary_text(&files, SIZE_LIMIT)"
+---
+## workflint
+
+2 problems in 2 files: 1 error, 0 warnings, 1 info
+
+| Severity | Location | Rule | Message |
+| --- | --- | --- | --- |
+| error | a\_b\.yaml\:1\:4 | [error-rule](https://example.com/rules/test.md) | \`\$\{\{ x \| y \}\}\` is \<b\>\*bad\*\<\/b\> \& \[wrong\]<br>second line<br>help: use \"z\" |
+| info | dir\/b\.yaml\:1\:4 | [info-rule](https://example.com/rules/test.md) | plain |
