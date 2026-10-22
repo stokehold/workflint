@@ -54,7 +54,11 @@ impl ProjectRoots {
     /// markers, but not resolved in the path. `path` names a file, which has no `.github` inside
     /// it, so the search starts at its directory.
     pub fn find(&mut self, path: &Path, cwd: &Path) -> Option<PathBuf> {
-        let path = absolute(cwd, path);
+        self.find_absolute(&absolute(cwd, path))
+    }
+
+    /// Does what [`find`](Self::find) does for `path`, already made absolute and cleaned.
+    pub(crate) fn find_absolute(&mut self, path: &Path) -> Option<PathBuf> {
         path.parent().and_then(|dir| self.search(dir))
     }
 

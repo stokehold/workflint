@@ -27,7 +27,7 @@ use workflint_yaml::rules::YAML_SYNTAX_ERROR;
 
 use crate::cache::{CachePoisoned, FileMetadata, FileRecord, LocalCache, Prior};
 use crate::config::{Config, ConfigError};
-use crate::discover::{DiscoveryError, Finder};
+use crate::discover::{DiscoveryError, Finder, Found};
 use crate::ignore::IgnorePattern;
 use crate::path;
 use crate::project::ProjectRoots;
@@ -273,11 +273,27 @@ impl Linter {
     ///
     /// Fails if a directory or a config file cannot be read, if a directory has no such file,
     /// or if a glob is malformed or matches no such file.
-    pub fn expand<P: AsRef<OsStr>>(&self, args: &[P]) -> Result<Vec<Input>, DiscoveryError> {
+    pub fn expand<P: AsRef<OsStr> + Sync>(
+        &self,
+        args: &[P],
+    ) -> Result<Vec<Input>, DiscoveryError> {
         let mut finder = Finder::new(&self.cwd, self.flags.config_file.as_deref());
+        // The file system lookups of many arguments run in parallel, and the arguments are
+        // expanded in order.
+        let found_of = |arg: &P| Found::of(&self.cwd, arg.as_ref());
+        let found: Vec<Found> = if args.len() > 1 {
+            args.par_iter().map(found_of).collect()
+        } else {
+            args.iter().map(found_of).collect()
+        };
         let mut inputs = Vec::with_capacity(args.len());
-        for arg in args {
-            inputs.extend(finder.expand(arg.as_ref())?.into_iter().map(Input::file));
+        for (arg, found) in args.iter().zip(found) {
+            inputs.extend(
+                finder
+                    .expand(arg.as_ref(), found)?
+                    .into_iter()
+                    .map(Input::file),
+            );
         }
         Ok(inputs)
     }
@@ -366,30 +382,44 @@ impl Linter {
         let mut caches = BTreeMap::new();
         let mut settings =
             ProjectSettings::new(&self.flags, &self.cwd, self.tools.shellcheck_not_found());
-        let mut files = Vec::with_capacity(inputs.len());
-        for input in inputs {
+        // The paths of many inputs are computed in parallel, and their projects and settings
+        // are looked up in order, with what each lookup caches.
+        let many = inputs.len() > 1;
+        let absolute_of = |input: &Input| path::absolute(&self.cwd, &input.path);
+        let absolutes: Vec<PathBuf> = if many {
+            inputs.par_iter().map(absolute_of).collect()
+        } else {
+            inputs.iter().map(absolute_of).collect()
+        };
+        let mut projects = Vec::with_capacity(inputs.len());
+        for (input, absolute) in inputs.iter().zip(&absolutes) {
             let root = if input.stdin.is_some() {
                 stdin_root(&mut roots, &input.path, &self.cwd)
             } else {
-                roots.find(&input.path, &self.cwd)
+                roots.find_absolute(absolute)
             };
-            if let Some(root) = &root {
-                caches
-                    .entry(root.clone())
-                    .or_insert_with(|| LocalCache::new(root.clone()));
+            if let Some(root) = &root
+                && !caches.contains_key(root)
+            {
+                caches.insert(root.clone(), LocalCache::new(root.clone()));
             }
-            let absolute = path::absolute(&self.cwd, &input.path);
-            let relative = path::slash_path(root.as_deref().unwrap_or(&self.cwd), &absolute);
             let file_settings = settings.of(root.as_deref())?;
             self.check_tools(&file_settings)?;
-            files.push(File {
-                input,
-                settings: file_settings,
-                absolute,
-                relative,
-                root,
-            });
+            projects.push((root, file_settings));
         }
+        let file_of = |((input, absolute), (root, settings))| {
+            File::new(input, absolute, root, settings, &self.cwd)
+        };
+        let files: Vec<File<'_>> = if many {
+            inputs
+                .par_iter()
+                .zip(absolutes)
+                .zip(projects)
+                .map(file_of)
+                .collect()
+        } else {
+            inputs.iter().zip(absolutes).zip(projects).map(file_of).collect()
+        };
         let cache_of = |file: &File<'_>| file.root.as_ref().and_then(|root| caches.get(root));
         self.prefetch(&files);
 
@@ -665,6 +695,27 @@ struct File<'i> {
     relative: String,
     root: Option<PathBuf>,
     settings: Arc<Settings>,
+}
+
+impl<'i> File<'i> {
+    /// The file of `input`, whose path made absolute is `absolute`, in the project at `root`
+    /// with `settings`, or in no project with the settings of the files in none.
+    fn new(
+        input: &'i Input,
+        absolute: PathBuf,
+        root: Option<PathBuf>,
+        settings: Arc<Settings>,
+        cwd: &Path,
+    ) -> Self {
+        let relative = path::slash_path(root.as_deref().unwrap_or(cwd), &absolute);
+        Self {
+            input,
+            absolute,
+            relative,
+            root,
+            settings,
+        }
+    }
 }
 
 /// The settings of each project of a run, each made once.

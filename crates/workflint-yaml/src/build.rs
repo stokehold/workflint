@@ -455,10 +455,7 @@ impl<'a> Builder<'a> {
         let Some(frame) = self.frames.pop() else {
             return;
         };
-        let children: Vec<(NodeId, NodeId)> = self
-            .scratch
-            .drain(frame.scratch_start.min(self.scratch.len())..)
-            .collect();
+        let scratch_start = frame.scratch_start.min(self.scratch.len());
         let end = match frame.last_end {
             Some(last_end) if frame.block => last_end,
             _ => Self::offset(end_mark),
@@ -468,9 +465,11 @@ impl<'a> Builder<'a> {
             .ok()
             .and_then(|i| self.nodes.get_mut(i))
         else {
+            self.scratch.truncate(scratch_start);
             return;
         };
         node.span.end = end.max(node.span.start);
+        let children = self.scratch.get(scratch_start..).unwrap_or_default();
         match &mut node.kind {
             NodeKind::Mapping(mapping) => {
                 let first = to_u32(self.entries.len());
@@ -486,7 +485,7 @@ impl<'a> Builder<'a> {
             }
             NodeKind::Sequence(sequence) => {
                 let first = to_u32(self.items.len());
-                for (item, written) in children {
+                for &(item, written) in children {
                     self.items.push(item);
                     self.written_items.push(written);
                 }
@@ -494,6 +493,7 @@ impl<'a> Builder<'a> {
             }
             NodeKind::Scalar(_) | NodeKind::Alias(_) => {}
         }
+        self.scratch.truncate(scratch_start);
         self.set_closed(frame.node);
         self.child_ended(end);
     }

@@ -68,6 +68,28 @@ pub enum DiscoveryError {
     Config(#[from] ConfigError),
 }
 
+/// What a file argument names on disk.
+pub(crate) enum Found {
+    /// A directory, with its absolute path.
+    Dir(PathBuf),
+    /// A file, or anything else that is not a directory.
+    Other,
+    /// Nothing that `fs::metadata` can read, with the absolute path of the argument.
+    Nothing(PathBuf),
+}
+
+impl Found {
+    /// Looks up what `arg`, relative to `cwd` if it is relative, names.
+    pub(crate) fn of(cwd: &Path, arg: &OsStr) -> Self {
+        let absolute = path::absolute(cwd, Path::new(arg));
+        match fs::metadata(&absolute) {
+            Ok(meta) if meta.is_dir() => Self::Dir(absolute),
+            Ok(_) => Self::Other,
+            Err(_) => Self::Nothing(absolute),
+        }
+    }
+}
+
 /// Finds the files of a run, and reads the config file of each project it meets once, for its
 /// `exclude` globs.
 pub(crate) struct Finder<'f> {
@@ -140,14 +162,20 @@ impl<'f> Finder<'f> {
     /// An argument is a glob if it does not exist and has `*`, `?`, `[`, or `{`. The paths are
     /// relative to the working directory if `arg` is, and start with `arg` or the part of the
     /// glob before its first wildcard.
-    pub(crate) fn expand(&mut self, arg: &OsStr) -> Result<Vec<PathBuf>, DiscoveryError> {
+    ///
+    /// `found` is what `arg` names on disk, which [`Found::of`] looks up apart from this, so
+    /// that the lookups of many arguments can run in parallel.
+    pub(crate) fn expand(
+        &mut self,
+        arg: &OsStr,
+        found: Found,
+    ) -> Result<Vec<PathBuf>, DiscoveryError> {
         let given = Path::new(arg);
-        let absolute = path::absolute(self.cwd, given);
-        match fs::metadata(&absolute) {
-            Ok(meta) if meta.is_dir() => return self.directory(given, &absolute),
-            Ok(_) => return Ok(vec![given.to_path_buf()]),
-            Err(_) => {}
-        }
+        let absolute = match found {
+            Found::Dir(absolute) => return self.directory(given, &absolute),
+            Found::Other => return Ok(vec![given.to_path_buf()]),
+            Found::Nothing(absolute) => absolute,
+        };
         match arg.to_str() {
             Some(glob)
                 if fs::symlink_metadata(&absolute).is_err()

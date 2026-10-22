@@ -56,6 +56,11 @@ impl<'a> Key<'a> {
     }
 }
 
+/// The number of entries up to which the mapping walker finds a duplicate
+/// key by comparing it with each earlier key. Most mappings are smaller, and
+/// the comparisons are faster than building a map.
+const FEW_KEYS: usize = 16;
+
 /// An entry that the mapping walker yields.
 #[derive(Debug, Clone)]
 pub(crate) struct MapEntry<'a> {
@@ -193,29 +198,38 @@ impl<'a> Parser<'a, '_> {
             }
         };
         let document = self.document;
-        // The span of the first key with each ID.
-        let mut first: BTreeMap<Cow<'a, str>, Span> = BTreeMap::new();
-        let mut walked = Mapping::default();
+        // The span of the first key with each ID, once the mapping has more
+        // than `FEW_KEYS` entries. Before that, the walk looks the IDs up in
+        // `walked.entries`, which has the same keys, and allocates no map.
+        let mut first: Option<BTreeMap<Cow<'a, str>, Span>> = None;
+        let mut walked = Mapping {
+            entries: Vec::with_capacity(document.entries(mapping).len()),
+            inserts: Vec::new(),
+        };
         // Whether the mapping has an `${{ insert }}` key, valid or not.
         let mut has_insert = false;
-        // The mappings being walked, each with its alias path: `node`, and
-        // the mapping values of the `${{ insert }}` keys in it, as deep as
-        // they nest. A recursive alias stays an alias node, so the walk
-        // ends.
-        let mut pending = vec![(
+        // The mapping being walked with its alias path: `node`, or the
+        // mapping value of an `${{ insert }}` key in it, as deep as they
+        // nest. `outer` has the mappings around it, whose walk goes on after
+        // it. A recursive alias stays an alias node, so the walk ends.
+        let mut current = (
             document
                 .entries(mapping)
                 .iter()
                 .zip(document.written_entries(mapping)),
             self.path,
-        )];
-        while let Some((next, level)) = pending
-            .last_mut()
-            .map(|(entries, level)| (entries.next(), *level))
-        {
-            let Some((entry, written)) = next else {
-                pending.pop();
-                continue;
+        );
+        let mut outer = Vec::new();
+        loop {
+            let level = current.1;
+            let Some((entry, written)) = current.0.next() else {
+                match outer.pop() {
+                    Some(next) => {
+                        current = next;
+                        continue;
+                    }
+                    None => break,
+                }
             };
             let Some(key_node) = self.node(entry.key) else {
                 continue;
@@ -237,7 +251,9 @@ impl<'a> Parser<'a, '_> {
             if inserts != Inserts::No && is_insert(key.value()) {
                 has_insert = true;
                 let path = self.within(level, |p| p.path_to(written.value));
-                pending.extend(self.insert(label, entry.value, path, inserts, &mut walked));
+                if let Some(inserted) = self.insert(label, entry.value, path, inserts, &mut walked) {
+                    outer.push(std::mem::replace(&mut current, inserted));
+                }
                 continue;
             }
             let id = if case_sensitive {
@@ -245,7 +261,15 @@ impl<'a> Parser<'a, '_> {
             } else {
                 simple_lowercase(key.value())
             };
-            if let Some(&previous) = first.get(&id) {
+            let previous = match &first {
+                Some(first) => first.get(&id).copied(),
+                None => walked
+                    .entries
+                    .iter()
+                    .find(|entry| entry.id == id)
+                    .map(|entry| entry.key.span),
+            };
+            if let Some(previous) = previous {
                 let suffix = if case_sensitive {
                     ""
                 } else {
@@ -262,7 +286,9 @@ impl<'a> Parser<'a, '_> {
             let Some(value) = self.node(entry.value) else {
                 continue;
             };
-            first.insert(id.clone(), key.span);
+            if let Some(first) = &mut first {
+                first.insert(id.clone(), key.span);
+            }
             let path = self.within(level, |p| p.path_to(written.value));
             walked.entries.push(MapEntry {
                 id,
@@ -270,6 +296,15 @@ impl<'a> Parser<'a, '_> {
                 value,
                 path,
             });
+            if first.is_none() && walked.entries.len() > FEW_KEYS {
+                first = Some(
+                    walked
+                        .entries
+                        .iter()
+                        .map(|entry| (entry.id.clone(), entry.key.span))
+                        .collect(),
+                );
+            }
         }
         if !allow_empty && walked.entries.is_empty() && !has_insert {
             self.empty_mapping(label, node);
