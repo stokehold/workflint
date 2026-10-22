@@ -390,6 +390,78 @@ fixture = "examples/webhook_checks"
 upstream = 'test.yaml:10:12: invalid activity type "created" for "issues" Webhook event. available types are "assigned", "closed", "deleted", "demilestoned", "edited", "labeled", "locked", "milestoned", "opened", "pinned", "reopened", "transferred", "typed", "unassigned", "unlabeled", "unlocked", "unpinned", "untyped" [events]'
 workflint = 'test.yaml:10:12: invalid activity type "created" for "issues" Webhook event. available types are "assigned", "closed", "deleted", "demilestoned", "edited", "field_added", "field_removed", "labeled", "locked", "milestoned", "opened", "pinned", "reopened", "transferred", "typed", "unassigned", "unlabeled", "unlocked", "unpinned", "untyped" [events]'
 
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "err/invalid_runner_labels"
+upstream = '/test\.yaml:4:14: label "ubuntu-oldest" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file \[runner-label\]/'
+workflint = 'test.yaml:4:14: label "ubuntu-oldest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "err/macos12_runner"
+upstream = '/test\.yaml:5:14: label "macos-12" is unknown\. .+/'
+workflint = 'test.yaml:5:14: label "macos-12" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "err/macos_10.15_removed"
+upstream = '/test\.yaml:5:14: label "macos-10\.15" is unknown\. available labels are .+ \[runner-label\]/'
+workflint = 'test.yaml:5:14: label "macos-10.15" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "err/macos_10.15_removed"
+upstream = '/test\.yaml:9:14: label "macos-10" is unknown\. available labels are .+ \[runner-label\]/'
+workflint = 'test.yaml:9:14: label "macos-10" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "examples/contexts_and_builtin_funcs"
+upstream = '/test\.yaml:9:24: property "events" is not defined in object type {.+} \[expression\]/'
+workflint = 'test.yaml:9:24: property "events" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "examples/main"
+upstream = '/test\.yaml:10:28: label "linux-latest" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+workflint = 'test.yaml:10:28: label "linux-latest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "examples/runner_label_check"
+upstream = '/test\.yaml:10:13: label "linux-latest" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+workflint = 'test.yaml:10:13: label "linux-latest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "examples/runner_label_check"
+upstream = '/test\.yaml:16:13: label "gpu" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+workflint = 'test.yaml:16:13: label "gpu" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "examples/runner_label_check"
+upstream = '/test\.yaml:23:14: label "macos-10.13" is unknown\. available labels are .+\. if it is a custom label for self-hosted runner, set list of labels in actionlint\.yaml config file \[runner-label\]/'
+workflint = 'test.yaml:23:14: label "macos-10.13" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "projects/paths_config"
+upstream = '/workflows/foo\.yaml:11:14: label "unknown" is unknown. available labels are .+ \[runner-label\]/'
+workflint = 'workflows/foo.yaml:11:14: label "unknown" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "projects/paths_config"
+upstream = '/workflows/nested/piyo\.yaml:11:14: label "unknown" is unknown. available labels are .+ \[runner-label\]/'
+workflint = 'workflows/nested/piyo.yaml:11:14: label "unknown" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "platform-data-updates"
+fixture = "projects/user_defined_runner_label"
+upstream = '/workflows/test\.yaml:25:14: label "label3" is unknown\. .+\[runner-label\]/'
+workflint = 'workflows/test.yaml:25:14: label "label3" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows", "label1", "label2", "glob-*-label". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
 [[example]]
 anchor = "platform-data-updates"
 section = "check-runner-labels"
@@ -476,6 +548,182 @@ workflint = 'apache_airflow_.github_workflows_build-images.yml:308:14: label "ub
 anchor = "runs-on-expressions"
 fixture = "realworld/apache_airflow_.github_workflows_ci.yml"
 workflint = 'apache_airflow_.github_workflows_ci.yml:87:14: label "ubuntu-20.04" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "xcode-27-xlarge", "xcode-27", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/Kong_kong_.github_workflows_perf.yml"
+upstream = 'Kong_kong_.github_workflows_perf.yml:73:31: "github.event.comment.body" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+workflint = 'Kong_kong_.github_workflows_perf.yml:74:28: "github.event.comment.body" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+
+[[difference]]
+anchor = "all-expressions-in-string"
+fixture = "realworld/Kong_kong_.github_workflows_perf.yml"
+workflint = 'Kong_kong_.github_workflows_perf.yml:75:26: "github.event.comment.body" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/SeleniumHQ_selenium_.github_workflows_ruby.yml"
+upstream = 'SeleniumHQ_selenium_.github_workflows_ruby.yml:114:57: property "target" is not defined in object type {} [expression]'
+workflint = 'SeleniumHQ_selenium_.github_workflows_ruby.yml:115:45: property "target" is not defined in object type {} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/apache_superset_.github_workflows_ephemeral-env.yml"
+upstream = 'apache_superset_.github_workflows_ephemeral-env.yml:18:179: "github.event.comment.body" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+workflint = 'apache_superset_.github_workflows_ephemeral-env.yml:20:33: "github.event.comment.body" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/jhipster_generator-jhipster_.github_workflows_generator.yml"
+upstream = 'jhipster_generator-jhipster_.github_workflows_generator.yml:58:51: property "get-date" is not defined in object type {} [expression]'
+workflint = 'jhipster_generator-jhipster_.github_workflows_generator.yml:59:39: property "get-date" is not defined in object type {} [expression]'
+
+[[difference]]
+anchor = "all-expressions-in-string"
+fixture = "realworld/jhipster_generator-jhipster_.github_workflows_generator.yml"
+workflint = 'jhipster_generator-jhipster_.github_workflows_generator.yml:60:39: property "get-date" is not defined in object type {} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/nodejs_node_.github_workflows_commit-queue.yml"
+upstream = 'nodejs_node_.github_workflows_commit-queue.yml:71:40: receiver of object dereference "default_branch" must be type of object but got "string" [expression]'
+workflint = 'nodejs_node_.github_workflows_commit-queue.yml:72:37: receiver of object dereference "default_branch" must be type of object but got "string" [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/nodejs_node_.github_workflows_notify-force-push.yml"
+upstream = 'nodejs_node_.github_workflows_notify-force-push.yml:20:107: receiver of object dereference "default_branch" must be type of object but got "string" [expression]'
+workflint = 'nodejs_node_.github_workflows_notify-force-push.yml:21:94: receiver of object dereference "default_branch" must be type of object but got "string" [expression]'
+
+[[difference]]
+anchor = "all-expressions-in-string"
+fixture = "realworld/nodejs_node_.github_workflows_notify-force-push.yml"
+workflint = 'nodejs_node_.github_workflows_notify-force-push.yml:21:159: receiver of object dereference "default_branch" must be type of object but got "string" [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/parse-community_parse-server_.github_workflows_ci.yml"
+upstream = 'parse-community_parse-server_.github_workflows_ci.yml:28:51: property "node_version" is not defined in object type {} [expression]'
+workflint = 'parse-community_parse-server_.github_workflows_ci.yml:29:39: property "node_version" is not defined in object type {} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/parse-community_parse-server_.github_workflows_ci.yml"
+upstream = 'parse-community_parse-server_.github_workflows_ci.yml:49:52: property "node_version" is not defined in object type {} [expression]'
+workflint = 'parse-community_parse-server_.github_workflows_ci.yml:50:40: property "node_version" is not defined in object type {} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/parse-community_parse-server_.github_workflows_ci.yml"
+upstream = 'parse-community_parse-server_.github_workflows_ci.yml:69:52: property "node_version" is not defined in object type {} [expression]'
+workflint = 'parse-community_parse-server_.github_workflows_ci.yml:70:40: property "node_version" is not defined in object type {} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/react-dnd_react-dnd_.github_workflows_fix-dependabot.yml"
+upstream = 'react-dnd_react-dnd_.github_workflows_fix-dependabot.yml:22:218: "github.event.commits.*.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+workflint = 'react-dnd_react-dnd_.github_workflows_fix-dependabot.yml:26:46: "github.event.commits.*.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+
+[[difference]]
+anchor = "all-expressions-in-string"
+fixture = "realworld/react-dnd_react-dnd_.github_workflows_fix-dependabot.yml"
+workflint = 'react-dnd_react-dnd_.github_workflows_fix-dependabot.yml:27:47: "github.event.commits.*.author.email" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/slatedocs_slate_.github_workflows_deploy.yml"
+upstream = 'slatedocs_slate_.github_workflows_deploy.yml:24:49: property "ruby-version" is not defined in object type {} [expression]'
+workflint = 'slatedocs_slate_.github_workflows_deploy.yml:25:37: property "ruby-version" is not defined in object type {} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/slatedocs_slate_.github_workflows_dev_deploy.yml"
+upstream = 'slatedocs_slate_.github_workflows_dev_deploy.yml:24:49: property "ruby-version" is not defined in object type {} [expression]'
+workflint = 'slatedocs_slate_.github_workflows_dev_deploy.yml:25:37: property "ruby-version" is not defined in object type {} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/storybookjs_storybook_.github_workflows_trigger-circle-ci-workflow.yml"
+upstream = 'storybookjs_storybook_.github_workflows_trigger-circle-ci-workflow.yml:14:222: "github.event.pull_request.head.ref" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+workflint = 'storybookjs_storybook_.github_workflows_trigger-circle-ci-workflow.yml:19:34: "github.event.pull_request.head.ref" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/swoole_swoole-src_.github_workflows_lib.yml"
+upstream = 'swoole_swoole-src_.github_workflows_lib.yml:41:143: property "workspace" is not defined in object type {arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string} [expression]'
+workflint = 'swoole_swoole-src_.github_workflows_lib.yml:43:48: property "workspace" is not defined in object type {arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/swoole_swoole-src_.github_workflows_test-linux.yml"
+upstream = 'swoole_swoole-src_.github_workflows_test-linux.yml:31:20: property "workspace" is not defined in object type {arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string} [expression]'
+workflint = 'swoole_swoole-src_.github_workflows_test-linux.yml:32:17: property "workspace" is not defined in object type {arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/swoole_swoole-src_.github_workflows_test-linux.yml"
+upstream = 'swoole_swoole-src_.github_workflows_test-linux.yml:34:20: property "workspace" is not defined in object type {arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string} [expression]'
+workflint = 'swoole_swoole-src_.github_workflows_test-linux.yml:35:17: property "workspace" is not defined in object type {arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/swoole_swoole-src_.github_workflows_test-linux.yml"
+upstream = 'swoole_swoole-src_.github_workflows_test-linux.yml:37:54: property "workspace" is not defined in object type {arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string} [expression]'
+workflint = 'swoole_swoole-src_.github_workflows_test-linux.yml:39:12: property "workspace" is not defined in object type {arch: string; debug: string; environment: string; name: string; os: string; temp: string; tool_cache: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/tauri-apps_tauri_.github_workflows_bench.yml"
+upstream = 'tauri-apps_tauri_.github_workflows_bench.yml:55:25: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+workflint = 'tauri-apps_tauri_.github_workflows_bench.yml:56:13: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/tauri-apps_tauri_.github_workflows_bench.yml"
+upstream = 'tauri-apps_tauri_.github_workflows_bench.yml:55:105: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+workflint = 'tauri-apps_tauri_.github_workflows_bench.yml:57:13: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/tauri-apps_tauri_.github_workflows_bench.yml"
+upstream = 'tauri-apps_tauri_.github_workflows_bench.yml:66:25: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+workflint = 'tauri-apps_tauri_.github_workflows_bench.yml:67:13: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/tauri-apps_tauri_.github_workflows_bench.yml"
+upstream = 'tauri-apps_tauri_.github_workflows_bench.yml:66:102: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+workflint = 'tauri-apps_tauri_.github_workflows_bench.yml:68:13: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/tauri-apps_tauri_.github_workflows_bench.yml"
+upstream = 'tauri-apps_tauri_.github_workflows_bench.yml:77:25: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+workflint = 'tauri-apps_tauri_.github_workflows_bench.yml:78:13: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/tauri-apps_tauri_.github_workflows_bench.yml"
+upstream = 'tauri-apps_tauri_.github_workflows_bench.yml:77:106: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+workflint = 'tauri-apps_tauri_.github_workflows_bench.yml:79:13: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/tauri-apps_tauri_.github_workflows_bench.yml"
+upstream = 'tauri-apps_tauri_.github_workflows_bench.yml:88:25: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+workflint = 'tauri-apps_tauri_.github_workflows_bench.yml:89:13: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/tauri-apps_tauri_.github_workflows_bench.yml"
+upstream = 'tauri-apps_tauri_.github_workflows_bench.yml:88:121: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+workflint = 'tauri-apps_tauri_.github_workflows_bench.yml:90:13: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {os: string; target: string} [expression]'
+
+[[difference]]
+anchor = "positions-inside-scalars"
+fixture = "realworld/yewstack_yew_.github_workflows_benchmark.yml"
+upstream = 'yewstack_yew_.github_workflows_benchmark.yml:22:179: "github.event.pull_request.head.ref" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
+workflint = 'yewstack_yew_.github_workflows_benchmark.yml:24:100: "github.event.pull_request.head.ref" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]'
 
 [[difference]]
 anchor = "platform-data-updates"

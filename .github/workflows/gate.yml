@@ -192,22 +192,14 @@ jobs:
         run: cargo test --locked -p xtask --test conformance
         env:
           WORKFLINT_CONFORMANCE_REFERENCE: .reference/bin/actionlint
-      # M5.9 removes --report-only, so that an unexplained difference fails
-      # the job.
+      # Fails on a difference that the allow-list does not explain.
       - name: Compare workflint with the reference
-        run: cargo xtask oracle --report-only
+        run: cargo xtask oracle
       - name: Add the summary to the run page
         if: ${{ !cancelled() && hashFiles('target/oracle/summary.md') != '' }}
         run: cat target/oracle/summary.md >> "$GITHUB_STEP_SUMMARY"
-      # The fixtures only: the corpus has syntax-check differences until #49
-      # adds them to the allow-list.
-      - name: workflint matches the reference on syntax-check for every fixture
-        run: |
-          cargo xtask oracle --kind syntax-check \
-            tests/conformance/actionlint/testdata/err \
-            tests/conformance/actionlint/testdata/examples \
-            tests/conformance/actionlint/testdata/ok \
-            tests/conformance/actionlint/testdata/projects
+      - name: workflint matches the reference on syntax-check for every fixture and corpus file
+        run: cargo xtask oracle --kind syntax-check
       # The corpus tests read .reference/realworld, which the oracle does not
       # unpack. The checkout and the binary are up to date by now.
       - name: Unpack the corpus

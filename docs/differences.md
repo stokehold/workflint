@@ -48,7 +48,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: one consistent unit. ASCII-only files without tabs report the same columns as upstream. Their indicator differs only where the span is not the run up to the next space, for example a message about a quoted string that contains spaces.
 - Upstream issue: none.
 - Milestone: M1, M3.
-- Status: implemented in the default and `-oneline` output, and in `-format` templates since M5.8. The `Snippet` field holds the same indicator line as the default output, and `EndColumn` is the column of the last character that the indicator covers. The `json` and `jsonl` formats use the same columns since M5.14 ([json-output.md](json-output.md)). SARIF follows in M5.
+- Status: implemented in the default and `-oneline` output, and in `-format` templates since M5.8. The `Snippet` field holds the same indicator line as the default output, and `EndColumn` is the column of the last character that the indicator covers. The `json` and `jsonl` formats use the same columns since M5.14 ([json-output.md](json-output.md)), and the `sarif` format since M5.15.
 - Fixtures: `format/test.json`, `format/test.jsonl`, `format/test.md`, and `format/test.sarif`. The spans of the two `unexpected-key` errors cover the key without its colon, so their indicators and end columns are one character shorter.
 
 <a id="positions-inside-scalars"></a>
@@ -59,8 +59,9 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Why: a position on the wrong line sends users to the wrong place.
 - Upstream issue: #330.
 - Milestone: M2, M3, M4. Expression syntax errors use the exact positions from M2.
-- Status: implemented for expression syntax errors from M2, for the other errors of the `expression` rule from M4.6, and for the `glob` rule from M4.15. Other errors inside strings follow with the M4 rules that report them.
+- Status: implemented for expression syntax errors from M2, for the other errors of the `expression` rule from M4.6, and for the `glob` rule from M4.15.
 - Fixtures: `.out` lines for errors inside multi-line or escaped strings, such as line 11 of `err/github_script_untrusted_input`, which workflint reports on line 16, and the `glob` error at `20:9` of `err/glob_more`, which workflint reports at `21:9`.
+- Corpus: 26 errors inside multi-line strings in 15 files move to the line and column of the expression. The allow-list has a record for each.
 
 <a id="script-finding-positions"></a>
 ### shellcheck and pyflakes findings point into the script
@@ -495,6 +496,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Milestone: M2, M4.
 - Status: implemented. Syntax errors from M2, and type, context, and untrusted-input errors from M4.6.
 - Fixtures: `err/context_availability` (line 106, where upstream reports only the first of two errors), `workflint/err/object_in_string_with_failing_expression`.
+- Corpus: workflint reports 4 more errors, one in each of 4 files, where a string has a second `${{ }}` with an error. The allow-list has a record for each.
 
 <a id="unmatched-closing-braces"></a>
 ### A `}}` with no opening `${{`
@@ -838,7 +840,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 - Upstream issue: none.
 - Milestone: M4.38. M7.1 to M7.3 replace the hand-written updates with generated data.
 - Status: implemented.
-- Fixtures: `workflint/ok/current_platform_data.yaml` and `workflint/err/latest_runner_labels`. The allow-list replaces the scope list in `err/invalid_permissions` and `examples/permissions`, and the activity types of `issues` in `examples/webhook_checks`. Its `[[example]]` tables replace the label list and the type of `github` in the `docs/checks.md` sections `check-runner-labels` and `check-contexts-and-builtin-func`, whose fixtures match those lines with a pattern. `tests/expr-parity/allowed-differences.toml` has a `[[type]]` record for the types of `github` and `job`.
+- Fixtures: `workflint/ok/current_platform_data.yaml` and `workflint/err/latest_runner_labels`. The allow-list replaces the scope list in `err/invalid_permissions` and `examples/permissions`, and the activity types of `issues` in `examples/webhook_checks`. It also replaces the label list in 11 lines of 7 fixtures and the type of `github` in `examples/contexts_and_builtin_funcs`, whose `.out` files match those lines with a pattern, so that `cargo xtask oracle` sees them. Its `[[example]]` tables replace the label list and the type of `github` in the `docs/checks.md` sections `check-runner-labels` and `check-contexts-and-builtin-func`, whose fixtures match those lines with a pattern. `tests/expr-parity/allowed-differences.toml` has a `[[type]]` record for the types of `github` and `job`.
 - Corpus: the label list changes in 824 `unknown-runner-label` lines of 305 files. No diagnostic is added or removed. One allow-list record for every corpus file replaces the list.
 
 ## Configuration and project discovery

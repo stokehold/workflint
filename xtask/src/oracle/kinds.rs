@@ -64,6 +64,16 @@ impl Kinds {
     }
 }
 
+/// The kinds of the external tools. The oracle runs both binaries with the
+/// tools off, so neither prints a line of these kinds.
+const TOOL_KINDS: [&str; 2] = ["shellcheck", "pyflakes"];
+
+/// Whether every kind that `line` shows is the kind of an external tool.
+/// Such a line of the allow-list or a `.out` file cannot apply to a run.
+pub(crate) fn only_external_tools(line: &str) -> bool {
+    line_kinds(line).is_some_and(|kinds| kinds.iter().all(|kind| TOOL_KINDS.contains(kind)))
+}
+
 /// The kinds that `line` shows, or `None` if it shows none.
 fn line_kinds(line: &str) -> Option<Vec<&str>> {
     let Some(source) = pattern(line) else {
@@ -123,6 +133,20 @@ mod tests {
         assert!(!kinds.keeps_line("test.yaml:1:1: a [expression]"));
         assert!(kinds.keeps_kind("syntax-check"));
         assert!(!kinds.keeps_kind("expression"));
+    }
+
+    #[test]
+    fn a_line_is_of_external_tools_only_when_each_of_its_kinds_is_a_tool() {
+        assert!(only_external_tools("test.yaml:6:9: a [shellcheck]"));
+        assert!(only_external_tools(r"/test\.yaml:9:9: .+ \[pyflakes\]/"));
+        assert!(only_external_tools(
+            r"/test\.yaml:9:9: .+ \[(shellcheck|pyflakes)\]/"
+        ));
+        assert!(!only_external_tools(
+            r"/test\.yaml:9:9: .+ \[(shellcheck|expression)\]/"
+        ));
+        assert!(!only_external_tools("test.yaml:6:9: a [expression]"));
+        assert!(!only_external_tools("Hello, world!"));
     }
 
     #[test]

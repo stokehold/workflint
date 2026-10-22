@@ -44,7 +44,8 @@ pub enum Verdict {
 ///   remove the entry.
 /// - An allow-list entry does not apply to the `.out` file.
 /// - The fixture passes and also passes without one of its allow-list
-///   entries, so that entry is unused.
+///   entries, so that entry is unused. An entry that narrows a pattern line
+///   ([`Entry::narrows_a_pattern`]) is never unused.
 pub fn judge(
     fixture: &str,
     upstream: &[String],
@@ -81,6 +82,9 @@ fn check_entries_are_used(
     entries: &[&Entry],
 ) -> Result<(), String> {
     for (index, entry) in entries.iter().enumerate() {
+        if entry.narrows_a_pattern() {
+            continue;
+        }
         let others: Vec<&Entry> = entries
             .iter()
             .enumerate()
@@ -223,6 +227,39 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.contains("is unused"), "{error}");
+    }
+
+    #[test]
+    fn an_entry_that_narrows_a_pattern_line_to_the_printed_line_is_used() {
+        // The pattern also matches the reference's line, so only the oracle needs the entry.
+        let narrowed = entry(
+            Some(r"/test\.yaml:1:1: a .+ \[x\]/"),
+            Some("test.yaml:1:1: a new [x]"),
+        );
+        let verdict = judge(
+            "err/x",
+            &lines(&[r"/test\.yaml:1:1: a .+ \[x\]/"]),
+            Ok(&diagnostics(&["test.yaml:1:1: a new [x]"])),
+            &[&narrowed],
+            None,
+        );
+        assert_eq!(verdict, Ok(Verdict::Passed));
+    }
+
+    #[test]
+    fn an_entry_that_narrows_a_pattern_line_fails_when_another_line_is_printed() {
+        let narrowed = entry(
+            Some(r"/test\.yaml:1:1: a .+ \[x\]/"),
+            Some("test.yaml:1:1: a new [x]"),
+        );
+        let verdict = judge(
+            "err/x",
+            &lines(&[r"/test\.yaml:1:1: a .+ \[x\]/"]),
+            Ok(&diagnostics(&["test.yaml:1:1: a newer [x]"])),
+            &[&narrowed],
+            None,
+        );
+        assert!(verdict.is_err(), "{verdict:?}");
     }
 
     #[test]

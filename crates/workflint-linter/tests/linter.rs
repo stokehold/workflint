@@ -165,6 +165,45 @@ fn a_broken_reusable_workflow_is_reported_in_the_first_caller_by_path() {
     assert_eq!(lint_with_threads(&linter, &paths, 4), one);
 }
 
+#[test]
+fn outside_a_project_local_actions_and_reusable_workflows_are_not_checked() {
+    // No `.git` and no `.github`, so the directory is in no project. The broken action and
+    // workflow sit where the specs would find them from the working directory.
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "actions/broken/action.yml", "outputs: x\n");
+    write(
+        dir.path(),
+        "broken-callee.yml",
+        "on:\n  workflow_call:\n    outputs: my cool outputs\n",
+    );
+    write(
+        dir.path(),
+        "w/ci.yaml",
+        "on: push\njobs:\n  call:\n    uses: ./broken-callee.yml\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./actions/broken\n",
+    );
+    let paths = ["w/ci.yaml".to_owned()];
+    let files = Linter::new(dir.path().to_path_buf())
+        .lint(&inputs(&paths))
+        .unwrap();
+    assert_eq!(oneline(&files), [""], "{files:#?}");
+
+    // The same files in a project are checked.
+    fs::create_dir(dir.path().join(".git")).unwrap();
+    fs::create_dir_all(dir.path().join(".github/workflows")).unwrap();
+    let files = Linter::new(dir.path().to_path_buf())
+        .lint(&inputs(&paths))
+        .unwrap();
+    let output = oneline(&files).concat();
+    assert!(
+        output.contains("could not parse action metadata"),
+        "{output}"
+    );
+    assert!(
+        output.contains("error while parsing reusable workflow"),
+        "{output}"
+    );
+}
+
 /// The rules, except that the lint of a file named `panics.yaml` panics.
 fn check_or_panic(
     file: &SourceFile,
