@@ -393,11 +393,12 @@ impl Linter {
         let cache_of = |file: &File<'_>| file.root.as_ref().and_then(|root| caches.get(root));
         self.prefetch(&files);
 
-        let first: Vec<Result<First<'_, T>, ReadError>> = files
-            .par_iter()
-            .enumerate()
-            .map(|(index, file)| self.first(index, file, cache_of(file), &finish))
-            .collect();
+        let first_of = |(index, file)| self.first(index, file, cache_of(file), &finish);
+        let first: Vec<Result<First<'_, T>, ReadError>> = if in_parallel(&files) {
+            files.par_iter().enumerate().map(first_of).collect()
+        } else {
+            files.iter().enumerate().map(first_of).collect()
+        };
         let mut first = first.into_iter().collect::<Result<Vec<_>, _>>()?;
 
         // Replays the uses of the caches in the order of the paths. The sort is stable, so a
@@ -434,18 +435,19 @@ impl Linter {
             }
         }
 
-        Ok(again
-            .into_par_iter()
-            .flatten()
-            .map(|again| self.again(again, &finish))
-            .collect())
+        let again_of = |again| self.again(again, &finish);
+        Ok(if in_parallel(&files) {
+            again.into_par_iter().flatten().map(again_of).collect()
+        } else {
+            again.into_iter().flatten().map(again_of).collect()
+        })
     }
 
     /// Queues the scripts of every file in `files` for shellcheck before any file is linted, so
     /// that the scripts of many files run in few shellcheck processes. A file that cannot be
     /// read, or whose scripts cannot be listed, is skipped here: its lint reports the problem.
     fn prefetch(&self, files: &[File<'_>]) {
-        if files.len() < 2 || !self.tools.has_shellcheck() {
+        if !in_parallel(files) || !self.tools.has_shellcheck() {
             return;
         }
         files.par_iter().enumerate().for_each(|(index, file)| {
@@ -630,6 +632,13 @@ impl Linter {
             );
         }
     }
+}
+
+/// Whether `files` are linted on rayon's thread pool. One file is linted on the calling thread:
+/// the first parallel call starts the global pool, which reads the CPU limits and spawns a
+/// thread per CPU, and that costs more than linting a small workflow (#266).
+fn in_parallel(files: &[File<'_>]) -> bool {
+    files.len() > 1
 }
 
 /// Replays the `record` of `source` in `cache` ([`LocalCache::commit`]). Fails with the
