@@ -1037,7 +1037,7 @@ The last section lists behaviour that was investigated and deliberately kept.
 ### Help text
 
 - Upstream: `-help` prints a header about actionlint with links to actionlint's documentation, then the flags.
-- workflint: the header names workflint, shows the optional `check` command, links to workflint's command-line page, rule pages, and this file, and says which features this version does not support yet. The help text of a flag that is accepted but not used yet ends with `Not supported yet`. The help of `-ignore`, `-init-config`, `-color`, `-debug`, `-format`, and `-config-file` is reworded, and workflint's own flags are listed with the others.
+- workflint: the header names workflint, shows the optional `check` command and the `completion` command, tells how to load a completion script, links to workflint's command-line page, rule pages, and this file, and says which features this version does not support yet. The help text of a flag that is accepted but not used yet ends with `Not supported yet`. The help of `-ignore`, `-init-config`, `-color`, `-debug`, `-format`, and `-config-file` is reworded, and workflint's own flags are listed with the others.
 - Why: the links and the text must describe workflint.
 - Upstream issue: none.
 - Milestone: M5.6.
