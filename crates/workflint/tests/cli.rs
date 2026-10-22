@@ -2377,7 +2377,11 @@ fn an_output_file_that_cannot_be_written_exits_with_3_after_the_other_outputs() 
         "anchors.yaml",
     ]);
     assert_eq!((run.code, run.stdout.as_str()), (Some(3), ANCHORS));
-    let prefix = format!("could not write the output to \"{}\": ", bad.display());
+    // The path is quoted as Go's `%q` quotes it, which doubles the backslashes on Windows.
+    let prefix = format!(
+        "could not write the output to {:?}: ",
+        bad.display().to_string()
+    );
     assert!(run.stderr.starts_with(&prefix), "{}", run.stderr);
     assert_eq!(
         std::fs::read_to_string(&good).unwrap(),
