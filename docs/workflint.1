@@ -1,0 +1,187 @@
+.\" Generated from the flags of workflint. Do not edit: run
+.\" WORKFLINT_UPDATE_MAN=1 cargo nextest run -p workflint man:: to update it.
+.TH WORKFLINT 1 "" "workflint" "User Commands"
+.nh
+.ad l
+.SH NAME
+workflint \- linter for GitHub Actions workflow files
+.SH SYNOPSIS
+.B workflint
+[check] [FLAGS] [FILES...] [\-]
+.br
+.B workflint
+completion bash|zsh|fish|powershell
+.SH DESCRIPTION
+.PP
+workflint is a linter for GitHub Actions workflow files, compatible with
+actionlint.
+.PP
+To check all YAML files in the current repository, run workflint without
+arguments. It finds the nearest '.github/workflows' directory:
+.PP
+.RS 4
+.nf
+$ workflint
+.fi
+.RE
+.PP
+To check specific files, pass their paths as arguments:
+.PP
+.RS 4
+.nf
+$ workflint file1.yaml file2.yaml
+.fi
+.RE
+.PP
+A directory checks the YAML files under it, and workflint expands a quoted
+glob itself:
+.PP
+.RS 4
+.nf
+$ workflint .github 'docs/**/*.yaml'
+.fi
+.RE
+.PP
+To check text that is not saved in a file, such as the output of another
+command, pass \- as the only argument. workflint reads it from stdin:
+.PP
+.RS 4
+.nf
+$ workflint \-
+.fi
+.RE
+.PP
+To print errors as JSON, pass json or jsonl to the \-format flag. The
+flag also takes a Go template, as in actionlint:
+.PP
+.RS 4
+.nf
+$ workflint \-format json
+$ workflint \-format '{{json .}}'
+.fi
+.RE
+.PP
+In GitHub Actions, \-format github prints annotations, and \-output writes
+more formats to files in the same run:
+.PP
+.RS 4
+.nf
+$ workflint \-format github \-output sarif=workflint.sarif
+.fi
+.RE
+.PP
+To complete flags in bash, zsh, fish, or PowerShell, load the script that
+workflint completion prints for the shell:
+.PP
+.RS 4
+.nf
+$ eval "$(workflint completion bash)"
+.fi
+.RE
+.SH OPTIONS
+.TP
+.B \-color
+Always enable colorful output, even when NO_COLOR is set or stdout is not a terminal
+.TP
+.BI \-config " string"
+Same as \-config\-file
+.TP
+.BI \-config\-file " string"
+File path to config file. It replaces the config file of each project
+.TP
+.B \-debug
+Enable debug output (for development). It includes the verbose output
+.TP
+.BI \-format " string"
+Custom template to format error messages in Go template syntax, or the name of a format: github, json, jsonl, sarif, or summary. The command\-line documentation lists the template's fields and functions
+.TP
+.B \-help
+Print the usage to stderr and exit. \-h is the same flag
+.TP
+.BI \-ignore " value"
+Regular expression in Go syntax. Errors whose message it matches are not reported. This flag is repeatable
+.TP
+.B \-init\-config
+Generate default config file at .github/workflint.yaml in current project
+.TP
+.BI \-jobs " int"
+Maximum number of external tool processes, such as shellcheck, that run at once. The default is the number of CPUs
+.TP
+.B \-no\-color
+Disable colorful output
+.TP
+.B \-oneline
+Use one line per one error. Useful for reading error messages from programs
+.TP
+.BI \-output " value"
+Also write the errors to a file, as FORMAT=PATH, such as sarif=results.sarif. FORMAT is github, json, jsonl, sarif, or summary. The summary format appends to the file. This flag is repeatable
+.TP
+.BI \-pyflakes " string"
+Command name or file path of "pyflakes" external command. If empty, pyflakes integration will be disabled. If given, pyflakes checks Python scripts whatever python.linter says (default "pyflakes")
+.TP
+.B \-q
+Same as \-quiet
+.TP
+.B \-quiet
+Print only errors and fatal messages: no summary and no logs
+.TP
+.BI \-shellcheck " string"
+Command name or file path of "shellcheck" external command. If empty, shellcheck integration will be disabled (default "shellcheck")
+.TP
+.B \-shellcheck\-cache
+Keep the findings of shellcheck in a cache on disk, so that a later run does not check the same script again. The config key shellcheck.cache does the same for one project
+.TP
+.B \-silent
+Print only fatal messages. The exit code tells whether errors were found
+.TP
+.BI \-stdin\-filename " string"
+File name when reading input from stdin (default "<stdin>")
+.TP
+.B \-summary
+Print the number of errors by severity to stderr
+.TP
+.B \-verbose
+Enable verbose output
+.TP
+.B \-version
+Show version and how this binary was installed
+.SH EXIT STATUS
+.TP
+.B 0
+No errors, also when \-ignore or the config dropped every error. \-h, \-help, \-version, completion, and a successful \-init\-config exit with 0 too.
+.TP
+.B 1
+At least one error.
+.TP
+.B 2
+The command line is invalid.
+.TP
+.B 3
+A fatal error, such as a file or a config file that cannot be read, no workflow file to lint, an invalid \-ignore pattern or \-format template, or a shellcheck that \-shellcheck names and that is not found.
+.SH ENVIRONMENT
+.TP
+.B NO_COLOR
+When not empty, turns color off unless \-color is given.
+.TP
+.B TERM
+dumb turns color off unless \-color is given.
+.TP
+.B WORKFLINT_INSTALLED_FROM
+The second line of \-version.
+.TP
+.B RAYON_NUM_THREADS
+The number of files linted at once. The output is the same for every value.
+.TP
+.B PATH
+Where \-shellcheck looks up a bare name.
+.TP
+.B SHELLCHECK_OPTS
+Options that shellcheck reads. workflint passes its environment on to shellcheck.
+.SH SEE ALSO
+Command line: https://github.com/stokehold/workflint/blob/main/docs/cli.md
+.br
+Config file: https://github.com/stokehold/workflint/blob/main/docs/config.md
+.br
+Rules: https://github.com/stokehold/workflint/blob/main/docs/rules/README.md
+.br
+Differences: https://github.com/stokehold/workflint/blob/main/docs/differences.md

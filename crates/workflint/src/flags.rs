@@ -1,9 +1,9 @@
 //! The command-line flags, parsed as Go's `flag` package parses actionlint's (ADR 0003).
 //!
 //! [`FLAGS`] declares every flag once: its name, its help text, and the field of [`Options`]
-//! it sets. [`parse`] reads the command line with it, and [`write_defaults`] prints the flag
-//! list of `-help` from it. To add a flag, add its field to [`Options`] and its entry to
-//! [`FLAGS`].
+//! it sets. [`parse`] reads the command line with it, [`write_defaults`] prints the flag list
+//! of `-help` from it, and the shell completions and the man page list the flags from it. To
+//! add a flag, add its field to [`Options`] and its entry to [`FLAGS`].
 
 use std::ffi::OsString;
 use std::fmt::Write as _;
@@ -88,16 +88,31 @@ enum Setter {
     Count(fn(&mut Options, NonZeroUsize)),
 }
 
+/// What the shell completions offer for the value of a flag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Values {
+    /// Nothing, or `true` and `false` for a boolean flag after `=`.
+    Any,
+    /// File names.
+    File,
+    /// Command names and file names.
+    Command,
+    /// The names of the output formats.
+    Format,
+}
+
 /// One flag.
 pub(crate) struct Flag {
     /// The name, without the leading `-`.
     pub(crate) name: &'static str,
     /// The name of the value in the help, such as `string`. Empty for a boolean flag.
-    value_name: &'static str,
+    pub(crate) value_name: &'static str,
     /// The default that the help shows, if any.
-    default: Option<&'static str>,
+    pub(crate) default: Option<&'static str>,
     /// The help text.
     pub(crate) usage: &'static str,
+    /// What the shell completions offer for the value.
+    pub(crate) values: Values,
     set: Setter,
 }
 
@@ -108,6 +123,7 @@ impl Flag {
             value_name: "",
             default: None,
             usage,
+            values: Values::Any,
             set: Setter::Bool(set),
         }
     }
@@ -123,6 +139,7 @@ impl Flag {
             value_name: "string",
             default,
             usage,
+            values: Values::Any,
             set: Setter::String(set),
         }
     }
@@ -138,6 +155,7 @@ impl Flag {
             value_name: "int",
             default: None,
             usage,
+            values: Values::Any,
             set: Setter::Count(set),
         }
     }
@@ -149,8 +167,26 @@ impl Flag {
             value_name: "value",
             default: None,
             usage,
+            values: Values::Any,
             set: Setter::String(set),
         }
+    }
+
+    /// The flag, with the completions offering `values` for its value.
+    const fn completing(self, values: Values) -> Self {
+        Self { values, ..self }
+    }
+
+    /// Whether the flag is boolean, and so takes a value only after `=`.
+    pub(crate) const fn is_bool(&self) -> bool {
+        matches!(self.set, Setter::Bool(_))
+    }
+
+    /// The help text without the sentences after the first.
+    pub(crate) fn summary(&self) -> &'static str {
+        self.usage
+            .split_once(". ")
+            .map_or(self.usage, |(first, _)| first)
     }
 }
 
@@ -168,7 +204,8 @@ pub(crate) static FLAGS: [Flag; 21] = [
         "Command name or file path of \"shellcheck\" external command. If empty, shellcheck \
          integration will be disabled",
         |options, value| options.shellcheck = Some(value),
-    ),
+    )
+    .completing(Values::Command),
     Flag::string(
         "pyflakes",
         Some("pyflakes"),
@@ -176,7 +213,8 @@ pub(crate) static FLAGS: [Flag; 21] = [
          integration will be disabled. If given, pyflakes checks Python scripts whatever \
          python.linter says",
         |options, value| options.pyflakes = Some(value),
-    ),
+    )
+    .completing(Values::Command),
     Flag::bool(
         "oneline",
         "Use one line per one error. Useful for reading error messages from programs",
@@ -189,13 +227,15 @@ pub(crate) static FLAGS: [Flag; 21] = [
          format: github, json, jsonl, sarif, or summary. The command-line documentation lists \
          the template's fields and functions",
         |options, value| options.format = value,
-    ),
+    )
+    .completing(Values::Format),
     Flag::string(
         "config-file",
         None,
         "File path to config file. It replaces the config file of each project",
         |options, value| options.config_file = value,
-    ),
+    )
+    .completing(Values::File),
     Flag::bool(
         "init-config",
         "Generate default config file at .github/workflint.yaml in current project",
@@ -227,7 +267,8 @@ pub(crate) static FLAGS: [Flag; 21] = [
         Some("<stdin>"),
         "File name when reading input from stdin",
         |options, value| options.stdin_filename = value,
-    ),
+    )
+    .completing(Values::File),
     Flag::bool(
         "quiet",
         "Print only errors and fatal messages: no summary and no logs",
@@ -236,7 +277,8 @@ pub(crate) static FLAGS: [Flag; 21] = [
     Flag::bool("q", "Same as -quiet", |options, on| options.quiet = on),
     Flag::string("config", None, "Same as -config-file", |options, value| {
         options.config_file = value;
-    }),
+    })
+    .completing(Values::File),
     Flag::bool(
         "silent",
         "Print only fatal messages. The exit code tells whether errors were found",
@@ -273,6 +315,8 @@ pub(crate) static FLAGS: [Flag; 21] = [
 pub(crate) enum Parsed<'a> {
     /// `-h` or `-help`: print the usage and exit with 0.
     Help,
+    /// `completion`: print a completion script, for the shell that these arguments name.
+    Completion(&'a [OsString]),
     /// Run with these flags on these arguments. The flags are boxed, so that the result stays
     /// small.
     Run(Box<Options>, &'a [OsString]),
@@ -280,7 +324,8 @@ pub(crate) enum Parsed<'a> {
 
 /// Parses the arguments after the program name.
 ///
-/// A leading `check` is the default command and is skipped. Then the flags are parsed as Go's
+/// A leading `completion` takes the rest of the arguments. A leading `check` is the default
+/// command and is skipped. Then the flags are parsed as Go's
 /// `flag` package does. A flag starts with `-` or `--`. A boolean flag takes its value only
 /// after `=`, and another flag takes it after `=` or from the next argument. The flags end at
 /// `--` or at the first argument that is not a flag, such as `-` or a file. `-h` and `-help`
@@ -292,6 +337,7 @@ pub(crate) enum Parsed<'a> {
 pub(crate) fn parse(args: &[OsString]) -> Result<Parsed<'_>, String> {
     let mut options = Options::default();
     let mut rest = match args.split_first() {
+        Some((first, rest)) if first == "completion" => return Ok(Parsed::Completion(rest)),
         Some((first, rest)) if first == "check" => rest,
         _ => args,
     };
@@ -412,6 +458,7 @@ mod tests {
         let args: Vec<OsString> = args.iter().map(OsString::from).collect();
         match parse(&args)? {
             Parsed::Help => Err("help".to_owned()),
+            Parsed::Completion(_) => Err("completion".to_owned()),
             Parsed::Run(options, files) => Ok((
                 *options,
                 files
@@ -602,6 +649,16 @@ mod tests {
         ] {
             assert_eq!(parse_run(args), Err("help".to_owned()), "{args:?}");
         }
+    }
+
+    #[test]
+    fn a_leading_completion_takes_the_other_arguments() {
+        assert_eq!(
+            parse_run(&["completion", "-x"]),
+            Err("completion".to_owned())
+        );
+        assert_eq!(files(&["-oneline", "completion"]), ["completion"]);
+        assert_eq!(files(&["check", "completion"]), ["completion"]);
     }
 
     #[test]

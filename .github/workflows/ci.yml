@@ -74,6 +74,13 @@ jobs:
           ln -s "$RUNNER_TEMP/pyflakes/bin/pyflakes" "$RUNNER_TEMP/tools/pyflakes"
           ln -s "$RUNNER_TEMP/pyflakes/bin/ruff" "$RUNNER_TEMP/tools/ruff"
           echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+      # The completion tests load each script in its shell. macOS and Windows
+      # have bash or PowerShell, and the Linux legs add zsh and fish.
+      - name: Install zsh and fish
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends zsh fish
       - run: cargo nextest run --workspace --locked --profile ci
       # nextest does not run doctests.
       - run: cargo test --doc --workspace --locked

@@ -8,9 +8,13 @@
 //! `tests/conformance/README.md`.
 
 mod color;
+mod completion;
 mod flags;
 mod github;
 mod log;
+// Only a test writes the man page, `docs/workflint.1`.
+#[cfg(test)]
+mod man;
 mod sarif;
 mod summary;
 mod template;
@@ -58,15 +62,10 @@ const EXIT_FAILURE: u8 = 3;
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let (options, paths) = match flags::parse(&args) {
-        Ok(Parsed::Help) => {
-            eprint!("{}", usage::text());
-            return ExitCode::from(EXIT_NO_PROBLEM);
-        }
+        Ok(Parsed::Help) => return print_usage(None),
+        Ok(Parsed::Completion(args)) => return print_completion(args),
         Ok(Parsed::Run(options, paths)) => (*options, paths),
-        Err(message) => {
-            eprint!("{message}\n{}", usage::text());
-            return ExitCode::from(EXIT_INVALID_OPTION);
-        }
+        Err(message) => return print_usage(Some(&message)),
     };
     if options.version {
         let installed_from = std::env::var("WORKFLINT_INSTALLED_FROM").ok();
@@ -211,6 +210,30 @@ const FORMAT_NAMES: [(&str, Named); 5] = [
     ("sarif", Named::Sarif),
     ("summary", Named::Summary),
 ];
+
+/// Prints the usage to stderr, after the error of an invalid command line if there is one, and
+/// returns the exit code: 2 after an error, else 0.
+fn print_usage(error: Option<&str>) -> ExitCode {
+    if let Some(message) = error {
+        eprint!("{message}\n{}", usage::text());
+        ExitCode::from(EXIT_INVALID_OPTION)
+    } else {
+        eprint!("{}", usage::text());
+        ExitCode::from(EXIT_NO_PROBLEM)
+    }
+}
+
+/// Prints the completion script that `workflint completion <shell>` asks for.
+fn print_completion(args: &[OsString]) -> ExitCode {
+    match completion::parse(args) {
+        Ok(completion::Request::Script(shell)) => {
+            print!("{}", completion::script(shell));
+            ExitCode::from(EXIT_NO_PROBLEM)
+        }
+        Ok(completion::Request::Help) => print_usage(None),
+        Err(message) => print_usage(Some(&message)),
+    }
+}
 
 /// The named format `name`, if there is one.
 fn named_format(name: &str) -> Option<Named> {

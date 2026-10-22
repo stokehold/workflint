@@ -159,6 +159,19 @@ verbose: Found 2 errors in 2 files
 
 The files are linted in parallel. The lines of one file are written together when the file is done, so they never mix with the lines of another file, and the files come in the order they finish. `-debug` adds the config file of each file, such as `[Linter] Config: /home/me/repo/.github/workflint.yaml` or `[Linter] No config was found`, lines such as `[Linter] unused-anchor found 2 errors` for each rule that found errors, and one line for each error that `-ignore` or the config dropped. A run that reads stdin starts with `verbose: Reading the input from stdin`. The times in the log vary from run to run, and the log is not part of the output that ADR 0013 keeps deterministic.
 
+## Shell completions and the man page
+
+`workflint completion SHELL` prints a completion script for bash, zsh, fish, or PowerShell. The scripts complete the flags with one dash, as in `-oneline`, the values of `-format`, `-config-file`, `-shellcheck`, and `-pyflakes`, the commands `check` and `completion`, and file names. Like the parser, they offer no flag after the first argument that is not a flag. A script needs nothing but its shell: bash 3.2 or later without the bash-completion package, zsh, fish 3, or PowerShell 7.
+
+| Shell | Load it in the current shell | Load it in every new shell |
+|---|---|---|
+| bash | `eval "$(workflint completion bash)"` | Add the same line to `~/.bashrc`. |
+| zsh | `source <(workflint completion zsh)`, after `compinit` | `workflint completion zsh > "${fpath[1]}/_workflint"`, or any directory in `fpath` |
+| fish | `workflint completion fish \| source` | `workflint completion fish > ~/.config/fish/completions/workflint.fish` |
+| PowerShell | `workflint completion powershell \| Out-String \| Invoke-Expression` | Add the same line to the file that `$PROFILE` names. |
+
+The man page is [`docs/workflint.1`](workflint.1). It has the text of `-help`, every flag, the exit codes, and the environment variables. To read it from a checkout, run `man ./docs/workflint.1`. To install it, copy it into a `man1` directory on `MANPATH`, such as `~/.local/share/man/man1/`. A test renders the page from the flags and fails when the file is out of date. `WORKFLINT_UPDATE_MAN=1 cargo nextest run -p workflint man::` writes the file anew (ADR 0037).
+
 ## Environment variables
 
 | Variable | Effect |
