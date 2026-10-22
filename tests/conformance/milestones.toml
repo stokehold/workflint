@@ -7,4 +7,4 @@
 # A follow-up issue filed in a done milestone does not take it out.
 # See tests/conformance/README.md#expected-failures.
 
-closed = ["M1", "M2", "M3", "M4"]
+closed = ["M1", "M2", "M3", "M4", "M5"]

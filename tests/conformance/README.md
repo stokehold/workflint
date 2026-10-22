@@ -163,7 +163,7 @@ An entry for a format case works on the lines of the case's expected output file
 The runner fails:
 
 - the test `allowed_differences::allowed-differences.toml` if an anchor is not in `docs/differences.md`, a fixture does not exist, a corpus file is not in the archive, an entry has neither `upstream` nor `workflint`, an `upstream` line is not in the fixture's `.out` file or the format case's output file, an entry for a format case has no `upstream`, a line of an entry for a corpus file does not start with that file's name and a position, an entry for every corpus file lacks a valid `/pattern/` or a `workflint`, or the `upstream` line of an `[[example]]` table is not in the `Output` block of its section.
-- a fixture that is not in `expected-failures.toml`, or a format case, if it also passes without one of its entries. Remove such an entry.
+- a fixture that is not in `expected-failures.toml`, or a format case, if it also passes without one of its entries. Remove such an entry. An entry whose `upstream` is a `/pattern/` line that also matches its exact `workflint` line is exempt. The fixture passes without it, but `cargo xtask oracle` needs it, because the reference prints another line that the pattern matches, such as an older list of runner labels. The runner still applies the entry, so workflint must print that exact line.
 
 Every entry needs a matching section in `docs/differences.md`. Write that section first, then the entry.
 
@@ -179,7 +179,7 @@ workflint = 'test.yaml:10:13: label "linux-latest" is unknown. available labels 
 
 `section` is the section's anchor without the `#`. `upstream` and `workflint` are error lines with the kind in brackets. The fixture tests and `cargo xtask oracle` ignore these tables.
 
-`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. An `upstream` line must be in the fixture's `.out` file, as in the runner. The oracle removes the first line of the reference's output that this `.out` line matches, exactly or as a `/pattern/`. An entry that does not apply is a problem in the report that names the `.out` file, and the other entries of the fixture still apply.
+`cargo xtask oracle` applies the entries of a fixture to the reference binary's output for that fixture. An `upstream` line must be in the fixture's `.out` file, as in the runner. The oracle removes the first line of the reference's output that this `.out` line matches, exactly or as a `/pattern/`. An entry that does not apply is a problem in the report that names the `.out` file, and the other entries of the fixture still apply. The oracle runs both binaries with the tools off, so it skips each line of an entry whose only kind is `shellcheck` or `pyflakes`, such as the `script-finding-positions` records. The conformance suite still checks those records when the tools are installed.
 
 ### Corpus files
 

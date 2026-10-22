@@ -227,6 +227,23 @@ impl Entry {
         }
     }
 
+    /// Whether the entry narrows a `/pattern/` line of the `.out` file to the
+    /// exact line that workflint prints: its `upstream` is a pattern that
+    /// matches its `workflint` line. The fixture passes without such an
+    /// entry, but `cargo xtask oracle` needs it, because the reference prints
+    /// a different line that the pattern also matches.
+    #[must_use]
+    pub fn narrows_a_pattern(&self) -> bool {
+        match (self.upstream.as_deref(), self.workflint.as_deref()) {
+            (Some(upstream), Some(workflint)) => {
+                pattern(upstream).is_some()
+                    && pattern(workflint).is_none()
+                    && line_matches(upstream, workflint) == Ok(true)
+            }
+            _ => false,
+        }
+    }
+
     /// Names the entry in a message.
     #[must_use]
     pub fn describe(&self) -> String {

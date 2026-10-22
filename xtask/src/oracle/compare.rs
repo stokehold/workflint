@@ -8,7 +8,7 @@ use xtask::conformance::matcher::{line_matches, pattern};
 use xtask::conformance::output::{Diagnostic, parse_line};
 use xtask::conformance::rule_kinds::actionlint_kind;
 
-use super::kinds::Kinds;
+use super::kinds::{Kinds, only_external_tools, shows_kind};
 
 /// What one binary did in one run.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -216,7 +216,10 @@ fn check_reference(reference: &Output, problems: &mut BTreeSet<String>) {
 /// the others still apply.
 ///
 /// Each line of an entry, and each `.out` line, counts only if `kinds` keeps
-/// it. An entry with neither line kept is skipped without a problem.
+/// it and it is not only of the kind of an external tool, which neither
+/// binary runs. An `upstream` line that shows no kind, such as a pattern
+/// without a kind, counts only if the entry's `workflint` line counts too. An
+/// entry with neither line kept is skipped without a problem.
 fn apply(
     printed: Vec<String>,
     allowed: &Allowed<'_>,
@@ -225,10 +228,12 @@ fn apply(
 ) -> (Vec<String>, usize) {
     let mut lines = printed;
     let mut applied = 0;
-    let kept = |line: &&String| kinds.keeps_line(line);
+    let kept = |line: &&String| kinds.keeps_line(line) && !only_external_tools(line);
     let out_lines: Vec<&String> = allowed.out_lines.iter().filter(kept).collect();
     for entry in allowed.entries {
-        let upstream = entry.upstream.as_ref().filter(kept);
+        let upstream = entry.upstream.as_ref().filter(kept).filter(|line| {
+            shows_kind(line) || entry.workflint.as_ref().is_none_or(|line| kept(&line))
+        });
         let target = entry.target();
         if target == Target::EveryCorpusFile {
             if let Some(upstream) = upstream
@@ -1078,6 +1083,68 @@ workflows/a.yaml:3:1: c [expression]
             &Kinds::default(),
         );
         assert_eq!(unfiltered.problems.len(), 1, "{unfiltered:?}");
+    }
+
+    #[test]
+    fn an_upstream_pattern_without_a_kind_has_the_kind_of_its_workflint_line() {
+        let narrowed = entry(
+            Some(r"/test\.yaml:5:14: label .+/"),
+            Some("test.yaml:5:14: label new [runner-label]"),
+        );
+        let out = lines(&[r"/test\.yaml:5:14: label .+/"]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("test.yaml:5:14: label old [runner-label]\n", 1),
+            &output("test.yaml:5:14: label new [runner-label]\n", 1),
+            &allowed(&out, &[&narrowed]),
+            false,
+            &only(&["syntax-check"]),
+        );
+        assert_eq!(run.applied, 0);
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert!(run.files[0].identical, "{run:?}");
+    }
+
+    #[test]
+    fn an_allow_list_entry_for_a_line_of_an_external_tool_is_neither_applied_nor_stale() {
+        let moved = entry(
+            Some("test.yaml:6:9: shellcheck reported issue in this script: a [shellcheck]"),
+            Some("test.yaml:6:19: shellcheck reported issue in this script: a [shellcheck]"),
+        );
+        let out = lines(&[
+            "test.yaml:1:1: a [syntax-check]",
+            "test.yaml:6:9: shellcheck reported issue in this script: a [shellcheck]",
+        ]);
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("test.yaml:1:1: a [syntax-check]\n", 1),
+            &output("test.yaml:1:1: a [yaml-syntax-error]\n", 1),
+            &allowed(&out, &[&moved]),
+            true,
+            &Kinds::default(),
+        );
+        assert_eq!(run.applied, 0);
+        assert_eq!(run.problems, Vec::<String>::new());
+        assert!(run.files[0].identical, "{run:?}");
+    }
+
+    #[test]
+    fn a_line_of_an_external_tool_that_workflint_prints_is_still_compared() {
+        let run = compare(
+            "err/x",
+            &inputs(&["test.yaml"]),
+            &output("", 0),
+            &output(
+                "test.yaml:6:19: pyflakes reported issue in this script: a [pyflakes]\n",
+                1,
+            ),
+            &allowed(&[], &[]),
+            true,
+            &Kinds::default(),
+        );
+        assert!(!run.files[0].identical, "{run:?}");
     }
 
     #[test]
