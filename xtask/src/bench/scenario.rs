@@ -76,10 +76,12 @@ pub(crate) const SCENARIOS: [Scenario; 3] = [
         warmup: 0,
         runs: 3,
         timeout: Duration::from_mins(10),
+        // ADR 0038: shellcheck's own analysis sets the floor, so the target
+        // is a third of the reference, as for the corpus without tools.
         targets: &[
             Target::WallTimeRatio {
-                at_most: 0.2,
-                label: "1/5",
+                at_most: 1.0 / 3.0,
+                label: "1/3",
             },
             Target::NeverTimesOut,
         ],
@@ -244,6 +246,21 @@ mod tests {
         let result = target.evaluate(&completed(0.1), &Measurement::TimedOut);
         assert_eq!(result.value, None);
         assert_eq!(result.met, None);
+    }
+
+    #[test]
+    fn shellcheck_scenario_allows_a_third_of_the_reference_wall_time() {
+        let target = SCENARIOS[1].targets[0];
+        let reference = completed(9.0);
+        assert_eq!(target.evaluate(&completed(3.0), &reference).met, Some(true));
+        assert_eq!(
+            target.evaluate(&completed(3.1), &reference).met,
+            Some(false)
+        );
+        assert_eq!(
+            target.evaluate(&completed(3.0), &reference).target,
+            "wall time at most 1/3 of the reference"
+        );
     }
 
     #[test]

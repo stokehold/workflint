@@ -74,6 +74,12 @@ pub(crate) fn only_external_tools(line: &str) -> bool {
     line_kinds(line).is_some_and(|kinds| kinds.iter().all(|kind| TOOL_KINDS.contains(kind)))
 }
 
+/// Whether `line` shows a kind: in its brackets, or at the end of its
+/// `/pattern/`.
+pub(crate) fn shows_kind(line: &str) -> bool {
+    line_kinds(line).is_some()
+}
+
 /// The kinds that `line` shows, or `None` if it shows none.
 fn line_kinds(line: &str) -> Option<Vec<&str>> {
     let Some(source) = pattern(line) else {

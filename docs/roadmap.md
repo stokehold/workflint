@@ -159,6 +159,7 @@ Goal: a drop-in binary. Release 0.1.0 at the end of this milestone.
 - M5.10 Release 0.1.0.
 - M5.11 Apply allow-list entries to corpus files in cargo xtask oracle [#49](https://github.com/stokehold/workflint/issues/49)
 - M5.17 Explain the likely cause of "did not find expected key" in help text [#244](https://github.com/stokehold/workflint/issues/244)
+- M5.18 Meet the corpus wall-time target on the nightly runner and fail the nightly job on a missed target [#281](https://github.com/stokehold/workflint/issues/281)
 
 ## M6: release pipeline
 
