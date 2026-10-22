@@ -30,7 +30,7 @@ fn run(input: &str) -> (Vec<Event>, Option<Error>) {
 }
 
 /// The 0-based line and column of a mark.
-fn at(mark: Mark) -> (u64, u64) {
+fn at(mark: Mark) -> (u32, u32) {
     (mark.line, mark.column)
 }
 
@@ -39,8 +39,8 @@ fn at(mark: Mark) -> (u64, u64) {
 fn assert_error(
     err: &Error,
     problem: &str,
-    problem_at: (u64, u64),
-    context: Option<(&str, (u64, u64))>,
+    problem_at: (u32, u32),
+    context: Option<(&str, (u32, u32))>,
 ) {
     assert_eq!(err.problem(), problem);
     assert_eq!(err.problem_mark().map(at), Some(problem_at), "problem mark");

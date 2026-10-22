@@ -344,7 +344,7 @@ fn syntax_error(err: &workflint_yaml::event::Error) -> String {
     let line = [err.context_mark(), err.problem_mark()]
         .into_iter()
         .flatten()
-        .map(|mark| mark.line)
+        .map(|mark| u64::from(mark.line))
         .find(|&line| line != 0)
         .map_or(0, |line| line + scanner);
     let problem = match err.problem() {

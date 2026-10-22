@@ -244,7 +244,7 @@ pub(crate) fn yaml_node_count(document: &Document, cap: u64) -> u64 {
     let for_each_child =
         |id: NodeId, f: &mut dyn FnMut(NodeId)| match document.node(id).map(|node| &node.kind) {
             Some(NodeKind::Sequence(sequence)) => {
-                document.items(sequence).iter().for_each(|&item| f(item))
+                document.items(sequence).iter().for_each(|&item| f(item));
             }
             Some(NodeKind::Mapping(mapping)) => {
                 for entry in document.entries(mapping) {

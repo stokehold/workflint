@@ -193,7 +193,7 @@ pub(crate) fn yaml_parser_update_buffer(parser: &mut Scanner<'_>, length: usize)
         if parser.source.starts_with(BOM) {
             let width = BOM.len_utf8();
             parser.reader.decoded += width;
-            parser.mark.index += width as u64;
+            parser.mark.index += width as u32;
         }
     }
     parser.buffer.compact();

@@ -273,10 +273,7 @@ impl Linter {
     ///
     /// Fails if a directory or a config file cannot be read, if a directory has no such file,
     /// or if a glob is malformed or matches no such file.
-    pub fn expand<P: AsRef<OsStr> + Sync>(
-        &self,
-        args: &[P],
-    ) -> Result<Vec<Input>, DiscoveryError> {
+    pub fn expand<P: AsRef<OsStr> + Sync>(&self, args: &[P]) -> Result<Vec<Input>, DiscoveryError> {
         let mut finder = Finder::new(&self.cwd, self.flags.config_file.as_deref());
         // The file system lookups of many arguments run in parallel, and the arguments are
         // expanded in order.
@@ -378,48 +375,7 @@ impl Linter {
             );
             finish(source, diagnostics)
         };
-        let mut roots = ProjectRoots::default();
-        let mut caches = BTreeMap::new();
-        let mut settings =
-            ProjectSettings::new(&self.flags, &self.cwd, self.tools.shellcheck_not_found());
-        // The paths of many inputs are computed in parallel, and their projects and settings
-        // are looked up in order, with what each lookup caches.
-        let many = inputs.len() > 1;
-        let absolute_of = |input: &Input| path::absolute(&self.cwd, &input.path);
-        let absolutes: Vec<PathBuf> = if many {
-            inputs.par_iter().map(absolute_of).collect()
-        } else {
-            inputs.iter().map(absolute_of).collect()
-        };
-        let mut projects = Vec::with_capacity(inputs.len());
-        for (input, absolute) in inputs.iter().zip(&absolutes) {
-            let root = if input.stdin.is_some() {
-                stdin_root(&mut roots, &input.path, &self.cwd)
-            } else {
-                roots.find_absolute(absolute)
-            };
-            if let Some(root) = &root
-                && !caches.contains_key(root)
-            {
-                caches.insert(root.clone(), LocalCache::new(root.clone()));
-            }
-            let file_settings = settings.of(root.as_deref())?;
-            self.check_tools(&file_settings)?;
-            projects.push((root, file_settings));
-        }
-        let file_of = |((input, absolute), (root, settings))| {
-            File::new(input, absolute, root, settings, &self.cwd)
-        };
-        let files: Vec<File<'_>> = if many {
-            inputs
-                .par_iter()
-                .zip(absolutes)
-                .zip(projects)
-                .map(file_of)
-                .collect()
-        } else {
-            inputs.iter().zip(absolutes).zip(projects).map(file_of).collect()
-        };
+        let (files, caches) = self.files(inputs)?;
         let cache_of = |file: &File<'_>| file.root.as_ref().and_then(|root| caches.get(root));
         self.prefetch(&files);
 
@@ -471,6 +427,66 @@ impl Linter {
         } else {
             again.into_iter().flatten().map(again_of).collect()
         })
+    }
+
+    /// The files of `inputs`, in order, with the cache of each project they are in.
+    ///
+    /// # Errors
+    ///
+    /// Fails as [`lint_with`](Self::lint_with) does, with the first input whose project's
+    /// config file cannot be read or asks for a missing Python linter.
+    fn files<'i>(
+        &self,
+        inputs: &'i [Input],
+    ) -> Result<(Vec<File<'i>>, BTreeMap<PathBuf, LocalCache>), LintError> {
+        let mut roots = ProjectRoots::default();
+        let mut caches = BTreeMap::new();
+        let mut settings =
+            ProjectSettings::new(&self.flags, &self.cwd, self.tools.shellcheck_not_found());
+        // The paths of many inputs are computed in parallel, and their projects and settings
+        // are looked up in order, with what each lookup caches.
+        let many = inputs.len() > 1;
+        let absolute_of = |input: &Input| path::absolute(&self.cwd, &input.path);
+        let absolutes: Vec<PathBuf> = if many {
+            inputs.par_iter().map(absolute_of).collect()
+        } else {
+            inputs.iter().map(absolute_of).collect()
+        };
+        let mut projects = Vec::with_capacity(inputs.len());
+        for (input, absolute) in inputs.iter().zip(&absolutes) {
+            let root = if input.stdin.is_some() {
+                stdin_root(&mut roots, &input.path, &self.cwd)
+            } else {
+                roots.find_absolute(absolute)
+            };
+            if let Some(root) = &root
+                && !caches.contains_key(root)
+            {
+                caches.insert(root.clone(), LocalCache::new(root.clone()));
+            }
+            let file_settings = settings.of(root.as_deref())?;
+            self.check_tools(&file_settings)?;
+            projects.push((root, file_settings));
+        }
+        let file_of = |((input, absolute), (root, settings))| {
+            File::new(input, absolute, root, settings, &self.cwd)
+        };
+        let files: Vec<File<'_>> = if many {
+            inputs
+                .par_iter()
+                .zip(absolutes)
+                .zip(projects)
+                .map(file_of)
+                .collect()
+        } else {
+            inputs
+                .iter()
+                .zip(absolutes)
+                .zip(projects)
+                .map(file_of)
+                .collect()
+        };
+        Ok((files, caches))
     }
 
     /// Queues the scripts of every file in `files` for shellcheck before any file is linted, so

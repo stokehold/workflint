@@ -20,7 +20,7 @@ const MAX_INDENTS: usize = 10_000;
 
 /// How many characters after its start a simple key may end, as YAML 1.2
 /// and go-yaml's `simpleKeyIsValid` require.
-const MAX_SIMPLE_KEY_LENGTH: u64 = 1024;
+const MAX_SIMPLE_KEY_LENGTH: u32 = 1024;
 
 /// How far go-yaml's comment scanners look ahead, in bytes.
 const COMMENT_PEEK_LIMIT: usize = 512;
@@ -275,7 +275,7 @@ impl<'input> Scanner<'input> {
                 self.newlines = 0;
             }
             let width = popped.len_utf8();
-            self.mark.index += width as u64;
+            self.mark.index += width as u32;
             self.mark.column += 1;
             self.chars += 1;
         }
@@ -293,7 +293,7 @@ impl<'input> Scanner<'input> {
                 self.buffer.skip(2);
             } else if is_break(front) {
                 let width = front.len_utf8();
-                self.mark.index += width as u64;
+                self.mark.index += width as u32;
                 self.mark.column = 0;
                 self.mark.line += 1;
                 self.chars += 1;
@@ -313,7 +313,7 @@ impl<'input> Scanner<'input> {
                 self.newlines = 0;
             }
             string.push(popped);
-            self.mark.index += popped.len_utf8() as u64;
+            self.mark.index += popped.len_utf8() as u32;
             self.mark.column += 1;
             self.chars += 1;
         }
@@ -324,7 +324,7 @@ impl<'input> Scanner<'input> {
     /// [`skip_char`](Self::skip_char), which leaves the same state as
     /// [`read_char`](Self::read_char), so this appends what `read_char`
     /// would have appended, in one copy.
-    fn push_skipped(&self, string: &mut String, start: u64) {
+    fn push_skipped(&self, string: &mut String, start: u32) {
         let skipped = usize::try_from(start)
             .ok()
             .zip(usize::try_from(self.mark.index).ok())
@@ -361,7 +361,7 @@ impl<'input> Scanner<'input> {
             } else {
                 string.push('\n');
             }
-            self.mark.index += char_len as u64;
+            self.mark.index += char_len as u32;
             self.mark.column = 0;
             self.mark.line += 1;
             self.chars += 1;
@@ -482,10 +482,10 @@ impl<'input> Scanner<'input> {
         if IS_Z!(self.buffer) {
             return self.fetch_stream_end();
         }
-        if self.mark.column == 0_u64 && CHECK!(self.buffer, '%') {
+        if self.mark.column == 0 && CHECK!(self.buffer, '%') {
             return self.fetch_directive();
         }
-        if self.mark.column == 0_u64
+        if self.mark.column == 0
             && CHECK_AT!(self.buffer, '-', 0)
             && CHECK_AT!(self.buffer, '-', 1)
             && CHECK_AT!(self.buffer, '-', 2)
@@ -493,7 +493,7 @@ impl<'input> Scanner<'input> {
         {
             return self.fetch_document_indicator(TokenData::DocumentStart);
         }
-        if self.mark.column == 0_u64
+        if self.mark.column == 0
             && CHECK_AT!(self.buffer, '.', 0)
             && CHECK_AT!(self.buffer, '.', 1)
             && CHECK_AT!(self.buffer, '.', 2)
@@ -788,8 +788,8 @@ impl<'input> Scanner<'input> {
     }
 
     fn fetch_stream_end(&mut self) -> Result<()> {
-        if self.mark.column != 0_u64 {
-            self.mark.column = 0_u64;
+        if self.mark.column != 0 {
+            self.mark.column = 0;
             self.mark.line += 1;
         }
         self.unroll_indent(-1_i64, self.position())?;
@@ -1212,8 +1212,8 @@ impl<'input> Scanner<'input> {
             if new_block {
                 start_mark = Mark {
                     index: hash.index + 1,
-                    line: u64::try_from(start.1).unwrap_or(hash.line),
-                    column: u64::try_from(start.2).unwrap_or(hash.column),
+                    line: u32::try_from(start.1).unwrap_or(hash.line),
+                    column: u32::try_from(start.2).unwrap_or(hash.column),
                 };
             }
 
