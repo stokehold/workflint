@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage: test.sh
 #
-# Tests plan.sh, notes.sh, smoke-test.sh, and package.sh. The plan job of
+# Tests plan.sh, notes.sh, smoke-test.sh, package.sh, and install-scripts.sh. The plan job of
 # .github/workflows/release.yml runs it before it plans.
 set -euo pipefail
 
@@ -114,6 +114,17 @@ check "the binary in the archive is executable" 0 "-rwxr-xr-x" \
   bash -c "tar -tvzf '$work/test.tar.gz' workflint | cut -c1-10"
 check "an archive of another format fails" 2 "" \
   bash -c "cd '$work/repo' && '$here/package.sh' '$work/workflint' '$work/test.tar.xz'"
+
+install_scripts="$here/install-scripts.sh"
+"$install_scripts" 1.2.3 "$work/scripts"
+check "the release copy of install.sh differs only in its default version" 0 \
+  $'< default_version=latest\n> default_version=1.2.3' \
+  bash -c "diff '$here/../install.sh' '$work/scripts/install.sh' | grep '^[<>]'"
+check "the release copy of install.ps1 differs only in its default version" 0 \
+  $'< $DefaultVersion = \'latest\'\n> $DefaultVersion = \'1.2.3\'' \
+  bash -c "diff '$here/../install.ps1' '$work/scripts/install.ps1' | grep '^[<>]'"
+check "install-scripts.sh refuses a version that is not a version" 1 "" \
+  "$install_scripts" "1.2.3/x" "$work/scripts-bad"
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures tests failed"

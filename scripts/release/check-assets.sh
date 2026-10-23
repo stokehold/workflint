@@ -5,13 +5,14 @@
 # publishes them:
 #
 # - The directory holds exactly the six archives of ADR 0014, checksums.txt,
-#   and the SBOM.
+#   the SBOM, install.sh, and install.ps1.
 # - Each archive holds the binary, README.md, LICENSE, and NOTICE at its root
 #   and nothing else, and the binary in each .tar.gz archive is executable.
 # - The Linux binaries are statically linked.
 # - checksums.txt lists every other asset, sorted by file name, and every
 #   checksum matches.
 # - The SBOM is a CycloneDX JSON document.
+# - install.sh and install.ps1 install <version> by default.
 #
 # Needs tar, unzip, file, jq, and sha256sum, as on the Ubuntu runners.
 set -euo pipefail
@@ -37,7 +38,8 @@ fail() {
   failed=1
 }
 
-expected="$(printf '%s\n' "${archives[@]}" "$sbom" checksums.txt | LC_ALL=C sort)"
+scripts=(install.ps1 install.sh)
+expected="$(printf '%s\n' "${archives[@]}" "$sbom" "${scripts[@]}" checksums.txt | LC_ALL=C sort)"
 actual="$(cd "$dir" && find . -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"
 if [ "$actual" != "$expected" ]; then
   fail "the assets are not the expected ones"
@@ -86,7 +88,7 @@ done
 
 if [ -f "$dir/checksums.txt" ]; then
   listed="$(awk '{ print $2 }' "$dir/checksums.txt")"
-  sorted="$(printf '%s\n' "${archives[@]}" "$sbom" | LC_ALL=C sort)"
+  sorted="$(printf '%s\n' "${archives[@]}" "$sbom" "${scripts[@]}" | LC_ALL=C sort)"
   if [ "$listed" != "$sorted" ]; then
     fail "checksums.txt does not list every asset once, sorted by file name"
     diff <(echo "$sorted") <(echo "$listed") >&2 || true
@@ -97,6 +99,13 @@ fi
 if [ -f "$dir/$sbom" ]; then
   format="$(jq -r '.bomFormat' "$dir/$sbom" 2> /dev/null || true)"
   [ "$format" = CycloneDX ] || fail "$sbom is not a CycloneDX JSON document"
+fi
+
+if [ -f "$dir/install.sh" ] && ! grep -qxF "default_version=$version" "$dir/install.sh"; then
+  fail "install.sh does not install $version by default"
+fi
+if [ -f "$dir/install.ps1" ] && ! grep -qxF "\$DefaultVersion = '$version'" "$dir/install.ps1"; then
+  fail "install.ps1 does not install $version by default"
 fi
 
 if [ "$failed" -ne 0 ]; then

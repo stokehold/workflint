@@ -27,7 +27,22 @@ cargo binstall workflint   # from 1.0, when the crates are published
 docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/stokehold/workflint
 ```
 
-A GitHub Action (`stokehold/workflint-action`), a pre-commit hook, and install scripts for Linux, macOS, and Windows are also planned.
+A GitHub Action (`stokehold/workflint-action`) and a pre-commit hook are also planned.
+
+### Install script
+
+Each release will attach `install.sh` for Linux, macOS, and Git Bash on Windows, and `install.ps1` for PowerShell. They refuse an archive whose SHA-256 does not match the release's `checksums.txt`, and check its attestation when `gh` is installed and logged in:
+
+```sh
+curl -fsSL https://github.com/stokehold/workflint/releases/latest/download/install.sh | bash
+bash <(curl -fsSL https://github.com/stokehold/workflint/releases/latest/download/install.sh) latest ./bin
+```
+
+```powershell
+irm https://github.com/stokehold/workflint/releases/latest/download/install.ps1 | iex
+```
+
+`install.sh` takes the arguments of actionlint's `download-actionlint.bash`, `[VERSION|latest] [DIR]`, and also writes `executable=<path>` to `GITHUB_OUTPUT`. A CI script that runs actionlint's download script switches by changing the URL. [`docs/releasing.md`](docs/releasing.md#install-scripts) has every option.
 
 ## Documentation
 

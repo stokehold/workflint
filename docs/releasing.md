@@ -1,6 +1,6 @@
 # Releasing workflint
 
-`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt` and an SBOM, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets.
+`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets.
 
 ## Publishing is off until M5.10
 
@@ -24,6 +24,7 @@ Each M6 task that adds a channel adds its switch to this table, off.
 | --- | --- | --- |
 | GitHub release | `PUBLISH` in `.github/workflows/release.yml` | off |
 | Release tag, pushed by release-plz | The repository variable `RELEASES_ENABLED`, read by `.github/workflows/release-plz.yml` | off, unset |
+| Install scripts | `PUBLISH` in `.github/workflows/release.yml`. The `release` job uploads them with the other assets. | off |
 
 ## Release-day checklist
 
@@ -46,17 +47,17 @@ The maintainer does these steps by hand before a release. Each item says when.
 
 1. release-plz opens a release pull request with the version bump and the changelog ([release-plz](#release-plz)). Merging it pushes the tag `v<version>`.
 2. The tag starts the release workflow. The `plan` job reads the version of the `workflint` package with `cargo metadata` and fails unless the tag is `v` followed by that version. When it fails, no other job runs.
-3. The `build` jobs build and pack the six archives, the `sbom` job writes the SBOM, and the `checksums` job writes `checksums.txt` and checks every asset. The `attest` job attests each asset. The `gate` job runs `cargo test --workspace --locked`.
+3. The `build` jobs build and pack the six archives, and the `sbom` job writes the SBOM. The `checksums` job writes the release copies of the install scripts, then `checksums.txt`, and checks every asset. The `install-scripts` jobs test the install scripts against these assets. The `attest` job attests each asset. The `gate` job runs `cargo test --workspace --locked`.
 4. The `release` job waits for the maintainer to approve the deployment to the `release` environment.
 5. It checks the assets, their checksums, and their attestations, creates a draft release for the tag with every asset, and then publishes the draft. The notes are the version's section of `CHANGELOG.md`, or notes that GitHub generates when the changelog has no such section.
 
-Releases are immutable. Once published, a release cannot gain, lose, or change an asset, so the workflow uploads every asset while the release is a draft. A later task that adds a release asset, such as the install scripts of M6.4, uploads it in the `release` job before the publishing step. Channels that publish somewhere else, such as npm, PyPI, Docker, and Homebrew, run after the release is published.
+Releases are immutable. Once published, a release cannot gain, lose, or change an asset, so the workflow uploads every asset while the release is a draft. The install scripts go up in the same step as the archives. A later task that adds a release asset uploads it in the `release` job before the publishing step. Channels that publish somewhere else, such as npm, PyPI, Docker, and Homebrew, run after the release is published.
 
 ## Modes
 
 | Mode | Started by | Jobs |
 | --- | --- | --- |
-| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, or `crates/workflint/Cargo.toml` | `plan`, `build`, `sbom`, `checksums` |
+| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, or `crates/workflint/Cargo.toml` | `plan`, `build`, `sbom`, `checksums`, `install-scripts` |
 | Rehearsal | A manual run on `main`: `gh workflow run release.yml --repo stokehold/workflint --ref main` | The dry run, `gate`, and `attest`, which also verifies each attestation with `gh attestation verify` |
 | Release | A push of the tag `v<version>` | Every job. `release` runs only when `PUBLISH` is `"true"` |
 
@@ -81,7 +82,8 @@ Each release also has:
 
 - `checksums.txt`, one `<SHA-256>  <file name>` line per asset, sorted by file name, in the format of `sha256sum`.
 - `workflint_<version>.cdx.json`, a CycloneDX 1.5 SBOM of the dependencies of the `workflint` binary on every target, written from `Cargo.lock` by cargo-cyclonedx 0.5.9.
-- A build provenance attestation for each archive, `checksums.txt`, and the SBOM.
+- `install.sh` and `install.ps1`, the [install scripts](#install-scripts), which install `<version>` by default.
+- A build provenance attestation for each archive, `checksums.txt`, the SBOM, and each install script.
 
 ## Verifying an asset
 
@@ -108,6 +110,54 @@ gh release verify-asset v<version> <file> --repo stokehold/workflint
 
 A published release is never replaced. Its tag cannot move and its assets cannot change. If a release is broken, fix the problem and ship the next patch version.
 
+## Install scripts
+
+`scripts/install.sh` and `scripts/install.ps1` install workflint from a release (ADR 0014). The release copies install their own version by default, and the copies on `main` install the latest release.
+
+```sh
+curl -fsSL https://github.com/stokehold/workflint/releases/latest/download/install.sh | bash
+bash <(curl -fsSL https://github.com/stokehold/workflint/releases/latest/download/install.sh) latest ./bin
+```
+
+```powershell
+irm https://github.com/stokehold/workflint/releases/latest/download/install.ps1 | iex
+& ([scriptblock]::Create((irm https://github.com/stokehold/workflint/releases/latest/download/install.ps1))) -Version latest -Dir .\bin
+```
+
+To move from actionlint's download script, replace its URL. `latest`, `DIR`, and the `executable` step output work as before, and a pinned version becomes a workflint version:
+
+```sh
+# before
+bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) latest ./bin
+# after
+bash <(curl -fsSL https://github.com/stokehold/workflint/releases/latest/download/install.sh) latest ./bin
+```
+
+| `install.sh` | `install.ps1` | Meaning |
+| --- | --- | --- |
+| `VERSION` or `--version VERSION` | `-Version VERSION` | A version such as `0.1.0` or `v0.1.0`, or `latest`. |
+| `DIR` or `--dir DIR` | `-Dir DIR` | The directory for the binary, created if missing. The default is the current directory. |
+| `--require-attestation` | `-RequireAttestation` | Fail when the attestation check is skipped. `WORKFLINT_REQUIRE_ATTESTATION=1` does the same. |
+
+`install.sh` runs with bash 3.2 and later on Linux, macOS, and Git Bash on Windows. `install.ps1` runs with Windows PowerShell 5.1 and PowerShell 7 on Windows, and with PowerShell 7 on Linux and macOS. Each script:
+
+1. Picks the archive for the OS and architecture. On Windows on Arm it reads the CPU from `PROCESSOR_ARCHITEW6432` and `PROCESSOR_IDENTIFIER`, because Git Bash runs as x86_64 there. Under Rosetta 2 on macOS it picks `arm64`.
+2. Resolves `latest` from the `Location` header of the redirect at `https://github.com/stokehold/workflint/releases/latest`, without the GitHub API and its rate limit.
+3. Downloads the archive and `checksums.txt` into a temporary directory, with three attempts. `install.sh` uses curl, or wget when curl is missing.
+4. Checks the archive's SHA-256 against `checksums.txt`, with `sha256sum`, `shasum -a 256`, `certutil`, or `Get-FileHash`. A mismatch or a missing line fails with both checksums in the message, and installs nothing.
+5. Runs `gh attestation verify <archive> --repo stokehold/workflint --signer-workflow stokehold/workflint/.github/workflows/release.yml` when `gh` is installed and logged in, and fails if it fails. Otherwise it prints one line that says it skipped the check, with the command to run by hand.
+6. Extracts the binary into `DIR` and prints its absolute path on standard output. When `GITHUB_OUTPUT` is set, it also appends `executable=<path>` there. Progress and errors go to standard error.
+
+`WORKFLINT_DOWNLOAD_URL` replaces the base URL `https://github.com/stokehold/workflint/releases/download`, for a mirror. The files come from `<base URL>/v<version>/`, and `latest` comes from the redirect of the base URL with `/download` replaced by `/latest`. The URL changes where the files come from, never whether they are checked.
+
+The `install-scripts` jobs run `scripts/release/test-install.sh` on Ubuntu, macOS, and Windows in every mode. No release exists before M5.10, so the test serves the run's assets from 127.0.0.1 with `serve.py` and points `WORKFLINT_DOWNLOAD_URL` at it. `serve.py` also answers `releases/latest` with a redirect, as github.com does. To run the test locally, put an archive for your platform, `checksums.txt`, and the release copies of the scripts in one directory:
+
+```sh
+scripts/release/install-scripts.sh <version> dist
+(cd dist && sha256sum -- * > checksums.txt)
+scripts/release/test-install.sh dist <version>
+```
+
 ## Smoke test
 
 `scripts/release/smoke-test.sh <binary> <version>` runs `<binary> -version` and fails unless it exits with 0 and prints `<version>` on its first line. Every channel runs it on the binary it installs. Each build job runs it on the binary from its archive, and then checks that the second line of `-version` is the build-time value of `WORKFLINT_INSTALLED_FROM`.
@@ -119,6 +169,7 @@ The second line of `workflint -version` says how workflint was installed (ADR 00
 | Channel | Value |
 | --- | --- |
 | GitHub release archives | `installed by downloading from release page` |
+| Install scripts | `installed by downloading from release page`, from the archive that they install |
 
 The tasks that add the other channels add their values here.
 
@@ -134,12 +185,16 @@ The workflow's logic lives in `scripts/release/`, where it can be tested:
 | `check-assets.sh` | Checks the set of assets, the archive contents, static linking, `checksums.txt`, and the SBOM. |
 | `summary.sh` | Writes the job summary. |
 | `notes.sh` | Reads the release notes from `CHANGELOG.md`. |
-| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, and `package.sh`. |
+| `install-scripts.sh` | Writes the release copies of `scripts/install.sh` and `scripts/install.ps1`, which install the release's version by default. |
+| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, and `install-scripts.sh`. |
+| `test-install.sh` | Tests the install scripts against a directory of assets. |
+| `serve.py` | Serves the assets to `test-install.sh` on 127.0.0.1. |
 
-The `plan` job runs shellcheck and `test.sh` before it plans. To run them locally:
+The `plan` job runs shellcheck on the scripts and `install.sh`, PSScriptAnalyzer on `install.ps1`, and `test.sh` before it plans. To run them locally:
 
 ```sh
-shellcheck scripts/release/*.sh
+shellcheck scripts/release/*.sh scripts/install.sh
+pwsh -c 'Invoke-ScriptAnalyzer -Path scripts/install.ps1'
 scripts/release/test.sh
 ```
 
