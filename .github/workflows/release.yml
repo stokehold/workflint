@@ -1,0 +1,362 @@
+name: Release
+
+# Builds the release assets of ADR 0014 (six archives, checksums.txt, and an
+# SBOM), attests them, and publishes them as a GitHub release
+# (docs/releasing.md). The plan job picks one of three modes:
+#
+# - release: a push of the tag v<version>, where <version> is the version of
+#   the workflint package. Builds, attests, and publishes.
+# - dry-run: a pull request that touches the release files. Builds the assets
+#   and uploads them as workflow artifacts.
+# - rehearsal: a manual run on main. A dry run that also attests the assets
+#   and verifies the attestations.
+#
+# Publishing stays off until M5.10 (https://github.com/stokehold/workflint/issues/258).
+# PUBLISH below is false, so a tag runs every job up to the release job and
+# skips that one.
+on:
+  push:
+    tags: ["v*.*.*"]
+  # M6.11 replaces this filter with one required check for every channel.
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/release/**
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - crates/workflint/Cargo.toml
+  workflow_dispatch:
+
+permissions: {}
+
+# One group per ref. A new push to a pull request cancels its older run. A
+# tag run is never cancelled.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  # The switch for publishing. The release job runs only on a tag run with
+  # this set to "true". M5.10 sets it:
+  # https://github.com/stokehold/workflint/issues/258
+  PUBLISH: "false"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # checks out the repository
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      version: ${{ steps.plan.outputs.version }}
+      publish: ${{ steps.plan.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: shellcheck@0.11.0
+      - name: shellcheck passes the release scripts
+        run: shellcheck scripts/release/*.sh
+      - name: Test the release scripts
+        run: scripts/release/test.sh
+      - name: Install the toolchain of rust-toolchain.toml
+        run: rustup toolchain install
+      # Fails a tag that is not v<version>, before any job builds or
+      # publishes.
+      - name: Choose the mode and read the version
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          version="$(cargo metadata --format-version 1 --no-deps --locked \
+            | jq -r '.packages[] | select(.name == "workflint") | .version')"
+          scripts/release/plan.sh "$EVENT" "$REF" "$version" "$PUBLISH" | tee -a "$GITHUB_OUTPUT"
+
+  # ADR 0021: no secrets, no environment, no caches, and --locked.
+  build:
+    name: build (${{ matrix.target }})
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-24.04
+            archive: linux_amd64.tar.gz
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+            archive: linux_arm64.tar.gz
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+            archive: darwin_amd64.tar.gz
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+            archive: darwin_arm64.tar.gz
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            archive: windows_amd64.zip
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+            archive: windows_arm64.zip
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    permissions:
+      contents: read # checks out the repository
+    env:
+      TARGET: ${{ matrix.target }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      ARCHIVE: workflint_${{ needs.plan.outputs.version }}_${{ matrix.archive }}
+      # The second line of `workflint -version` (ADR 0014). The binary reads
+      # it at build time with option_env!.
+      WORKFLINT_INSTALLED_FROM: installed by downloading from release page
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Installs the toolchain of rust-toolchain.toml, which does not list the
+      # targets.
+      - name: Install the toolchain and the target
+        run: |
+          rustup toolchain install
+          rustup target add "$TARGET"
+          rustc --version
+      # cargo-zigbuild runs `python3 -m ziglang` from the virtual environment
+      # first on the PATH.
+      - name: Install zig
+        if: runner.os == 'Linux'
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zig"
+          "$RUNNER_TEMP/zig/bin/pip" install --no-deps --only-binary :all: --require-hashes -r scripts/release/requirements.txt
+          echo "$RUNNER_TEMP/zig/bin" >> "$GITHUB_PATH"
+      - name: Install cargo-zigbuild
+        if: runner.os == 'Linux'
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-zigbuild@0.23.4
+      # Linux builds link static musl binaries with zig (ADR 0014).
+      - name: Build
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            cargo zigbuild --release --locked -p workflint --target "$TARGET"
+          else
+            cargo build --release --locked -p workflint --target "$TARGET"
+          fi
+      - name: Pack the archive
+        run: |
+          binary="target/$TARGET/release/workflint"
+          if [ "$RUNNER_OS" = Windows ]; then binary="$binary.exe"; fi
+          mkdir -p dist
+          scripts/release/package.sh "$binary" "dist/$ARCHIVE"
+      # Tests the binary from the archive, so a lost executable bit fails the
+      # job too.
+      - name: Smoke test the binary in the archive
+        run: |
+          unpacked="$RUNNER_TEMP/unpacked"
+          mkdir -p "$unpacked"
+          cp "dist/$ARCHIVE" "$unpacked/"
+          case "$ARCHIVE" in
+            *.zip)
+              (cd "$unpacked" && 7z x -bd -bso0 "$ARCHIVE")
+              binary="$unpacked/workflint.exe"
+              ;;
+            *)
+              tar -xzf "$unpacked/$ARCHIVE" -C "$unpacked"
+              binary="$unpacked/workflint"
+              ;;
+          esac
+          scripts/release/smoke-test.sh "$binary" "$VERSION"
+          # Without the variable at run time, the second line comes from the
+          # value at build time.
+          want="$WORKFLINT_INSTALLED_FROM"
+          got="$(env -u WORKFLINT_INSTALLED_FROM "$binary" -version | sed -n 2p | tr -d '\r')"
+          if [ "$got" != "$want" ]; then
+            echo "::error::The second line of -version is '$got', not '$want'."
+            exit 1
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: archive-${{ matrix.target }}
+          path: dist/${{ env.ARCHIVE }}
+          if-no-files-found: error
+
+  sbom:
+    name: sbom
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # checks out the repository
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-cyclonedx@0.5.9
+      # One CycloneDX SBOM of the dependencies of the workflint binary on
+      # every target, from Cargo.lock. cargo-cyclonedx writes a file for each
+      # workspace member, and the job keeps the one of the workflint crate.
+      # SOURCE_DATE_EPOCH makes the timestamp that of the commit, so the same
+      # commit gives the same file.
+      - name: Write the SBOM
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          cargo cyclonedx --manifest-path crates/workflint/Cargo.toml --format json \
+            --spec-version 1.5 --target all --override-filename "workflint_$VERSION.cdx"
+          mkdir -p dist
+          mv "crates/workflint/workflint_$VERSION.cdx.json" dist/
+          jq -r '"\(.metadata.component.name) \(.metadata.component.version): \(.components | length) components"' \
+            "dist/workflint_$VERSION.cdx.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: dist/workflint_${{ env.VERSION }}.cdx.json
+          if-no-files-found: error
+
+  checksums:
+    name: checksums
+    needs: [plan, build, sbom]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # checks out the repository
+    env:
+      MODE: ${{ needs.plan.outputs.mode }}
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Write checksums.txt
+        run: |
+          (cd dist && sha256sum -- * | LC_ALL=C sort -k 2) > "$RUNNER_TEMP/checksums.txt"
+          mv "$RUNNER_TEMP/checksums.txt" dist/checksums.txt
+          cat dist/checksums.txt
+          (cd dist && sha256sum -c checksums.txt)
+      - name: Check the assets
+        run: scripts/release/check-assets.sh dist "$VERSION"
+      - name: List the assets in the job summary
+        run: scripts/release/summary.sh dist "$MODE" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: checksums
+          path: dist/checksums.txt
+          if-no-files-found: error
+
+  # Attests every asset on tag runs and rehearsals. A rehearsal then verifies
+  # each attestation as a user would.
+  attest:
+    name: attest
+    needs: [plan, checksums]
+    if: needs.plan.outputs.mode == 'release' || needs.plan.outputs.mode == 'rehearsal'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      id-token: write # signs the attestations with the workflow's identity
+      attestations: write # stores the attestations in the repository
+    env:
+      MODE: ${{ needs.plan.outputs.mode }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Verify the attestations
+        if: env.MODE == 'rehearsal'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for file in dist/*; do
+            gh attestation verify "$file" --repo "$REPO" \
+              --signer-workflow "$REPO/.github/workflows/release.yml"
+          done
+
+  # Every job that publishes needs this one.
+  gate:
+    name: gate
+    needs: plan
+    if: needs.plan.outputs.mode == 'release' || needs.plan.outputs.mode == 'rehearsal'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read # checks out the repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the toolchain of rust-toolchain.toml
+        run: rustup toolchain install
+      - run: cargo test --workspace --locked
+      # TODO(#287): run `cargo xtask bench` here and fail on a missed target
+      # (ADR 0019).
+
+  release:
+    name: release
+    needs: [plan, checksums, attest, gate]
+    # Runs only when the plan job says to publish: on a tag run, with PUBLISH
+    # set to "true". Publishing stays off until M5.10:
+    # https://github.com/stokehold/workflint/issues/258
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write # creates, uploads to, and publishes the release
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: v${{ needs.plan.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Verify the checksums and the attestations
+        run: |
+          scripts/release/check-assets.sh dist "$VERSION"
+          for file in dist/*; do
+            gh attestation verify "$file" --repo "$REPO" \
+              --signer-workflow "$REPO/.github/workflows/release.yml" \
+              --source-ref "refs/tags/$TAG"
+          done
+      # The release is immutable once published, so every asset goes up while
+      # it is a draft. A later task that adds assets uploads them here, before
+      # the publishing step.
+      - name: Create a draft release with the assets
+        run: |
+          scripts/release/notes.sh "$VERSION" CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if [ -s "$RUNNER_TEMP/notes.md" ]; then
+            notes=(--notes-file "$RUNNER_TEMP/notes.md")
+          else
+            notes=(--generate-notes)
+          fi
+          gh release create "$TAG" --repo "$REPO" --verify-tag --draft \
+            --title "$TAG" "${notes[@]}" dist/*
+      - name: Publish the release
+        run: gh release edit "$TAG" --repo "$REPO" --draft=false
