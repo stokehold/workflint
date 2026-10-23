@@ -1,0 +1,112 @@
+name: Release-plz
+
+# release-plz keeps a release pull request open with the next version and the
+# changelog. When that pull request merges, the release job pushes the tag
+# v<version>, which starts release.yml (docs/releasing.md#release-plz).
+#
+# Releases stay off until M5.10 (https://github.com/stokehold/workflint/issues/258)
+# sets the repository variable RELEASES_ENABLED to "true". Until then a push
+# to main skips both jobs, and only a manual run opens a release pull request,
+# which the maintainer closes without merging.
+#
+# Both jobs act as stokehold-bot with an App token. A pull request or a tag
+# that the GITHUB_TOKEN creates starts no workflows, so CI would not run on
+# the release pull request and the tag would not start release.yml.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Pushes the tag when the pushed commit is the merge of a release pull
+  # request, and does nothing otherwise (release_always = false in
+  # release-plz.toml).
+  release:
+    name: release
+    if: github.event_name == 'push' && vars.RELEASES_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: automation
+    permissions:
+      contents: read # checks out the repository
+    # One group per commit, so a later push neither cancels this run nor
+    # replaces it while it waits. A replaced run would never push its tag.
+    concurrency:
+      group: release-plz-release-${{ github.sha }}
+      cancel-in-progress: false
+    steps:
+      - name: Mint a stokehold-bot token
+        id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.STOKEHOLD_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.STOKEHOLD_BOT_PRIVATE_KEY }}
+          repositories: workflint
+          permission-contents: write # creates the tag
+          permission-pull-requests: read # finds the pull request of the pushed commit
+      # release-plz creates the tag through the API, so the checkout keeps no
+      # credentials. The history and the tags hold the previous version.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install release-plz
+        run: |
+          scripts/release-plz/install.sh "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Push the tag of a merged release pull request
+        env:
+          GIT_TOKEN: ${{ steps.token.outputs.token }}
+        run: release-plz release --git-token "$GIT_TOKEN"
+
+  # Opens the release pull request, or updates the open one. On a push it runs
+  # after release, so that it sees the tag of a release that just merged.
+  release-pr:
+    name: release-pr
+    needs: release
+    if: >-
+      ${{ !cancelled()
+          && (needs.release.result == 'success' || needs.release.result == 'skipped')
+          && github.ref == 'refs/heads/main'
+          && (vars.RELEASES_ENABLED == 'true' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: automation
+    permissions:
+      contents: read # checks out the repository
+    # A newer push to main cancels this run. The newer run writes the same
+    # pull request from a later commit.
+    concurrency:
+      group: release-plz-release-pr
+      cancel-in-progress: true
+    steps:
+      - name: Mint a stokehold-bot token
+        id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.STOKEHOLD_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.STOKEHOLD_BOT_PRIVATE_KEY }}
+          repositories: workflint
+          permission-contents: write # pushes the release branch
+          permission-pull-requests: write # opens and edits the release pull request
+      # release-plz commits to the release branch through the API, so the
+      # checkout keeps no credentials. The history and the tags hold the
+      # previous version and the commits for the changelog.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install release-plz
+        run: |
+          scripts/release-plz/install.sh "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Open or update the release pull request
+        env:
+          GIT_TOKEN: ${{ steps.token.outputs.token }}
+        run: release-plz release-pr --git-token "$GIT_TOKEN" --repo-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"

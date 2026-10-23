@@ -203,6 +203,8 @@ Two workflows run on every pull request and on every push to `main`.
 
 `ci.yml` holds the checks that run on every change: `rustfmt`, `clippy`, `test` on four runners, `cargo-deny`, `msrv`, and `workflow-security`. `msrv` runs `cargo check --workspace --all-targets` with the toolchain in the `rust-version` field of `Cargo.toml`. The `main` branch ruleset requires each of these jobs by name.
 
+`pr-title.yml` runs only on pull requests. Its job `pr-title` checks that the title follows [Conventional Commits](#commit-messages), and runs again when the title is edited. The ruleset requires it too.
+
 `gate.yml` holds the checks that only matter when certain files change, and the job `ci-gate`, which the ruleset requires too. A required check cannot come from a workflow with a `paths:` filter. When the filter does not match, the workflow does not run, its jobs report no status, and the required check waits forever. So `gate.yml` has no `paths:` filter, and chooses the jobs itself in four steps.
 
 1. The job `changes` lists the changed files. For a pull request, it compares the merge commit with its first parent, the tip of the base branch. For a push, it compares the pushed commit with the commit before the push. The job fetches two commits, so after a push of more than one commit it lacks that commit, and every job runs.
@@ -217,9 +219,10 @@ Two workflows run on every pull request and on every push to `main`.
 | `cargo xtask reference` | `xtask/`, `.go-version`, `.gitattributes`, the vendored test data, the Cargo files, `rust-toolchain.toml` |
 | `cargo fuzz build` | the five library crates that the fuzz targets use, `fuzz/`, the root `Cargo.toml` |
 | `release timing` | `crates/`, the Cargo files, `rust-toolchain.toml` |
+| `release-plz update` | `release-plz.toml`, `scripts/release-plz/` |
 | `rustdoc` | every change |
 
-`release timing` runs the tests in `crates/workflint-yaml/tests/event_parser.rs` and `crates/workflint-syntax/tests/billion_laughs.rs` in a release build, where the parser timing tests must finish in under one second. A debug build allows them 5 and 10 seconds. `rustdoc` runs `cargo doc --workspace --no-deps --document-private-items` with `RUSTDOCFLAGS=-D warnings`.
+`release timing` runs the tests in `crates/workflint-yaml/tests/event_parser.rs` and `crates/workflint-syntax/tests/billion_laughs.rs` in a release build, where the parser timing tests must finish in under one second. A debug build allows them 5 and 10 seconds. `release-plz update` runs release-plz without pushing and writes the changes that the next release pull request would make to the job summary ([docs/releasing.md](docs/releasing.md#release-plz)). `rustdoc` runs `cargo doc --workspace --no-deps --document-private-items` with `RUSTDOCFLAGS=-D warnings`.
 
 To add a job that runs only for some files, add its pattern list to the `env` of `changes`, add its name to the loop that writes the outputs, and add the job to the `needs` of `ci-gate`. A job in `gate.yml` that runs on every change, as `rustdoc` does, also goes into the `ci-gate` step next to `changes` and `rustdoc`, so that a skipped run fails the gate.
 
@@ -227,12 +230,14 @@ To add a job that runs only for some files, add its pattern list to the `env` of
 
 [`docs/releasing.md`](docs/releasing.md) describes the release workflow, `.github/workflows/release.yml`: how a release happens, the release assets, and how to verify them. Publishing is off until M5.10, and every release channel runs as a dry run only until then.
 
+release-plz opens the release pull request and pushes the tag when it merges ([docs/releasing.md](docs/releasing.md#release-plz)). It reads the version bump and the changelog from the [commit messages](#commit-messages) on `main`. A pull request that changes `release-plz.toml` runs `release-plz update` in `gate.yml` and shows the result in the job summary.
+
 A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, or `crates/workflint/Cargo.toml` runs the release workflow as a dry run, which builds the six archives on their native runners. After you change a script in `scripts/release/`, run `shellcheck scripts/release/*.sh` and `scripts/release/test.sh`.
 
 ## Pull requests
 
 - One issue per pull request. Open it as a draft with `Closes #N` in the description as soon as you start, so others can see the task is taken.
-- The pull request title follows Conventional Commits and names the task, for example `feat(expr): M3.2 Pratt parser`. It becomes the squash commit message.
+- The pull request title follows [Conventional Commits](#commit-messages) and names the task, for example `feat(expr): M3.2 Pratt parser`. It becomes the squash commit message.
 - Write the failing test before the fix or feature.
 - Before you open the pull request, run the checks below. They are the checks in the "Done" list of `AGENTS.md`, and CI runs them too. Clippy must report no warnings, and `cargo nextest run --workspace` includes the conformance suite. Install cargo-deny with `cargo install --locked cargo-deny`.
 
@@ -249,6 +254,41 @@ A pull request that changes `.github/workflows/release.yml`, `scripts/release/`,
 - Say in the pull request how you verified the change.
 
 AI-assisted contributions are welcome. `AGENTS.md` has the instructions for coding agents, and the same rules apply to people.
+
+## Commit messages
+
+`main` takes squash merges only, so the title of a pull request becomes its commit message on `main`. release-plz reads those commits to choose the next version and to write `CHANGELOG.md` ([docs/releasing.md](docs/releasing.md#release-plz)). The `pr-title` check fails unless the title has this form:
+
+```text
+<type>(<scope>)!: <description>
+```
+
+The scope and the `!` are optional. A scope has lowercase letters, digits, and hyphens, such as `expr`, `rules`, or `deps`. One space follows the colon. For example, `feat(expr): M3.2 Pratt parser` or `docs(rules): add examples to the glob page`.
+
+| Type | For | Changelog section | Starts a release |
+| --- | --- | --- | --- |
+| `feat` | A new feature | Features | yes |
+| `fix` | A bug fix | Bug fixes | yes |
+| `perf` | A change that makes workflint faster or use less memory | Performance | yes |
+| `docs` | Documentation | Documentation | yes |
+| `refactor` | A code change that changes no behaviour | none | no |
+| `test` | Tests only | none | no |
+| `build` | The build: Cargo files, the toolchain, build scripts | none | no |
+| `ci` | Workflows. Dependabot uses it for action updates. | none | no |
+| `chore` | Maintenance. Dependabot uses `chore(deps)` for crate updates, and release-plz uses `chore: release v<version>`. | none | no |
+| `revert` | Reverting an earlier commit | none | no |
+
+A `!` after the type or the scope marks a breaking change, as in `fix(cli)!: exit with 2 on a bad flag`. A breaking change of any type starts a release and goes under "Breaking changes", the first section of the changelog.
+
+A commit of a type that starts no release still ships with the next release. release-plz only counts commits that change a file of a crate, so a change to `docs/` or `.github/` alone never starts a release.
+
+The version bump depends on the commits since the last release:
+
+| Commits since the last release | Before 1.0 | From 1.0 |
+| --- | --- | --- |
+| A breaking change | minor, 0.1.3 to 0.2.0 | major, 1.4.2 to 2.0.0 |
+| A `feat`, and no breaking change | patch, 0.1.3 to 0.1.4 | minor, 1.4.2 to 1.5.0 |
+| A `fix`, `perf`, or `docs`, and no `feat` or breaking change | patch | patch |
 
 ## License
 

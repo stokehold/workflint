@@ -1,0 +1,42 @@
+name: PR title
+
+# The title of a pull request becomes its squash commit on main. release-plz
+# reads that commit to choose the next version and to write the changelog
+# (CONTRIBUTING.md#commit-messages), so the title must follow Conventional
+# Commits. The check runs again when the title is edited, without a push.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: The title follows Conventional Commits
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        shell: bash
+        run: |
+          # The types of CONTRIBUTING.md#commit-messages, an optional scope,
+          # an optional ! for a breaking change, then ": " and the description.
+          pattern='^(feat|fix|perf|docs|refactor|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [^[:space:]]'
+          if [[ "$TITLE" =~ $pattern ]]; then
+            echo "The title follows Conventional Commits."
+            exit 0
+          fi
+          echo "::error title=Pull request title::The title does not follow Conventional Commits. See CONTRIBUTING.md#commit-messages."
+          echo "Title:   $TITLE"
+          echo "Rule:    <type>(<scope>)!: <description>, where the scope and the ! are optional"
+          echo "Types:   feat, fix, perf, docs, refactor, test, build, ci, chore, revert"
+          echo "Scope:   lowercase letters, digits, and hyphens"
+          echo "Example: feat(expr): M3.2 Pratt parser"
+          exit 1
