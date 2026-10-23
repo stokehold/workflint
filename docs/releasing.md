@@ -1,12 +1,12 @@
 # Releasing workflint
 
-`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets. The same workflow builds the [PyPI wheels](#pypi-wheels) and publishes them to PyPI.
+`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets. The same workflow builds the [PyPI wheels](#pypi-wheels) and publishes them to PyPI, and builds the [Docker images](#docker-images) and pushes them to GHCR.
 
 ## Publishing is off until M5.10
 
 Nothing publishes yet. M5.10, Release 0.1.0 ([#258](https://github.com/stokehold/workflint/issues/258)), turns publishing on. Until then every channel runs as a dry run only: this workflow, and the later M6 tasks for the install scripts, npm, PyPI, Docker, Homebrew, pre-commit, and the GitHub Action. No job pushes a tag, uploads to a registry, or creates a GitHub release. The only job that uses a secret is `release-pr` in `release-plz.yml`, which mints a stokehold-bot token on a manual run to open a rehearsal release pull request ([release-plz](#release-plz)). Rehearsals and tag runs create attestations. They are stored in the repository and in Sigstore's public transparency log, and they are not releases.
 
-The release workflow has a switch, `PUBLISH: "false"` in its top-level `env`. A tag run builds, checks, and attests the assets, builds and checks the wheels, and skips the `release` and `pypi-publish` jobs.
+The release workflow has a switch, `PUBLISH: "false"` in its top-level `env`. A tag run builds, checks, and attests the assets, builds and checks the wheels, builds, checks, and attests the Docker images, and skips the `release`, `pypi-publish`, and `docker-publish` jobs.
 
 A tag pushed before M5.10 never gets a release. Tags that match `v*` cannot be deleted or moved, and a re-run of its workflow reads the switch from the tagged commit, where it is off. Do not push a `v*` tag before M5.10. If one is pushed anyway, the next release uses the next version.
 
@@ -26,6 +26,7 @@ Each M6 task that adds a channel adds its switch to this table, off.
 | Release tag, pushed by release-plz | The repository variable `RELEASES_ENABLED`, read by `.github/workflows/release-plz.yml` | off, unset |
 | Install scripts | `PUBLISH` in `.github/workflows/release.yml`. The `release` job uploads them with the other assets. | off |
 | PyPI | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `pypi-publish` job | off |
+| Docker images | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `docker-publish` job | off |
 
 ## Release-day checklist
 
@@ -46,6 +47,8 @@ The maintainer does these steps by hand before a release. Each item says when.
 
   If the publish does not happen within those 48 hours, the configurations expire, and the loop has to run again before the next attempt.
 
+- [ ] **The `workflint` container package public and linked, after the first `docker-publish` run.** A package that a workflow pushes for the first time is private. In the organization's Packages, open `workflint`, then Package settings: set the visibility to public, and check that the package is linked to `stokehold/workflint`. Until then `docker pull ghcr.io/stokehold/workflint` fails for everyone else.
+
 ## How a release happens
 
 1. release-plz opens a release pull request with the version bump and the changelog ([release-plz](#release-plz)). Merging it pushes the tag `v<version>`.
@@ -54,6 +57,7 @@ The maintainer does these steps by hand before a release. Each item says when.
 4. The `release` job waits for the maintainer to approve the deployment to the `release` environment.
 5. It checks the assets, their checksums, and their attestations, creates a draft release for the tag with every asset, and then publishes the draft. The notes are the version's section of `CHANGELOG.md`, or notes that GitHub generates when the changelog has no such section.
 6. The `pypi-publish` job waits for a second approval of the `release` environment. It checks the assets and their attestations again, checks each wheel against the SHA-256 that its build job recorded, and uploads the wheels to PyPI.
+7. The `docker-publish` job waits for its own approval of the `release` environment. It verifies the attestations of the two images and pushes them to GHCR ([Docker images](#docker-images)).
 
 Releases are immutable. Once published, a release cannot gain, lose, or change an asset, so the workflow uploads every asset while the release is a draft. The install scripts go up in the same step as the archives. A later task that adds a release asset uploads it in the `release` job before the publishing step. Channels that publish somewhere else, such as npm, PyPI, Docker, and Homebrew, run after the release is published.
 
@@ -61,13 +65,13 @@ Releases are immutable. Once published, a release cannot gain, lose, or change a
 
 | Mode | Started by | Jobs |
 | --- | --- | --- |
-| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `crates/workflint/Cargo.toml`, or `pyproject.toml` | `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke` |
-| Rehearsal | A manual run on `main`: `gh workflow run release.yml --repo stokehold/workflint --ref main` | The dry run, `gate`, and `attest`, which also verifies each attestation with `gh attestation verify` |
-| Release | A push of the tag `v<version>` | Every job. `release` and `pypi-publish` run only when `PUBLISH` is `"true"` |
+| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `crates/workflint/Cargo.toml`, `pyproject.toml`, or `docker/` | `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke`, `docker-build`, `docker-index` |
+| Rehearsal | A manual run on `main`: `gh workflow run release.yml --repo stokehold/workflint --ref main` | The dry run, `gate`, `attest`, and `docker-attest`, which also verify each attestation with `gh attestation verify` |
+| Release | A push of the tag `v<version>` | Every job. `release`, `pypi-publish`, and `docker-publish` run only when `PUBLISH` is `"true"` |
 
 Each run uploads the assets as workflow artifacts, and the `checksums` job lists each file with its size and SHA-256 in the job summary. A rehearsal from another branch fails in `plan`.
 
-The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` has `attestations: write`, only `attest` and `pypi-publish` have `id-token: write`, and only `release` has `contents: write`.
+The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` and `docker-attest` have `attestations: write`, only they and `pypi-publish` have `id-token: write`, only `release` has `contents: write`, and only `docker-publish` has `packages: write`.
 
 ## Assets
 
@@ -113,6 +117,45 @@ The jobs that check the wheels:
 - `pypi-publish` runs only on a tag run with `PUBLISH` on. PyPI's trusted publisher for `workflint` accepts only this workflow in the `release` environment, so the job runs there, with `id-token: write` and no token. It verifies the archives and their attestations, runs `check-wheels.sh`, and uploads the wheels with `pypa/gh-action-pypi-publish`, which creates a PEP 740 attestation for each. A re-run skips the wheels that PyPI already has.
 
 The build jobs install maturin 1.15.0 from `scripts/release/requirements-maturin.txt`, `pypi-smoke` installs uv from `requirements-uv.txt`, and `pypi-check` installs twine from `requirements-twine.txt`. Each file pins every package with its hashes, and pip installs them with `--require-hashes`. The maturin version in `requirements-maturin.txt` and in `[build-system]` of `pyproject.toml` must match.
+
+## Docker images
+
+`docker/Dockerfile` builds the images of `ghcr.io/stokehold/workflint` for `linux/amd64` and `linux/arm64`. Both stages copy the binary of the Linux release archive and compile nothing (ADR 0014).
+
+| Stage | Base image | Contents | Tags of a release `1.2.3` |
+| --- | --- | --- | --- |
+| `default` | `gcr.io/distroless/static-debian13:nonroot` | `/usr/local/bin/workflint` | `1.2.3`, `1.2`, `latest` |
+| `full` | `python:3.14-alpine3.24` | workflint, shellcheck 0.11.0, ruff, and pyflakes | `1.2.3-full`, `1.2-full`, `full` |
+
+A pre-release such as `1.2.3-rc.1` gets only its exact tags, `1.2.3-rc.1` and `1.2.3-rc.1-full`, so `latest` and `full` stay on the last release. `scripts/release/docker-tags.sh` computes the tags.
+
+Both stages set the entrypoint to `/usr/local/bin/workflint`, the working directory to `/repo`, and `WORKFLINT_INSTALLED_FROM` to `installed from Docker image`. They run as uid 65532, the `nonroot` user of distroless, and carry the labels `org.opencontainers.image.source`, `org.opencontainers.image.licenses`, and `org.opencontainers.image.version`. The `full` stage checks the shellcheck release archive against its SHA-256, and pip installs ruff and pyflakes from `docker/requirements-full.txt` with `--require-hashes`. shellcheck is GPL-3.0 and runs only as its own executable (ADR 0017). The image holds its license in `/usr/share/doc/shellcheck/LICENSE.txt` and the URL of its source in `SOURCE.txt` next to it.
+
+Pins:
+
+- The base images in `docker/Dockerfile`, and BuildKit and the SBOM scanner in `docker/build-tools.Dockerfile`, are pinned by digest. Dependabot updates them weekly. `build-tools.Dockerfile` is never built. The `docker-build` job reads the two references from it.
+- shellcheck: the version and the two SHA-256 values in the `ADD` lines of `docker/Dockerfile`, and the version in `docker/shellcheck-source.txt`. Dependabot does not update them. The SHA-256 values are the `digest` of each asset of the shellcheck release on GitHub.
+- ruff and pyflakes: `docker/requirements-full.txt`, updated by hand with the hash of each musllinux wheel and the pure-Python wheel.
+
+The jobs:
+
+- `docker-build` runs on `ubuntu-24.04` for amd64 and `ubuntu-24.04-arm` for arm64, so the `full` stage installs its packages without emulation. It checks the Linux archive of its architecture with `sha256sum -c` against `checksums.txt`, then builds both stages with `docker buildx build` on a `docker-container` builder, with provenance in `mode=max` and an SBOM attestation, and exports each image as an OCI layout. It loads each layout into Docker with skopeo and runs `check-image.sh`, which runs the smoke test in the image, compares its binary with the archive's, checks that it runs as a non-root user, lints a small repository, and in `full` checks the versions of shellcheck, ruff, and pyflakes and that shellcheck and the Python linter report findings. The job summary lists the size of each image. It has only `contents: read`, no secrets, and no caches, and it pushes nothing.
+- `docker-index` merges the two layouts of each stage into one multi-platform layout with `merge-oci.sh`, prints the digest of each image index in the job summary, and checks that `skopeo copy --all --preserve-digests` keeps that digest.
+- `docker-attest` runs on tag runs and rehearsals. It attests each index digest under the name `ghcr.io/stokehold/workflint` with `actions/attest-build-provenance`, without pushing the attestation to a registry. A rehearsal verifies each one with `gh attestation verify` on the index blob of the layout, a file whose SHA-256 is the image's digest, so nothing has to be pushed first.
+- `docker-publish` runs only on a tag run with `PUBLISH` on, after the `release` job, in the `release` environment, with `contents: read` and `packages: write`. It verifies the attestations again, logs in to GHCR with the job's `GITHUB_TOKEN`, pushes each layout under each of its tags with `skopeo copy --all --preserve-digests`, and fails unless every pushed tag has the attested digest.
+
+To verify a pushed image:
+
+```sh
+gh attestation verify oci://ghcr.io/stokehold/workflint:<version> --repo stokehold/workflint
+```
+
+To build an image locally, put a Linux binary of each architecture you build in `<dir>/linux_amd64/workflint` or `<dir>/linux_arm64/workflint`:
+
+```sh
+docker buildx build docker --build-context dist=<dir> --build-arg VERSION=<version> --target full --load -t workflint:full
+scripts/release/check-image.sh workflint:full full <archive> <version>
+```
 
 ## Verifying an asset
 
@@ -189,7 +232,7 @@ scripts/release/test-install.sh dist <version>
 
 ## Smoke test
 
-`scripts/release/smoke-test.sh <binary> <version>` runs `<binary> -version` and fails unless it exits with 0 and prints `<version>` on its first line. Every channel runs it on the binary it installs. Each build job runs it on the binary from its archive, and then checks that the second line of `-version` is the build-time value of `WORKFLINT_INSTALLED_FROM`. `smoke-test-wheel.sh` runs it on the binary that pip installs from a wheel and on `uvx --from <wheel> workflint`.
+`scripts/release/smoke-test.sh <binary> <version>` runs `<binary> -version` and fails unless it exits with 0 and prints `<version>` on its first line. Every channel runs it on the binary it installs. Each build job runs it on the binary from its archive, and then checks that the second line of `-version` is the build-time value of `WORKFLINT_INSTALLED_FROM`. `smoke-test-wheel.sh` runs it on the binary that pip installs from a wheel and on `uvx --from <wheel> workflint`. `check-image.sh` runs it on `docker run --rm <image>`.
 
 ## `WORKFLINT_INSTALLED_FROM`
 
@@ -200,6 +243,7 @@ The second line of `workflint -version` says how workflint was installed (ADR 00
 | GitHub release archives | `installed by downloading from release page` |
 | Install scripts | `installed by downloading from release page`, from the archive that they install |
 | PyPI wheels | `installed by downloading from release page`, because a wheel holds the archive's binary. ADR 0014 lists the npm launcher, the Docker image, and the Homebrew formula as the only channels that set their own value. |
+| Docker images | `installed from Docker image`, from `ENV` in `docker/Dockerfile`, which overrides the archive binary's value at run time |
 
 The tasks that add the other channels add their values here.
 
@@ -217,9 +261,12 @@ The workflow's logic lives in `scripts/release/`, where it can be tested:
 | `check-wheels.sh` | Checks that there is one wheel per platform tag, and each wheel against the SHA-256 that its build job recorded. |
 | `smoke-test-wheel.sh` | Installs a wheel with pip and with uvx and runs the smoke test on each. |
 | `summary.sh` | Writes the job summary. |
+| `docker-tags.sh` | Prints the tags of the default or the full image for a version. |
+| `merge-oci.sh` | Merges the OCI layouts of the two architectures into one multi-platform layout and prints its digest. |
+| `check-image.sh` | Checks a Docker image against the release archive of its architecture. |
 | `notes.sh` | Reads the release notes from `CHANGELOG.md`. |
 | `install-scripts.sh` | Writes the release copies of `scripts/install.sh` and `scripts/install.ps1`, which install the release's version by default. |
-| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, and `check-wheels.sh`. |
+| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, `check-wheels.sh`, `docker-tags.sh`, and `merge-oci.sh`. |
 | `test-install.sh` | Tests the install scripts against a directory of assets. |
 | `serve.py` | Serves the assets to `test-install.sh` on 127.0.0.1. |
 

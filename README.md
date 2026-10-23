@@ -54,6 +54,17 @@ pipx install workflint    # into its own environment
 uvx workflint             # runs it without installing it
 ```
 
+### Docker
+
+`ghcr.io/stokehold/workflint` has images for Linux on amd64 and arm64. Mount the repository at `/repo` and run the image there:
+
+```sh
+docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/stokehold/workflint
+docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/stokehold/workflint:full
+```
+
+The default tag holds only workflint, on a distroless base. It has no shellcheck, so workflint warns once per run that it skips the `run:` scripts. Pass `-shellcheck=` to turn that check off, or use the `full` tag, which adds shellcheck and the Python linters ruff and pyflakes, so workflint checks shell and Python scripts as well. Both run as a non-root user. Pin a release with `:<version>` or `:<version>-full`.
+
 ## Documentation
 
 | Document | Contents |
