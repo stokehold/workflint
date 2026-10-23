@@ -19,7 +19,7 @@ use std::io::{self, Write};
 
 use unicode_width::UnicodeWidthStr;
 
-use crate::{Diagnostic, SourceFile};
+use crate::{Diagnostic, LineCol, SourceFile};
 
 /// Whether a renderer writes ANSI color escape sequences.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -51,8 +51,9 @@ pub fn render_default<W: Write + ?Sized>(
     color: Color,
 ) -> io::Result<()> {
     for diagnostic in diagnostics {
-        write_header(out, file, diagnostic, color)?;
-        write_snippet(out, file, diagnostic, color)?;
+        let pos = file.line_col(diagnostic.span.start);
+        write_header(out, file, diagnostic, pos, color)?;
+        write_snippet(out, file, diagnostic, pos, color)?;
     }
     Ok(())
 }
@@ -72,7 +73,8 @@ pub fn render_oneline<W: Write + ?Sized>(
     color: Color,
 ) -> io::Result<()> {
     for diagnostic in diagnostics {
-        write_header(out, file, diagnostic, color)?;
+        let pos = file.line_col(diagnostic.span.start);
+        write_header(out, file, diagnostic, pos, color)?;
     }
     Ok(())
 }
@@ -90,21 +92,35 @@ fn paint<W: Write + ?Sized>(
     }
 }
 
-/// Writes `path:line:col: message [rule-id]` and a newline.
+/// [`paint`] for a string, which needs no formatting without color.
+fn paint_str<W: Write + ?Sized>(
+    out: &mut W,
+    color: Color,
+    style: &str,
+    text: &str,
+) -> io::Result<()> {
+    match color {
+        Color::On => write!(out, "{style}{text}{RESET}"),
+        Color::Off => out.write_all(text.as_bytes()),
+    }
+}
+
+/// Writes `path:line:col: message [rule-id]` and a newline, where `pos` is the diagnostic's
+/// position.
 fn write_header<W: Write + ?Sized>(
     out: &mut W,
     file: &SourceFile,
     diagnostic: &Diagnostic,
+    pos: LineCol,
     color: Color,
 ) -> io::Result<()> {
-    let pos = file.line_col(diagnostic.span.start);
-    paint(out, color, YELLOW, file.path())?;
-    paint(out, color, GRAY, ":")?;
+    paint_str(out, color, YELLOW, file.path())?;
+    paint_str(out, color, GRAY, ":")?;
     write!(out, "{}", pos.line)?;
-    paint(out, color, GRAY, ":")?;
+    paint_str(out, color, GRAY, ":")?;
     write!(out, "{}", pos.column)?;
-    paint(out, color, GRAY, ": ")?;
-    paint(out, color, BOLD, &diagnostic.message)?;
+    paint_str(out, color, GRAY, ": ")?;
+    paint_str(out, color, BOLD, &diagnostic.message)?;
     // actionlint writes the newline inside the gray segment, so the reset follows it.
     paint(
         out,
@@ -115,24 +131,26 @@ fn write_header<W: Write + ?Sized>(
 }
 
 /// Writes the gray `|` line, the numbered source line, and the indicator line, when the
-/// diagnostic has a [`snippet`].
+/// diagnostic has a [`snippet`]. `pos` is the diagnostic's position.
 fn write_snippet<W: Write + ?Sized>(
     out: &mut W,
     file: &SourceFile,
     diagnostic: &Diagnostic,
+    pos: LineCol,
     color: Color,
 ) -> io::Result<()> {
-    let Some(snippet) = snippet(file, diagnostic) else {
+    let Some(snippet) = snippet_at(file, diagnostic, pos) else {
         return Ok(());
     };
-    let gutter = format!("{} | ", file.line_col(diagnostic.span.start).line);
+    let gutter = format!("{} | ", pos.line);
     let indent = " ".repeat(gutter.len().saturating_sub(2));
     paint(out, color, GRAY, format_args!("{indent}|\n"))?;
-    paint(out, color, GRAY, &gutter)?;
-    writeln!(out, "{}", snippet.line)?;
+    paint_str(out, color, GRAY, &gutter)?;
+    out.write_all(snippet.line.as_bytes())?;
+    out.write_all(b"\n")?;
     paint(out, color, GRAY, format_args!("{indent}| "))?;
-    paint(out, color, GREEN, &snippet.indicator)?;
-    writeln!(out)
+    paint_str(out, color, GREEN, &snippet.indicator)?;
+    out.write_all(b"\n")
 }
 
 /// The source line of a diagnostic and the indicator under its span, as the default format
@@ -157,8 +175,16 @@ pub struct Snippet<'a> {
 /// The span must be in `file`.
 #[must_use]
 pub fn snippet<'a>(file: &'a SourceFile, diagnostic: &Diagnostic) -> Option<Snippet<'a>> {
+    snippet_at(file, diagnostic, file.line_col(diagnostic.span.start))
+}
+
+/// [`snippet`] for a diagnostic at `pos`.
+fn snippet_at<'a>(
+    file: &'a SourceFile,
+    diagnostic: &Diagnostic,
+    pos: LineCol,
+) -> Option<Snippet<'a>> {
     let text = file.text();
-    let pos = file.line_col(diagnostic.span.start);
     let range = file.line_range(pos.line)?;
     if range.start >= text.len() {
         return None;
@@ -201,7 +227,7 @@ fn indicator(line: &str, start: usize, end: usize) -> (String, &str) {
 
     let mut indicator = String::with_capacity(before.len() + underlined.len() + 1);
     for (run, tab) in runs(before) {
-        indicator.extend(std::iter::repeat_n(' ', run.width()));
+        indicator.extend(std::iter::repeat_n(' ', width(run)));
         if tab {
             indicator.push('\t');
         }
@@ -209,7 +235,7 @@ fn indicator(line: &str, start: usize, end: usize) -> (String, &str) {
     let prefix_len = indicator.len();
     let mut caret_written = false;
     for (run, tab) in runs(underlined) {
-        for _ in 0..run.width() {
+        for _ in 0..width(run) {
             indicator.push(if caret_written { '~' } else { '^' });
             caret_written = true;
         }
@@ -225,6 +251,16 @@ fn indicator(line: &str, start: usize, end: usize) -> (String, &str) {
         indicator.truncate(prefix_len);
         indicator.push('^');
         (indicator, "")
+    }
+}
+
+/// The display width of `run`, a run of text without control characters. Each ASCII character
+/// in it takes one cell.
+fn width(run: &str) -> usize {
+    if run.is_ascii() {
+        run.len()
+    } else {
+        run.width()
     }
 }
 

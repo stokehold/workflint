@@ -45,9 +45,15 @@ fn is_allowed(ch: char) -> bool {
         || ch >= '\u{10000}' && ch <= '\u{10FFFF}'
 }
 
-/// Whether `byte` is an ASCII character that [`is_allowed`] allows.
-fn is_allowed_ascii(byte: u8) -> bool {
-    matches!(byte, b'\t' | b'\n' | b'\r' | b' '..=b'~')
+/// Whether every byte of `bytes` is an ASCII character that [`is_allowed`] allows. It checks
+/// every byte without stopping early, so that the compiler can check many bytes at once.
+// The lazy operators would add the branches that this avoids.
+#[allow(clippy::needless_bitwise_bool)]
+fn is_allowed_ascii(bytes: &[u8]) -> bool {
+    bytes.iter().fold(true, |allowed, &byte| {
+        allowed
+            & ((b' '..=b'~').contains(&byte) | (byte == b'\t') | (byte == b'\n') | (byte == b'\r'))
+    })
 }
 
 /// The scanner's buffer of decoded characters, which upstream kept in a
@@ -186,7 +192,7 @@ impl Scanner<'_> {
         // Most chunks are ASCII without control characters. Checking the
         // bytes first and widening them in one pass is several times faster
         // than the loop below.
-        if chunk.bytes().all(is_allowed_ascii) {
+        if is_allowed_ascii(chunk.as_bytes()) {
             self.buffer.chars.extend(chunk.bytes().map(char::from));
             self.reader.decoded += end;
             return Ok(());
