@@ -1,0 +1,8 @@
+# zig for cargo-zigbuild, which links the static musl binaries in the build
+# job of .github/workflows/release.yml. The job installs it with
+# `pip install --no-deps --only-binary :all: --require-hashes -r scripts/release/requirements.txt`.
+# The hashes are of the wheels for Linux on x86_64 and arm64. cargo-zigbuild
+# 0.23.4 is tested with zig 0.16.0.
+ziglang==0.16.0 \
+    --hash=sha256:9fcda73f62b851dd72a54b710ad40a209896db14cfb13649e62191243556342b \
+    --hash=sha256:e27d409812b11e0fb89ed0200cf2e55b6464d43f9461553104e4a4f9a94a1fd5

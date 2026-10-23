@@ -156,14 +156,16 @@ Goal: a drop-in binary. Release 0.1.0 at the end of this milestone.
 - M5.7 `workflint-gotemplate`: lexer, parser, executor, actionlint's functions; fixtures from the reference's format tests.
 - M5.8 Output formats: default, `-oneline`, `-format`, `json`, `sarif`, `github`.
 - M5.9 Whole conformance suite green; oracle diff clean apart from allowed differences, and the oracle job made blocking; performance targets met. Needs M5.11.
-- M5.10 Release 0.1.0.
+- M5.10 Release 0.1.0 [#258](https://github.com/stokehold/workflint/issues/258)
 - M5.11 Apply allow-list entries to corpus files in cargo xtask oracle [#49](https://github.com/stokehold/workflint/issues/49)
 - M5.17 Explain the likely cause of "did not find expected key" in help text [#244](https://github.com/stokehold/workflint/issues/244)
 - M5.18 Meet the corpus wall-time target on the nightly runner and fail the nightly job on a missed target [#281](https://github.com/stokehold/workflint/issues/281)
 
 ## M6: release pipeline
 
-Goal: every distribution channel works before 0.1.0 (ADR 0014, ADR 0015, ADR 0021). Each packaging task adds a dry-run job, and M6.11 combines them into one required check. Publishing stays disabled until 0.1.0.
+Goal: every distribution channel works before 0.1.0 (ADR 0014, ADR 0015, ADR 0021). Each packaging task adds a dry-run job, and M6.11 combines them into one required check.
+
+Publishing stays off until M5.10, Release 0.1.0 ([#258](https://github.com/stokehold/workflint/issues/258)), turns it on. Until then every channel runs as a dry run only: no job uses a secret, pushes a tag, uploads to a registry, or creates a GitHub release. Each channel gets a switch that is off, listed in [`docs/releasing.md`](releasing.md#publishing-is-off-until-m510), and M5.10 turns the switches on.
 
 - M6.0 Create the stokehold-bot GitHub App and the protected environments [#17](https://github.com/stokehold/workflint/issues/17)
 - M6.1 Configure trusted publishing on crates.io, npm, and PyPI [#18](https://github.com/stokehold/workflint/issues/18)
@@ -177,6 +179,7 @@ Goal: every distribution channel works before 0.1.0 (ADR 0014, ADR 0015, ADR 002
 - M6.9 Add pre-commit hooks and the workflint-pre-commit mirror [#26](https://github.com/stokehold/workflint/issues/26)
 - M6.10 Create the workflint-action repository with verified install and automated version bumps [#27](https://github.com/stokehold/workflint/issues/27)
 - M6.11 Combine the release dry runs into one required pull request check [#28](https://github.com/stokehold/workflint/issues/28)
+- M6.12 Run cargo xtask bench in the gate job of the release workflow [#287](https://github.com/stokehold/workflint/issues/287)
 
 ## M7: platform data and new GitHub syntax
 

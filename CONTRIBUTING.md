@@ -223,6 +223,12 @@ Two workflows run on every pull request and on every push to `main`.
 
 To add a job that runs only for some files, add its pattern list to the `env` of `changes`, add its name to the loop that writes the outputs, and add the job to the `needs` of `ci-gate`. A job in `gate.yml` that runs on every change, as `rustdoc` does, also goes into the `ci-gate` step next to `changes` and `rustdoc`, so that a skipped run fails the gate.
 
+## Releases
+
+[`docs/releasing.md`](docs/releasing.md) describes the release workflow, `.github/workflows/release.yml`: how a release happens, the release assets, and how to verify them. Publishing is off until M5.10, and every release channel runs as a dry run only until then.
+
+A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, or `crates/workflint/Cargo.toml` runs the release workflow as a dry run, which builds the six archives on their native runners. After you change a script in `scripts/release/`, run `shellcheck scripts/release/*.sh` and `scripts/release/test.sh`.
+
 ## Pull requests
 
 - One issue per pull request. Open it as a draft with `Closes #N` in the description as soon as you start, so others can see the task is taken.

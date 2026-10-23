@@ -37,6 +37,7 @@ A GitHub Action (`stokehold/workflint-action`), a pre-commit hook, and install s
 | [docs/config.md](docs/config.md) | The config file: where workflint looks for it, and its keys. |
 | [docs/sarif.md](docs/sarif.md) | SARIF output, and how to upload it to GitHub code scanning. |
 | [docs/github-output.md](docs/github-output.md) | Annotations and a job summary in GitHub Actions, and several formats in one run. |
+| [docs/releasing.md](docs/releasing.md) | How a release happens, the release assets, and how to verify them. |
 | [docs/roadmap.md](docs/roadmap.md) | Milestones and tasks. |
 | [docs/architecture.md](docs/architecture.md) | Crates, data flow, main types. |
 | [docs/adr/](docs/adr/README.md) | Architecture decision records. |
