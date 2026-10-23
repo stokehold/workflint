@@ -99,13 +99,14 @@ pub(crate) fn run(layout: &Layout, timeout: Option<Duration>) -> Result<()> {
         layout.display(&output.join("results.json")),
         layout.display(&output.join("results.md"))
     );
-    check_measurements(&results)
+    check_results(&results)
 }
 
-/// Fails when a measurement in `results` failed. The command calls it after
-/// writing the results, so that `cargo xtask bench-history` can record the
-/// failure.
-fn check_measurements(results: &Results) -> Result<()> {
+/// Fails when a measurement in `results` failed or a target was missed. The
+/// command calls it after writing the results, so that
+/// `cargo xtask bench-history` can record them, and the nightly job fails
+/// after that (ADR 0039).
+fn check_results(results: &Results) -> Result<()> {
     let failed = results
         .scenarios
         .iter()
@@ -113,8 +114,30 @@ fn check_measurements(results: &Results) -> Result<()> {
         .flat_map(|(workflint, reference)| [workflint, reference])
         .filter(|measurement| matches!(measurement, Measurement::Failed { .. }))
         .count();
+    let missed = history::missed_targets(results);
+    let mut problems = Vec::new();
     if failed > 0 {
-        bail!("{failed} measurements failed, see the results");
+        problems.push(format!("{failed} measurements failed, see the results"));
+    }
+    if !missed.is_empty() {
+        let list: Vec<String> = missed
+            .iter()
+            .map(|(scenario, target)| {
+                format!(
+                    "{scenario}: {}, measured {}",
+                    target.target,
+                    target.formatted_value()
+                )
+            })
+            .collect();
+        let count = match missed.len() {
+            1 => "1 target".to_owned(),
+            n => format!("{n} targets"),
+        };
+        problems.push(format!("{count} missed: {}", list.join("; ")));
+    }
+    if !problems.is_empty() {
+        bail!("{}", problems.join(". "));
     }
     Ok(())
 }
@@ -699,7 +722,7 @@ cat "$dir/export.json" > "$out""#,
         let output = fixture.path("out");
 
         write_results(&results, &output).unwrap();
-        let error = check_measurements(&results).unwrap_err();
+        let error = check_results(&results).unwrap_err();
         assert!(
             format!("{error:#}").contains("2 measurements failed"),
             "{error:#}"
@@ -718,6 +741,39 @@ cat "$dir/export.json" > "$out""#,
             body.contains("- Corpus, external tools off, workflint: the first run exited with"),
             "{body}"
         );
+    }
+
+    #[test]
+    fn missed_target_reaches_the_history_and_the_issue_before_the_command_fails() {
+        let fixture = Fixture::new("exit 0", "exit 0");
+        // Half of the reference's wall time misses the target of a third. The
+        // sample is workflint 0.0.1, before 0.1.0.
+        let results = results::tests::sample(0.5, 1.0);
+        let output = fixture.path("out");
+
+        write_results(&results, &output).unwrap();
+        let error = check_results(&results).unwrap_err();
+        assert_eq!(
+            format!("{error:#}"),
+            "1 target missed: Corpus, external tools off: wall time at most 1/3 of the \
+             reference, measured 0.500"
+        );
+
+        let history = fixture.path("history.jsonl");
+        let issue = fixture.path("issue.md");
+        history::run(&history, &output.join("results.json"), Some(&issue)).unwrap();
+        assert_eq!(fs::read_to_string(&history).unwrap().lines().count(), 1);
+        let body = fs::read_to_string(&issue).unwrap();
+        assert!(body.contains("### Missed targets"), "{body}");
+        assert!(
+            body.contains("- Corpus, external tools off: wall time at most 1/3 of the reference"),
+            "{body}"
+        );
+    }
+
+    #[test]
+    fn results_that_meet_every_target_pass_the_check() {
+        check_results(&results::tests::sample(0.1, 1.0)).unwrap();
     }
 
     #[test]

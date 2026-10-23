@@ -68,7 +68,7 @@ impl Placeholder {
 pub(crate) fn scan(value: &str) -> Vec<Placeholder> {
     let mut placeholders = Vec::new();
     let mut pos = 0;
-    while let Some(found) = value.get(pos..).and_then(|rest| rest.find("${{")) {
+    while let Some(found) = value.get(pos..).and_then(find_open) {
         let start = pos + found;
         let offset = start + "${{".len();
         let text = value.get(offset..).unwrap_or_default();
@@ -85,6 +85,22 @@ pub(crate) fn scan(value: &str) -> Vec<Placeholder> {
         });
     }
     placeholders
+}
+
+/// Returns the byte offset of the first `${{` in `text`.
+///
+/// Most values have no `$`, and searching for that one byte is faster than
+/// searching for the three, which `str::find` sets up a searcher for on
+/// every call.
+fn find_open(text: &str) -> Option<usize> {
+    let mut from = 0;
+    loop {
+        let at = from + text.get(from..)?.find('$')?;
+        if text.as_bytes().get(at + 1..at + 3) == Some(b"{{") {
+            return Some(at);
+        }
+        from = at + 1;
+    }
 }
 
 /// Parses the `if` condition `value`, which has no `${{ }}`, as the
@@ -255,7 +271,7 @@ fn to_u32(offset: usize) -> u32 {
 /// ```
 #[must_use]
 pub fn contains_expression(s: &str) -> bool {
-    match (s.find("${{"), s.find("}}")) {
+    match (find_open(s), s.find("}}")) {
         (Some(open), Some(close)) => open < close,
         _ => false,
     }
@@ -305,6 +321,14 @@ mod tests {
 
     fn placeholders(value: &str) -> Vec<String> {
         scan(value).iter().map(|p| describe(value, p)).collect()
+    }
+
+    #[test]
+    fn find_open_skips_a_dollar_sign_without_two_braces_after_it() {
+        assert_eq!(find_open("$a ${b} $${{ c"), Some(9));
+        assert_eq!(find_open("costs 5$"), None);
+        assert_eq!(find_open("${"), None);
+        assert_eq!(find_open("é${{"), Some(2));
     }
 
     #[test]

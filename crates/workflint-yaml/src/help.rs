@@ -181,7 +181,7 @@ fn list_item(text: &str, problem: Mark, context: Mark) -> String {
                 .min_by_key(|&(indent, line)| (indent, std::cmp::Reverse(line)))
         });
     match sibling {
-        Some((indent, line)) if u64::try_from(indent).ok() != Some(problem.column) => format!(
+        Some((indent, line)) if u32::try_from(indent).ok() != Some(problem.column) => format!(
             "this list item is indented {} and the item on line {} is indented {indent}, but the \
              items of one list need the same indentation",
             spaces(problem.column),
@@ -226,7 +226,7 @@ fn is_key(rest: &str) -> bool {
 }
 
 /// `n` spaces, in words.
-fn spaces(n: u64) -> String {
+fn spaces(n: u32) -> String {
     if n == 1 {
         "1 space".to_owned()
     } else {

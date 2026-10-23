@@ -5,11 +5,11 @@ pub(crate) type Result<T, E = Error> = core::result::Result<T, E>;
 #[non_exhaustive]
 pub struct Mark {
     /// The byte offset into the input, including a leading byte order mark.
-    pub index: u64,
+    pub index: u32,
     /// The 0-based line.
-    pub line: u64,
+    pub line: u32,
     /// The 0-based column, counted in Unicode code points.
-    pub column: u64,
+    pub column: u32,
 }
 
 impl std::fmt::Display for Mark {
@@ -135,7 +135,7 @@ impl Error {
     pub fn problem_offset(&self) -> u64 {
         match &*self.0 {
             ErrorImpl::Reader { offset, .. } => *offset as u64,
-            ErrorImpl::Scanner(p) | ErrorImpl::Parser(p) => p.problem_mark.index,
+            ErrorImpl::Scanner(p) | ErrorImpl::Parser(p) => u64::from(p.problem_mark.index),
         }
     }
 

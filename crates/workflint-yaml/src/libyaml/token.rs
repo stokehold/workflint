@@ -1,3 +1,5 @@
+use smol_str::SmolStr;
+
 use super::{Encoding, Mark, ScalarStyle};
 
 /// The token structure.
@@ -81,7 +83,7 @@ pub(crate) enum TokenData {
     /// A SCALAR token.
     Scalar {
         /// The scalar value.
-        value: String,
+        value: SmolStr,
         /// The scalar style.
         style: ScalarStyle,
     },

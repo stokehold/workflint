@@ -5,6 +5,7 @@
 // control character is reported at the same point of the scan as in go-yaml.
 // The character checks in `is_allowed` are upstream's.
 
+use super::macros::{is_blank, is_blankz, is_break};
 use super::scanner::Scanner;
 use super::{Error, Result};
 
@@ -44,6 +45,17 @@ fn is_allowed(ch: char) -> bool {
         || ch >= '\u{10000}' && ch <= '\u{10FFFF}'
 }
 
+/// Whether every byte of `bytes` is an ASCII character that [`is_allowed`] allows. It checks
+/// every byte without stopping early, so that the compiler can check many bytes at once.
+// The lazy operators would add the branches that this avoids.
+#[allow(clippy::needless_bitwise_bool)]
+fn is_allowed_ascii(bytes: &[u8]) -> bool {
+    bytes.iter().fold(true, |allowed, &byte| {
+        allowed
+            & ((b' '..=b'~').contains(&byte) | (byte == b'\t') | (byte == b'\n') | (byte == b'\r'))
+    })
+}
+
 /// The scanner's buffer of decoded characters, which upstream kept in a
 /// `VecDeque<char>`.
 ///
@@ -58,9 +70,11 @@ pub(crate) struct CharBuffer {
 }
 
 impl CharBuffer {
-    pub(crate) fn with_capacity(capacity: usize) -> Self {
+    /// An empty buffer with room for what it usually holds: the characters
+    /// of one raw chunk and the few that the scanner has not read yet.
+    pub(crate) fn new() -> Self {
         Self {
-            chars: Vec::with_capacity(capacity),
+            chars: Vec::with_capacity(2 * RAW_CHUNK),
             start: 0,
         }
     }
@@ -87,6 +101,38 @@ impl CharBuffer {
         let ch = self.front().copied()?;
         self.start += 1;
         Some(ch)
+    }
+
+    /// Counts the unread characters, from the first, that a plain scalar
+    /// continues over in one step each, and returns their number and their
+    /// length in bytes.
+    ///
+    /// Such a character is no blank, no line break, and no `:` that a blank
+    /// or a line break follows, and in a flow collection (`flow`) also no
+    /// `,`, `[`, `]`, `{`, `}`, or `?` that a blank or a line break follows.
+    /// The count stops two characters before the end of the buffer, so that
+    /// each character after it is known and the scanner's `cache(2)` after
+    /// each step would not have read on.
+    pub(crate) fn plain_run(&self, flow: bool) -> (usize, usize) {
+        let unread = self.chars.get(self.start..).unwrap_or_default();
+        let mut count = 0;
+        let mut bytes = 0;
+        for pair in unread.windows(3) {
+            let [ch, next, _] = *pair else {
+                break;
+            };
+            let ends = is_blank(ch)
+                || is_break(ch)
+                || ch == ':' && is_blankz(next)
+                || flow
+                    && (matches!(ch, ',' | '[' | ']' | '{' | '}') || ch == '?' && is_blankz(next));
+            if ends {
+                break;
+            }
+            count += 1;
+            bytes += ch.len_utf8();
+        }
+        (count, bytes)
     }
 
     /// Reads the first `count` unread characters, or every one if there are
@@ -143,6 +189,14 @@ impl Scanner<'_> {
             end -= 1;
         }
         let chunk = chunk.get(..end).unwrap_or_default();
+        // Most chunks are ASCII without control characters. Checking the
+        // bytes first and widening them in one pass is several times faster
+        // than the loop below.
+        if is_allowed_ascii(chunk.as_bytes()) {
+            self.buffer.chars.extend(chunk.bytes().map(char::from));
+            self.reader.decoded += end;
+            return Ok(());
+        }
         self.buffer.chars.reserve(chunk.len());
         for (offset, ch) in chunk.char_indices() {
             if !is_allowed(ch) {
@@ -180,7 +234,7 @@ pub(crate) fn yaml_parser_update_buffer(parser: &mut Scanner<'_>, length: usize)
         if parser.source.starts_with(BOM) {
             let width = BOM.len_utf8();
             parser.reader.decoded += width;
-            parser.mark.index += width as u64;
+            parser.mark.index += width as u32;
         }
     }
     parser.buffer.compact();

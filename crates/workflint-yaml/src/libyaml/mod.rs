@@ -32,12 +32,12 @@ mod reader;
 mod scanner;
 mod token;
 
+use smol_str::SmolStr;
+
 pub(crate) use self::error::Result;
 pub use self::error::{Error, ErrorKind, Mark};
 pub use self::event::{Event, EventData, NodeMarks};
 pub use self::parser::Parser;
-
-pub(crate) const INPUT_BUFFER_SIZE: usize = 16384;
 
 /// The version directive data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,9 +54,9 @@ pub struct VersionDirective {
 #[non_exhaustive]
 pub struct TagDirective {
     /// The tag handle.
-    pub handle: String,
+    pub handle: SmolStr,
     /// The tag prefix.
-    pub prefix: String,
+    pub prefix: SmolStr,
 }
 
 /// The stream encoding.
@@ -119,6 +119,8 @@ pub enum MappingStyle {
 
 #[cfg(test)]
 mod tests {
+    use smol_str::SmolStr;
+
     use super::scanner::Scanner;
     use super::token::{Token, TokenData};
     use super::*;
@@ -187,7 +189,7 @@ c: true";
             },
             Token {
                 data: TokenData::Scalar {
-                    value: String::from("b"),
+                    value: SmolStr::new("b"),
                     style: ScalarStyle::Plain,
                 },
                 start_mark: Mark {
@@ -229,7 +231,7 @@ c: true";
             },
             Token {
                 data: TokenData::Scalar {
-                    value: String::from("c"),
+                    value: SmolStr::new("c"),
                     style: ScalarStyle::Plain,
                 },
                 start_mark: Mark {
@@ -258,7 +260,7 @@ c: true";
             },
             Token {
                 data: TokenData::Scalar {
-                    value: String::from("true"),
+                    value: SmolStr::new("true"),
                     style: ScalarStyle::Plain,
                 },
                 start_mark: Mark {

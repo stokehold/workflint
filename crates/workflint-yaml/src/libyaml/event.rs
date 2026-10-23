@@ -1,3 +1,5 @@
+use smol_str::SmolStr;
+
 use super::{
     CommentKind, Encoding, MappingStyle, Mark, ScalarStyle, SequenceStyle, TagDirective,
     VersionDirective,
@@ -71,7 +73,7 @@ pub enum EventData {
         /// The tag.
         tag: Option<String>,
         /// The scalar value.
-        value: String,
+        value: SmolStr,
         /// Is the tag optional for the plain style?
         plain_implicit: bool,
         /// Is the tag optional for any non-plain style?

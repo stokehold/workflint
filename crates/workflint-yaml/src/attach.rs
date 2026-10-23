@@ -16,7 +16,7 @@ pub(crate) enum Role {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CommentPlace {
     /// The 0-based line of the comment.
-    pub(crate) line: u64,
+    pub(crate) line: u32,
     /// For a trailing comment that only `-` and `?` indicators precede on
     /// its line, the offset after the last indicator. See
     /// [`after_indicators`].
@@ -60,11 +60,11 @@ fn is_line_start(ch: char) -> bool {
 
 /// Returns, for each comment, the 0-based line after it that holds no
 /// own-line comment. Only own-line comments use it.
-fn next_code_lines(comments: &[Comment], places: &[CommentPlace]) -> Vec<u64> {
+fn next_code_lines(comments: &[Comment], places: &[CommentPlace]) -> Vec<u32> {
     let mut next = vec![0; comments.len()];
     // The line of the own-line comment after the current one, and its next
     // code line.
-    let mut later: Option<(u64, u64)> = None;
+    let mut later: Option<(u32, u32)> = None;
     for ((comment, place), next) in comments.iter().zip(places).zip(&mut next).rev() {
         if comment.kind != CommentKind::OwnLine {
             continue;
@@ -86,7 +86,7 @@ fn next_code_lines(comments: &[Comment], places: &[CommentPlace]) -> Vec<u64> {
 /// node, and `places` the place of each comment.
 pub(crate) fn attach(
     nodes: &[Node],
-    lines: &[u64],
+    lines: &[u32],
     roles: &[Role],
     comments: &mut [Comment],
     places: &[CommentPlace],

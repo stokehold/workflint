@@ -99,8 +99,22 @@ pub fn ordinal(n: usize) -> String {
 
 fn push_quoted(out: &mut String, s: &str) {
     out.push('"');
-    for c in s.chars() {
+    let mut rest = s;
+    loop {
+        // Printable ASCII other than `"` and `\` stays as it is, so each run
+        // of it is copied in one piece.
+        let plain = rest
+            .bytes()
+            .position(|b| !matches!(b, b' '..=b'~') || b == b'"' || b == b'\\')
+            .unwrap_or(rest.len());
+        let (copied, escaped) = rest.split_at(plain);
+        out.push_str(copied);
+        let mut chars = escaped.chars();
+        let Some(c) = chars.next() else {
+            break;
+        };
         push_escaped(out, c, '"');
+        rest = chars.as_str();
     }
     out.push('"');
 }

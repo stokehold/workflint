@@ -239,17 +239,21 @@ pub(crate) fn yaml_node_count(document: &Document, cap: u64) -> u64 {
     // The events of each node's subtree with aliases expanded, once known.
     let mut events: Vec<Option<u64>> = vec![None; document.nodes().count()];
     let index = |id: NodeId| usize::try_from(id.index()).ok();
-    let children = |id: NodeId| -> Vec<NodeId> {
-        match document.node(id).map(|node| &node.kind) {
-            Some(NodeKind::Sequence(sequence)) => document.items(sequence).to_vec(),
-            Some(NodeKind::Mapping(mapping)) => document
-                .entries(mapping)
-                .iter()
-                .flat_map(|entry| [entry.key, entry.value])
-                .collect(),
-            _ => Vec::new(),
-        }
-    };
+    // Calls `f` with each child of `id`, without collecting them, as the walk
+    // visits every collection twice.
+    let for_each_child =
+        |id: NodeId, f: &mut dyn FnMut(NodeId)| match document.node(id).map(|node| &node.kind) {
+            Some(NodeKind::Sequence(sequence)) => {
+                document.items(sequence).iter().for_each(|&item| f(item));
+            }
+            Some(NodeKind::Mapping(mapping)) => {
+                for entry in document.entries(mapping) {
+                    f(entry.key);
+                    f(entry.value);
+                }
+            }
+            _ => {}
+        };
     // A depth-first walk that visits a node's children before the node. The
     // tree has no cycles, because a recursive alias stays an alias node.
     let mut stack = vec![(root, false)];
@@ -267,14 +271,16 @@ pub(crate) fn yaml_node_count(document: &Document, cap: u64) -> u64 {
         if !collection {
             events[slot] = Some(1);
         } else if children_done {
-            let total = children(id)
-                .into_iter()
-                .filter_map(|child| events.get(index(child)?).copied().flatten())
-                .fold(2u64, u64::saturating_add);
+            let mut total = 2u64;
+            for_each_child(id, &mut |child| {
+                if let Some(count) = index(child).and_then(|i| events.get(i).copied().flatten()) {
+                    total = total.saturating_add(count);
+                }
+            });
             events[slot] = Some(total.min(cap));
         } else {
             stack.push((id, true));
-            stack.extend(children(id).into_iter().map(|child| (child, false)));
+            for_each_child(id, &mut |child| stack.push((child, false)));
         }
     }
     let root_events = index(root)

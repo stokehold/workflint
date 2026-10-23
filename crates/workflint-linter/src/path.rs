@@ -43,17 +43,39 @@ pub fn display_path(cwd: &Path, path: &Path) -> PathBuf {
 /// if it is absolute, and `cwd` joined with `path` and cleaned otherwise.
 #[must_use]
 pub fn absolute(cwd: &Path, path: &Path) -> PathBuf {
-    if path.is_absolute() {
-        clean(path)
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
     } else {
-        clean(&cwd.join(path))
+        join(cwd, path)
+    };
+    if is_clean(&joined) {
+        joined
+    } else {
+        clean(&joined)
     }
+}
+
+/// `base.join(path)` in one allocation, where `Path::join` copies `base` and then grows the copy.
+#[must_use]
+pub fn join(base: &Path, path: &Path) -> PathBuf {
+    let mut joined = PathBuf::with_capacity(base.as_os_str().len() + 1 + path.as_os_str().len());
+    joined.push(base);
+    joined.push(path);
+    joined
 }
 
 /// Go's `filepath.Clean`: `path` with `.` names and repeated separators removed, and each `..`
 /// that follows a name removed with that name. An empty result is `.`.
 #[must_use]
 pub fn clean(path: &Path) -> PathBuf {
+    if is_clean(path) {
+        return path.to_path_buf();
+    }
+    clean_names(path)
+}
+
+/// Cleans `path` name by name, as [`clean`] does with a path that is not clean.
+fn clean_names(path: &Path) -> PathBuf {
     let clean = Clean::new(path);
     let mut result = PathBuf::new();
     if let Some(prefix) = clean.prefix {
@@ -67,6 +89,45 @@ pub fn clean(path: &Path) -> PathBuf {
         result.push(".");
     }
     result
+}
+
+/// Whether [`clean`] leaves `path` as it is: it is `.`, or it is not empty, every name between
+/// separators is neither empty nor `.`, and a `..` comes only before every other name of a
+/// relative path. Most
+/// paths are clean, and this check is much faster than cleaning them. On Windows, which has
+/// two separators and volume names, it says no and lets [`clean`] decide.
+fn is_clean(path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+
+        let bytes = path.as_os_str().as_bytes();
+        if bytes == b"/" || bytes == b"." {
+            return true;
+        }
+        let (rooted, rest) = match bytes.strip_prefix(b"/") {
+            Some(rest) => (true, rest),
+            None => (false, bytes),
+        };
+        if rest.is_empty() {
+            return false;
+        }
+        // `..` at the start of a relative path stays, and anywhere else it goes.
+        let mut leading = !rooted;
+        rest.split(|&byte| byte == b'/').all(|name| match name {
+            b"" | b"." => false,
+            b".." => leading,
+            _ => {
+                leading = false;
+                true
+            }
+        })
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        false
+    }
 }
 
 /// Go's `filepath.Rel`: a path that names `target` when joined to `base`, found lexically.
@@ -219,6 +280,61 @@ mod tests {
     fn a_parent_directory_left_in_the_base_has_no_relative_path() {
         assert_eq!(rel("../a", "b"), None);
         assert_eq!(rel("../a", "../a/b").as_deref(), Some("b"));
+    }
+
+    #[test]
+    fn join_gives_what_path_join_gives() {
+        for (base, path) in [
+            ("/work", "a.yaml"),
+            ("/work/", "sub/a.yaml"),
+            ("/work", "/other/a.yaml"),
+            ("/work", ""),
+            ("", "a.yaml"),
+            ("work", "../a.yaml"),
+        ] {
+            let (base, path) = (Path::new(base), Path::new(path));
+            assert_eq!(
+                join(base, path).as_os_str(),
+                base.join(path).as_os_str(),
+                "{base:?} {path:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_path_is_clean_exactly_when_cleaning_leaves_it_as_it_is() {
+        let paths = [
+            "/",
+            "/a",
+            "/a/b",
+            "a",
+            "a/b",
+            "..",
+            "../a",
+            "../../a/b",
+            "",
+            ".",
+            "./a",
+            "a/.",
+            "a/",
+            "a//b",
+            "/a/",
+            "//a",
+            "/..",
+            "/../a",
+            "a/..",
+            "a/../b",
+            "/a/../b",
+            "../a/..",
+            "..a/b",
+            "a/..b",
+            ".a/b.",
+        ];
+        for path in paths {
+            let path = Path::new(path);
+            let unchanged = clean_names(path).as_os_str() == path.as_os_str();
+            assert_eq!(is_clean(path), unchanged, "{}", path.display());
+        }
     }
 
     #[test]

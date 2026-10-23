@@ -175,6 +175,18 @@ pub(crate) struct TargetResult {
     pub(crate) met: Option<bool>,
 }
 
+impl TargetResult {
+    /// The measured value as the results print it: seconds as time, a ratio
+    /// to three places, and `n/a` without a value.
+    pub(crate) fn formatted_value(&self) -> String {
+        match (self.value, self.unit) {
+            (Some(value), Some(Unit::Seconds)) => format_seconds(value),
+            (Some(value), _) => format_number(value),
+            (None, _) => "n/a".to_owned(),
+        }
+    }
+}
+
 /// The unit of a target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -275,11 +287,7 @@ pub(crate) fn render_markdown(results: &Results) -> String {
             continue;
         };
         for target in targets {
-            let value = match (target.value, target.unit) {
-                (Some(value), Some(Unit::Seconds)) => format_seconds(value),
-                (Some(value), _) => format_number(value),
-                (None, _) => "n/a".to_owned(),
-            };
+            let value = target.formatted_value();
             let ratio = target.ratio.map_or_else(|| "n/a".to_owned(), format_number);
             let met = match target.met {
                 Some(true) => "yes",

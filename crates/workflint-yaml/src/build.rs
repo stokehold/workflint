@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use smol_str::SmolStr;
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, Span};
 
@@ -79,13 +80,17 @@ struct Frame {
     last_end: Option<u32>,
 }
 
+/// The bytes of a workflow per node of its tree, for the first size of the node lists. The
+/// 1,503 workflows of the benchmark corpus have one node in every 21 bytes.
+const BYTES_PER_NODE: usize = 20;
+
 struct Builder<'a> {
     file: &'a SourceFile,
     id: FileId,
     text: &'a str,
     nodes: Vec<Node>,
     /// The 0-based line where each node starts.
-    lines: Vec<u64>,
+    lines: Vec<u32>,
     roles: Vec<Role>,
     /// Whether each node's end event has been seen.
     closed: Vec<bool>,
@@ -112,15 +117,18 @@ struct Builder<'a> {
 
 impl<'a> Builder<'a> {
     fn new(file: &'a SourceFile) -> Self {
+        // Starting near the final size saves most of the copies of growing, and `finish`
+        // gives back what is left over.
+        let nodes = file.text().len() / BYTES_PER_NODE;
         Self {
             file,
             id: file.id(),
             text: file.text(),
-            nodes: Vec::new(),
-            lines: Vec::new(),
-            roles: Vec::new(),
-            closed: Vec::new(),
-            used: Vec::new(),
+            nodes: Vec::with_capacity(nodes),
+            lines: Vec::with_capacity(nodes),
+            roles: Vec::with_capacity(nodes),
+            closed: Vec::with_capacity(nodes),
+            used: Vec::with_capacity(nodes),
             anchors: BTreeMap::new(),
             frames: Vec::new(),
             scratch: Vec::new(),
@@ -205,7 +213,7 @@ impl<'a> Builder<'a> {
     }
 
     fn offset(mark: Mark) -> u32 {
-        u32::try_from(mark.index).unwrap_or(u32::MAX)
+        mark.index
     }
 
     fn span(&self, start: u32, end: u32) -> Span {
@@ -219,7 +227,7 @@ impl<'a> Builder<'a> {
     fn syntax_error(&self, err: &Error) -> Diagnostic {
         let len = self.text.len();
         let position = match (err.context(), err.context_mark()) {
-            (Some(UNCLOSED_QUOTED_SCALAR), Some(mark)) => mark.index,
+            (Some(UNCLOSED_QUOTED_SCALAR), Some(mark)) => u64::from(mark.index),
             _ => err.problem_offset(),
         };
         let offset = usize::try_from(position).unwrap_or(len).min(len);
@@ -258,7 +266,7 @@ impl<'a> Builder<'a> {
     /// Adds a node to the arena and to the innermost open collection, or
     /// makes it the root. `child` is what the parent refers to, which differs
     /// from the new node for a resolved alias.
-    fn add(&mut self, node: Node, line: u64, child: Option<NodeId>) -> NodeId {
+    fn add(&mut self, node: Node, line: u32, child: Option<NodeId>) -> NodeId {
         let id = NodeId(u32::try_from(self.nodes.len()).unwrap_or(u32::MAX));
         let role = match self.frames.last() {
             None => Role::Root,
@@ -326,7 +334,7 @@ impl<'a> Builder<'a> {
         event: &EventMarks,
         anchor: Option<String>,
         tag: Option<&str>,
-        value: String,
+        value: SmolStr,
         style: libyaml::ScalarStyle,
     ) {
         let start = Self::offset(event.start_mark);
@@ -356,7 +364,7 @@ impl<'a> Builder<'a> {
             content_start,
             anchor: self.anchor(anchor, event, start),
             kind: NodeKind::Scalar(Scalar {
-                value: value.into_boxed_str(),
+                value,
                 style,
                 tag,
                 parent_indent_plus_one,
@@ -437,7 +445,7 @@ impl<'a> Builder<'a> {
         // The column where a block collection's content starts is the
         // scanner's indentation inside it.
         let block_indent = if block {
-            i64::try_from(content.column).unwrap_or(i64::MAX)
+            i64::from(content.column)
         } else {
             self.block_indent()
         };
@@ -455,10 +463,7 @@ impl<'a> Builder<'a> {
         let Some(frame) = self.frames.pop() else {
             return;
         };
-        let children: Vec<(NodeId, NodeId)> = self
-            .scratch
-            .drain(frame.scratch_start.min(self.scratch.len())..)
-            .collect();
+        let scratch_start = frame.scratch_start.min(self.scratch.len());
         let end = match frame.last_end {
             Some(last_end) if frame.block => last_end,
             _ => Self::offset(end_mark),
@@ -468,9 +473,11 @@ impl<'a> Builder<'a> {
             .ok()
             .and_then(|i| self.nodes.get_mut(i))
         else {
+            self.scratch.truncate(scratch_start);
             return;
         };
         node.span.end = end.max(node.span.start);
+        let children = self.scratch.get(scratch_start..).unwrap_or_default();
         match &mut node.kind {
             NodeKind::Mapping(mapping) => {
                 let first = to_u32(self.entries.len());
@@ -486,7 +493,7 @@ impl<'a> Builder<'a> {
             }
             NodeKind::Sequence(sequence) => {
                 let first = to_u32(self.items.len());
-                for (item, written) in children {
+                for &(item, written) in children {
                     self.items.push(item);
                     self.written_items.push(written);
                 }
@@ -494,6 +501,7 @@ impl<'a> Builder<'a> {
             }
             NodeKind::Scalar(_) | NodeKind::Alias(_) => {}
         }
+        self.scratch.truncate(scratch_start);
         self.set_closed(frame.node);
         self.child_ended(end);
     }

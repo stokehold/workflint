@@ -48,6 +48,7 @@ pub use document::{
     simple_lowercase,
 };
 pub use libyaml::CommentKind;
+pub use smol_str::SmolStr;
 pub use source_map::SourceMap;
 
 /// The event parser of the vendored libyaml-safer fork, which also reports
@@ -59,7 +60,7 @@ pub use source_map::SourceMap;
 /// let scalars: Vec<_> = EventParser::new("a: |\n  x")
 ///     .filter_map(|event| match event {
 ///         Ok(event) => match event.data {
-///             EventData::Scalar { value, style, .. } => Some((value, style)),
+///             EventData::Scalar { value, style, .. } => Some((value.to_string(), style)),
 ///             _ => None,
 ///         },
 ///         Err(_) => None,

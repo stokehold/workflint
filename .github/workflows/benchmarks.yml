@@ -2,8 +2,10 @@ name: Benchmarks
 
 # ADR 0019: compares workflint with the reference every night, keeps the
 # results in history.jsonl on the benchmarks branch, and opens or updates a
-# performance issue when a measurement fails, or when a scenario's wall time
-# grows by more than 10% against the previous scheduled run.
+# performance issue when a measurement fails, when workflint misses a target,
+# or when a scenario's wall time grows by more than 10% against the previous
+# scheduled run. A failed measurement or a missed target fails the job
+# (ADR 0039).
 
 on:
   schedule:
@@ -50,9 +52,9 @@ jobs:
       - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: hyperfine@2.0.0,shellcheck@0.11.0
-      # A failed measurement fails this step after it writes the results. The
-      # next steps record the failure in the history and the issue, and the
-      # last step fails the job.
+      # A failed measurement or a missed target fails this step after it
+      # writes the results. The next steps record them in the history and the
+      # issue, and the last step fails the job.
       - name: Run the benchmarks
         id: bench
         continue-on-error: true
@@ -143,5 +145,5 @@ jobs:
       - name: Fail the job if the benchmarks failed
         if: ${{ steps.bench.outcome == 'failure' }}
         run: |
-          echo "::error::cargo xtask bench failed. The step \"Run the benchmarks\" has its log."
+          echo "::error::A measurement failed or a target was missed. The step \"Run the benchmarks\" names them."
           exit 1

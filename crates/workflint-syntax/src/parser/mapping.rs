@@ -56,6 +56,81 @@ impl<'a> Key<'a> {
     }
 }
 
+/// The number of entries up to which the mapping walker finds a duplicate
+/// key by comparing it with each earlier key. Most mappings are smaller, and
+/// the comparisons are faster than building a map.
+const FEW_KEYS: usize = 16;
+
+/// The entries that the mapping walker visits, each with the entry as
+/// written and its alias path: those of the mapping, and in place of each
+/// `${{ insert }}` key, those of the mapping under it, as deep as they nest.
+/// A recursive alias stays an alias node, so the walk ends.
+struct Walk<'a> {
+    /// The mapping being walked, with its alias path.
+    current: (Entries<'a>, Option<AliasPath>),
+    /// The mappings around `current`, whose walk goes on after it.
+    outer: Vec<(Entries<'a>, Option<AliasPath>)>,
+}
+
+impl<'a> Walk<'a> {
+    fn next(&mut self) -> Option<(&'a Entry, &'a Entry, Option<AliasPath>)> {
+        loop {
+            if let Some((entry, written)) = self.current.0.next() {
+                return Some((entry, written, self.current.1));
+            }
+            self.current = self.outer.pop()?;
+        }
+    }
+
+    /// Walks `inserted`, the mapping under an `${{ insert }}` key, before
+    /// the rest of the current mapping.
+    fn enter(&mut self, inserted: (Entries<'a>, Option<AliasPath>)) {
+        self.outer
+            .push(std::mem::replace(&mut self.current, inserted));
+    }
+}
+
+/// The span of the first key with each ID of the mapping being walked, whose
+/// entries so far are `entries`. Up to [`FEW_KEYS`] entries, the IDs are
+/// looked up in `entries`, and no map is built.
+#[derive(Default)]
+struct FirstKeys<'a> {
+    map: Option<BTreeMap<Cow<'a, str>, Span>>,
+}
+
+impl<'a> FirstKeys<'a> {
+    /// The span of the earlier key with the ID `id`, if there is one.
+    fn get(&self, entries: &[MapEntry<'a>], id: &str) -> Option<Span> {
+        match &self.map {
+            Some(map) => map.get(id).copied(),
+            None => entries
+                .iter()
+                .find(|entry| entry.id == id)
+                .map(|entry| entry.key.span),
+        }
+    }
+
+    /// Records the last of `entries`, which the walk has just added.
+    fn added(&mut self, entries: &[MapEntry<'a>]) {
+        match &mut self.map {
+            Some(map) => {
+                if let Some(entry) = entries.last() {
+                    map.insert(entry.id.clone(), entry.key.span);
+                }
+            }
+            None if entries.len() > FEW_KEYS => {
+                self.map = Some(
+                    entries
+                        .iter()
+                        .map(|entry| (entry.id.clone(), entry.key.span))
+                        .collect(),
+                );
+            }
+            None => {}
+        }
+    }
+}
+
 /// An entry that the mapping walker yields.
 #[derive(Debug, Clone)]
 pub(crate) struct MapEntry<'a> {
@@ -193,30 +268,24 @@ impl<'a> Parser<'a, '_> {
             }
         };
         let document = self.document;
-        // The span of the first key with each ID.
-        let mut first: BTreeMap<Cow<'a, str>, Span> = BTreeMap::new();
-        let mut walked = Mapping::default();
+        let mut first = FirstKeys::default();
+        let mut walked = Mapping {
+            entries: Vec::with_capacity(document.entries(mapping).len()),
+            inserts: Vec::new(),
+        };
         // Whether the mapping has an `${{ insert }}` key, valid or not.
         let mut has_insert = false;
-        // The mappings being walked, each with its alias path: `node`, and
-        // the mapping values of the `${{ insert }}` keys in it, as deep as
-        // they nest. A recursive alias stays an alias node, so the walk
-        // ends.
-        let mut pending = vec![(
-            document
-                .entries(mapping)
-                .iter()
-                .zip(document.written_entries(mapping)),
-            self.path,
-        )];
-        while let Some((next, level)) = pending
-            .last_mut()
-            .map(|(entries, level)| (entries.next(), *level))
-        {
-            let Some((entry, written)) = next else {
-                pending.pop();
-                continue;
-            };
+        let mut walk = Walk {
+            current: (
+                document
+                    .entries(mapping)
+                    .iter()
+                    .zip(document.written_entries(mapping)),
+                self.path,
+            ),
+            outer: Vec::new(),
+        };
+        while let Some((entry, written, level)) = walk.next() {
             let Some(key_node) = self.node(entry.key) else {
                 continue;
             };
@@ -237,7 +306,10 @@ impl<'a> Parser<'a, '_> {
             if inserts != Inserts::No && is_insert(key.value()) {
                 has_insert = true;
                 let path = self.within(level, |p| p.path_to(written.value));
-                pending.extend(self.insert(label, entry.value, path, inserts, &mut walked));
+                if let Some(inserted) = self.insert(label, entry.value, path, inserts, &mut walked)
+                {
+                    walk.enter(inserted);
+                }
                 continue;
             }
             let id = if case_sensitive {
@@ -245,7 +317,7 @@ impl<'a> Parser<'a, '_> {
             } else {
                 simple_lowercase(key.value())
             };
-            if let Some(&previous) = first.get(&id) {
+            if let Some(previous) = first.get(&walked.entries, &id) {
                 let suffix = if case_sensitive {
                     ""
                 } else {
@@ -262,7 +334,6 @@ impl<'a> Parser<'a, '_> {
             let Some(value) = self.node(entry.value) else {
                 continue;
             };
-            first.insert(id.clone(), key.span);
             let path = self.within(level, |p| p.path_to(written.value));
             walked.entries.push(MapEntry {
                 id,
@@ -270,6 +341,7 @@ impl<'a> Parser<'a, '_> {
                 value,
                 path,
             });
+            first.added(&walked.entries);
         }
         if !allow_empty && walked.entries.is_empty() && !has_insert {
             self.empty_mapping(label, node);

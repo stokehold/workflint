@@ -13,6 +13,8 @@ readme = "README.md"
 include = ["/src", "/README.md", "/LICENSE", "/NOTICE"]
 
 [dependencies]
+# Scalar values of up to 23 bytes, most of a workflow's, without an allocation each.
+smol_str = "0.3.7"
 workflint-diagnostics = { path = "../workflint-diagnostics", version = "0.0.1" }
 
 [dev-dependencies]

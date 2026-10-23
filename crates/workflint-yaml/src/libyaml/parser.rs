@@ -1,3 +1,5 @@
+use smol_str::SmolStr;
+
 use super::scanner::Scanner;
 use super::token::TokenData;
 use super::{
@@ -553,7 +555,7 @@ impl<'input> Parser<'input> {
                 data: EventData::Scalar {
                     anchor,
                     tag,
-                    value: String::new(),
+                    value: SmolStr::default(),
                     plain_implicit: implicit,
                     quoted_implicit: false,
                     style: ScalarStyle::Plain,
@@ -914,7 +916,7 @@ impl<'input> Parser<'input> {
             data: EventData::Scalar {
                 anchor: None,
                 tag: None,
-                value: String::new(),
+                value: SmolStr::default(),
                 plain_implicit: true,
                 quoted_implicit: false,
                 style: ScalarStyle::Plain,
@@ -932,17 +934,17 @@ impl<'input> Parser<'input> {
     ) -> Result<()> {
         let default_tag_directives: [TagDirective; 2] = [
             TagDirective {
-                handle: String::from("!"),
-                prefix: String::from("!"),
+                handle: SmolStr::new_static("!"),
+                prefix: SmolStr::new_static("!"),
             },
             TagDirective {
-                handle: String::from("!!"),
-                prefix: String::from("tag:yaml.org,2002:"),
+                handle: SmolStr::new_static("!!"),
+                prefix: SmolStr::new_static("tag:yaml.org,2002:"),
             },
         ];
         let mut version_directive: Option<VersionDirective> = None;
 
-        let mut tag_directives = Vec::with_capacity(16);
+        let mut tag_directives = Vec::new();
 
         let mut token = self.scanner.peek_mut()?;
 
@@ -979,8 +981,8 @@ impl<'input> Parser<'input> {
                 });
             } else if let TokenData::TagDirective { handle, prefix } = &mut token.data {
                 let value = TagDirective {
-                    handle: core::mem::take(handle),
-                    prefix: core::mem::take(prefix),
+                    handle: SmolStr::from(core::mem::take(handle)),
+                    prefix: SmolStr::from(core::mem::take(prefix)),
                 };
                 let mark = token.start_mark;
                 self.inner
