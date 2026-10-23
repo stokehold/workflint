@@ -328,17 +328,18 @@ impl Linter {
         self.lint_with(inputs, |file, diagnostics| Linted { file, diagnostics })
     }
 
-    /// Lints `inputs`, calls `finish` with each file and its sorted diagnostics as soon as they
-    /// are final, and returns what `finish` returns, in the order of `inputs`.
+    /// Lints `inputs`, calls `finish` with each file and its sorted diagnostics, and returns
+    /// what `finish` returns, in the order of `inputs`.
     ///
-    /// `finish` runs in parallel. A caller that renders in it frees each file's text before the
-    /// other files are done.
+    /// `finish` runs in parallel, as soon as a file is linted. A caller that renders in it frees
+    /// each file's text before the other files are done.
     ///
     /// Each file is linted as if no other file had used the cache of its project. The uses of
     /// each cache are then replayed in the order of the files' paths, and a file whose answers
-    /// the files before it change is linted again ([`LocalCache`]). So the errors of a shared
-    /// local action or reusable workflow go to its first use by path, whatever the order of
-    /// `inputs` and the number of threads.
+    /// the files before it change is read and linted again ([`LocalCache`]). `finish` runs
+    /// again for that file, and the result of its first run is dropped. So the errors of a
+    /// shared local action or reusable workflow go to its first use by path, whatever the order
+    /// of `inputs` and the number of threads.
     ///
     /// A panic in the lint of a file becomes one [`INTERNAL_ERROR`] diagnostic on that file,
     /// and the other files are linted as usual.
@@ -352,8 +353,9 @@ impl Linter {
     /// # Errors
     ///
     /// Fails with the first input, in the order of `inputs`, whose project's config file cannot
-    /// be read or asks for a Python linter that the [`Tools`] do not have, and then with the
-    /// first input that cannot be read.
+    /// be read or asks for a Python linter that the [`Tools`] do not have, then with the first
+    /// input that cannot be read, and then with the first input to lint again that cannot be
+    /// read again.
     pub fn lint_with<T: Send>(
         &self,
         inputs: &[Input],
@@ -399,23 +401,27 @@ impl Linter {
             let next = match std::mem::replace(slot, First::Taken) {
                 First::Pending(pending) => {
                     let Pending {
-                        source,
-                        mut diagnostics,
+                        finished,
+                        id,
                         cache,
                         record,
                     } = *pending;
-                    match commit(cache, record, &source) {
-                        Ok(Some(prior)) => Again::Lint(Box::new((
+                    let relint = |local, failure| {
+                        Again::Lint(Box::new(Relint {
                             file,
-                            source,
-                            cache.for_file_after(&file.absolute, prior),
-                        ))),
-                        Ok(None) => Again::Finish(Box::new((file, source, diagnostics))),
-                        Err(diagnostic) => {
-                            diagnostics.push(diagnostic);
-                            sort_and_dedup(&source, &mut diagnostics);
-                            Again::Finish(Box::new((file, source, diagnostics)))
+                            index,
+                            local,
+                            failure,
+                        }))
+                    };
+                    match commit(cache, record, id) {
+                        Ok(Some(prior)) => {
+                            relint(cache.for_file_after(&file.absolute, prior), None)
                         }
+                        Ok(None) => Again::Done(finished),
+                        // The first lint's diagnostics went into `finished`, so the file is
+                        // linted again as it was the first time.
+                        Err(diagnostic) => relint(cache.for_file(&file.absolute), Some(diagnostic)),
                     }
                 }
                 First::Done(done) => Again::Done(done),
@@ -427,11 +433,12 @@ impl Linter {
         }
 
         let again_of = |again| self.again(again, &finish);
-        Ok(if in_parallel(&files) {
+        let finished: Vec<Result<T, ReadError>> = if in_parallel(&files) {
             again.into_par_iter().flatten().map(again_of).collect()
         } else {
             again.into_iter().flatten().map(again_of).collect()
-        })
+        };
+        Ok(finished.into_iter().collect::<Result<_, _>>()?)
     }
 
     /// The files of `inputs`, in order, with the cache of each project they are in.
@@ -562,15 +569,19 @@ impl Linter {
         let mut diagnostics = self.check(&source, &local, settings);
         let record = local.into_record();
         if record.is_poisoned() {
-            diagnostics.push(poisoned(&source));
+            diagnostics.push(poisoned(source.id()));
             sort_and_dedup(&source, &mut diagnostics);
         }
+        let id = source.id();
+        let finished = finish(file, source, diagnostics, started);
         Ok(if record.is_empty() {
-            First::Done(finish(file, source, diagnostics, started))
+            First::Done(finished)
         } else {
+            // The file is finished before the replay, so that its text is not kept until then.
+            // Few files are linted again, and those are read again.
             First::Pending(Box::new(Pending {
-                source,
-                diagnostics,
+                finished,
+                id,
                 cache,
                 record,
             }))
@@ -578,34 +589,52 @@ impl Linter {
     }
 
     /// Does what is left of a file after the uses of the caches are replayed.
+    ///
+    /// # Errors
+    ///
+    /// Fails if a file to lint again cannot be read.
     fn again<T>(
         &self,
         again: Again<'_, '_, T>,
         finish: &impl Fn(&File<'_>, SourceFile, Vec<Diagnostic>, Instant) -> T,
-    ) -> T {
+    ) -> Result<T, ReadError> {
         let started = Instant::now();
-        match again {
-            Again::Lint(lint) => {
-                let (file, source, local) = *lint;
-                let _span = tracing::info_span!(FILE_SPAN).entered();
-                tracing::info!(
-                    "Linting {} again, because the files before it changed what it reads",
-                    source.path()
-                );
-                let mut diagnostics = self.check(&source, &local, &file.settings);
-                if local.into_record().is_poisoned() {
-                    diagnostics.push(poisoned(&source));
-                    sort_and_dedup(&source, &mut diagnostics);
-                }
-                finish(file, source, diagnostics, started)
-            }
-            Again::Finish(finished) => {
-                let (file, source, diagnostics) = *finished;
-                let _span = tracing::info_span!(FILE_SPAN).entered();
-                finish(file, source, diagnostics, started)
-            }
-            Again::Done(done) => done,
+        let Relint {
+            file,
+            index,
+            local,
+            failure,
+        } = match again {
+            Again::Lint(relint) => *relint,
+            Again::Done(done) => return Ok(done),
+        };
+        let (source, decode_error) = read(index, file.input, &self.cwd)?;
+        let _span = tracing::info_span!(FILE_SPAN).entered();
+        if failure.is_some() {
+            tracing::info!(
+                "Linting {} again, because the replay of what it read failed",
+                source.path()
+            );
+        } else {
+            tracing::info!(
+                "Linting {} again, because the files before it changed what it reads",
+                source.path()
+            );
         }
+        // The file changed after it was first read.
+        if let Some(diagnostic) = decode_error {
+            return Ok(finish(file, source, vec![diagnostic], started));
+        }
+        let mut diagnostics = self.check(&source, &local, &file.settings);
+        let poisoned = local
+            .into_record()
+            .is_poisoned()
+            .then(|| poisoned(source.id()));
+        if poisoned.is_some() || failure.is_some() {
+            diagnostics.extend(poisoned.into_iter().chain(failure));
+            sort_and_dedup(&source, &mut diagnostics);
+        }
+        Ok(finish(file, source, diagnostics, started))
     }
 
     /// Lints `source` with the project's local metadata in `local` and the project's
@@ -694,17 +723,17 @@ fn in_parallel(files: &[File<'_>]) -> bool {
     files.len() > 1
 }
 
-/// Replays the `record` of `source` in `cache` ([`LocalCache::commit`]). Fails with the
-/// diagnostic to report on `source` if that panics or finds the cache poisoned.
+/// Replays the `record` of `file` in `cache` ([`LocalCache::commit`]). Fails with the
+/// diagnostic to report on `file` if that panics or finds the cache poisoned.
 fn commit(
     cache: &LocalCache,
     record: FileRecord,
-    source: &SourceFile,
+    file: FileId,
 ) -> Result<Option<Prior>, Diagnostic> {
     match panic::catch_unwind(AssertUnwindSafe(|| cache.commit(record))) {
         Ok(Ok(prior)) => Ok(prior),
-        Ok(Err(CachePoisoned)) => Err(poisoned(source)),
-        Err(_) => Err(commit_panicked(source)),
+        Ok(Err(CachePoisoned)) => Err(poisoned(file)),
+        Err(_) => Err(commit_panicked(file)),
     }
 }
 
@@ -812,28 +841,37 @@ enum First<'c, T> {
     /// The file did not use a cache, so `finish` has its final diagnostics.
     Done(T),
     /// The file used a cache, so its diagnostics may depend on the files before it.
-    Pending(Box<Pending<'c>>),
+    Pending(Box<Pending<'c, T>>),
     /// The replay has moved the file on.
     Taken,
 }
 
 /// A file whose diagnostics may depend on the files before it.
-struct Pending<'c> {
-    source: SourceFile,
-    /// The sorted diagnostics.
-    diagnostics: Vec<Diagnostic>,
+struct Pending<'c, T> {
+    /// What `finish` returned for the diagnostics of the first lint.
+    finished: T,
+    id: FileId,
     cache: &'c LocalCache,
     record: FileRecord,
 }
 
 /// What is left to do for a file after the uses of the caches are replayed. As with [`First`],
-/// the variants that most files do not have are boxed.
+/// the variant that most files do not have is boxed.
 enum Again<'f, 'c, T> {
-    /// Lint the file again with this view of its cache.
-    Lint(Box<(&'f File<'f>, SourceFile, FileMetadata<'c>)>),
-    /// Finish the file with the diagnostics of the first lint.
-    Finish(Box<(&'f File<'f>, SourceFile, Vec<Diagnostic>)>),
+    /// Read the file again and lint it again.
+    Lint(Box<Relint<'f, 'c>>),
     Done(T),
+}
+
+/// A file to read and lint again.
+struct Relint<'f, 'c> {
+    file: &'f File<'f>,
+    /// The index of the file in the inputs.
+    index: usize,
+    /// The view of the cache to lint it with.
+    local: FileMetadata<'c>,
+    /// The diagnostic of a replay of the file's uses of the cache that failed.
+    failure: Option<Diagnostic>,
 }
 
 /// Where the report of a bug goes.
@@ -854,14 +892,14 @@ fn panicked(source: &SourceFile, payload: &(dyn Any + Send)) -> Diagnostic {
         ),
         None => format!("workflint panicked while linting this file. {REPORT}"),
     };
-    internal_error(source, message)
+    internal_error(source.id(), message)
 }
 
 /// The [`INTERNAL_ERROR`] diagnostic of a panic while replaying the uses of the cache of
 /// `source`'s project.
-fn commit_panicked(source: &SourceFile) -> Diagnostic {
+fn commit_panicked(file: FileId) -> Diagnostic {
     internal_error(
-        source,
+        file,
         format!(
             "workflint panicked while checking this file against the cache of local actions and \
              reusable workflows. {REPORT}"
@@ -870,12 +908,12 @@ fn commit_panicked(source: &SourceFile) -> Diagnostic {
 }
 
 /// The [`INTERNAL_ERROR`] diagnostic of a file whose cache a panic left unusable.
-fn poisoned(source: &SourceFile) -> Diagnostic {
-    internal_error(source, format!("{CachePoisoned}. {REPORT}"))
+fn poisoned(file: FileId) -> Diagnostic {
+    internal_error(file, format!("{CachePoisoned}. {REPORT}"))
 }
 
-fn internal_error(source: &SourceFile, message: String) -> Diagnostic {
-    Diagnostic::new(&INTERNAL_ERROR, Span::new(source.id(), 0, 0), message)
+fn internal_error(file: FileId, message: String) -> Diagnostic {
+    Diagnostic::new(&INTERNAL_ERROR, Span::new(file, 0, 0), message)
 }
 
 /// The project root of a workflow read from stdin and named `name`: that of the file at `name`,
@@ -921,9 +959,17 @@ fn read(
     };
     let display = display.to_string_lossy();
     let id = FileId::new(u32::try_from(index).map_err(|err| fail(err.to_string()))?);
-    let (text, decode_error) = match workflint_yaml::decode(&bytes) {
-        Ok(text) => (text.into_owned(), None),
-        Err(err) => (decoded_prefix(&bytes, err.offset()), Some(err)),
+    // `String::from_utf8` keeps the bytes of a UTF-8 file, where decoding would copy them. A
+    // UTF-16 byte order mark is not valid UTF-8, so those files are decoded below.
+    let (text, decode_error) = match String::from_utf8(bytes.into_owned()) {
+        Ok(text) => (text, None),
+        Err(err) => {
+            let bytes = err.into_bytes();
+            match workflint_yaml::decode(&bytes) {
+                Ok(text) => (text.into_owned(), None),
+                Err(err) => (decoded_prefix(&bytes, err.offset()), Some(err)),
+            }
+        }
     };
     let file = SourceFile::new(id, display.as_ref(), text).map_err(|err| fail(err.to_string()))?;
     // As in the reference, bytes that do not decode are a YAML syntax error. It points at the
