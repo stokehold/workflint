@@ -15,13 +15,31 @@ To turn publishing on, M5.10:
 1. Checks that the `release` environment exists, requires the maintainer's approval, and deploys only from tags that match `v*` (M6.0, [#17](https://github.com/stokehold/workflint/issues/17)).
 2. Sets `PUBLISH` to `"true"` in `.github/workflows/release.yml`.
 3. Turns on the switch of every other channel in the table below.
-4. Rewrites this section to say that publishing is on.
+4. Works through the [release-day checklist](#release-day-checklist) before the tag is pushed.
+5. Rewrites this section to say that publishing is on.
 
 Each M6 task that adds a channel adds its switch to this table, off.
 
 | Channel | Switch | State |
 | --- | --- | --- |
 | GitHub release | `PUBLISH` in `.github/workflows/release.yml` | off |
+
+## Release-day checklist
+
+The maintainer does these steps by hand before a release. Each item says when.
+
+- [ ] **npm trusted publishers, within the 48 hours before the first publish from `release.yml`.** That publish is the 0.1.0 release (M5.10). This is step 6 of M6.1 ([#18](https://github.com/stokehold/workflint/issues/18)). An npm trusted publishing configuration expires 48 hours after it was created unless a publish has succeeded with it, and the first successful publish binds it to the repository for good. So create the configurations for `workflint` and the six platform packages at most 48 hours before that publish. `npm trust` needs npm 11.15.0 or later and 2FA on the account, and it takes one package per call, so the loop pauses 2 seconds between calls:
+
+  ```sh
+  for pkg in workflint @stokehold/workflint-linux-x64 @stokehold/workflint-linux-arm64 \
+    @stokehold/workflint-darwin-x64 @stokehold/workflint-darwin-arm64 \
+    @stokehold/workflint-win32-x64 @stokehold/workflint-win32-arm64; do
+    npm trust github "$pkg" --repo stokehold/workflint --file release.yml --env release --allow-publish --yes
+    sleep 2
+  done
+  ```
+
+  If the publish does not happen within those 48 hours, the configurations expire, and the loop has to run again before the next attempt.
 
 ## How a release happens
 
