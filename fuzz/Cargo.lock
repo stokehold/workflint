@@ -608,6 +608,7 @@ version = "0.0.1"
 name = "workflint-diagnostics"
 version = "0.0.1"
 dependencies = [
+ "memchr",
  "serde",
  "serde_json",
  "thiserror",
