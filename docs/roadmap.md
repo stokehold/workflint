@@ -165,7 +165,7 @@ Goal: a drop-in binary. Release 0.1.0 at the end of this milestone.
 
 Goal: every distribution channel works before 0.1.0 (ADR 0014, ADR 0015, ADR 0021). Each packaging task adds a dry-run job, and M6.11 combines them into one required check.
 
-Publishing stays off until M5.10, Release 0.1.0 ([#258](https://github.com/stokehold/workflint/issues/258)), turns it on. Until then every channel runs as a dry run only: no job uses a secret, pushes a tag, uploads to a registry, or creates a GitHub release. Each channel gets a switch that is off, listed in [`docs/releasing.md`](releasing.md#publishing-is-off-until-m510), and M5.10 turns the switches on.
+Publishing stays off until M5.10, Release 0.1.0 ([#258](https://github.com/stokehold/workflint/issues/258)), turns it on. Until then every channel runs as a dry run only: no job pushes a tag, uploads to a registry, or creates a GitHub release. The one job that uses a secret is the release-plz rehearsal, which opens a release pull request that the maintainer closes without merging. Each channel gets a switch that is off, listed in [`docs/releasing.md`](releasing.md#publishing-is-off-until-m510), and M5.10 turns the switches on.
 
 - M6.0 Create the stokehold-bot GitHub App and the protected environments [#17](https://github.com/stokehold/workflint/issues/17)
 - M6.1 Configure trusted publishing on crates.io, npm, and PyPI [#18](https://github.com/stokehold/workflint/issues/18)

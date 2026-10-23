@@ -1,0 +1,87 @@
+# release-plz keeps a release pull request open with the next version and the
+# changelog, and pushes the tag v<version> when that pull request merges
+# (ADR 0014, docs/releasing.md#release-plz). It never publishes: release.yml
+# builds the assets and creates the GitHub release, and crates.io publishing
+# starts at 1.0 (ADR 0006).
+
+[workspace]
+# Read the previous version from the tag v<version> instead of from crates.io,
+# and never run cargo publish.
+git_only = true
+# release.yml creates the release, with its assets, from the tag.
+git_release_enable = false
+# Every crate shares the version through `version.workspace = true` and finds
+# its baseline in the same tag. Only the workflint package pushes it, below.
+git_tag_name = "v{{ version }}"
+git_tag_enable = false
+# Tag only when the release pull request merges, not on every push to main.
+release_always = false
+# The binary has no library API, and the internal crates promise no
+# stability before 1.0.
+semver_check = false
+# Every crate has the same version, so the title always has one. It passes
+# the pr-title check.
+pr_name = "chore: release v{{ version }}"
+# One changelog, written by the workflint package below.
+changelog_update = false
+# Open a release pull request only for commits that the changelog lists,
+# matching the commit_parsers below. Commits of the other types, such as a
+# `chore(deps)` bump, ship with the next release.
+release_commits = '^(feat|fix|perf|docs)(\([a-z0-9-]+\))?!?:|^[a-z]+(\([a-z0-9-]+\))?!:|(?m)^BREAKING[ -]CHANGE:'
+
+[[package]]
+name = "xtask"
+release = false
+
+# The released package. Its changelog and its version bump also count the
+# commits that change only an internal crate, through changelog_include.
+[[package]]
+name = "workflint"
+git_tag_enable = true
+changelog_update = true
+changelog_path = "CHANGELOG.md"
+changelog_include = [
+  "workflint-data",
+  "workflint-diagnostics",
+  "workflint-expr",
+  "workflint-gotemplate",
+  "workflint-linter",
+  "workflint-rules",
+  "workflint-syntax",
+  "workflint-yaml",
+]
+
+[changelog]
+header = """# Changelog
+
+release-plz writes this file from the Conventional Commits titles of the pull requests merged into `main`. [CONTRIBUTING.md](CONTRIBUTING.md#commit-messages) lists the commit types and the sections they go to.
+
+"""
+body = """
+## [{{ version }}]{%- if release_link -%}({{ release_link }}){% endif %} - {{ timestamp | date(format="%Y-%m-%d") }}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+
+{% for commit in commits %}
+{%- if commit.scope -%}
+- *({{commit.scope}})* {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message }}{%- if commit.links %} ({% for link in commit.links %}[{{link.text}}]({{link.href}}) {% endfor -%}){% endif %}
+{% else -%}
+- {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message }}
+{% endif -%}
+{% endfor -%}
+{% endfor %}
+"""
+# The commit types of CONTRIBUTING.md#commit-messages. A title with `!`, or a
+# `BREAKING CHANGE:` footer, puts the commit under "Breaking changes"
+# whatever its type. The other types, such as
+# `chore(deps)`, `ci`, and `test`, stay out of the changelog. The HTML
+# comments order the sections, and the body strips them.
+commit_parsers = [
+  { message = '^[a-z]+(\([a-z0-9-]+\))?!:', group = "<!-- 0 -->Breaking changes" },
+  { footer = '^BREAKING[ -]CHANGE', group = "<!-- 0 -->Breaking changes" },
+  { message = '^feat[(:]', group = "<!-- 1 -->Features" },
+  { message = '^fix[(:]', group = "<!-- 2 -->Bug fixes" },
+  { message = '^perf[(:]', group = "<!-- 3 -->Performance" },
+  { message = '^docs[(:]', group = "<!-- 4 -->Documentation" },
+  { message = ".*", skip = true },
+]

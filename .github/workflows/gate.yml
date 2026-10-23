@@ -34,6 +34,7 @@ jobs:
       reference: ${{ steps.filter.outputs.reference }}
       fuzz-build: ${{ steps.filter.outputs.fuzz-build }}
       release-timing: ${{ steps.filter.outputs.release-timing }}
+      release-plz: ${{ steps.filter.outputs.release-plz }}
     # The paths that make each job run, one pattern per line, as in a
     # `paths:` filter. A `*` matches any characters, `/` included.
     env:
@@ -92,6 +93,10 @@ jobs:
         Cargo.toml
         rust-toolchain.toml
         .github/workflows/gate.yml
+      RELEASE_PLZ: |
+        release-plz.toml
+        scripts/release-plz/**
+        .github/workflows/gate.yml
     steps:
       # A pull request checks out the merge commit, whose first parent is the
       # base branch, so two commits are enough. A push to main compares with
@@ -133,13 +138,14 @@ jobs:
             return 1
           }
 
-          for job in oracle yaml-parity reference fuzz-build release-timing; do
+          for job in oracle yaml-parity reference fuzz-build release-timing release-plz; do
             case "$job" in
               oracle) patterns="$ORACLE" ;;
               yaml-parity) patterns="$YAML_PARITY" ;;
               reference) patterns="$REFERENCE" ;;
               fuzz-build) patterns="$FUZZ_BUILD" ;;
               release-timing) patterns="$RELEASE_TIMING" ;;
+              release-plz) patterns="$RELEASE_PLZ" ;;
             esac
             if [ "$every" = true ] || matches "$patterns"; then run=true; else run=false; fi
             echo "$job: $run"
@@ -335,6 +341,51 @@ jobs:
       - name: The rule timing tests pass in a release build
         run: cargo test --release --locked -p workflint-rules --test linear_time
 
+  # Checks release-plz.toml: runs release-plz update without pushing, and
+  # writes the changes that the next release pull request would make to the
+  # job summary. Needs no token.
+  release-plz:
+    name: release-plz update
+    needs: changes
+    if: needs.changes.outputs.release-plz == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # The history and the tags hold the previous version.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install release-plz
+        run: |
+          scripts/release-plz/install.sh "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: release-plz update
+      - name: Add the changes to the job summary
+        run: |
+          # git diff leaves out new files, and CHANGELOG.md is new until the
+          # first release. The checkout is the merge commit, so the changelog
+          # also lists the commits of the pull request branch, which the
+          # squash merge replaces with one.
+          if [ -e CHANGELOG.md ]; then git add --intent-to-add CHANGELOG.md; fi
+          diff="$(git diff -- CHANGELOG.md ':(glob)**/Cargo.toml')"
+          git diff --stat -- CHANGELOG.md ':(glob)**/Cargo.toml'
+          {
+            echo "## release-plz update"
+            echo
+            if [ -z "$diff" ]; then
+              echo "release-plz update changed neither CHANGELOG.md nor a Cargo.toml file."
+            else
+              echo "The next release pull request makes these changes to CHANGELOG.md and the Cargo.toml files."
+              echo
+              # Four backticks, so that a code block in the changelog does
+              # not end the diff.
+              echo '````diff'
+              printf '%s\n' "$diff"
+              echo '````'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
   rustdoc:
     name: rustdoc
     runs-on: ubuntu-latest
@@ -352,7 +403,7 @@ jobs:
   # the run was cancelled, because a skipped required check counts as passed.
   ci-gate:
     name: ci-gate
-    needs: [changes, oracle, yaml-parity, reference, fuzz-build, release-timing, rustdoc]
+    needs: [changes, oracle, yaml-parity, reference, fuzz-build, release-timing, release-plz, rustdoc]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
