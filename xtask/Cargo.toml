@@ -17,7 +17,7 @@ clap = { version = "4.6.7", features = ["derive"] }
 regex = "1.13.1"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["float_roundtrip"] }
-similar = "2.7.0"
+similar = "3.2.0"
 tempfile = "3.27.0"
 toml = { version = "1.1.8", default-features = false, features = ["std", "parse", "serde"] }
 workflint-data = { path = "../crates/workflint-data", version = "0.0.1" }
