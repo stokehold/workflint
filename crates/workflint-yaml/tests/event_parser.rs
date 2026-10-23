@@ -64,7 +64,7 @@ fn scalars(input: &str) -> Result<Vec<Scalar>, workflint_yaml::event::Error> {
         let event = event?;
         if let EventData::Scalar { value, style, .. } = event.data {
             scalars.push(Scalar {
-                value,
+                value: value.into(),
                 style,
                 start: event.start_mark,
             });

@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use smol_str::SmolStr;
 use workflint_diagnostics::quote::quote;
 use workflint_diagnostics::{Diagnostic, FileId, SourceFile, Span};
 
@@ -333,7 +334,7 @@ impl<'a> Builder<'a> {
         event: &EventMarks,
         anchor: Option<String>,
         tag: Option<&str>,
-        value: String,
+        value: SmolStr,
         style: libyaml::ScalarStyle,
     ) {
         let start = Self::offset(event.start_mark);
@@ -363,7 +364,7 @@ impl<'a> Builder<'a> {
             content_start,
             anchor: self.anchor(anchor, event, start),
             kind: NodeKind::Scalar(Scalar {
-                value: value.into_boxed_str(),
+                value,
                 style,
                 tag,
                 parent_indent_plus_one,

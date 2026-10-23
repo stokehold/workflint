@@ -33,6 +33,10 @@ This directory is a fork of the `libyaml-safer` crate, version 0.3.0, under the 
 - `Error::problem_offset` returns the byte offset of the problem. Reader errors have no problem mark, so this is the only position they report.
 - The parser's iterator returns `None` after the first error, as `FusedIterator` promises.
 - The scanner's buffer is a `Vec<char>` with a cursor at the first unread character instead of a `VecDeque<char>`, so reading a character by index skips the ring buffer's index arithmetic. The reader drops the read characters before it decodes the next chunk, and checks a chunk's characters in one pass.
+- The reader widens a chunk of ASCII characters without control characters to `char`s in one pass.
+- The fields of `Mark` are `u32` instead of `u64`, which makes tokens and events smaller. workflint's spans limit a file to `u32::MAX` bytes anyway.
+- The scanner copies the characters of a scalar from the input in runs instead of one at a time, and passes over a run of plain scalar characters with one look at its buffer (`CharBuffer::plain_run`). It keeps its buffers for the value, the line breaks, and the whitespace of a scalar for the next one.
+- Scalar values in tokens and events, and the handles and prefixes of tag directives, are `SmolStr`s, which hold up to 23 bytes without an allocation.
 
 ## Changed to match go-yaml
 

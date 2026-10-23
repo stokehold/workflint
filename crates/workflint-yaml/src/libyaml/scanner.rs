@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, VecDeque};
 
+use smol_str::SmolStr;
+
 use super::macros::{is_blank, is_blankz, is_break};
 use super::parser::SimpleKey;
 use super::reader::{CharBuffer, ReaderState, yaml_parser_update_buffer};
@@ -195,6 +197,8 @@ pub(crate) struct Scanner<'input> {
 /// scalars.
 #[derive(Default)]
 struct Spare {
+    /// The value of the scalar.
+    value: String,
     leading_break: String,
     trailing_breaks: String,
     whitespaces: String,
@@ -203,14 +207,17 @@ struct Spare {
 impl Spare {
     /// Empties the buffers and keeps their memory.
     fn cleared(
+        mut value: String,
         mut leading_break: String,
         mut trailing_breaks: String,
         mut whitespaces: String,
     ) -> Self {
+        value.clear();
         leading_break.clear();
         trailing_breaks.clear();
         whitespaces.clear();
         Self {
+            value,
             leading_break,
             trailing_breaks,
             whitespaces,
@@ -1746,8 +1753,8 @@ impl<'input> Scanner<'input> {
 
     fn scan_block_scalar(&mut self, literal: bool) -> Result<Token> {
         let mut end_mark: Mark;
-        let mut string = String::new();
         let Spare {
+            value: mut string,
             mut leading_break,
             mut trailing_breaks,
             whitespaces,
@@ -1880,11 +1887,12 @@ impl<'input> Scanner<'input> {
         if chomping == 1 {
             string.push_str(&trailing_breaks);
         }
-        self.spare = Spare::cleared(leading_break, trailing_breaks, whitespaces);
+        let value = SmolStr::new(&string);
+        self.spare = Spare::cleared(string, leading_break, trailing_breaks, whitespaces);
 
         Ok(Token {
             data: TokenData::Scalar {
-                value: string,
+                value,
                 style: if literal {
                     ScalarStyle::Literal
                 } else {
@@ -1941,8 +1949,8 @@ impl<'input> Scanner<'input> {
     }
 
     fn scan_flow_scalar(&mut self, single: bool) -> Result<Token> {
-        let mut string = String::new();
         let Spare {
+            value: mut string,
             mut leading_break,
             mut trailing_breaks,
             mut whitespaces,
@@ -2161,10 +2169,11 @@ impl<'input> Scanner<'input> {
 
         self.skip_char();
         let end_mark: Mark = self.mark;
-        self.spare = Spare::cleared(leading_break, trailing_breaks, whitespaces);
+        let value = SmolStr::new(&string);
+        self.spare = Spare::cleared(string, leading_break, trailing_breaks, whitespaces);
         Ok(Token {
             data: TokenData::Scalar {
-                value: string,
+                value,
                 style: if single {
                     ScalarStyle::SingleQuoted
                 } else {
@@ -2178,8 +2187,8 @@ impl<'input> Scanner<'input> {
 
     fn scan_plain_scalar(&mut self) -> Result<Token> {
         let mut end_mark: Mark;
-        let mut string = String::new();
         let Spare {
+            value: mut string,
             mut leading_break,
             mut trailing_breaks,
             mut whitespaces,
@@ -2299,11 +2308,12 @@ impl<'input> Scanner<'input> {
         if leading_blanks {
             self.simple_key_allowed = true;
         }
-        self.spare = Spare::cleared(leading_break, trailing_breaks, whitespaces);
+        let value = SmolStr::new(&string);
+        self.spare = Spare::cleared(string, leading_break, trailing_breaks, whitespaces);
 
         Ok(Token {
             data: TokenData::Scalar {
-                value: string,
+                value,
                 style: ScalarStyle::Plain,
             },
             start_mark,

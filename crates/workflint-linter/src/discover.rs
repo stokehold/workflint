@@ -72,8 +72,8 @@ pub enum DiscoveryError {
 pub(crate) enum Found {
     /// A directory, with its absolute path.
     Dir(PathBuf),
-    /// A file, or anything else that is not a directory.
-    Other,
+    /// A file, or anything else that is not a directory, with its size in bytes.
+    Other(u64),
     /// Nothing that `fs::metadata` can read, with the absolute path of the argument.
     Nothing(PathBuf),
 }
@@ -84,7 +84,7 @@ impl Found {
         let absolute = path::absolute(cwd, Path::new(arg));
         match fs::metadata(&absolute) {
             Ok(meta) if meta.is_dir() => Self::Dir(absolute),
-            Ok(_) => Self::Other,
+            Ok(meta) => Self::Other(meta.len()),
             Err(_) => Self::Nothing(absolute),
         }
     }
@@ -173,7 +173,7 @@ impl<'f> Finder<'f> {
         let given = Path::new(arg);
         let absolute = match found {
             Found::Dir(absolute) => return self.directory(given, &absolute),
-            Found::Other => return Ok(vec![given.to_path_buf()]),
+            Found::Other(_) => return Ok(vec![given.to_path_buf()]),
             Found::Nothing(absolute) => absolute,
         };
         match arg.to_str() {

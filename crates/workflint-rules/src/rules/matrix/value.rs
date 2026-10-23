@@ -12,6 +12,10 @@ use workflint_syntax::{RawValue, contains_expression};
 /// Scalars compare by their text, whatever their tag or quotes. Mappings compare by their folded
 /// keys, in any order. Spans do not count, unlike in `RawValue`'s `PartialEq`.
 pub(super) fn equals(a: &RawValue<'_>, b: &RawValue<'_>) -> bool {
+    // Most matrix values are scalars, and the duplicate check compares each pair of them.
+    if let (RawValue::Scalar(a), RawValue::Scalar(b)) = (a, b) {
+        return a.value() == b.value();
+    }
     let mut pending = vec![(a, b)];
     while let Some(pair) = pending.pop() {
         match pair {

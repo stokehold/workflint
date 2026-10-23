@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::Range;
 
+use smol_str::SmolStr;
 use workflint_diagnostics::{FileId, Span};
 
 use crate::CommentKind;
@@ -297,7 +298,7 @@ pub enum NodeKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scalar {
     /// The decoded value: unquoted, unescaped, folded, and chomped.
-    pub value: Box<str>,
+    pub value: SmolStr,
     /// How the scalar is written.
     pub style: ScalarStyle,
     /// The explicit tag, or the tag that the YAML 1.2 core schema resolves
@@ -531,9 +532,11 @@ mod tests {
 
     // A workflow of 100 KB has about 6,000 nodes, and one vector holds them
     // all, so each byte of a node is about 6 KB of a large file's peak
-    // memory (#240).
+    // memory (#240). A scalar value of up to 23 bytes is inside its node,
+    // which costs 8 bytes per node and saves a heap block of at least 32
+    // bytes for most scalars.
     #[test]
-    fn a_node_fits_in_64_bytes() {
-        assert!(size_of::<Node>() <= 64, "{}", size_of::<Node>());
+    fn a_node_fits_in_72_bytes() {
+        assert!(size_of::<Node>() <= 72, "{}", size_of::<Node>());
     }
 }

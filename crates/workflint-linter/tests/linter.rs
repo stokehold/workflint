@@ -100,6 +100,28 @@ fn files_come_back_in_input_order_named_by_their_path_from_the_working_directory
 }
 
 #[test]
+fn files_linted_largest_first_come_back_in_input_order() {
+    let dir = tempfile::tempdir().unwrap();
+    // Each file is larger than the one before it, so the lint starts at the last.
+    let paths: Vec<String> = (0..16).map(|index| format!("w{index:02}.yaml")).collect();
+    for (index, path) in paths.iter().enumerate() {
+        let comment = "x".repeat(index * 100);
+        write(dir.path(), path, &format!("{NO_STEPS}# {comment}\n"));
+    }
+    let linter = Linter::new(dir.path().to_path_buf());
+    let inputs = linter.expand(&paths).unwrap();
+    for threads in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        let files = pool.install(|| linter.lint(&inputs)).unwrap();
+        let names: Vec<&str> = files.iter().map(|linted| linted.file.path()).collect();
+        assert_eq!(names, paths);
+    }
+}
+
+#[test]
 fn a_file_given_twice_is_linted_twice() {
     let dir = tempfile::tempdir().unwrap();
     write(dir.path(), "a.yaml", NO_STEPS);
