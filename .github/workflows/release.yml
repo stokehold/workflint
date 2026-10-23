@@ -2,18 +2,21 @@ name: Release
 
 # Builds the release assets of ADR 0014 (six archives, checksums.txt, an SBOM,
 # and the install scripts), attests them, and publishes them as a GitHub
-# release (docs/releasing.md). The plan job picks one of three modes:
+# release (docs/releasing.md). It also builds a PyPI wheel from each archive's
+# binary and publishes the wheels to PyPI. The plan job picks one of three
+# modes:
 #
 # - release: a push of the tag v<version>, where <version> is the version of
 #   the workflint package. Builds, attests, and publishes.
 # - dry-run: a pull request that touches the release files. Builds the assets
-#   and uploads them as workflow artifacts.
+#   and the wheels, uploads them as workflow artifacts, and installs each
+#   wheel.
 # - rehearsal: a manual run on main. A dry run that also attests the assets
 #   and verifies the attestations.
 #
 # Publishing stays off until M5.10 (https://github.com/stokehold/workflint/issues/258).
 # PUBLISH below is false, so a tag runs every job up to the release job and
-# skips that one.
+# skips the release and pypi-publish jobs.
 on:
   push:
     tags: ["v*.*.*"]
@@ -28,6 +31,7 @@ on:
       - Cargo.lock
       - rust-toolchain.toml
       - crates/workflint/Cargo.toml
+      - pyproject.toml
   workflow_dispatch:
 
 permissions: {}
@@ -40,8 +44,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # The switch for publishing. The release job runs only on a tag run with
-  # this set to "true". M5.10 sets it:
+  # The switch for publishing. The release and pypi-publish jobs run only on
+  # a tag run with this set to "true". M5.10 sets it:
   # https://github.com/stokehold/workflint/issues/258
   PUBLISH: "false"
 
@@ -124,6 +128,16 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: read # checks out the repository
+    # One output per target, which only that target's job sets: the SHA-256
+    # and the file name of its wheel, as sha256sum prints them. The jobs that
+    # check the wheels compare the downloaded wheels with these.
+    outputs:
+      x86_64-unknown-linux-musl: ${{ steps.wheel.outputs.x86_64-unknown-linux-musl }}
+      aarch64-unknown-linux-musl: ${{ steps.wheel.outputs.aarch64-unknown-linux-musl }}
+      x86_64-apple-darwin: ${{ steps.wheel.outputs.x86_64-apple-darwin }}
+      aarch64-apple-darwin: ${{ steps.wheel.outputs.aarch64-apple-darwin }}
+      x86_64-pc-windows-msvc: ${{ steps.wheel.outputs.x86_64-pc-windows-msvc }}
+      aarch64-pc-windows-msvc: ${{ steps.wheel.outputs.aarch64-pc-windows-msvc }}
     env:
       TARGET: ${{ matrix.target }}
       VERSION: ${{ needs.plan.outputs.version }}
@@ -200,6 +214,46 @@ jobs:
           name: archive-${{ matrix.target }}
           path: dist/${{ env.ARCHIVE }}
           if-no-files-found: error
+      # maturin runs from its own virtual environment, so that the python3 of
+      # the zig environment stays first on the PATH.
+      - name: Install maturin
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then python=python bin=Scripts; else python=python3 bin=bin; fi
+          "$python" -m venv "$RUNNER_TEMP/maturin"
+          "$RUNNER_TEMP/maturin/$bin/python" -m pip install --no-deps --only-binary :all: --require-hashes \
+            -r scripts/release/requirements-maturin.txt
+          echo "MATURIN=$RUNNER_TEMP/maturin/$bin/maturin" >> "$GITHUB_ENV"
+      # The binary-only wheel of pyproject.toml, from the same sources, flags,
+      # and WORKFLINT_INSTALLED_FROM as the archive. On Linux, maturin links
+      # with its own copy of cargo-zigbuild, so cargo links the binary again.
+      # The static musl binary runs on glibc and musl systems, so the Linux
+      # wheel carries both tags (docs/releasing.md).
+      - name: Build the wheel
+        run: |
+          args=(build --release --locked --target "$TARGET" --out wheel)
+          if [ "$RUNNER_OS" = Linux ]; then
+            args+=(--zig --compatibility manylinux2014 musllinux_1_1)
+          fi
+          "$MATURIN" "${args[@]}"
+      # ADR 0014: every channel ships the binary of the release archives.
+      - name: Compare the binary in the wheel with the one in the archive
+        run: scripts/release/compare-wheel.sh wheel/*.whl "dist/$ARCHIVE"
+      - name: Record the SHA-256 of the wheel
+        id: wheel
+        run: |
+          wheel="$(cd wheel && echo *.whl)"
+          if command -v sha256sum > /dev/null; then
+            hash="$(sha256sum "wheel/$wheel" | cut -d ' ' -f 1)"
+          else
+            hash="$(shasum -a 256 "wheel/$wheel" | cut -d ' ' -f 1)"
+          fi
+          echo "$hash  $wheel"
+          echo "$TARGET=$hash  $wheel" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheel-${{ matrix.target }}
+          path: wheel/*.whl
+          if-no-files-found: error
 
   sbom:
     name: sbom
@@ -254,6 +308,8 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
+          # The wheels are not release assets.
+          pattern: "{archive-*,sbom}"
           path: dist
           merge-multiple: true
       # The copies of the install scripts that install this version by
@@ -308,6 +364,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
+          pattern: "{archive-*,sbom,checksums,install-scripts}"
           path: ${{ runner.temp }}/assets
           merge-multiple: true
       - name: Test the install scripts
@@ -331,6 +388,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
+          pattern: "{archive-*,sbom,checksums,install-scripts}"
           path: dist
           merge-multiple: true
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -389,6 +447,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
+          pattern: "{archive-*,sbom,checksums,install-scripts}"
           path: dist
           merge-multiple: true
       - name: Verify the checksums and the attestations
@@ -415,3 +474,155 @@ jobs:
             --title "$TAG" "${notes[@]}" dist/*
       - name: Publish the release
         run: gh release edit "$TAG" --repo "$REPO" --draft=false
+
+  # Checks the wheels as pypi-publish does before it uploads them, and runs
+  # twine check on their metadata.
+  pypi-check:
+    name: pypi-check
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # checks out the repository
+    env:
+      RECORDED: ${{ toJSON(needs.build.outputs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: wheel-*
+          path: wheels
+          merge-multiple: true
+      - name: Check the wheels against the checksums of the build jobs
+        run: |
+          jq -r '.[]' <<< "$RECORDED" > "$RUNNER_TEMP/wheels.sha256"
+          scripts/release/check-wheels.sh wheels "$RUNNER_TEMP/wheels.sha256"
+      - name: Install twine
+        run: |
+          python3 -m venv "$RUNNER_TEMP/twine"
+          "$RUNNER_TEMP/twine/bin/python" -m pip install --only-binary :all: --require-hashes \
+            -r scripts/release/requirements-twine.txt
+      - name: twine check
+        run: '"$RUNNER_TEMP/twine/bin/twine" check --strict wheels/*.whl'
+
+  # Installs each wheel with pip and with uvx on a runner of its platform, and
+  # runs the smoke test on the installed binary.
+  pypi-smoke:
+    name: pypi-smoke (${{ matrix.target }})
+    needs: [plan, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    permissions:
+      contents: read # checks out the repository
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wheel-${{ matrix.target }}
+          path: wheel
+      - name: Smoke test the wheel
+        run: scripts/release/smoke-test-wheel.sh wheel/*.whl "$VERSION"
+
+  # Installs the x86_64 Linux wheel on a musl system, as its musllinux tag
+  # promises.
+  pypi-smoke-alpine:
+    name: pypi-smoke (alpine)
+    needs: [plan, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container: python:3-alpine@sha256:d44b1254cb92329418d164b22b20d86bbd3869d48e80e09e476531a409a728bb
+    permissions:
+      contents: read # checks out the repository
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      # The image has no bash, the default shell of this workflow.
+      - name: Install bash
+        shell: sh
+        run: apk add --no-cache bash
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wheel-x86_64-unknown-linux-musl
+          path: wheel
+      - name: Smoke test the wheel
+        run: scripts/release/smoke-test-wheel.sh wheel/*.whl "$VERSION"
+
+  # Uploads the wheels to PyPI with trusted publishing, after the GitHub
+  # release is published. PyPI's trusted publisher for workflint names this
+  # workflow and the release environment, so the job needs both and no token.
+  # The action creates a PEP 740 attestation for each wheel.
+  pypi-publish:
+    name: pypi-publish
+    needs: [plan, build, release, pypi-check, pypi-smoke, pypi-smoke-alpine]
+    # Runs only when the plan job says to publish, as the release job does.
+    # Publishing stays off until M5.10:
+    # https://github.com/stokehold/workflint/issues/258
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      id-token: write # trusted publishing to PyPI, and the PEP 740 attestations
+      contents: read # checks out the repository
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: v${{ needs.plan.outputs.version }}
+      RECORDED: ${{ toJSON(needs.build.outputs) }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: "{archive-*,sbom,checksums,install-scripts}"
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: wheel-*
+          path: wheels
+          merge-multiple: true
+      - name: Verify the release assets and their attestations
+        run: |
+          scripts/release/check-assets.sh dist "$VERSION"
+          for file in dist/*; do
+            gh attestation verify "$file" --repo "$REPO" \
+              --signer-workflow "$REPO/.github/workflows/release.yml" \
+              --source-ref "refs/tags/$TAG"
+          done
+      - name: Check the wheels against the checksums of the build jobs
+        run: |
+          jq -r '.[]' <<< "$RECORDED" > "$RUNNER_TEMP/wheels.sha256"
+          scripts/release/check-wheels.sh wheels "$RUNNER_TEMP/wheels.sha256"
+      # A re-run skips the wheels that PyPI already has.
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: wheels/
+          skip-existing: true

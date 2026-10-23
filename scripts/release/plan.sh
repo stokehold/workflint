@@ -12,7 +12,7 @@
 #
 # <publish> is the PUBLISH switch of the workflow, `true` or `false`. The
 # output `publish` is true only for a release with the switch on, and only
-# then does the release job create and publish a GitHub release.
+# then do the release and pypi-publish jobs run.
 #
 # Fails for a tag that is not v<version>, for a manual run on another branch,
 # and for any other event, so that no later job runs.

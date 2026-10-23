@@ -44,6 +44,16 @@ irm https://github.com/stokehold/workflint/releases/latest/download/install.ps1 
 
 `install.sh` takes the arguments of actionlint's `download-actionlint.bash`, `[VERSION|latest] [DIR]`, and also writes `executable=<path>` to `GITHUB_OUTPUT`. A CI script that runs actionlint's download script switches by changing the URL. [`docs/releasing.md`](docs/releasing.md#install-scripts) has every option.
 
+### PyPI
+
+The PyPI package `workflint` has a wheel for each of the six release targets: Linux on x86_64 and arm64 with glibc or musl, macOS on Intel and Apple silicon, and Windows on x86_64 and arm64. Each wheel holds only the workflint binary of the release archive, so installing it needs no Rust toolchain:
+
+```sh
+pip install workflint     # into the current environment
+pipx install workflint    # into its own environment
+uvx workflint             # runs it without installing it
+```
+
 ## Documentation
 
 | Document | Contents |

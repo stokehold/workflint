@@ -1,12 +1,12 @@
 # Releasing workflint
 
-`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets.
+`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets. The same workflow builds the [PyPI wheels](#pypi-wheels) and publishes them to PyPI.
 
 ## Publishing is off until M5.10
 
 Nothing publishes yet. M5.10, Release 0.1.0 ([#258](https://github.com/stokehold/workflint/issues/258)), turns publishing on. Until then every channel runs as a dry run only: this workflow, and the later M6 tasks for the install scripts, npm, PyPI, Docker, Homebrew, pre-commit, and the GitHub Action. No job pushes a tag, uploads to a registry, or creates a GitHub release. The only job that uses a secret is `release-pr` in `release-plz.yml`, which mints a stokehold-bot token on a manual run to open a rehearsal release pull request ([release-plz](#release-plz)). Rehearsals and tag runs create attestations. They are stored in the repository and in Sigstore's public transparency log, and they are not releases.
 
-The release workflow has a switch, `PUBLISH: "false"` in its top-level `env`. A tag run builds, checks, and attests the assets, and skips the `release` job.
+The release workflow has a switch, `PUBLISH: "false"` in its top-level `env`. A tag run builds, checks, and attests the assets, builds and checks the wheels, and skips the `release` and `pypi-publish` jobs.
 
 A tag pushed before M5.10 never gets a release. Tags that match `v*` cannot be deleted or moved, and a re-run of its workflow reads the switch from the tagged commit, where it is off. Do not push a `v*` tag before M5.10. If one is pushed anyway, the next release uses the next version.
 
@@ -25,10 +25,13 @@ Each M6 task that adds a channel adds its switch to this table, off.
 | GitHub release | `PUBLISH` in `.github/workflows/release.yml` | off |
 | Release tag, pushed by release-plz | The repository variable `RELEASES_ENABLED`, read by `.github/workflows/release-plz.yml` | off, unset |
 | Install scripts | `PUBLISH` in `.github/workflows/release.yml`. The `release` job uploads them with the other assets. | off |
+| PyPI | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `pypi-publish` job | off |
 
 ## Release-day checklist
 
 The maintainer does these steps by hand before a release. Each item says when.
+
+- [ ] **`pypa/gh-action-pypi-publish` in the organization's actions allowlist, before the first release.** The `pypi-publish` job uses it (ADR 0021). Dry runs skip that job, so a missing entry shows up only on the first tag run.
 
 - [ ] **npm trusted publishers, within the 48 hours before the first publish from `release.yml`.** That publish is the 0.1.0 release (M5.10). This is step 6 of M6.1 ([#18](https://github.com/stokehold/workflint/issues/18)). An npm trusted publishing configuration expires 48 hours after it was created unless a publish has succeeded with it, and the first successful publish binds it to the repository for good. So create the configurations for `workflint` and the six platform packages at most 48 hours before that publish. `npm trust` needs npm 11.15.0 or later and 2FA on the account, and it takes one package per call, so the loop pauses 2 seconds between calls:
 
@@ -47,9 +50,10 @@ The maintainer does these steps by hand before a release. Each item says when.
 
 1. release-plz opens a release pull request with the version bump and the changelog ([release-plz](#release-plz)). Merging it pushes the tag `v<version>`.
 2. The tag starts the release workflow. The `plan` job reads the version of the `workflint` package with `cargo metadata` and fails unless the tag is `v` followed by that version. When it fails, no other job runs.
-3. The `build` jobs build and pack the six archives, and the `sbom` job writes the SBOM. The `checksums` job writes the release copies of the install scripts, then `checksums.txt`, and checks every asset. The `install-scripts` jobs test the install scripts against these assets. The `attest` job attests each asset. The `gate` job runs `cargo test --workspace --locked`.
+3. The `build` jobs build and pack the six archives and build the six wheels, and the `sbom` job writes the SBOM. The `checksums` job writes the release copies of the install scripts, then `checksums.txt`, and checks every asset. The `install-scripts` jobs test the install scripts against these assets. The `attest` job attests each asset. The `gate` job runs `cargo test --workspace --locked`.
 4. The `release` job waits for the maintainer to approve the deployment to the `release` environment.
 5. It checks the assets, their checksums, and their attestations, creates a draft release for the tag with every asset, and then publishes the draft. The notes are the version's section of `CHANGELOG.md`, or notes that GitHub generates when the changelog has no such section.
+6. The `pypi-publish` job waits for a second approval of the `release` environment. It checks the assets and their attestations again, checks each wheel against the SHA-256 that its build job recorded, and uploads the wheels to PyPI.
 
 Releases are immutable. Once published, a release cannot gain, lose, or change an asset, so the workflow uploads every asset while the release is a draft. The install scripts go up in the same step as the archives. A later task that adds a release asset uploads it in the `release` job before the publishing step. Channels that publish somewhere else, such as npm, PyPI, Docker, and Homebrew, run after the release is published.
 
@@ -57,13 +61,13 @@ Releases are immutable. Once published, a release cannot gain, lose, or change a
 
 | Mode | Started by | Jobs |
 | --- | --- | --- |
-| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, or `crates/workflint/Cargo.toml` | `plan`, `build`, `sbom`, `checksums`, `install-scripts` |
+| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `crates/workflint/Cargo.toml`, or `pyproject.toml` | `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke` |
 | Rehearsal | A manual run on `main`: `gh workflow run release.yml --repo stokehold/workflint --ref main` | The dry run, `gate`, and `attest`, which also verifies each attestation with `gh attestation verify` |
-| Release | A push of the tag `v<version>` | Every job. `release` runs only when `PUBLISH` is `"true"` |
+| Release | A push of the tag `v<version>` | Every job. `release` and `pypi-publish` run only when `PUBLISH` is `"true"` |
 
 Each run uploads the assets as workflow artifacts, and the `checksums` job lists each file with its size and SHA-256 in the job summary. A rehearsal from another branch fails in `plan`.
 
-The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` has `id-token: write` and `attestations: write`, and only `release` has `contents: write`.
+The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` has `attestations: write`, only `attest` and `pypi-publish` have `id-token: write`, and only `release` has `contents: write`.
 
 ## Assets
 
@@ -84,6 +88,31 @@ Each release also has:
 - `workflint_<version>.cdx.json`, a CycloneDX 1.5 SBOM of the dependencies of the `workflint` binary on every target, written from `Cargo.lock` by cargo-cyclonedx 0.5.9.
 - `install.sh` and `install.ps1`, the [install scripts](#install-scripts), which install `<version>` by default.
 - A build provenance attestation for each archive, `checksums.txt`, the SBOM, and each install script.
+
+## PyPI wheels
+
+`pyproject.toml` at the root of the repository describes the PyPI package `workflint`: binary-only wheels built with maturin, with the version of the `workflint` crate. Each build job builds its target's wheel with maturin after it packs the archive, and `compare-wheel.sh` fails the job unless the binary in the wheel is byte-identical to the binary in the archive. The job then records the SHA-256 of the wheel as a job output and uploads the wheel as the artifact `wheel-<target>`. PyPI gets no source distribution.
+
+| Target | Wheel platform tag |
+| --- | --- |
+| `x86_64-unknown-linux-musl` | `manylinux_2_17_x86_64.manylinux2014_x86_64.musllinux_1_1_x86_64` |
+| `aarch64-unknown-linux-musl` | `manylinux_2_17_aarch64.manylinux2014_aarch64.musllinux_1_1_aarch64` |
+| `x86_64-apple-darwin` | `macosx_10_12_x86_64` |
+| `aarch64-apple-darwin` | `macosx_11_0_arm64` |
+| `x86_64-pc-windows-msvc` | `win_amd64` |
+| `aarch64-pc-windows-msvc` | `win_arm64` |
+
+Each Linux wheel carries a manylinux tag and a musllinux tag, so pip installs it on glibc systems and on musl systems such as Alpine. The binary is a static musl binary and links no system library, so one wheel per Linux architecture works on both, and PyPI gets one wheel per target. Two wheels per architecture would hold the same bytes under two names. The tags are old ones, `manylinux2014` for glibc 2.17 and `musllinux_1_1`, because the binary needs no newer glibc or musl, and older pip versions and distributions accept old tags.
+
+The wheels hold the archive's binary, so the second line of `-version` is `installed by downloading from release page`, as the [`WORKFLINT_INSTALLED_FROM`](#workflint_installed_from) table says.
+
+The jobs that check the wheels:
+
+- `pypi-check` downloads every wheel, runs `check-wheels.sh` on them, and runs `twine check --strict` on their metadata.
+- `pypi-smoke` runs `smoke-test-wheel.sh` on each wheel on a runner of its platform, and on the x86_64 Linux wheel in a `python:3-alpine` container. The script installs the wheel with `pip install` into a new virtual environment and with `uvx --from <wheel> workflint`, and runs the smoke test on each. Neither install reads an index.
+- `pypi-publish` runs only on a tag run with `PUBLISH` on. PyPI's trusted publisher for `workflint` accepts only this workflow in the `release` environment, so the job runs there, with `id-token: write` and no token. It verifies the archives and their attestations, runs `check-wheels.sh`, and uploads the wheels with `pypa/gh-action-pypi-publish`, which creates a PEP 740 attestation for each. A re-run skips the wheels that PyPI already has.
+
+The build jobs install maturin 1.15.0 from `scripts/release/requirements-maturin.txt`, `pypi-smoke` installs uv from `requirements-uv.txt`, and `pypi-check` installs twine from `requirements-twine.txt`. Each file pins every package with its hashes, and pip installs them with `--require-hashes`. The maturin version in `requirements-maturin.txt` and in `[build-system]` of `pyproject.toml` must match.
 
 ## Verifying an asset
 
@@ -160,7 +189,7 @@ scripts/release/test-install.sh dist <version>
 
 ## Smoke test
 
-`scripts/release/smoke-test.sh <binary> <version>` runs `<binary> -version` and fails unless it exits with 0 and prints `<version>` on its first line. Every channel runs it on the binary it installs. Each build job runs it on the binary from its archive, and then checks that the second line of `-version` is the build-time value of `WORKFLINT_INSTALLED_FROM`.
+`scripts/release/smoke-test.sh <binary> <version>` runs `<binary> -version` and fails unless it exits with 0 and prints `<version>` on its first line. Every channel runs it on the binary it installs. Each build job runs it on the binary from its archive, and then checks that the second line of `-version` is the build-time value of `WORKFLINT_INSTALLED_FROM`. `smoke-test-wheel.sh` runs it on the binary that pip installs from a wheel and on `uvx --from <wheel> workflint`.
 
 ## `WORKFLINT_INSTALLED_FROM`
 
@@ -170,6 +199,7 @@ The second line of `workflint -version` says how workflint was installed (ADR 00
 | --- | --- |
 | GitHub release archives | `installed by downloading from release page` |
 | Install scripts | `installed by downloading from release page`, from the archive that they install |
+| PyPI wheels | `installed by downloading from release page`, because a wheel holds the archive's binary. ADR 0014 lists the npm launcher, the Docker image, and the Homebrew formula as the only channels that set their own value. |
 
 The tasks that add the other channels add their values here.
 
@@ -183,10 +213,13 @@ The workflow's logic lives in `scripts/release/`, where it can be tested:
 | `package.sh` | Packs a binary with `README.md`, `LICENSE`, and `NOTICE` into an archive. |
 | `smoke-test.sh` | The smoke test above. |
 | `check-assets.sh` | Checks the set of assets, the archive contents, static linking, `checksums.txt`, and the SBOM. |
+| `compare-wheel.sh` | Checks the files in a wheel, and that its binary is the binary of the archive of the same target. |
+| `check-wheels.sh` | Checks that there is one wheel per platform tag, and each wheel against the SHA-256 that its build job recorded. |
+| `smoke-test-wheel.sh` | Installs a wheel with pip and with uvx and runs the smoke test on each. |
 | `summary.sh` | Writes the job summary. |
 | `notes.sh` | Reads the release notes from `CHANGELOG.md`. |
 | `install-scripts.sh` | Writes the release copies of `scripts/install.sh` and `scripts/install.ps1`, which install the release's version by default. |
-| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, and `install-scripts.sh`. |
+| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, and `check-wheels.sh`. |
 | `test-install.sh` | Tests the install scripts against a directory of assets. |
 | `serve.py` | Serves the assets to `test-install.sh` on 127.0.0.1. |
 
