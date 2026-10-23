@@ -257,6 +257,8 @@ check "a layout without an image index fails" 1 "" \
   "$merge" "$work/oci/out-single" "$work/oci/single" "$work/oci/arm64"
 check "an existing output directory fails" 1 "" \
   "$merge" "$work/oci/merged" "$work/oci/amd64" "$work/oci/arm64"
+check "merge-oci.sh creates the parents of the output directory" 0 "$merged_digest" \
+  "$merge" "$work/oci/new/parent/merged" "$work/oci/amd64" "$work/oci/arm64"
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures tests failed"

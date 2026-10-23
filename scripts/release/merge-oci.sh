@@ -60,5 +60,6 @@ printf '{"imageLayoutVersion":"1.0.0"}' > "$work/out/oci-layout"
 jq -cn --arg t "$index_type" --arg d "$digest" --argjson s "$size" \
   '{schemaVersion: 2, mediaType: $t, manifests: [{mediaType: $t, digest: $d, size: $s}]}' \
   | tr -d '\n' > "$work/out/index.json"
+mkdir -p "$(dirname "$out")"
 mv "$work/out" "$out"
 echo "$digest"
