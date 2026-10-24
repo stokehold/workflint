@@ -326,8 +326,6 @@ jobs:
       # workspace member, and the job keeps the one of the workflint crate.
       # SOURCE_DATE_EPOCH makes the timestamp that of the commit, so the same
       # commit gives the same file.
-      - name: Temporary failure to show that release-dry-run fails
-        run: exit 1
       - name: Write the SBOM
         run: |
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
