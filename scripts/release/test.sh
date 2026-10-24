@@ -564,6 +564,8 @@ check "release-dry-run fails when a job was cancelled" 0 $'status=1\ncancelled' 
   verdict Docker true dry-run "$(needs success docker-index=cancelled)"
 check "release-dry-run fails when a dry-run job skipped in a packaging change" 0 $'status=1\nskipped' \
   verdict Homebrew true dry-run "$(needs success homebrew=skipped)"
+check "release-dry-run reports no skipped job after a failure" 1 "::error::The sbom job ended with failure." \
+  bash -c "'$result' true dry-run '$(needs success sbom=failure checksums=skipped)' 2>&1 > /dev/null"
 check "release-dry-run fails a rehearsal whose attestations skipped" 0 $'status=1\nskipped' \
   verdict Attestations true rehearsal "$(needs success)"
 check "release-dry-run passes a rehearsal whose attestations passed" 0 $'status=0\nsuccess' \

@@ -38,6 +38,9 @@ fail() {
   echo "::error::$1" >&2
   failed=1
 }
+# A job that skipped because a job it needs failed is no news, so these
+# errors only show when nothing failed.
+skips=()
 
 if ! jq -e 'type == "object"' <<< "$needs" > /dev/null 2>&1; then
   echo "error: <needs> is not a JSON object" >&2
@@ -71,7 +74,7 @@ while IFS='|' read -r channel jobs; do
       *)
         if [ "$packaging" = true ]; then
           if [ "$channel" != Attestations ] || [ "$mode" = rehearsal ] || [ "$mode" = release ]; then
-            fail "The $job job ended with $got, though this run needs it."
+            skips+=("The $job job ended with $got, though this run needs it.")
           fi
         fi
         ;;
@@ -87,6 +90,10 @@ while IFS='|' read -r channel jobs; do
   done
   rows+="| $channel | \`${jobs// /\`, \`}\` | $summary |"$'\n'
 done <<< "$channels"
+
+if [ "$failed" -eq 0 ]; then
+  for skip in ${skips[@]+"${skips[@]}"}; do fail "$skip"; done
+fi
 
 while IFS= read -r job; do
   if [[ "$known" != *" $job "* ]]; then
