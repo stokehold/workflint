@@ -690,8 +690,10 @@ jobs:
           jq -r '.[]' <<< "$RECORDED" > "$RUNNER_TEMP/wheels.sha256"
           scripts/release/check-wheels.sh wheels "$RUNNER_TEMP/wheels.sha256"
       # A re-run skips the wheels that PyPI already has.
-      - name: Temporary placeholder for the allowlist of #308
-        run: exit 1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: wheels/
+          skip-existing: true
 
   # Runs the workflint-system hook of .pre-commit-hooks.yaml with the
   # x86_64 Linux binary of this run, and the workflint hook of the mirror
