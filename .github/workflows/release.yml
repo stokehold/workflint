@@ -415,13 +415,18 @@ jobs:
               --signer-workflow "$REPO/.github/workflows/release.yml"
           done
 
-  # Every job that publishes needs this one.
+  # Every job that publishes needs this one. It runs the tests, then the
+  # benchmarks of ADR 0019 with the tools of benchmarks.yml, and fails when a
+  # measurement fails or workflint misses a target. ADR 0021: no secrets and
+  # no caches.
   gate:
     name: gate
     needs: plan
     if: needs.plan.outputs.mode == 'release' || needs.plan.outputs.mode == 'rehearsal'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # The 200 minutes of the nightly benchmark job plus the tests. A test in
+    # xtask/src/bench/scenario.rs checks that this exceeds the nightly job.
+    timeout-minutes: 230
     permissions:
       contents: read # checks out the repository
     steps:
@@ -431,8 +436,21 @@ jobs:
       - name: Install the toolchain of rust-toolchain.toml
         run: rustup toolchain install
       - run: cargo test --workspace --locked
-      # TODO(#287): run `cargo xtask bench` here and fail on a missed target
-      # (ADR 0019).
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      # Keep these versions in sync with xtask/src/bench/tools.rs.
+      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        with:
+          tool: hyperfine@2.0.0,shellcheck@0.11.0
+      # Fails on a failed measurement or a missed target, after it writes the
+      # results.
+      - name: Run the benchmarks
+        run: cargo xtask bench
+      - name: Add the benchmark results to the job summary
+        if: ${{ !cancelled() && hashFiles('target/bench/results.md') != '' }}
+        run: cat target/bench/results.md >> "$GITHUB_STEP_SUMMARY"
 
   release:
     name: release
