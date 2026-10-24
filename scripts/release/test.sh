@@ -3,8 +3,9 @@
 #
 # Tests plan.sh, notes.sh, smoke-test.sh, package.sh, install-scripts.sh,
 # compare-wheel.sh, check-wheels.sh, docker-tags.sh, merge-oci.sh,
-# npm-pack.sh, check-npm.sh, and npm-publish.sh. The plan job of
-# .github/workflows/release.yml runs it before it plans.
+# npm-pack.sh, check-npm.sh, npm-publish.sh, homebrew-formula.sh, and
+# homebrew-update.sh. The plan job of .github/workflows/release.yml runs it
+# before it plans.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -388,6 +389,120 @@ check "npm-publish.sh gives a pre-release the dist-tag next" 0 \
   publish 1.2.3-rc.1 FAKE_NPM_PUBLISHED="$(platforms_at 1.2.3-rc.1)"
 check "npm-publish.sh stops when npm view fails for another reason" 1 "" \
   publish 1.2.3 FAKE_NPM_DOWN=1
+
+# A checksums.txt with a line for each of the six archives and two other
+# assets. Each SHA-256 is one hex digit repeated.
+cat > "$work/brew-checksums.txt" << 'EOF'
+1111111111111111111111111111111111111111111111111111111111111111  checksums-not-this.txt
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  workflint_1.2.3_darwin_amd64.tar.gz
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  workflint_1.2.3_darwin_arm64.tar.gz
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc  workflint_1.2.3_linux_amd64.tar.gz
+dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd  workflint_1.2.3_linux_arm64.tar.gz
+eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee  workflint_1.2.3_windows_amd64.zip
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff  workflint_1.2.3_windows_arm64.zip
+EOF
+formula="$here/homebrew-formula.sh"
+release_url=https://github.com/stokehold/workflint/releases/download/v1.2.3
+"$formula" 1.2.3 "$work/brew-checksums.txt" "$release_url" > "$work/workflint.rb"
+check "the formula has the version" 0 '  version "1.2.3"' \
+  grep '^  version ' "$work/workflint.rb"
+check "the formula has the URL and SHA-256 of each macOS and Linux archive" 0 \
+  "url \"$release_url/workflint_1.2.3_darwin_arm64.tar.gz\"
+sha256 \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"
+url \"$release_url/workflint_1.2.3_darwin_amd64.tar.gz\"
+sha256 \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"
+url \"$release_url/workflint_1.2.3_linux_arm64.tar.gz\"
+sha256 \"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\"
+url \"$release_url/workflint_1.2.3_linux_amd64.tar.gz\"
+sha256 \"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"" \
+  bash -c "grep -E '^ +(url|sha256) ' '$work/workflint.rb' | sed 's/^ *//'"
+check "the formula has no placeholder left" 1 "" \
+  grep '@[A-Z0-9_]*@' "$work/workflint.rb"
+check "the formula sets WORKFLINT_INSTALLED_FROM" 0 \
+  '    (bin/"workflint").write_env_script libexec/"workflint", WORKFLINT_INSTALLED_FROM: "installed via Homebrew"' \
+  grep 'WORKFLINT_INSTALLED_FROM' "$work/workflint.rb"
+check "the formula takes a file URL for a dry run" 0 \
+  "  url \"file://$work/dist/workflint_1.2.3_linux_amd64.tar.gz\"" \
+  bash -c "'$formula' 1.2.3 '$work/brew-checksums.txt' 'file://$work/dist' | grep -F linux_amd64 | sed 's/^  *url/  url/'"
+grep -v linux_arm64 "$work/brew-checksums.txt" > "$work/brew-missing.txt"
+check "the formula fails when checksums.txt has no line for an archive" 1 "" \
+  "$formula" 1.2.3 "$work/brew-missing.txt" "$release_url"
+{ cat "$work/brew-checksums.txt"; grep linux_arm64 "$work/brew-checksums.txt"; } > "$work/brew-twice.txt"
+check "the formula fails when checksums.txt lists an archive twice" 1 "" \
+  "$formula" 1.2.3 "$work/brew-twice.txt" "$release_url"
+sed 's/^bbbb/BBBB/' "$work/brew-checksums.txt" > "$work/brew-upper.txt"
+check "the formula fails on a SHA-256 that is not 64 lowercase hex digits" 1 "" \
+  "$formula" 1.2.3 "$work/brew-upper.txt" "$release_url"
+check "the formula fails on a version that is not a version" 1 "" \
+  "$formula" '1.2.3"' "$work/brew-checksums.txt" "$release_url"
+check "the formula fails on a base URL with a trailing slash" 1 "" \
+  "$formula" 1.2.3 "$work/brew-checksums.txt" "$release_url/"
+check "the formula fails on a base URL that is neither https nor file" 1 "" \
+  "$formula" 1.2.3 "$work/brew-checksums.txt" http://example.com/v1.2.3
+check "the formula fails on a base URL with a character sed would read" 1 "" \
+  "$formula" 1.2.3 "$work/brew-checksums.txt" "https://example.com/a|b"
+
+# A fake gh that logs each call and answers as the GitHub API would for the
+# tap. $FAKE_GH_MAIN and $FAKE_GH_BRANCH hold the blob SHA of
+# Formula/workflint.rb on main and on the branch, or are empty for no file.
+# The branch exists when $FAKE_GH_HAS_BRANCH is set. $FAKE_GH_PR is the
+# number of the open pull request of the branch, or empty. Any call fails
+# with HTTP 500 when $FAKE_GH_DOWN is set.
+mkdir -p "$work/fake-gh"
+cat > "$work/fake-gh/gh" << 'EOF'
+#!/usr/bin/env bash
+echo "gh $*" >> "$FAKE_GH_LOG"
+if [ -n "${FAKE_GH_DOWN:-}" ]; then echo "gh: Server Error (HTTP 500)" >&2; exit 1; fi
+not_found() { echo "gh: Not Found (HTTP 404)" >&2; exit 1; }
+answer() { if [ -n "$1" ]; then echo "$1"; else not_found; fi; }
+case "$*" in
+  "api repos/stokehold/homebrew-tap/contents/Formula/workflint.rb?ref=main --jq .sha") answer "$FAKE_GH_MAIN" ;;
+  "api repos/stokehold/homebrew-tap/contents/Formula/workflint.rb?ref=workflint-"*" --jq .sha") answer "$FAKE_GH_BRANCH" ;;
+  "api repos/stokehold/homebrew-tap/git/ref/heads/main --jq .object.sha") echo 0123abcd ;;
+  "api repos/stokehold/homebrew-tap/git/ref/heads/workflint-"*) answer "${FAKE_GH_HAS_BRANCH:+4567cdef}" ;;
+  "pr list "*) echo "$FAKE_GH_PR" ;;
+  "pr create "*) echo "https://github.com/stokehold/homebrew-tap/pull/9" ;;
+esac
+EOF
+chmod +x "$work/fake-gh/gh"
+printf 'class Workflint < Formula\nend\n' > "$work/update.rb"
+update_blob="$(git hash-object "$work/update.rb")"
+# Runs homebrew-update.sh with the fake gh and prints the calls that change
+# the tap, with the content of the file left out.
+# Usage: update [variable=value...]
+update() {
+  : > "$work/gh.log"
+  env PATH="$work/fake-gh:$PATH" FAKE_GH_LOG="$work/gh.log" FAKE_GH_MAIN= FAKE_GH_BRANCH= \
+    FAKE_GH_HAS_BRANCH= FAKE_GH_PR= "$@" \
+    "$here/homebrew-update.sh" "$work/update.rb" 1.2.3 > /dev/null || return
+  { grep -E '^gh (api -X|pr (create|merge))' "$work/gh.log" || true; } | sed 's/ -f content=[^ ]*//'
+}
+check "homebrew-update.sh creates the branch, commits the formula, and opens a pull request" 0 \
+  "gh api -X POST repos/stokehold/homebrew-tap/git/refs -f ref=refs/heads/workflint-1.2.3 -f sha=0123abcd
+gh api -X PUT repos/stokehold/homebrew-tap/contents/Formula/workflint.rb -f message=workflint 1.2.3 -f branch=workflint-1.2.3
+gh pr create --repo stokehold/homebrew-tap --base main --head workflint-1.2.3 --title workflint 1.2.3 --body-file -
+gh pr merge workflint-1.2.3 --repo stokehold/homebrew-tap --auto --squash" \
+  update
+check "homebrew-update.sh commits the content of the formula" 0 "$(cat "$work/update.rb")" \
+  bash -c "sed -n 's/^gh api -X PUT .* -f content=\\([^ ]*\\) .*/\\1/p' '$work/gh.log' | base64 -d"
+check "homebrew-update.sh replaces an older formula on main" 0 \
+  "gh api -X POST repos/stokehold/homebrew-tap/git/refs -f ref=refs/heads/workflint-1.2.3 -f sha=0123abcd
+gh api -X PUT repos/stokehold/homebrew-tap/contents/Formula/workflint.rb -f message=workflint 1.2.3 -f branch=workflint-1.2.3 -f sha=0ld0
+gh pr create --repo stokehold/homebrew-tap --base main --head workflint-1.2.3 --title workflint 1.2.3 --body-file -
+gh pr merge workflint-1.2.3 --repo stokehold/homebrew-tap --auto --squash" \
+  update FAKE_GH_MAIN=0ld0 FAKE_GH_BRANCH=0ld0
+check "homebrew-update.sh updates the branch and the pull request of an earlier run" 0 \
+  "gh api -X PUT repos/stokehold/homebrew-tap/contents/Formula/workflint.rb -f message=workflint 1.2.3 -f branch=workflint-1.2.3 -f sha=0ld1
+gh pr merge workflint-1.2.3 --repo stokehold/homebrew-tap --auto --squash" \
+  update FAKE_GH_MAIN=0ld0 FAKE_GH_HAS_BRANCH=1 FAKE_GH_BRANCH=0ld1 FAKE_GH_PR=9
+check "homebrew-update.sh commits nothing when the branch already has the formula" 0 \
+  "gh pr create --repo stokehold/homebrew-tap --base main --head workflint-1.2.3 --title workflint 1.2.3 --body-file -
+gh pr merge workflint-1.2.3 --repo stokehold/homebrew-tap --auto --squash" \
+  update FAKE_GH_MAIN=0ld0 FAKE_GH_HAS_BRANCH=1 FAKE_GH_BRANCH="$update_blob"
+check "homebrew-update.sh does nothing when main already has the formula" 0 "" \
+  update FAKE_GH_MAIN="$update_blob"
+check "homebrew-update.sh stops when the API fails for another reason" 1 "" \
+  update FAKE_GH_DOWN=1
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures tests failed"

@@ -1,12 +1,12 @@
 # Releasing workflint
 
-`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets. The same workflow builds the [PyPI wheels](#pypi-wheels) and publishes them to PyPI, builds the [Docker images](#docker-images) and pushes them to GHCR, and builds the [npm packages](#npm-packages) and publishes them to npm.
+`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets. The same workflow builds the [PyPI wheels](#pypi-wheels) and publishes them to PyPI, builds the [Docker images](#docker-images) and pushes them to GHCR, builds the [npm packages](#npm-packages) and publishes them to npm, and tests the [Homebrew formula](#homebrew) and opens a pull request with it in `stokehold/homebrew-tap`.
 
 ## Publishing is off until M5.10
 
 Nothing publishes yet. M5.10, Release 0.1.0 ([#258](https://github.com/stokehold/workflint/issues/258)), turns publishing on. Until then every channel runs as a dry run only: this workflow, and the later M6 tasks for the install scripts, npm, PyPI, Docker, Homebrew, pre-commit, and the GitHub Action. No job pushes a tag, uploads to a registry, or creates a GitHub release. The only job that uses a secret is `release-pr` in `release-plz.yml`, which mints a stokehold-bot token on a manual run to open a rehearsal release pull request ([release-plz](#release-plz)). Rehearsals and tag runs create attestations. They are stored in the repository and in Sigstore's public transparency log, and they are not releases.
 
-The release workflow has a switch, `PUBLISH: "false"` in its top-level `env`. A tag run builds, checks, and attests the assets, builds and checks the wheels, builds, checks, and attests the Docker images, builds and checks the npm packages, and skips the `release`, `pypi-publish`, `docker-publish`, and `npm-publish` jobs.
+The release workflow has a switch, `PUBLISH: "false"` in its top-level `env`. A tag run builds, checks, and attests the assets, builds and checks the wheels, builds, checks, and attests the Docker images, builds and checks the npm packages, tests the Homebrew formula, and skips the `release`, `pypi-publish`, `docker-publish`, `npm-publish`, and `homebrew-update` jobs.
 
 A tag pushed before M5.10 never gets a release. Tags that match `v*` cannot be deleted or moved, and a re-run of its workflow reads the switch from the tagged commit, where it is off. Do not push a `v*` tag before M5.10. If one is pushed anyway, the next release uses the next version.
 
@@ -28,6 +28,7 @@ Each M6 task that adds a channel adds its switch to this table, off.
 | PyPI | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `pypi-publish` job | off |
 | npm | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `npm-publish` job | off |
 | Docker images | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `docker-publish` job | off |
+| Homebrew | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `homebrew-update` job | off |
 
 ## Release-day checklist
 
@@ -48,6 +49,8 @@ The maintainer does these steps by hand before a release. Each item says when.
 
   If the publish does not happen within those 48 hours, the configurations expire, and the loop has to run again before the next attempt.
 
+- [ ] **`stokehold/homebrew-tap` ready, before the first release.** The repository exists and is public, the `stokehold-bot` installation includes it, "Allow auto-merge" is on, and the ruleset on `main` requires a pull request, squash merges, and the `tests` checks. Its `tests.yml` passes on a pull request. `homebrew-update` fails on a tap without the installation, and auto-merge fails on a tap without the ruleset.
+
 - [ ] **The `workflint` container package public and linked, after the first `docker-publish` run.** A package that a workflow pushes for the first time is private. In the organization's Packages, open `workflint`, then Package settings: set the visibility to public, and check that the package is linked to `stokehold/workflint`. Until then `docker pull ghcr.io/stokehold/workflint` fails for everyone else.
 
 ## How a release happens
@@ -60,6 +63,7 @@ The maintainer does these steps by hand before a release. Each item says when.
 6. The `pypi-publish` job waits for a second approval of the `release` environment. It checks the assets and their attestations again, checks each wheel against the SHA-256 that its build job recorded, and uploads the wheels to PyPI.
 7. The `docker-publish` job waits for its own approval of the `release` environment. It verifies the attestations of the two images and pushes them to GHCR ([Docker images](#docker-images)).
 8. The `npm-publish` job also waits for an approval of the `release` environment. It checks the archives and their attestations, checks each npm tarball against the SHA-256 that `npm-pack` recorded, and publishes the six platform packages and then `workflint` ([npm packages](#npm-packages)).
+9. The `homebrew-update` job waits for an approval of the `release` environment too. It downloads `checksums.txt` from the published release, verifies its attestation, renders the formula, and opens the pull request `workflint <version>` in `stokehold/homebrew-tap` with auto-merge on ([Homebrew](#homebrew)). The tap merges it when its tests pass.
 
 Releases are immutable. Once published, a release cannot gain, lose, or change an asset, so the workflow uploads every asset while the release is a draft. The install scripts go up in the same step as the archives. A later task that adds a release asset uploads it in the `release` job before the publishing step. Channels that publish somewhere else, such as npm, PyPI, Docker, and Homebrew, run after the release is published.
 
@@ -67,13 +71,13 @@ Releases are immutable. Once published, a release cannot gain, lose, or change a
 
 | Mode | Started by | Jobs |
 | --- | --- | --- |
-| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `crates/workflint/Cargo.toml`, `pyproject.toml`, `docker/`, or `npm/` | `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke`, `docker-build`, `docker-index`, `npm-pack`, `npm-smoke` |
+| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `crates/workflint/Cargo.toml`, `pyproject.toml`, `docker/`, `npm/`, or `packaging/homebrew/` | `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke`, `docker-build`, `docker-index`, `npm-pack`, `npm-smoke`, `homebrew` |
 | Rehearsal | A manual run on `main`: `gh workflow run release.yml --repo stokehold/workflint --ref main` | The dry run, `gate`, `attest`, and `docker-attest`, which also verify each attestation with `gh attestation verify` |
-| Release | A push of the tag `v<version>` | Every job. `release`, `pypi-publish`, `docker-publish`, and `npm-publish` run only when `PUBLISH` is `"true"` |
+| Release | A push of the tag `v<version>` | Every job. `release`, `pypi-publish`, `docker-publish`, `npm-publish`, and `homebrew-update` run only when `PUBLISH` is `"true"` |
 
 Each run uploads the assets as workflow artifacts, and the `checksums` job lists each file with its size and SHA-256 in the job summary. A rehearsal from another branch fails in `plan`.
 
-The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` and `docker-attest` have `attestations: write`, only they, `pypi-publish`, and `npm-publish` have `id-token: write`, only `release` has `contents: write`, and only `docker-publish` has `packages: write`.
+The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` and `docker-attest` have `attestations: write`, only they, `pypi-publish`, and `npm-publish` have `id-token: write`, only `release` has `contents: write`, and only `docker-publish` has `packages: write`. `homebrew-update` gives the `GITHUB_TOKEN` no permissions and writes to the tap with a stokehold-bot token.
 
 ## Assets
 
@@ -199,6 +203,29 @@ scripts/release/smoke-test-npm.sh npm-dist <version>
 node --test "npm/workflint/test/*.test.js"
 ```
 
+## Homebrew
+
+`brew install stokehold/tap/workflint` installs workflint from the formula `workflint` in [`stokehold/homebrew-tap`](https://github.com/stokehold/homebrew-tap), the tap that every stokehold tool shares (ADR 0014). It is a formula, not a cask, so macOS does not quarantine the binary.
+
+`packaging/homebrew/workflint.rb.tmpl` is the formula with placeholders, and `scripts/release/homebrew-formula.sh <version> <checksums.txt> <base URL>` fills them in. The formula has an `on_macos` block and an `on_linux` block, each with an `on_arm` and an `on_intel` block that holds the URL of one archive, `<base URL>/<archive>`, and its SHA-256 from `checksums.txt`. The script fails unless `checksums.txt` has exactly one well-formed line for each of the four archives, and accepts only an `https://` or `file:///` base URL. The formula:
+
+- Puts the binary in `libexec` and writes `bin/workflint` as a script that sets `WORKFLINT_INSTALLED_FROM` to `installed via Homebrew` and runs it.
+- Depends on `shellcheck`. workflint runs shellcheck on `run:` scripts by default (ADR 0012), and without it every run warns that it skipped them.
+- Tests that `-version` prints the version and `installed via Homebrew`, that a clean workflow exits with 0, and that a workflow with an unquoted variable in `run:` exits with 1 and reports SC2086, which only shellcheck finds.
+
+The jobs:
+
+- `homebrew` runs `scripts/release/test-homebrew.sh` in every mode on `macos-latest`, `macos-15-intel`, and `ubuntu-latest`, with only `contents: read` and no secrets. No release exists to download from, so the script renders the formula with `file://` URLs of the run's archives. It adds the formula to a new local tap made with `brew tap-new`, runs `brew style` and `brew audit --strict` on it, installs it, runs `brew test`, runs the smoke test on the installed `workflint`, and checks that the second line of `-version` is `installed via Homebrew`. The Ubuntu image has Homebrew in `/home/linuxbrew/.linuxbrew`, and the job puts it on the `PATH`.
+- `homebrew-update` runs only on a tag run with `PUBLISH` on, after the `release` job and `homebrew`, in the `release` environment, with `permissions: {}`. It downloads `checksums.txt` from the published release, verifies its attestation for the tag, checks that it is the run's `checksums.txt`, and renders the formula with the release's download URLs. It mints a stokehold-bot token for `homebrew-tap` alone, with `contents: write` and `pull-requests: write`, and runs `scripts/release/homebrew-update.sh`.
+
+`homebrew-update.sh` commits `Formula/workflint.rb` on the branch `workflint-<version>` through the contents API, so GitHub signs the commit and its author is `stokehold-bot[bot]`. It opens the pull request `workflint <version>` and turns on auto-merge with the squash method. The tap's `tests.yml` runs `brew style`, `brew audit --strict`, `brew install`, and `brew test` on the formula on the same three runners, and the ruleset on the tap's `main` merges the pull request once they pass. A re-run for the same version does nothing when `main` already has the formula. Otherwise it reuses the branch, commits only when the branch's formula differs, and opens no second pull request when one is open.
+
+To test the formula locally from a directory of archives and `checksums.txt`, on a machine with Homebrew:
+
+```sh
+scripts/release/test-homebrew.sh dist <version>
+```
+
 ## Verifying an asset
 
 Download the asset and `checksums.txt` into one directory, then check the checksum:
@@ -287,6 +314,7 @@ The second line of `workflint -version` says how workflint was installed (ADR 00
 | PyPI wheels | `installed by downloading from release page`, because a wheel holds the archive's binary. ADR 0014 lists the npm launcher, the Docker image, and the Homebrew formula as the only channels that set their own value. |
 | Docker images | `installed from Docker image`, from `ENV` in `docker/Dockerfile`, which overrides the archive binary's value at run time |
 | npm | `installed from npm`, which the launcher sets at run time unless `WORKFLINT_INSTALLED_FROM` is already set |
+| Homebrew | `installed via Homebrew`, which `bin/workflint`, the formula's env script, sets at run time |
 
 The tasks that add the other channels add their values here.
 
@@ -308,13 +336,16 @@ The workflow's logic lives in `scripts/release/`, where it can be tested:
 | `smoke-test-npm.sh` | Installs the npm tarballs with npm, pnpm, and Bun from `npm-registry.mjs` and runs the smoke test on each. |
 | `npm-registry.mjs` | Serves the npm tarballs to `smoke-test-npm.sh` as a registry on 127.0.0.1. |
 | `npm-publish.sh` | Publishes the npm tarballs, platform packages first, and skips the ones npm already has. |
+| `homebrew-formula.sh` | Writes the Homebrew formula of a version from `packaging/homebrew/workflint.rb.tmpl` and `checksums.txt`. |
+| `test-homebrew.sh` | Installs the formula from a local tap with `file://` URLs, and runs `brew style`, `brew audit --strict`, `brew test`, and the smoke test. |
+| `homebrew-update.sh` | Opens or updates the pull request in `stokehold/homebrew-tap` with the formula, and turns on its auto-merge. |
 | `summary.sh` | Writes the job summary. |
 | `docker-tags.sh` | Prints the tags of the default or the full image for a version. |
 | `merge-oci.sh` | Merges the OCI layouts of the two architectures into one multi-platform layout and prints its digest. |
 | `check-image.sh` | Checks a Docker image against the release archive of its architecture. |
 | `notes.sh` | Reads the release notes from `CHANGELOG.md`. |
 | `install-scripts.sh` | Writes the release copies of `scripts/install.sh` and `scripts/install.ps1`, which install the release's version by default. |
-| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, `check-wheels.sh`, `docker-tags.sh`, `merge-oci.sh`, `npm-pack.sh`, `check-npm.sh`, and `npm-publish.sh`. |
+| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, `check-wheels.sh`, `docker-tags.sh`, `merge-oci.sh`, `npm-pack.sh`, `check-npm.sh`, `npm-publish.sh`, `homebrew-formula.sh`, and `homebrew-update.sh`. |
 | `test-install.sh` | Tests the install scripts against a directory of assets. |
 | `serve.py` | Serves the assets to `test-install.sh` on 127.0.0.1. |
 
