@@ -27,7 +27,7 @@ cargo binstall workflint   # from 1.0, when the crates are published
 docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/stokehold/workflint
 ```
 
-A GitHub Action (`stokehold/workflint-action`) and a pre-commit hook are also planned.
+A GitHub Action (`stokehold/workflint-action`) is also planned.
 
 ### Install script
 
@@ -86,6 +86,34 @@ docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/stokehold/workflint:full
 ```
 
 The default tag holds only workflint, on a distroless base. It has no shellcheck, so workflint warns once per run that it skips the `run:` scripts. Pass `-shellcheck=` to turn that check off, or use the `full` tag, which adds shellcheck and the Python linters ruff and pyflakes, so workflint checks shell and Python scripts as well. Both run as a non-root user. Pin a release with `:<version>` or `:<version>-full`.
+
+### pre-commit
+
+There are two [pre-commit](https://pre-commit.com) hooks. The `workflint` hook of [`stokehold/workflint-pre-commit`](https://github.com/stokehold/workflint-pre-commit) installs workflint from PyPI, so it needs no Rust toolchain:
+
+```yaml
+repos:
+  - repo: https://github.com/stokehold/workflint-pre-commit
+    rev: v0.1.0
+    hooks:
+      - id: workflint
+```
+
+The `workflint-system` hook of this repository runs the `workflint` on your `PATH`, for workflint installed from any other channel:
+
+```yaml
+repos:
+  - repo: https://github.com/stokehold/workflint
+    rev: v0.1.0
+    hooks:
+      - id: workflint-system
+```
+
+Both hooks run on the YAML files in `.github/workflows/`, as actionlint's hooks do, and run one workflint process on all of them, so reusable workflows resolve across files. Pass flags with `args`, such as `args: [-shellcheck=]`. `rev` pins a release: the tag `v<version>` of either repository runs workflint `<version>`. To move to the latest release, run:
+
+```sh
+pre-commit autoupdate
+```
 
 ## Documentation
 

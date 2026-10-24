@@ -1,0 +1,15 @@
+# The pre-commit hook of this repository, for workflint installed in any way
+# (README.md#pre-commit). The stokehold/workflint-pre-commit repository has
+# the hook that installs workflint from PyPI. Both use the files and types
+# filters of actionlint's hooks. require_serial runs one workflint process on
+# all the files, since workflint runs in parallel itself and resolves
+# reusable workflows across files.
+- id: workflint-system
+  name: Lint GitHub Actions workflow files
+  description: Runs the workflint on the PATH to lint GitHub Actions workflow files
+  language: system
+  entry: workflint
+  files: ^\.github/workflows/
+  types: [yaml]
+  require_serial: true
+  minimum_pre_commit_version: 3.0.0
