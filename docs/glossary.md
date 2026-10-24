@@ -86,3 +86,4 @@ Use these words with these meanings in code, docs, and pull requests.
 | shellcheck cache | The opt-in directory `$XDG_CACHE_HOME/workflint/shellcheck` that keeps the findings of each script, keyed by a hash of shellcheck's version, arguments, rcfile, `SHELLCHECK_OPTS`, and the script (ADR 0012). |
 | milestone | A roadmap stage, M0 to M9, or P for after 1.0. Each one is also a GitHub milestone. |
 | task | One unit of roadmap work, sized for one pull request, tracked as a GitHub issue (ADR 0020). |
+
