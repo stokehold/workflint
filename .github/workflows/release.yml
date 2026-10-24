@@ -628,10 +628,8 @@ jobs:
           jq -r '.[]' <<< "$RECORDED" > "$RUNNER_TEMP/wheels.sha256"
           scripts/release/check-wheels.sh wheels "$RUNNER_TEMP/wheels.sha256"
       # A re-run skips the wheels that PyPI already has.
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
-        with:
-          packages-dir: wheels/
-          skip-existing: true
+      - name: Temporary stand-in for the PyPI upload
+        run: "false"
 
   # Builds the default and full images of docker/Dockerfile for one
   # architecture, on a runner of that architecture, from the binary of the
