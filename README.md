@@ -44,6 +44,16 @@ irm https://github.com/stokehold/workflint/releases/latest/download/install.ps1 
 
 `install.sh` takes the arguments of actionlint's `download-actionlint.bash`, `[VERSION|latest] [DIR]`, and also writes `executable=<path>` to `GITHUB_OUTPUT`. A CI script that runs actionlint's download script switches by changing the URL. [`docs/releasing.md`](docs/releasing.md#install-scripts) has every option.
 
+### Homebrew
+
+The tap `stokehold/tap` has a formula for macOS and Linux, on Intel and Arm:
+
+```sh
+brew install stokehold/tap/workflint
+```
+
+The formula installs the binary of the release archive and shellcheck, so workflint checks `run:` scripts from the start. It is a formula, not a cask, so macOS does not quarantine the binary. The second line of `workflint -version` is `installed via Homebrew`.
+
 ### npm
 
 The npm package `workflint` runs the binary of the release archive for your platform. Each binary is in its own package, such as `@stokehold/workflint-linux-x64`, and npm, pnpm, and Bun install only the one that matches your machine. Nothing runs at install time, so `--ignore-scripts` and the defaults of pnpm and Bun work:

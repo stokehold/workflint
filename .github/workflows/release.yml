@@ -4,8 +4,10 @@ name: Release
 # and the install scripts), attests them, and publishes them as a GitHub
 # release (docs/releasing.md). It also builds a PyPI wheel from each archive's
 # binary and publishes the wheels to PyPI, builds the Docker images from the
-# Linux binaries and pushes them to GHCR, and packs the binaries into npm
-# packages and publishes them to npm. The plan job picks one of three modes:
+# Linux binaries and pushes them to GHCR, packs the binaries into npm
+# packages and publishes them to npm, and tests the Homebrew formula and
+# opens a pull request with it in stokehold/homebrew-tap. The plan job picks
+# one of three modes:
 #
 # - release: a push of the tag v<version>, where <version> is the version of
 #   the workflint package. Builds, attests, and publishes.
@@ -35,6 +37,7 @@ on:
       - pyproject.toml
       - docker/**
       - npm/**
+      - packaging/homebrew/**
   workflow_dispatch:
 
 permissions: {}
@@ -1038,3 +1041,97 @@ jobs:
             process.exit(major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1))) ? 0 : 1)' "$(npm --version)"
       - name: Publish the packages
         run: scripts/release/npm-publish.sh npm-dist "$VERSION"
+
+  # Renders the Homebrew formula with file:// URLs of this run's archives,
+  # installs it from a local tap, and runs brew style, brew audit --strict,
+  # brew test, and the smoke test (docs/releasing.md#homebrew).
+  # ADR 0021: no secrets, no environment, and only contents: read.
+  homebrew:
+    name: homebrew (${{ matrix.runner }})
+    needs: [plan, checksums]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-latest, macos-15-intel, ubuntu-latest]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read # checks out the repository
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: "{archive-*,checksums}"
+          path: ${{ runner.temp }}/assets
+          merge-multiple: true
+      # The Ubuntu image has Homebrew, but not on the PATH.
+      - name: Put Homebrew on the PATH
+        if: runner.os == 'Linux'
+        run: echo /home/linuxbrew/.linuxbrew/bin >> "$GITHUB_PATH"
+      - name: Test the formula
+        env:
+          ASSETS: ${{ runner.temp }}/assets
+        run: scripts/release/test-homebrew.sh "$ASSETS" "$VERSION"
+
+  # Opens the pull request in stokehold/homebrew-tap that updates the formula
+  # to this release, after the GitHub release is published, and turns on its
+  # auto-merge. The tap merges it when its tests pass. The job needs no
+  # permissions for the GITHUB_TOKEN: the repository is public, and the tap
+  # takes a stokehold-bot token scoped to it alone.
+  homebrew-update:
+    name: homebrew-update
+    needs: [plan, release, homebrew]
+    # Runs only when the plan job says to publish, which happens only on a
+    # tag run. Publishing stays off until M5.10:
+    # https://github.com/stokehold/workflint/issues/258
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    permissions: {}
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: v${{ needs.plan.outputs.version }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: checksums
+          path: ${{ runner.temp }}/run
+      # The formula takes its SHA-256 values from the published release, which
+      # must be the checksums.txt that this run wrote and attested.
+      - name: Download checksums.txt from the release and verify it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$TAG" --repo "$REPO" --pattern checksums.txt --dir "$RUNNER_TEMP/release"
+          gh attestation verify "$RUNNER_TEMP/release/checksums.txt" --repo "$REPO" \
+            --signer-workflow "$REPO/.github/workflows/release.yml" \
+            --source-ref "refs/tags/$TAG"
+          cmp "$RUNNER_TEMP/run/checksums.txt" "$RUNNER_TEMP/release/checksums.txt"
+      - name: Render the formula
+        run: |
+          scripts/release/homebrew-formula.sh "$VERSION" "$RUNNER_TEMP/release/checksums.txt" \
+            "https://github.com/$REPO/releases/download/$TAG" > "$RUNNER_TEMP/workflint.rb"
+          cat "$RUNNER_TEMP/workflint.rb"
+      - name: Mint a stokehold-bot token for the tap
+        id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.STOKEHOLD_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.STOKEHOLD_BOT_PRIVATE_KEY }}
+          owner: stokehold
+          repositories: homebrew-tap
+          permission-contents: write # creates the branch and commits the formula
+          permission-pull-requests: write # opens the pull request and turns on its auto-merge
+      - name: Open or update the pull request in the tap
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: scripts/release/homebrew-update.sh "$RUNNER_TEMP/workflint.rb" "$VERSION"

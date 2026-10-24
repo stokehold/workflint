@@ -1,0 +1,66 @@
+# The release workflow of stokehold/workflint writes this file with
+# scripts/release/homebrew-formula.sh from packaging/homebrew/workflint.rb.tmpl.
+# Change the template there, not this file.
+class Workflint < Formula
+  desc "Linter for GitHub Actions workflows, compatible with actionlint"
+  homepage "https://github.com/stokehold/workflint"
+  version "@VERSION@"
+  license "MIT"
+
+  # workflint runs shellcheck on `run:` scripts when it finds it on the PATH.
+  depends_on "shellcheck"
+
+  on_macos do
+    on_arm do
+      url "@BASE_URL@/workflint_@VERSION@_darwin_arm64.tar.gz"
+      sha256 "@SHA256_DARWIN_ARM64@"
+    end
+    on_intel do
+      url "@BASE_URL@/workflint_@VERSION@_darwin_amd64.tar.gz"
+      sha256 "@SHA256_DARWIN_AMD64@"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "@BASE_URL@/workflint_@VERSION@_linux_arm64.tar.gz"
+      sha256 "@SHA256_LINUX_ARM64@"
+    end
+    on_intel do
+      url "@BASE_URL@/workflint_@VERSION@_linux_amd64.tar.gz"
+      sha256 "@SHA256_LINUX_AMD64@"
+    end
+  end
+
+  def install
+    libexec.install "workflint"
+    (bin/"workflint").write_env_script libexec/"workflint", WORKFLINT_INSTALLED_FROM: "installed via Homebrew"
+  end
+
+  test do
+    lines = shell_output("#{bin}/workflint -version").lines.map(&:chomp)
+    assert_equal version.to_s, lines[0]
+    assert_equal "installed via Homebrew", lines[1]
+
+    (testpath/".github/workflows/ok.yaml").write <<~YAML
+      on: push
+      jobs:
+        test:
+          runs-on: ubuntu-latest
+          steps:
+            - run: echo "$GITHUB_SHA"
+    YAML
+    shell_output(bin/"workflint")
+
+    # SC2086 comes from shellcheck, so this also checks the dependency.
+    (testpath/".github/workflows/bad.yaml").write <<~YAML
+      on: push
+      jobs:
+        test:
+          runs-on: ubuntu-latest
+          steps:
+            - run: echo $GITHUB_SHA
+    YAML
+    assert_match "SC2086", shell_output(bin/"workflint", 1)
+  end
+end
