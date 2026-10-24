@@ -281,21 +281,56 @@ mod tests {
     /// installs and the builds of both binaries.
     const SETUP: Duration = Duration::from_mins(25);
 
-    /// `timeout-minutes` of the job in `.github/workflows/benchmarks.yml`.
-    fn job_timeout() -> Duration {
-        let workflow = std::fs::read_to_string(
+    /// The `timeout-minutes` values in `.github/workflows/<workflow>`, in
+    /// source order, each with the job it belongs to.
+    fn job_timeouts(workflow: &str) -> Vec<(String, Duration)> {
+        let text = std::fs::read_to_string(
             crate::reference::Layout::repository()
                 .root()
-                .join(".github/workflows/benchmarks.yml"),
+                .join(".github/workflows")
+                .join(workflow),
         )
         .unwrap();
-        let minutes: Vec<u64> = workflow
-            .lines()
-            .filter_map(|line| line.trim().strip_prefix("timeout-minutes:"))
-            .map(|value| value.trim().parse().unwrap())
+        let mut job = String::new();
+        let mut timeouts = Vec::new();
+        for line in text.lines() {
+            if let Some(name) = line
+                .strip_prefix("  ")
+                .filter(|rest| !rest.starts_with(' ') && !rest.starts_with('#'))
+                .and_then(|rest| rest.strip_suffix(':'))
+            {
+                job = name.to_owned();
+            } else if let Some(value) = line.trim().strip_prefix("timeout-minutes:") {
+                timeouts.push((
+                    job.clone(),
+                    Duration::from_mins(value.trim().parse().unwrap()),
+                ));
+            }
+        }
+        timeouts
+    }
+
+    /// `timeout-minutes` of the job in `.github/workflows/benchmarks.yml`.
+    fn job_timeout() -> Duration {
+        let timeouts = job_timeouts("benchmarks.yml");
+        assert_eq!(timeouts.len(), 1, "expected one job with timeout-minutes");
+        timeouts[0].1
+    }
+
+    #[test]
+    fn release_gate_timeout_covers_the_nightly_job_timeout() {
+        let gate: Vec<Duration> = job_timeouts("release.yml")
+            .into_iter()
+            .filter(|(job, _)| job == "gate")
+            .map(|(_, timeout)| timeout)
             .collect();
-        assert_eq!(minutes.len(), 1, "expected one job with timeout-minutes");
-        Duration::from_mins(minutes[0])
+        assert_eq!(gate.len(), 1, "expected one gate job with timeout-minutes");
+        assert!(
+            gate[0] > job_timeout(),
+            "the gate job runs the tests and then `cargo xtask bench`, so it needs \
+             more than the {} minutes of the nightly job",
+            job_timeout().as_secs() / 60
+        );
     }
 
     #[test]
