@@ -224,6 +224,8 @@ Two workflows run on every pull request and on every push to `main`.
 
 `release timing` runs the tests in `crates/workflint-yaml/tests/event_parser.rs` and `crates/workflint-syntax/tests/billion_laughs.rs` in a release build, where the parser timing tests must finish in under one second. A debug build allows them 5 and 10 seconds. `release-plz update` runs release-plz without pushing and writes the changes that the next release pull request would make to the job summary ([docs/releasing.md](docs/releasing.md#release-plz)). `rustdoc` runs `cargo doc --workspace --no-deps --document-private-items` with `RUSTDOCFLAGS=-D warnings`.
 
+`release.yml` also runs on every pull request, in the same way. Its `changes` job matches the changed files against `scripts/release/packaging-paths.txt`, the dry-run jobs run only when one matches, and its job `release-dry-run` reports them as one check, which the ruleset requires ([docs/releasing.md](docs/releasing.md#the-release-dry-run-check)).
+
 To add a job that runs only for some files, add its pattern list to the `env` of `changes`, add its name to the loop that writes the outputs, and add the job to the `needs` of `ci-gate`. A job in `gate.yml` that runs on every change, as `rustdoc` does, also goes into the `ci-gate` step next to `changes` and `rustdoc`, so that a skipped run fails the gate.
 
 ## Releases
