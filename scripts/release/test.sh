@@ -2,7 +2,7 @@
 # Usage: test.sh
 #
 # Tests plan.sh, notes.sh, smoke-test.sh, package.sh, install-scripts.sh,
-# compare-wheel.sh, and check-wheels.sh. The plan job of
+# compare-wheel.sh, check-wheels.sh, docker-tags.sh, and merge-oci.sh. The plan job of
 # .github/workflows/release.yml runs it before it plans.
 set -euo pipefail
 
@@ -182,6 +182,83 @@ printf 'win_arm64\n' > "$work/wheels/workflint-1.2.3-py3-none-win_arm64.whl"
 printf 'other\n' > "$work/wheels/workflint-1.2.3.tar.gz"
 check "a file other than the six wheels fails" 1 "" \
   bash -c "'$wheels' '$work/wheels' '$work/recorded.sha256' > /dev/null"
+
+tags="$here/docker-tags.sh"
+check "a release tags the default image with its version, its minor version, and latest" 0 \
+  $'1.2.3\n1.2\nlatest' "$tags" 1.2.3 default
+check "a release tags the full image with the same tags and -full" 0 \
+  $'1.2.3-full\n1.2-full\nfull' "$tags" 1.2.3 full
+check "a pre-release tags the default image with its version only" 0 "1.2.3-rc.1" \
+  "$tags" 1.2.3-rc.1 default
+check "a pre-release tags the full image with its version only" 0 "1.2.3-rc.1-full" \
+  "$tags" 1.2.3-rc.1 full
+check "a version with build metadata fails" 1 "" "$tags" 1.2.3+build default
+check "a version with a v fails" 1 "" "$tags" v1.2.3 default
+check "a version without a patch number fails" 1 "" "$tags" 1.2 default
+check "an unknown image fails" 2 "" "$tags" 1.2.3 slim
+
+# Writes <content> as a blob of the OCI layout <dir> and prints its descriptor
+# with <media type>, and with <extra> merged into it.
+# Usage: blob <dir> <media type> <content> [extra]
+blob() {
+  local dir="$1" media="$2" content="$3" extra="${4:-{\}}" hash
+  mkdir -p "$dir/blobs/sha256"
+  hash="$(printf '%s' "$content" | sha256sum | cut -d ' ' -f 1)"
+  printf '%s' "$content" > "$dir/blobs/sha256/$hash"
+  jq -cn --arg m "$media" --arg d "sha256:$hash" --argjson s "${#content}" --argjson e "$extra" \
+    '{mediaType: $m, digest: $d, size: $s} + $e'
+}
+# Writes an OCI layout as buildx exports a build for one platform with
+# attestations: index.json points at an image index that lists the image
+# manifest and its attestation manifest.
+# Usage: layout <dir> <architecture>
+layout() {
+  local dir="$1" arch="$2" config image attestation index
+  mkdir -p "$dir"
+  printf '{"imageLayoutVersion":"1.0.0"}' > "$dir/oci-layout"
+  config="$(blob "$dir" application/vnd.oci.image.config.v1+json "{\"architecture\":\"$arch\"}")"
+  image="$(blob "$dir" application/vnd.oci.image.manifest.v1+json "{\"config\":$config}" \
+    "{\"platform\":{\"architecture\":\"$arch\",\"os\":\"linux\"}}")"
+  attestation="$(blob "$dir" application/vnd.oci.image.manifest.v1+json "{\"attests\":\"$arch\"}" \
+    "{\"platform\":{\"architecture\":\"unknown\",\"os\":\"unknown\"},\"annotations\":{\"vnd.docker.reference.digest\":$(jq '.digest' <<< "$image")}}")"
+  index="$(blob "$dir" application/vnd.oci.image.index.v1+json \
+    "{\"schemaVersion\":2,\"mediaType\":\"application/vnd.oci.image.index.v1+json\",\"manifests\":[$image,$attestation]}")"
+  printf '{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[%s]}' "$index" \
+    > "$dir/index.json"
+}
+merge="$here/merge-oci.sh"
+layout "$work/oci/amd64" amd64
+layout "$work/oci/arm64" arm64
+"$merge" "$work/oci/merged" "$work/oci/amd64" "$work/oci/arm64" > "$work/oci/digest"
+merged_digest="$(cat "$work/oci/digest")"
+merged_index="$work/oci/merged/blobs/sha256/${merged_digest#sha256:}"
+check "the merged layout points at one image index, whose digest merge-oci.sh prints" 0 \
+  "$merged_digest application/vnd.oci.image.index.v1+json" \
+  jq -r '.manifests | if length == 1 then "\(.[0].digest) \(.[0].mediaType)" else "\(length) manifests" end' \
+  "$work/oci/merged/index.json"
+check "the digest is the SHA-256 of the merged index" 0 "${merged_digest#sha256:}" \
+  bash -c "sha256sum '$merged_index' | cut -d ' ' -f 1"
+check "the merged index lists each image and attestation manifest in the order of the layouts" 0 \
+  $'amd64\nunknown\narm64\nunknown' jq -r '.manifests[].platform.architecture' "$merged_index"
+check "the merged layout holds every blob of the layouts and the new index" 0 \
+  "$(cd "$work/oci" && find amd64/blobs arm64/blobs -type f -printf '%f\n' | LC_ALL=C sort -u; echo "${merged_digest#sha256:}")" \
+  bash -c "find '$work/oci/merged/blobs/sha256' -type f -printf '%f\n' | LC_ALL=C sort -u | grep -vxF '${merged_digest#sha256:}'; echo '${merged_digest#sha256:}'"
+check "merging the same layouts again gives the same digest" 0 "$merged_digest" \
+  "$merge" "$work/oci/again" "$work/oci/amd64" "$work/oci/arm64"
+cp -r "$work/oci/amd64" "$work/oci/corrupt"
+printf 'changed' > "$(find "$work/oci/corrupt/blobs/sha256" -type f | head -n 1)"
+check "a blob whose content does not match its digest fails" 1 "" \
+  "$merge" "$work/oci/out-corrupt" "$work/oci/corrupt" "$work/oci/arm64"
+mkdir -p "$work/oci/single"
+cp -r "$work/oci/amd64/oci-layout" "$work/oci/amd64/blobs" "$work/oci/single/"
+jq '.manifests[0].mediaType = "application/vnd.oci.image.manifest.v1+json"' \
+  "$work/oci/amd64/index.json" > "$work/oci/single/index.json"
+check "a layout without an image index fails" 1 "" \
+  "$merge" "$work/oci/out-single" "$work/oci/single" "$work/oci/arm64"
+check "an existing output directory fails" 1 "" \
+  "$merge" "$work/oci/merged" "$work/oci/amd64" "$work/oci/arm64"
+check "merge-oci.sh creates the parents of the output directory" 0 "$merged_digest" \
+  "$merge" "$work/oci/new/parent/merged" "$work/oci/amd64" "$work/oci/arm64"
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures tests failed"

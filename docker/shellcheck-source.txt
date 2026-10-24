@@ -1,0 +1,10 @@
+This image holds shellcheck 0.11.0, unchanged, from
+https://github.com/koalaman/shellcheck/releases/tag/v0.11.0
+
+shellcheck is free software under the GNU General Public License, version 3.
+LICENSE.txt in this directory holds the license.
+
+The source of shellcheck 0.11.0 is at
+https://github.com/koalaman/shellcheck/tree/v0.11.0
+and as an archive at
+https://github.com/koalaman/shellcheck/archive/refs/tags/v0.11.0.tar.gz

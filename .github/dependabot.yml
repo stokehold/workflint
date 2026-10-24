@@ -29,3 +29,18 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: ci
+
+  # The base images of docker/Dockerfile, and BuildKit and the SBOM scanner
+  # in docker/build-tools.Dockerfile.
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      docker:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope
