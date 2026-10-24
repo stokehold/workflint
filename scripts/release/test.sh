@@ -2,7 +2,8 @@
 # Usage: test.sh
 #
 # Tests plan.sh, notes.sh, smoke-test.sh, package.sh, install-scripts.sh,
-# compare-wheel.sh, check-wheels.sh, docker-tags.sh, and merge-oci.sh. The plan job of
+# compare-wheel.sh, check-wheels.sh, docker-tags.sh, merge-oci.sh,
+# npm-pack.sh, check-npm.sh, and npm-publish.sh. The plan job of
 # .github/workflows/release.yml runs it before it plans.
 set -euo pipefail
 
@@ -259,6 +260,134 @@ check "an existing output directory fails" 1 "" \
   "$merge" "$work/oci/merged" "$work/oci/amd64" "$work/oci/arm64"
 check "merge-oci.sh creates the parents of the output directory" 0 "$merged_digest" \
   "$merge" "$work/oci/new/parent/merged" "$work/oci/amd64" "$work/oci/arm64"
+
+# Six archives of 1.2.3, each with a binary that prints its own platform.
+mkdir -p "$work/archives" "$work/bin"
+for suffix in linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 windows_amd64 windows_arm64; do
+  case "$suffix" in
+    windows_*)
+      binary="$work/bin/$suffix/workflint.exe"
+      mkdir -p "$(dirname "$binary")"
+      printf 'MZ %s\n' "$suffix" > "$binary"
+      (cd "$(dirname "$binary")" && cp "$work/repo/README.md" "$work/repo/LICENSE" "$work/repo/NOTICE" . &&
+        python3 -m zipfile -c "$work/archives/workflint_1.2.3_$suffix.zip" workflint.exe README.md LICENSE NOTICE)
+      ;;
+    *)
+      binary="$work/bin/$suffix/workflint"
+      mkdir -p "$(dirname "$binary")"
+      printf '#!/bin/sh\necho %s\n' "$suffix" > "$binary"
+      (cd "$work/repo" && "$here/package.sh" "$binary" "$work/archives/workflint_1.2.3_$suffix.tar.gz") > /dev/null
+      ;;
+  esac
+done
+npm_pack="$here/npm-pack.sh"
+check_npm="$here/check-npm.sh"
+check "npm-pack.sh writes the seven tarballs" 0 \
+  $'stokehold-workflint-darwin-arm64-1.2.3.tgz\nstokehold-workflint-darwin-x64-1.2.3.tgz\nstokehold-workflint-linux-arm64-1.2.3.tgz\nstokehold-workflint-linux-x64-1.2.3.tgz\nstokehold-workflint-win32-arm64-1.2.3.tgz\nstokehold-workflint-win32-x64-1.2.3.tgz\nworkflint-1.2.3.tgz' \
+  "$npm_pack" 1.2.3 "$work/archives" "$work/npm"
+check "the seven tarballs pass check-npm.sh" 0 "The npm packages hold the binaries of the archives." \
+  bash -c "'$check_npm' '$work/npm' '$work/archives' 1.2.3 | tail -n 1"
+check "a platform package has the os and cpu of its archive" 0 \
+  '{"name":"@stokehold/workflint-win32-arm64","version":"1.2.3","os":["win32"],"cpu":["arm64"],"files":["workflint.exe","NOTICE"]}' \
+  bash -c "tar -xzOf '$work/npm/stokehold-workflint-win32-arm64-1.2.3.tgz' package/package.json | jq -c '{name, version, os, cpu, files}'"
+check "workflint pins the six platform packages at its version" 0 \
+  '{"@stokehold/workflint-linux-x64":"1.2.3","@stokehold/workflint-linux-arm64":"1.2.3","@stokehold/workflint-darwin-x64":"1.2.3","@stokehold/workflint-darwin-arm64":"1.2.3","@stokehold/workflint-win32-x64":"1.2.3","@stokehold/workflint-win32-arm64":"1.2.3"}' \
+  bash -c "tar -xzOf '$work/npm/workflint-1.2.3.tgz' package/package.json | jq -c .optionalDependencies"
+check "workflint has no scripts" 0 "false" \
+  bash -c "tar -xzOf '$work/npm/workflint-1.2.3.tgz' package/package.json | jq 'has(\"scripts\")'"
+check "npm-pack.sh refuses a version that is not a version" 1 "" \
+  "$npm_pack" "1.2.3/x" "$work/archives" "$work/npm-bad"
+check "npm-pack.sh fails when an archive is missing" 1 "" \
+  bash -c "'$npm_pack' 1.2.4 '$work/archives' '$work/npm-missing' > /dev/null 2>&1 || exit 1"
+
+# Repacks <tarball> after <command> changes the files in its package/
+# directory, as an attacker who replaced the tarball would.
+# Usage: tamper <tarball> <command>
+tamper() {
+  local dir="$work/tamper"
+  rm -rf "$dir"
+  mkdir -p "$dir"
+  tar -xzf "$1" -C "$dir"
+  (cd "$dir/package" && bash -c "$2")
+  tar -czf "$1" -C "$dir" package
+}
+cp -R "$work/npm" "$work/npm-binary"
+tamper "$work/npm-binary/stokehold-workflint-linux-arm64-1.2.3.tgz" "printf 'other\n' > workflint"
+check "a platform package with another binary fails" 1 "" \
+  bash -c "'$check_npm' '$work/npm-binary' '$work/archives' 1.2.3 > /dev/null"
+cp -R "$work/npm" "$work/npm-cpu"
+tamper "$work/npm-cpu/stokehold-workflint-darwin-x64-1.2.3.tgz" \
+  "jq '.cpu = [\"arm64\"]' package.json > p && mv p package.json"
+check "a platform package with another cpu fails" 1 "" \
+  bash -c "'$check_npm' '$work/npm-cpu' '$work/archives' 1.2.3 > /dev/null"
+cp -R "$work/npm" "$work/npm-mode"
+tamper "$work/npm-mode/stokehold-workflint-linux-x64-1.2.3.tgz" "chmod 644 workflint"
+check "a platform package whose binary is not executable fails" 1 "" \
+  bash -c "'$check_npm' '$work/npm-mode' '$work/archives' 1.2.3 > /dev/null"
+cp -R "$work/npm" "$work/npm-scripts"
+tamper "$work/npm-scripts/workflint-1.2.3.tgz" \
+  "jq '.scripts = {postinstall: \"node x.js\"}' package.json > p && mv p package.json"
+check "workflint with an install script fails" 1 "" \
+  bash -c "'$check_npm' '$work/npm-scripts' '$work/archives' 1.2.3 > /dev/null"
+cp -R "$work/npm" "$work/npm-pin"
+tamper "$work/npm-pin/workflint-1.2.3.tgz" \
+  "jq '.optionalDependencies[\"@stokehold/workflint-win32-x64\"] = \"^1.2.3\"' package.json > p && mv p package.json"
+check "workflint with an optional dependency at another version fails" 1 "" \
+  bash -c "'$check_npm' '$work/npm-pin' '$work/archives' 1.2.3 > /dev/null"
+cp -R "$work/npm" "$work/npm-extra"
+printf 'x\n' > "$work/npm-extra/extra.tgz"
+check "a file other than the seven tarballs fails" 1 "" \
+  bash -c "'$check_npm' '$work/npm-extra' '$work/archives' 1.2.3 > /dev/null"
+
+# A fake npm that logs each call. `npm view` lists the versions in
+# $FAKE_NPM_PUBLISHED, fails with E404 for the packages in $FAKE_NPM_MISSING,
+# and fails with another error when $FAKE_NPM_DOWN is set.
+mkdir -p "$work/fake-npm"
+cat > "$work/fake-npm/npm" << 'EOF'
+#!/usr/bin/env bash
+echo "npm $*" >> "$FAKE_NPM_LOG"
+if [ "$1" = view ]; then
+  if [ -n "${FAKE_NPM_DOWN:-}" ]; then echo "npm error code ECONNRESET" >&2; exit 1; fi
+  case " $FAKE_NPM_MISSING " in *" ${2%@*} "*) echo "npm error code E404" >&2; exit 1 ;; esac
+  case " $FAKE_NPM_PUBLISHED " in *" $2 "*) echo "${2##*@}" ;; esac
+fi
+EOF
+chmod +x "$work/fake-npm/npm"
+# Runs npm-publish.sh with the fake npm and prints the calls that publish.
+# Usage: publish <version> [variable=value...]
+publish() {
+  local version="$1"
+  shift
+  : > "$work/npm.log"
+  env PATH="$work/fake-npm:$PATH" FAKE_NPM_LOG="$work/npm.log" FAKE_NPM_PUBLISHED= FAKE_NPM_MISSING= "$@" \
+    "$here/npm-publish.sh" "$work/npm" "$version" > /dev/null || return
+  grep '^npm publish' "$work/npm.log" | sed "s|$work/npm/||"
+}
+# The six platform packages at <version>, as $FAKE_NPM_PUBLISHED lists them.
+platforms_at() {
+  printf '@stokehold/workflint-%s@'"$1"' ' linux-x64 linux-arm64 darwin-x64 darwin-arm64 win32-x64 win32-arm64
+}
+check "npm-publish.sh publishes the platform packages before workflint" 0 \
+  "npm publish stokehold-workflint-linux-x64-1.2.3.tgz --provenance --tag latest --access public
+npm publish stokehold-workflint-linux-arm64-1.2.3.tgz --provenance --tag latest --access public
+npm publish stokehold-workflint-darwin-x64-1.2.3.tgz --provenance --tag latest --access public
+npm publish stokehold-workflint-darwin-arm64-1.2.3.tgz --provenance --tag latest --access public
+npm publish stokehold-workflint-win32-x64-1.2.3.tgz --provenance --tag latest --access public
+npm publish stokehold-workflint-win32-arm64-1.2.3.tgz --provenance --tag latest --access public
+npm publish workflint-1.2.3.tgz --provenance --tag latest" \
+  publish 1.2.3
+check "npm-publish.sh skips the packages that npm already has" 0 \
+  "npm publish stokehold-workflint-win32-arm64-1.2.3.tgz --provenance --tag latest --access public
+npm publish workflint-1.2.3.tgz --provenance --tag latest" \
+  publish 1.2.3 FAKE_NPM_PUBLISHED="@stokehold/workflint-linux-x64@1.2.3 @stokehold/workflint-linux-arm64@1.2.3 @stokehold/workflint-darwin-x64@1.2.3 @stokehold/workflint-darwin-arm64@1.2.3 @stokehold/workflint-win32-x64@1.2.3 workflint@1.2.2"
+check "npm-publish.sh publishes a package that npm does not have at all" 0 \
+  "npm publish workflint-1.2.3.tgz --provenance --tag latest" \
+  publish 1.2.3 FAKE_NPM_MISSING=workflint FAKE_NPM_PUBLISHED="$(platforms_at 1.2.3)"
+check "npm-publish.sh gives a pre-release the dist-tag next" 0 \
+  "npm publish workflint-1.2.3-rc.1.tgz --provenance --tag next" \
+  publish 1.2.3-rc.1 FAKE_NPM_PUBLISHED="$(platforms_at 1.2.3-rc.1)"
+check "npm-publish.sh stops when npm view fails for another reason" 1 "" \
+  publish 1.2.3 FAKE_NPM_DOWN=1
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures tests failed"

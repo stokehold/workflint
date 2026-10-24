@@ -3,9 +3,9 @@ name: Release
 # Builds the release assets of ADR 0014 (six archives, checksums.txt, an SBOM,
 # and the install scripts), attests them, and publishes them as a GitHub
 # release (docs/releasing.md). It also builds a PyPI wheel from each archive's
-# binary and publishes the wheels to PyPI, and builds the Docker images from
-# the Linux binaries and pushes them to GHCR. The plan job picks one of three
-# modes:
+# binary and publishes the wheels to PyPI, builds the Docker images from the
+# Linux binaries and pushes them to GHCR, and packs the binaries into npm
+# packages and publishes them to npm. The plan job picks one of three modes:
 #
 # - release: a push of the tag v<version>, where <version> is the version of
 #   the workflint package. Builds, attests, and publishes.
@@ -17,7 +17,7 @@ name: Release
 #
 # Publishing stays off until M5.10 (https://github.com/stokehold/workflint/issues/258).
 # PUBLISH below is false, so a tag runs every job up to the release job and
-# skips the release and pypi-publish jobs.
+# skips the release, pypi-publish, and npm-publish jobs.
 on:
   push:
     tags: ["v*.*.*"]
@@ -34,6 +34,7 @@ on:
       - crates/workflint/Cargo.toml
       - pyproject.toml
       - docker/**
+      - npm/**
   workflow_dispatch:
 
 permissions: {}
@@ -46,8 +47,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # The switch for publishing. The release and pypi-publish jobs run only on
-  # a tag run with this set to "true". M5.10 sets it:
+  # The switch for publishing. The release, pypi-publish, and npm-publish jobs
+  # run only on a tag run with this set to "true". M5.10 sets it:
   # https://github.com/stokehold/workflint/issues/258
   PUBLISH: "false"
 
@@ -878,3 +879,162 @@ jobs:
       - name: Log out of GHCR
         if: always()
         run: rm -f "$RUNNER_TEMP/containers-auth.json"
+
+  # Writes the seven npm packages from this run's archives, without building
+  # Rust, packs them, and checks each binary against its archive
+  # (docs/releasing.md).
+  npm-pack:
+    name: npm-pack
+    needs: [plan, checksums]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read # checks out the repository
+    # The SHA-256 and file name of each tarball, as sha256sum prints them.
+    # npm-publish compares the downloaded tarballs with these.
+    outputs:
+      sha256: ${{ steps.record.outputs.sha256 }}
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: "{archive-*,checksums}"
+          path: dist
+          merge-multiple: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          package-manager-cache: false
+      - name: Check the archives against checksums.txt
+        run: |
+          cd dist
+          for archive in workflint_*; do
+            grep -q -F "  $archive" checksums.txt || { echo "::error::checksums.txt does not list $archive"; exit 1; }
+          done
+          sha256sum -c --ignore-missing checksums.txt
+      - name: Write and pack the packages
+        run: scripts/release/npm-pack.sh "$VERSION" dist npm-dist
+      # check-npm.sh also fails a package.json with scripts, so nothing runs
+      # at install time.
+      - name: Check the packages against the archives
+        run: scripts/release/check-npm.sh npm-dist dist "$VERSION"
+      - name: List the files of workflint
+        run: npm pack --dry-run "./npm-dist/workflint-$VERSION.tgz"
+      - name: Record the SHA-256 of the tarballs
+        id: record
+        run: |
+          (cd npm-dist && sha256sum -- *.tgz) | tee "$RUNNER_TEMP/npm.sha256"
+          {
+            echo "sha256<<EOF"
+            cat "$RUNNER_TEMP/npm.sha256"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: npm-packages
+          path: npm-dist/*.tgz
+          if-no-files-found: error
+
+  # Runs the launcher's tests, then installs the packages with npm, pnpm, and
+  # Bun from a registry on 127.0.0.1, so that each package manager resolves
+  # the optional dependencies itself, and runs the smoke test.
+  npm-smoke:
+    name: npm-smoke (${{ matrix.runner }})
+    needs: [plan, npm-pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    permissions:
+      contents: read # checks out the repository
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          package-manager-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-packages
+          path: npm-dist
+      - name: Test the launcher
+        run: node --test "npm/workflint/test/*.test.js"
+      - name: Smoke test the packages
+        run: scripts/release/smoke-test-npm.sh npm-dist "$VERSION"
+
+  # Publishes the npm packages with trusted publishing, after the GitHub
+  # release is published. npm's trusted publisher for each package names this
+  # workflow and the release environment, so the job needs both and no token.
+  # npm adds a provenance statement to each package.
+  npm-publish:
+    name: npm-publish
+    needs: [plan, release, npm-pack, npm-smoke]
+    # Runs only when the plan job says to publish, as the release job does.
+    # Publishing stays off until M5.10:
+    # https://github.com/stokehold/workflint/issues/258
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      id-token: write # trusted publishing to npm, and the provenance statements
+      contents: read # checks out the repository
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: v${{ needs.plan.outputs.version }}
+      RECORDED: ${{ needs.npm-pack.outputs.sha256 }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: "{archive-*,checksums}"
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-packages
+          path: npm-dist
+      - name: Verify the archives and their attestations
+        run: |
+          (cd dist && sha256sum -c --ignore-missing checksums.txt)
+          for file in dist/workflint_*; do
+            gh attestation verify "$file" --repo "$REPO" \
+              --signer-workflow "$REPO/.github/workflows/release.yml" \
+              --source-ref "refs/tags/$TAG"
+          done
+      - name: Check the tarballs against the checksums of npm-pack
+        run: |
+          printf '%s\n' "$RECORDED" > "$RUNNER_TEMP/npm.sha256"
+          if [ "$(grep -c . "$RUNNER_TEMP/npm.sha256")" -ne 7 ]; then
+            echo "::error::npm-pack recorded $(grep -c . "$RUNNER_TEMP/npm.sha256") tarballs, not 7"
+            exit 1
+          fi
+          (cd npm-dist && sha256sum -c -) < "$RUNNER_TEMP/npm.sha256"
+          scripts/release/check-npm.sh npm-dist dist "$VERSION"
+      # No registry-url, so setup-node writes no .npmrc with a token line.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          package-manager-cache: false
+      # Trusted publishing needs npm 11.5.1 or later.
+      - name: Check the npm version
+        run: |
+          npm --version
+          node -e 'const [major, minor, patch] = process.argv[1].split(".").map(Number);
+            process.exit(major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1))) ? 0 : 1)' "$(npm --version)"
+      - name: Publish the packages
+        run: scripts/release/npm-publish.sh npm-dist "$VERSION"

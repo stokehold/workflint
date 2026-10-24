@@ -1,12 +1,12 @@
 # Releasing workflint
 
-`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets. The same workflow builds the [PyPI wheels](#pypi-wheels) and publishes them to PyPI, and builds the [Docker images](#docker-images) and pushes them to GHCR.
+`.github/workflows/release.yml` builds workflint for six targets, packs each build into an archive, writes `checksums.txt`, an SBOM, and the install scripts, attests every asset, and publishes them as a GitHub release (ADR 0014, ADR 0021). Every other channel repackages these assets. The same workflow builds the [PyPI wheels](#pypi-wheels) and publishes them to PyPI, builds the [Docker images](#docker-images) and pushes them to GHCR, and builds the [npm packages](#npm-packages) and publishes them to npm.
 
 ## Publishing is off until M5.10
 
 Nothing publishes yet. M5.10, Release 0.1.0 ([#258](https://github.com/stokehold/workflint/issues/258)), turns publishing on. Until then every channel runs as a dry run only: this workflow, and the later M6 tasks for the install scripts, npm, PyPI, Docker, Homebrew, pre-commit, and the GitHub Action. No job pushes a tag, uploads to a registry, or creates a GitHub release. The only job that uses a secret is `release-pr` in `release-plz.yml`, which mints a stokehold-bot token on a manual run to open a rehearsal release pull request ([release-plz](#release-plz)). Rehearsals and tag runs create attestations. They are stored in the repository and in Sigstore's public transparency log, and they are not releases.
 
-The release workflow has a switch, `PUBLISH: "false"` in its top-level `env`. A tag run builds, checks, and attests the assets, builds and checks the wheels, builds, checks, and attests the Docker images, and skips the `release`, `pypi-publish`, and `docker-publish` jobs.
+The release workflow has a switch, `PUBLISH: "false"` in its top-level `env`. A tag run builds, checks, and attests the assets, builds and checks the wheels, builds, checks, and attests the Docker images, builds and checks the npm packages, and skips the `release`, `pypi-publish`, `docker-publish`, and `npm-publish` jobs.
 
 A tag pushed before M5.10 never gets a release. Tags that match `v*` cannot be deleted or moved, and a re-run of its workflow reads the switch from the tagged commit, where it is off. Do not push a `v*` tag before M5.10. If one is pushed anyway, the next release uses the next version.
 
@@ -26,6 +26,7 @@ Each M6 task that adds a channel adds its switch to this table, off.
 | Release tag, pushed by release-plz | The repository variable `RELEASES_ENABLED`, read by `.github/workflows/release-plz.yml` | off, unset |
 | Install scripts | `PUBLISH` in `.github/workflows/release.yml`. The `release` job uploads them with the other assets. | off |
 | PyPI | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `pypi-publish` job | off |
+| npm | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `npm-publish` job | off |
 | Docker images | `PUBLISH` in `.github/workflows/release.yml`, which also gates the `docker-publish` job | off |
 
 ## Release-day checklist
@@ -58,6 +59,7 @@ The maintainer does these steps by hand before a release. Each item says when.
 5. It checks the assets, their checksums, and their attestations, creates a draft release for the tag with every asset, and then publishes the draft. The notes are the version's section of `CHANGELOG.md`, or notes that GitHub generates when the changelog has no such section.
 6. The `pypi-publish` job waits for a second approval of the `release` environment. It checks the assets and their attestations again, checks each wheel against the SHA-256 that its build job recorded, and uploads the wheels to PyPI.
 7. The `docker-publish` job waits for its own approval of the `release` environment. It verifies the attestations of the two images and pushes them to GHCR ([Docker images](#docker-images)).
+8. The `npm-publish` job also waits for an approval of the `release` environment. It checks the archives and their attestations, checks each npm tarball against the SHA-256 that `npm-pack` recorded, and publishes the six platform packages and then `workflint` ([npm packages](#npm-packages)).
 
 Releases are immutable. Once published, a release cannot gain, lose, or change an asset, so the workflow uploads every asset while the release is a draft. The install scripts go up in the same step as the archives. A later task that adds a release asset uploads it in the `release` job before the publishing step. Channels that publish somewhere else, such as npm, PyPI, Docker, and Homebrew, run after the release is published.
 
@@ -65,13 +67,13 @@ Releases are immutable. Once published, a release cannot gain, lose, or change a
 
 | Mode | Started by | Jobs |
 | --- | --- | --- |
-| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `crates/workflint/Cargo.toml`, `pyproject.toml`, or `docker/` | `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke`, `docker-build`, `docker-index` |
+| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `crates/workflint/Cargo.toml`, `pyproject.toml`, `docker/`, or `npm/` | `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke`, `docker-build`, `docker-index`, `npm-pack`, `npm-smoke` |
 | Rehearsal | A manual run on `main`: `gh workflow run release.yml --repo stokehold/workflint --ref main` | The dry run, `gate`, `attest`, and `docker-attest`, which also verify each attestation with `gh attestation verify` |
-| Release | A push of the tag `v<version>` | Every job. `release`, `pypi-publish`, and `docker-publish` run only when `PUBLISH` is `"true"` |
+| Release | A push of the tag `v<version>` | Every job. `release`, `pypi-publish`, `docker-publish`, and `npm-publish` run only when `PUBLISH` is `"true"` |
 
 Each run uploads the assets as workflow artifacts, and the `checksums` job lists each file with its size and SHA-256 in the job summary. A rehearsal from another branch fails in `plan`.
 
-The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` and `docker-attest` have `attestations: write`, only they and `pypi-publish` have `id-token: write`, only `release` has `contents: write`, and only `docker-publish` has `packages: write`.
+The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` and `docker-attest` have `attestations: write`, only they, `pypi-publish`, and `npm-publish` have `id-token: write`, only `release` has `contents: write`, and only `docker-publish` has `packages: write`.
 
 ## Assets
 
@@ -157,6 +159,46 @@ docker buildx build docker --build-context dist=<dir> --build-arg VERSION=<versi
 scripts/release/check-image.sh workflint:full full <archive> <version>
 ```
 
+## npm packages
+
+The npm package `workflint` has a launcher and no binary. Each binary is in a platform package of its own, which `workflint` lists as an optional dependency at its exact version (ADR 0014):
+
+| Archive | Package | `os` | `cpu` |
+| --- | --- | --- | --- |
+| `linux_amd64` | `@stokehold/workflint-linux-x64` | `linux` | `x64` |
+| `linux_arm64` | `@stokehold/workflint-linux-arm64` | `linux` | `arm64` |
+| `darwin_amd64` | `@stokehold/workflint-darwin-x64` | `darwin` | `x64` |
+| `darwin_arm64` | `@stokehold/workflint-darwin-arm64` | `darwin` | `arm64` |
+| `windows_amd64` | `@stokehold/workflint-win32-x64` | `win32` | `x64` |
+| `windows_arm64` | `@stokehold/workflint-win32-arm64` | `win32` | `arm64` |
+
+npm, pnpm, and Bun install only the platform package whose `os` and `cpu` match the machine. No package has an install script, so `--ignore-scripts` and the defaults of pnpm and Bun, which block dependencies' scripts, change nothing. The Linux binaries are static musl binaries, so the Linux packages set no `libc` field and install on glibc and musl systems.
+
+`npm/workflint/bin/workflint.js` is the launcher. It picks the package for `process.platform` and `process.arch`, finds it with `require.resolve`, and runs its binary with `spawnSync` and the launcher's standard streams. It exits with the binary's exit code. When a signal kills the binary, the launcher kills itself with the same signal, or exits with 128 plus the signal number when node ignores that signal, as it does SIGPIPE. It sets `WORKFLINT_INSTALLED_FROM` to `installed from npm` unless the variable is set, even to an empty value. On a platform without a package, or when the platform package is missing, as after `npm install --omit=optional`, it names the package it expected, says how to fix the install, and exits with code 3. `npm/workflint/test/launcher.test.js` tests these cases with `node --test`.
+
+The packages in git have no version. `npm/workflint/` holds the launcher, its `package.json`, and its `README.md`, and `npm/platform/` holds the `package.json` and `README.md` templates of the platform packages. `scripts/release/npm-pack.sh` writes the version of the `plan` job into all seven `package.json` files and pins the optional dependencies at it. It copies each binary from its archive unchanged, and `LICENSE` and `NOTICE` from the repository root.
+
+The jobs:
+
+- `npm-pack` runs on Ubuntu in every mode and builds no Rust. It downloads the archives and `checksums.txt`, checks the archives against `checksums.txt`, runs `npm-pack.sh`, and runs `check-npm.sh`, which fails unless each platform binary has the SHA-256 of the binary in its archive, each platform `package.json` has the `os` and `cpu` of the table, and no `package.json` has `scripts`. It records the SHA-256 of each tarball as a job output and uploads the tarballs as the artifact `npm-packages`.
+- `npm-smoke` runs on `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest`, and `windows-latest`. It runs the launcher's tests, then `smoke-test-npm.sh`. That script serves the tarballs from `npm-registry.mjs` on 127.0.0.1 and installs `workflint` into new projects with `npm install`, `npm install --ignore-scripts`, `pnpm add`, and `bun add`. Each package manager resolves the optional dependencies itself, and the script checks that it installed only this machine's platform package. It runs the smoke test through `npx`, `pnpm exec`, and `bunx` (`bun x`), checks that the second line of `-version` is `installed from npm`, and checks that `npm install --omit=optional` gives the launcher's message and code 3.
+- `npm-publish` runs only on a tag run with `PUBLISH` on, after the `release` job, in the `release` environment with `id-token: write` and no token. It verifies the archives and their attestations, checks the tarballs against the SHA-256 values of `npm-pack` and with `check-npm.sh`, and runs `npm-publish.sh`. That publishes the six platform packages and then `workflint`, so `workflint` never names a platform package that npm does not have yet. The scoped packages get `--access public`, and a pre-release version gets the dist-tag `next` instead of `latest`. A re-run skips each `name@version` that `npm view` already returns, so it finishes a publish that failed halfway.
+
+npm trusted publishing needs npm 11.5.1 or later, Node 22.14.0 or later, a GitHub-hosted runner, and a `repository.url` in each `package.json` that matches the repository exactly, `git+https://github.com/stokehold/workflint.git`. The jobs use Node 24.22.1 from `actions/setup-node`, which comes with npm 11.19.1, and `npm-publish` fails on an older npm. setup-node gets no `registry-url`, so it writes no `.npmrc` with a token line. The trusted publishers themselves are an item of the [release-day checklist](#release-day-checklist).
+
+`npm-smoke` installs pnpm 12.14.0 and Bun 1.4.3 from `scripts/release/npm-tools/package-lock.json` with `npm ci --ignore-scripts`, so npm checks each package against its integrity hash, and runs the binaries from their platform packages, since the wrappers need install scripts. To update them, change the versions in `scripts/release/npm-tools/package.json` and run `npm install --package-lock-only --ignore-scripts` in that directory.
+
+npx reads some single-dash flags as its own, so `npx workflint -version` prints npm's version. `npx workflint -- -version`, `npx -- workflint -version`, and `npm exec -- workflint -version` pass the flags to workflint.
+
+To build and check the packages locally from a directory of archives and `checksums.txt`:
+
+```sh
+scripts/release/npm-pack.sh <version> dist npm-dist
+scripts/release/check-npm.sh npm-dist dist <version>
+scripts/release/smoke-test-npm.sh npm-dist <version>
+node --test "npm/workflint/test/*.test.js"
+```
+
 ## Verifying an asset
 
 Download the asset and `checksums.txt` into one directory, then check the checksum:
@@ -232,7 +274,7 @@ scripts/release/test-install.sh dist <version>
 
 ## Smoke test
 
-`scripts/release/smoke-test.sh <binary> <version>` runs `<binary> -version` and fails unless it exits with 0 and prints `<version>` on its first line. Every channel runs it on the binary it installs. Each build job runs it on the binary from its archive, and then checks that the second line of `-version` is the build-time value of `WORKFLINT_INSTALLED_FROM`. `smoke-test-wheel.sh` runs it on the binary that pip installs from a wheel and on `uvx --from <wheel> workflint`. `check-image.sh` runs it on `docker run --rm <image>`.
+`scripts/release/smoke-test.sh <binary> <version>` runs `<binary> -version` and fails unless it exits with 0 and prints `<version>` on its first line. Every channel runs it on the binary it installs. Each build job runs it on the binary from its archive, and then checks that the second line of `-version` is the build-time value of `WORKFLINT_INSTALLED_FROM`. `smoke-test-wheel.sh` runs it on the binary that pip installs from a wheel and on `uvx --from <wheel> workflint`, and `smoke-test-npm.sh` on `workflint` through `npx`, `pnpm exec`, and `bunx`. `check-image.sh` runs it on `docker run --rm <image>`.
 
 ## `WORKFLINT_INSTALLED_FROM`
 
@@ -244,6 +286,7 @@ The second line of `workflint -version` says how workflint was installed (ADR 00
 | Install scripts | `installed by downloading from release page`, from the archive that they install |
 | PyPI wheels | `installed by downloading from release page`, because a wheel holds the archive's binary. ADR 0014 lists the npm launcher, the Docker image, and the Homebrew formula as the only channels that set their own value. |
 | Docker images | `installed from Docker image`, from `ENV` in `docker/Dockerfile`, which overrides the archive binary's value at run time |
+| npm | `installed from npm`, which the launcher sets at run time unless `WORKFLINT_INSTALLED_FROM` is already set |
 
 The tasks that add the other channels add their values here.
 
@@ -260,13 +303,18 @@ The workflow's logic lives in `scripts/release/`, where it can be tested:
 | `compare-wheel.sh` | Checks the files in a wheel, and that its binary is the binary of the archive of the same target. |
 | `check-wheels.sh` | Checks that there is one wheel per platform tag, and each wheel against the SHA-256 that its build job recorded. |
 | `smoke-test-wheel.sh` | Installs a wheel with pip and with uvx and runs the smoke test on each. |
+| `npm-pack.sh` | Writes the seven npm packages of a version from the archives and packs them. |
+| `check-npm.sh` | Checks the npm tarballs: their files and `package.json` fields, and each binary against its archive. |
+| `smoke-test-npm.sh` | Installs the npm tarballs with npm, pnpm, and Bun from `npm-registry.mjs` and runs the smoke test on each. |
+| `npm-registry.mjs` | Serves the npm tarballs to `smoke-test-npm.sh` as a registry on 127.0.0.1. |
+| `npm-publish.sh` | Publishes the npm tarballs, platform packages first, and skips the ones npm already has. |
 | `summary.sh` | Writes the job summary. |
 | `docker-tags.sh` | Prints the tags of the default or the full image for a version. |
 | `merge-oci.sh` | Merges the OCI layouts of the two architectures into one multi-platform layout and prints its digest. |
 | `check-image.sh` | Checks a Docker image against the release archive of its architecture. |
 | `notes.sh` | Reads the release notes from `CHANGELOG.md`. |
 | `install-scripts.sh` | Writes the release copies of `scripts/install.sh` and `scripts/install.ps1`, which install the release's version by default. |
-| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, `check-wheels.sh`, `docker-tags.sh`, and `merge-oci.sh`. |
+| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, `check-wheels.sh`, `docker-tags.sh`, `merge-oci.sh`, `npm-pack.sh`, `check-npm.sh`, and `npm-publish.sh`. |
 | `test-install.sh` | Tests the install scripts against a directory of assets. |
 | `serve.py` | Serves the assets to `test-install.sh` on 127.0.0.1. |
 

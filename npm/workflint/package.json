@@ -1,0 +1,19 @@
+{
+  "name": "workflint",
+  "description": "A fast linter for GitHub Actions workflows, compatible with actionlint",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stokehold/workflint.git"
+  },
+  "homepage": "https://github.com/stokehold/workflint#readme",
+  "bugs": "https://github.com/stokehold/workflint/issues",
+  "keywords": ["github-actions", "linter", "workflow", "ci", "actionlint"],
+  "bin": {
+    "workflint": "bin/workflint.js"
+  },
+  "files": ["bin/workflint.js", "NOTICE"],
+  "engines": {
+    "node": ">=18"
+  }
+}
