@@ -33,7 +33,13 @@ Each M6 task that adds a channel adds its switch to this table, off.
 
 ## Release-day checklist
 
-The maintainer does these steps by hand before a release. Each item says when.
+The maintainer does these steps by hand before a release. Each item says when. Before 0.1.0 (M5.10, [#258](https://github.com/stokehold/workflint/issues/258)), every item applies.
+
+- [ ] **A green rehearsal on `main`, on the day of the release.** [Run one](#running-a-rehearsal) on the commit to release, and check that `release-dry-run` passed with every channel and both attestation jobs at `success`.
+
+- [ ] **Reviewers on the `release` environment, before the first release.** The environment requires the maintainer's approval and deploys only from tags that match `v*` (M6.0, [#17](https://github.com/stokehold/workflint/issues/17)). Every job that publishes waits for that approval.
+
+- [ ] **`RELEASES_ENABLED` set to `true`, when the version is 0.1.0.** release-plz pushes no tag without it ([`RELEASES_ENABLED`](#releases_enabled), M6.3). Step 2 of [cutting 0.1.0](#cutting-010) sets it.
 
 - [ ] **`pypa/gh-action-pypi-publish` in the organization's actions allowlist, before the first release.** The `pypi-publish` job uses it (ADR 0021). Dry runs skip that job, so a missing entry shows up only on the first tag run.
 
@@ -62,7 +68,7 @@ The maintainer does these steps by hand before a release. Each item says when.
 ## How a release happens
 
 1. release-plz opens a release pull request with the version bump and the changelog ([release-plz](#release-plz)). Merging it pushes the tag `v<version>`.
-2. The tag starts the release workflow. The `plan` job reads the version of the `workflint` package with `cargo metadata` and fails unless the tag is `v` followed by that version. When it fails, no other job runs.
+2. The tag starts the release workflow. The `changes` job runs the [publishing guard](#the-publishing-guard), and the `plan` job reads the version of the `workflint` package with `cargo metadata` and fails unless the tag is `v` followed by that version. When it fails, no other job runs.
 3. The `build` jobs build and pack the six archives and build the six wheels, and the `sbom` job writes the SBOM. The `checksums` job writes the release copies of the install scripts, then `checksums.txt`, and checks every asset. The `install-scripts` jobs test the install scripts against these assets. The `attest` job attests each asset. The `gate` job runs `cargo test --workspace --locked` and then `cargo xtask bench` with the Go, hyperfine, and shellcheck versions of the nightly benchmark job. It writes the benchmark results to the job summary and fails when a measurement fails or workflint misses a target of ADR 0019, so a release that misses a target never reaches the `release` job. The nightly job takes about ten minutes. The gate times out after 230 minutes, which covers every scenario timing out.
 4. The `release` job waits for the maintainer to approve the deployment to the `release` environment.
 5. It checks the assets, their checksums, and their attestations, creates a draft release for the tag with every asset, and then publishes the draft. The notes are the version's section of `CHANGELOG.md`, or notes that GitHub generates when the changelog has no such section.
@@ -78,11 +84,36 @@ Releases are immutable. Once published, a release cannot gain, lose, or change a
 
 | Mode | Started by | Jobs |
 | --- | --- | --- |
-| Dry run | A pull request that changes `.github/workflows/release.yml`, `scripts/release/`, `scripts/install.sh`, `scripts/install.ps1`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `crates/workflint/Cargo.toml`, `pyproject.toml`, `docker/`, `npm/`, `packaging/homebrew/`, or `.pre-commit-hooks.yaml` | `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke`, `docker-build`, `docker-index`, `npm-pack`, `npm-smoke`, `homebrew`, `pre-commit` |
-| Rehearsal | A manual run on `main`: `gh workflow run release.yml --repo stokehold/workflint --ref main` | The dry run, `gate`, `attest`, and `docker-attest`, which also verify each attestation with `gh attestation verify` |
+| Dry run | A pull request that changes a file of `scripts/release/packaging-paths.txt` | `changes`, `plan`, `build`, `sbom`, `checksums`, `install-scripts`, `pypi-check`, `pypi-smoke`, `pypi-smoke-alpine`, `docker-build`, `docker-index`, `npm-pack`, `npm-smoke`, `homebrew`, `pre-commit`, and `release-dry-run` |
+| No packaging change | Any other pull request | `changes` and `release-dry-run`. Every other job skips. |
+| Rehearsal | A manual run on `main` ([how to run one](#running-a-rehearsal)) | The dry run, `gate`, `attest`, and `docker-attest`, which also verify each attestation with `gh attestation verify` |
 | Release | A push of the tag `v<version>` | Every job. `release`, `pypi-publish`, `docker-publish`, `npm-publish`, `homebrew-update`, and `pre-commit-dispatch` run only when `PUBLISH` is `"true"` |
 
 Each run uploads the assets as workflow artifacts, and the `checksums` job lists each file with its size and SHA-256 in the job summary. A rehearsal from another branch fails in `plan`.
+
+### The `release-dry-run` check
+
+The release workflow runs on every pull request, with no `paths:` filter, because a required check from a filtered workflow never reports when the filter does not match. Three jobs make the dry runs one check that pull requests can require:
+
+1. `changes` lists the files that the pull request changes since its merge base with `git diff --name-only <base>...<head>`, and `scripts/release/changes.sh` matches them against `scripts/release/packaging-paths.txt`. Its output `packaging` is `true` when one matches, and always `true` on a tag or a rehearsal. The job also runs the [publishing guard](#the-publishing-guard).
+2. `plan` runs only when `packaging` is `true`. Every other job needs it, so with it skipped, they all skip.
+3. `release-dry-run` needs every dry-run job and both attestation jobs, and runs even when one of them fails. `scripts/release/dry-run-result.sh` writes a table to the job summary with one row per channel and the result of its jobs, and fails the check when a job failed or was cancelled. When `packaging` is `true`, a dry-run job that skipped fails it too, and in a rehearsal or a release, so does an attestation job that skipped. A pull request without packaging changes gets the check as a pass in under a minute.
+
+A new dry-run job goes into the `needs` of `release-dry-run` and into the table of `dry-run-result.sh`. The script fails when the two disagree. A new file that a release depends on goes into `packaging-paths.txt`.
+
+The `main` ruleset requires `release-dry-run`.
+
+### The publishing guard
+
+`scripts/release/check-publish-guard.py` reads `release.yml` and fails when a job that could publish can run outside a tag run. A job could publish when it has a `write` permission, an `environment:`, or a reference to `secrets.`. Its `if:` must then start with `startsWith(github.ref, 'refs/tags/v') &&`, followed by a condition without `||`, so that a dry run or a rehearsal skips the job whatever the rest says. The `release`, `pypi-publish`, `docker-publish`, `npm-publish`, `homebrew-update`, and `pre-commit-dispatch` jobs all have that condition in front of the `PUBLISH` switch. The attestation jobs `attest` and `docker-attest` are the exception, listed by name in the script: they run in rehearsals, and may write only `id-token` and `attestations`. The workflow itself grants no write permission. The guard runs in the `changes` job, so every pull request checks it, and it needs PyYAML from `scripts/release/requirements-pyyaml.txt`.
+
+### Running a rehearsal
+
+A rehearsal runs every dry-run job, `gate`, and both attestation jobs on `main`, and verifies each attestation as a user would. It creates attestations, which are stored in the repository and in Sigstore's transparency log. It creates no release, tag, package version, or pull request.
+
+1. Start it: `gh workflow run release.yml --repo stokehold/workflint --ref main`.
+2. Watch it: `gh run watch --repo stokehold/workflint "$(gh run list --repo stokehold/workflint --workflow release.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId')"`.
+3. Check the summary of `release-dry-run`: every row, `Attestations` included, says `success`.
 
 The build jobs have only `contents: read`, no secrets, no environment, and no caches, and they build with `--locked`. Only `attest` and `docker-attest` have `attestations: write`, only they, `pypi-publish`, and `npm-publish` have `id-token: write`, only `release` has `contents: write`, and only `docker-publish` has `packages: write`. `homebrew-update` gives the `GITHUB_TOKEN` no permissions and writes to the tap with a stokehold-bot token. `pre-commit-dispatch` also gives the `GITHUB_TOKEN` no permissions and sends its event with a stokehold-bot token.
 
@@ -355,6 +386,11 @@ The workflow's logic lives in `scripts/release/`, where it can be tested:
 
 | Script | Purpose |
 | --- | --- |
+| `changes.sh` | Tells whether a list of changed files touches `packaging-paths.txt`. |
+| `packaging-paths.txt` | The files that a release depends on. A pull request that changes one runs the dry run. |
+| `check-publish-guard.py` | The [publishing guard](#the-publishing-guard). |
+| `requirements-pyyaml.txt` | The pinned PyYAML that `check-publish-guard.py` needs. |
+| `dry-run-result.sh` | Decides the result of `release-dry-run` and writes its summary. |
 | `plan.sh` | Chooses the mode, checks the tag against the version, and reads the `PUBLISH` switch. |
 | `package.sh` | Packs a binary with `README.md`, `LICENSE`, and `NOTICE` into an archive. |
 | `smoke-test.sh` | The smoke test above. |
@@ -376,7 +412,7 @@ The workflow's logic lives in `scripts/release/`, where it can be tested:
 | `check-image.sh` | Checks a Docker image against the release archive of its architecture. |
 | `notes.sh` | Reads the release notes from `CHANGELOG.md`. |
 | `install-scripts.sh` | Writes the release copies of `scripts/install.sh` and `scripts/install.ps1`, which install the release's version by default. |
-| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, `check-wheels.sh`, `docker-tags.sh`, `merge-oci.sh`, `npm-pack.sh`, `check-npm.sh`, `npm-publish.sh`, `homebrew-formula.sh`, and `homebrew-update.sh`. |
+| `test.sh` | Tests `plan.sh`, `notes.sh`, `smoke-test.sh`, `package.sh`, `install-scripts.sh`, `compare-wheel.sh`, `check-wheels.sh`, `docker-tags.sh`, `merge-oci.sh`, `npm-pack.sh`, `check-npm.sh`, `npm-publish.sh`, `homebrew-formula.sh`, `homebrew-update.sh`, `changes.sh`, `dry-run-result.sh`, and `check-publish-guard.py`. |
 | `test-install.sh` | Tests the install scripts against a directory of assets. |
 | `test-pre-commit.sh` | Runs a pre-commit hook with `pre-commit try-repo` on a valid workflow, an invalid one, and a file outside `.github/workflows/`. |
 | `serve.py` | Serves the assets to `test-install.sh` on 127.0.0.1. |
@@ -386,7 +422,9 @@ The `plan` job runs shellcheck on the scripts and `install.sh`, PSScriptAnalyzer
 ```sh
 shellcheck scripts/release/*.sh scripts/install.sh
 pwsh -c 'Invoke-ScriptAnalyzer -Path scripts/install.ps1'
-scripts/release/test.sh
+python3 -m venv /tmp/pyyaml
+/tmp/pyyaml/bin/pip install --no-deps --only-binary :all: --require-hashes -r scripts/release/requirements-pyyaml.txt
+PYTHON=/tmp/pyyaml/bin/python scripts/release/test.sh
 ```
 
 ## release-plz
