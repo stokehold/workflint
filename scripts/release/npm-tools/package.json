@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "description": "pnpm and Bun for smoke-test-npm.sh, installed with npm ci --ignore-scripts from package-lock.json",
+  "devDependencies": {
+    "bun": "1.4.3",
+    "pnpm": "12.14.0"
+  }
+}

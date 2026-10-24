@@ -44,6 +44,18 @@ irm https://github.com/stokehold/workflint/releases/latest/download/install.ps1 
 
 `install.sh` takes the arguments of actionlint's `download-actionlint.bash`, `[VERSION|latest] [DIR]`, and also writes `executable=<path>` to `GITHUB_OUTPUT`. A CI script that runs actionlint's download script switches by changing the URL. [`docs/releasing.md`](docs/releasing.md#install-scripts) has every option.
 
+### npm
+
+The npm package `workflint` runs the binary of the release archive for your platform. Each binary is in its own package, such as `@stokehold/workflint-linux-x64`, and npm, pnpm, and Bun install only the one that matches your machine. Nothing runs at install time, so `--ignore-scripts` and the defaults of pnpm and Bun work:
+
+```sh
+npm install --save-dev workflint
+pnpm add --save-dev workflint
+bun add --dev workflint
+```
+
+Run it with `npx workflint`, `pnpm exec workflint`, or `bunx workflint`, or from a script in `package.json`. npx reads some single-dash flags as its own, so put `--` before workflint's flags: `npx workflint -- -version`. The second line of `workflint -version` is `installed from npm`.
+
 ### PyPI
 
 The PyPI package `workflint` has a wheel for each of the six release targets: Linux on x86_64 and arm64 with glibc or musl, macOS on Intel and Apple silicon, and Windows on x86_64 and arm64. Each wheel holds only the workflint binary of the release archive, so installing it needs no Rust toolchain:

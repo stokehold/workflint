@@ -1,0 +1,10 @@
+{
+  "description": "The workflint binary for one platform. Install the workflint package instead.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stokehold/workflint.git"
+  },
+  "homepage": "https://github.com/stokehold/workflint#readme",
+  "preferUnplugged": true
+}
