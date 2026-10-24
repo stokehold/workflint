@@ -12,35 +12,27 @@ name: Release
 #
 # - release: a push of the tag v<version>, where <version> is the version of
 #   the workflint package. Builds, attests, and publishes.
-# - dry-run: a pull request that touches the release files. Builds the assets
-#   and the wheels, uploads them as workflow artifacts, and installs each
-#   wheel.
+# - dry-run: a pull request that changes a file of
+#   scripts/release/packaging-paths.txt. Builds and tests every channel and
+#   uploads the results as workflow artifacts.
 # - rehearsal: a manual run on main. A dry run that also attests the assets
 #   and verifies the attestations.
+#
+# The changes job runs on every pull request and skips the dry-run jobs when
+# no packaging file changed. The release-dry-run job reports the result of
+# every dry-run job as one check, so the check can be required.
 #
 # Publishing stays off until M5.10 (https://github.com/stokehold/workflint/issues/258).
 # PUBLISH below is false, so a tag runs every job up to the release job and
 # skips the release, pypi-publish, docker-publish, npm-publish,
-# homebrew-update, and pre-commit-dispatch jobs.
+# homebrew-update, and pre-commit-dispatch jobs. Each of them also requires
+# a v* tag ref in its if:, which scripts/release/check-publish-guard.py
+# checks.
 on:
   push:
     tags: ["v*.*.*"]
-  # M6.11 replaces this filter with one required check for every channel.
+  # Every pull request. The changes job decides whether the dry-run jobs run.
   pull_request:
-    paths:
-      - .github/workflows/release.yml
-      - scripts/release/**
-      - scripts/install.sh
-      - scripts/install.ps1
-      - Cargo.toml
-      - Cargo.lock
-      - rust-toolchain.toml
-      - crates/workflint/Cargo.toml
-      - pyproject.toml
-      - docker/**
-      - npm/**
-      - packaging/homebrew/**
-      - .pre-commit-hooks.yaml
   workflow_dispatch:
 
 permissions: {}
@@ -64,8 +56,50 @@ defaults:
     shell: bash
 
 jobs:
+  # Decides whether this run builds the channels: always on a tag or a
+  # rehearsal, and on a pull request only when it changes a file of
+  # scripts/release/packaging-paths.txt. Also runs the publishing guard, so
+  # every pull request checks it.
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read # checks out the repository
+    outputs:
+      packaging: ${{ steps.changes.outputs.packaging }}
+    steps:
+      # The full history, so that the merge base of the pull request is in it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install PyYAML
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pyyaml"
+          "$RUNNER_TEMP/pyyaml/bin/pip" install --no-deps --only-binary :all: --require-hashes \
+            -r scripts/release/requirements-pyyaml.txt
+      - name: Check that only a tag run can publish
+        run: '"$RUNNER_TEMP/pyyaml/bin/python" scripts/release/check-publish-guard.py .github/workflows/release.yml'
+      - name: Compare the changed files with the packaging paths
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            git diff --name-only "$BASE...$HEAD" > "$RUNNER_TEMP/changed.txt"
+            scripts/release/changes.sh scripts/release/packaging-paths.txt < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo packaging=true | tee -a "$GITHUB_OUTPUT"
+          fi
+
   plan:
     name: plan
+    needs: changes
+    # Every other job needs this one, so they all skip with it.
+    if: needs.changes.outputs.packaging == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -92,8 +126,14 @@ jobs:
           $findings = Invoke-ScriptAnalyzer -Path scripts/install.ps1 -Severity Information, Warning, Error
           $findings | Format-Table -AutoSize -Wrap
           if ($findings) { exit 1 }
+      # test.sh runs check-publish-guard.py with $PYTHON.
+      - name: Install PyYAML
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pyyaml"
+          "$RUNNER_TEMP/pyyaml/bin/pip" install --no-deps --only-binary :all: --require-hashes \
+            -r scripts/release/requirements-pyyaml.txt
       - name: Test the release scripts
-        run: scripts/release/test.sh
+        run: PYTHON="$RUNNER_TEMP/pyyaml/bin/python" scripts/release/test.sh
       - name: Install the toolchain of rust-toolchain.toml
         run: rustup toolchain install
       # Fails a tag that is not v<version>, before any job builds or
@@ -458,7 +498,7 @@ jobs:
     # Runs only when the plan job says to publish: on a tag run, with PUBLISH
     # set to "true". Publishing stays off until M5.10:
     # https://github.com/stokehold/workflint/issues/258
-    if: needs.plan.outputs.publish == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
@@ -610,7 +650,7 @@ jobs:
     # Runs only when the plan job says to publish, as the release job does.
     # Publishing stays off until M5.10:
     # https://github.com/stokehold/workflint/issues/258
-    if: needs.plan.outputs.publish == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
@@ -733,7 +773,7 @@ jobs:
     # Runs only when the plan job says to publish, as the release job does.
     # Publishing stays off until M5.10:
     # https://github.com/stokehold/workflint/issues/258
-    if: needs.plan.outputs.publish == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: release
@@ -950,7 +990,7 @@ jobs:
     # Runs only when the plan job says to publish, as the release job does.
     # Publishing stays off until M5.10:
     # https://github.com/stokehold/workflint/issues/258
-    if: needs.plan.outputs.publish == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
@@ -1108,7 +1148,7 @@ jobs:
     # Runs only when the plan job says to publish, as the release job does.
     # Publishing stays off until M5.10:
     # https://github.com/stokehold/workflint/issues/258
-    if: needs.plan.outputs.publish == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
@@ -1211,7 +1251,7 @@ jobs:
     # Runs only when the plan job says to publish, which happens only on a
     # tag run. Publishing stays off until M5.10:
     # https://github.com/stokehold/workflint/issues/258
-    if: needs.plan.outputs.publish == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
@@ -1258,3 +1298,45 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
         run: scripts/release/homebrew-update.sh "$RUNNER_TEMP/workflint.rb" "$VERSION"
+
+  # The one check that pull requests require for the release workflow. It
+  # passes when every dry-run job passed, or when the changes job found no
+  # packaging file in the pull request and every dry-run job skipped, and it
+  # writes the result of each channel to the job summary
+  # (docs/releasing.md#modes). A new dry-run job goes into needs and into the
+  # table of scripts/release/dry-run-result.sh.
+  release-dry-run:
+    name: release-dry-run
+    needs:
+      - changes
+      - plan
+      - build
+      - sbom
+      - checksums
+      - install-scripts
+      - pypi-check
+      - pypi-smoke
+      - pypi-smoke-alpine
+      - docker-build
+      - docker-index
+      - npm-pack
+      - npm-smoke
+      - homebrew
+      - pre-commit
+      - attest
+      - docker-attest
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read # checks out the repository
+    env:
+      PACKAGING: ${{ needs.changes.outputs.packaging }}
+      MODE: ${{ needs.plan.outputs.mode }}
+      NEEDS: ${{ toJSON(needs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the dry-run jobs and write the summary
+        run: scripts/release/dry-run-result.sh "$PACKAGING" "$MODE" "$NEEDS" >> "$GITHUB_STEP_SUMMARY"

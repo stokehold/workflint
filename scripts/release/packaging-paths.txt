@@ -1,0 +1,18 @@
+# The files that a release depends on. A pull request that changes one of
+# them runs every dry-run job of .github/workflows/release.yml. changes.sh
+# reads this list. Each line is a path from the repository root, or a
+# pattern in which * matches any string, / included, so dir/** is every file
+# under dir.
+.github/workflows/release.yml
+scripts/release/**
+scripts/install.sh
+scripts/install.ps1
+Cargo.toml
+Cargo.lock
+rust-toolchain.toml
+crates/workflint/**
+pyproject.toml
+docker/**
+npm/**
+packaging/homebrew/**
+.pre-commit-hooks.yaml

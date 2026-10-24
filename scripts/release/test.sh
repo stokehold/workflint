@@ -3,9 +3,11 @@
 #
 # Tests plan.sh, notes.sh, smoke-test.sh, package.sh, install-scripts.sh,
 # compare-wheel.sh, check-wheels.sh, docker-tags.sh, merge-oci.sh,
-# npm-pack.sh, check-npm.sh, npm-publish.sh, homebrew-formula.sh, and
-# homebrew-update.sh. The plan job of .github/workflows/release.yml runs it
-# before it plans.
+# npm-pack.sh, check-npm.sh, npm-publish.sh, homebrew-formula.sh,
+# homebrew-update.sh, changes.sh, dry-run-result.sh, and
+# check-publish-guard.py. The plan job of .github/workflows/release.yml runs
+# it before it plans. check-publish-guard.py runs with $PYTHON, or python3
+# when it is unset, which needs PyYAML (requirements-pyyaml.txt).
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -503,6 +505,135 @@ check "homebrew-update.sh does nothing when main already has the formula" 0 "" \
   update FAKE_GH_MAIN="$update_blob"
 check "homebrew-update.sh stops when the API fails for another reason" 1 "" \
   update FAKE_GH_DOWN=1
+
+changes="$here/changes.sh"
+paths="$here/packaging-paths.txt"
+check "a pull request that changes only docs touches no packaging file" 0 "packaging=false" \
+  "$changes" "$paths" <<< $'docs/releasing.md\ndocs/adr/README.md'
+check "a pull request that changes Cargo.lock touches packaging" 0 "packaging=true" \
+  "$changes" "$paths" <<< $'docs/releasing.md\nCargo.lock'
+check "a file deep under a ** path matches it" 0 "packaging=true" \
+  "$changes" "$paths" <<< "crates/workflint/src/cli/args.rs"
+check "another crate is not packaging" 0 "packaging=false" \
+  "$changes" "$paths" <<< "crates/workflint-rules/src/lib.rs"
+check "a Cargo.toml outside the root and crates/workflint is not packaging" 0 "packaging=false" \
+  "$changes" "$paths" <<< "fuzz/Cargo.toml"
+check "the release workflow is packaging" 0 "packaging=true" \
+  "$changes" "$paths" <<< ".github/workflows/release.yml"
+check "no changed file is not packaging" 0 "packaging=false" \
+  "$changes" "$paths" < /dev/null
+printf '# only a comment\n\n' > "$work/no-paths.txt"
+check "a paths file without paths fails" 1 "" \
+  "$changes" "$work/no-paths.txt" <<< "Cargo.lock"
+
+result="$here/dry-run-result.sh"
+dry_run_jobs=(plan build sbom checksums install-scripts pypi-check pypi-smoke pypi-smoke-alpine
+  docker-build docker-index npm-pack npm-smoke homebrew pre-commit)
+# Prints the needs context in which changes succeeded and each job has the
+# result <default>, or the result given as <job>=<result>.
+# Usage: needs <default> [job=result...]
+needs() {
+  local default="$1" job
+  shift
+  {
+    echo "changes success"
+    for job in "${dry_run_jobs[@]}"; do echo "$job $default"; done
+    echo "attest skipped"
+    echo "docker-attest skipped"
+    for job in "$@"; do echo "${job%%=*} ${job#*=}"; done
+  } | jq -R -n '[inputs | split(" ") | {key: .[0], value: {result: .[1], outputs: {}}}] | from_entries'
+}
+# Runs dry-run-result.sh and prints its status and its summary row for <row>.
+# Usage: verdict <row> <packaging> <mode> <needs>
+verdict() {
+  local row="$1" status=0 output
+  shift
+  output="$("$result" "$@" 2> /dev/null)" || status=$?
+  echo "status=$status"
+  grep -F "| $row |" <<< "$output" | sed 's/.* | //; s/ |$//'
+}
+check "release-dry-run passes a pull request without packaging changes" 0 $'status=0\nskipped' \
+  verdict PyPI false "" "$(needs skipped plan=skipped)"
+check "release-dry-run passes a dry run in which every job passed" 0 $'status=0\nsuccess' \
+  verdict PyPI true dry-run "$(needs success)"
+check "release-dry-run shows the attestations as skipped in a dry run" 0 $'status=0\nskipped' \
+  verdict Attestations true dry-run "$(needs success)"
+check "release-dry-run fails when one dry-run job failed" 0 $'status=1\nfailure' \
+  verdict PyPI true dry-run "$(needs success pypi-smoke=failure)"
+check "release-dry-run fails when a job was cancelled" 0 $'status=1\ncancelled' \
+  verdict Docker true dry-run "$(needs success docker-index=cancelled)"
+check "release-dry-run fails when a dry-run job skipped in a packaging change" 0 $'status=1\nskipped' \
+  verdict Homebrew true dry-run "$(needs success homebrew=skipped)"
+check "release-dry-run fails a rehearsal whose attestations skipped" 0 $'status=1\nskipped' \
+  verdict Attestations true rehearsal "$(needs success)"
+check "release-dry-run passes a rehearsal whose attestations passed" 0 $'status=0\nsuccess' \
+  verdict Attestations true rehearsal "$(needs success attest=success docker-attest=success)"
+check "release-dry-run fails when the changes job failed" 0 $'status=1\nskipped' \
+  verdict npm "" "" "$(needs skipped changes=failure)"
+check "release-dry-run fails when it needs a job without a channel" 0 $'status=1\nsuccess' \
+  verdict npm true dry-run "$(needs success new-channel=success)"
+check "release-dry-run fails when it does not need a job of a channel" 0 $'status=1\nmissing' \
+  verdict npm true dry-run "$(needs success | jq 'del(.["npm-smoke"])')"
+check "release-dry-run lists every channel" 0 \
+  "Release scripts
+Archives, checksums, and SBOM
+Install scripts
+PyPI
+Docker
+npm
+Homebrew
+pre-commit
+Attestations" \
+  bash -c "'$result' true dry-run '$(needs success)' | sed -n 's/^| \([^|]*\) | \`.*/\1/p'"
+
+python="${PYTHON:-python3}"
+guard="$here/check-publish-guard.py"
+workflow="$here/../../.github/workflows/release.yml"
+# Runs the guard on a copy of release.yml that a sed script changed, and
+# prints its status and the jobs it reports.
+# Usage: guard_on <sed script>
+guard_on() {
+  local status=0
+  sed "$1" "$workflow" > "$work/release.yml"
+  "$python" "$guard" "$work/release.yml" > /dev/null 2> "$work/guard.err" || status=$?
+  echo "status=$status"
+  sed -n 's/.*: job \([^ ]*\) .*/\1/p; s/.*: the workflow grants.*/workflow/p' "$work/guard.err"
+}
+if ! "$python" -c 'import yaml' 2> /dev/null; then
+  echo "FAIL: $python has no PyYAML. Install scripts/release/requirements-pyyaml.txt and set PYTHON."
+  failures=$((failures + 1))
+else
+  check "the publishing guard passes release.yml" 0 "status=0" guard_on ""
+  check "the publishing guard fails a publish job without the tag condition" 0 $'status=1\nrelease' \
+    guard_on "/^  release:\$/,/^  pypi-check:\$/ s/startsWith(github.ref, 'refs\\/tags\\/v') && //"
+  check "the publishing guard fails a tag condition that || can bypass" 0 $'status=1\nnpm-publish' \
+    guard_on "/^  npm-publish:\$/,/^  homebrew:\$/ s/publish == 'true'\$/publish == 'true' || always()/"
+  check "the publishing guard accepts the tag condition inside \${{ }}" 0 "status=0" \
+    guard_on "/^  docker-publish:\$/,/^  npm-pack:\$/ s/^    if: \\(.*\\)\$/    if: \${{ \\1 }}/"
+  check "the publishing guard fails a job with an environment and no if" 0 $'status=1\nsneaky' \
+    guard_on "\$a\\
+\\
+  sneaky:\\
+    runs-on: ubuntu-24.04\\
+    environment: release\\
+    steps:\\
+      - run: echo"
+  check "the publishing guard fails a job that reads a secret" 0 $'status=1\nleaky' \
+    guard_on "\$a\\
+\\
+  leaky:\\
+    runs-on: ubuntu-24.04\\
+    permissions: {}\\
+    steps:\\
+      - env:\\
+          TOKEN: \${{ secrets.STOKEHOLD_BOT_PRIVATE_KEY }}\\
+        run: echo"
+  check "the publishing guard fails an attestation job that writes contents" 0 $'status=1\nattest' \
+    guard_on "/^  attest:\$/,/^  gate:\$/ s/^      id-token: write.*/&\\
+      contents: write/"
+  check "the publishing guard fails write permissions for the whole workflow" 0 $'status=1\nworkflow' \
+    guard_on "s/^permissions: {}\$/permissions: write-all/"
+fi
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures tests failed"
