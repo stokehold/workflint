@@ -168,7 +168,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # Fails on a difference between the expression checkers that
       # tests/expr-parity/allowed-differences.toml does not explain.
       - name: The expression checker matches the reference
@@ -176,7 +176,7 @@ jobs:
       # The conformance runner lints the fixtures that need shellcheck or
       # pyflakes only when the tool is installed. nextest runs the corpus
       # tests.
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: shellcheck@0.11.0,cargo-nextest@0.9.148
       - name: Install pyflakes and ruff
@@ -229,7 +229,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo xtask yaml-parity
 
   reference:
@@ -248,7 +248,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Add a directory the command must not touch
         run: |
           mkdir -p .reference/research/raw
@@ -303,7 +303,7 @@ jobs:
         working-directory: fuzz
         run: rustup toolchain install
       # Also caches ~/.cargo/bin, so cargo install finds cargo-fuzz there.
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: fuzz -> target
       - name: Install cargo-fuzz
@@ -335,7 +335,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: The parser timing tests pass in a release build
         run: cargo test --release --locked -p workflint-yaml -p workflint-syntax --test event_parser --test billion_laughs
       - name: The rule timing tests pass in a release build
@@ -394,7 +394,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo doc --workspace --no-deps --document-private-items --locked
         env:
           RUSTDOCFLAGS: -D warnings

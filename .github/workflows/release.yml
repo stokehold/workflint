@@ -112,7 +112,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: shellcheck@0.11.0
       - name: shellcheck passes the release scripts and install.sh
@@ -216,7 +216,7 @@ jobs:
           echo "$RUNNER_TEMP/zig/bin" >> "$GITHUB_PATH"
       - name: Install cargo-zigbuild
         if: runner.os == 'Linux'
-        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: cargo-zigbuild@0.23.4
       # Linux builds link static musl binaries with zig (ADR 0014).
@@ -318,7 +318,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: cargo-cyclonedx@0.5.9
       # One CycloneDX SBOM of the dependencies of the workflint binary on
@@ -481,7 +481,7 @@ jobs:
           go-version-file: .go-version
           cache: false
       # Keep these versions in sync with xtask/src/bench/tools.rs.
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: hyperfine@2.0.0,shellcheck@0.11.0
       # Fails on a failed measurement or a missed target, after it writes the
@@ -690,7 +690,7 @@ jobs:
           jq -r '.[]' <<< "$RECORDED" > "$RUNNER_TEMP/wheels.sha256"
           scripts/release/check-wheels.sh wheels "$RUNNER_TEMP/wheels.sha256"
       # A re-run skips the wheels that PyPI already has.
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           packages-dir: wheels/
           skip-existing: true
