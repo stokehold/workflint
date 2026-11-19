@@ -26,7 +26,7 @@ ADD --checksum=sha256:68a8133197a50beb8803f8d42f9908d1af1c5540d4bb05fdfca8c1fa47
 
 FROM shellcheck-${TARGETARCH} AS shellcheck
 
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:18f4cc26c9ffa7f20a359298be7deadac5c607c8e03a02b8119f1a5fc2f82c99 AS default
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931 AS default
 ARG TARGETARCH
 ARG VERSION
 LABEL org.opencontainers.image.source=https://github.com/stokehold/workflint \
@@ -39,7 +39,7 @@ USER 65532:65532
 WORKDIR /repo
 ENTRYPOINT ["/usr/local/bin/workflint"]
 
-FROM python:3.14-alpine3.24@sha256:601e99e090cb08c2784a42395487709500bc39930307fe72f3f11a8f3c430762 AS full
+FROM python:3.15-alpine3.24@sha256:0f9552bb28711333da16915ec146f5e6bb44a7fdac9ced15dc17c2e0206346dd AS full
 ARG TARGETARCH
 ARG VERSION
 LABEL org.opencontainers.image.source=https://github.com/stokehold/workflint \
